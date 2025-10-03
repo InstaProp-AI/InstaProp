@@ -1,0 +1,36 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace PropertyFlipperAPI.Models
+{
+    public class Auction
+    {
+        [Key]
+        public int AuctionId { get; set; }
+
+        [Required]
+        public int PropertyId { get; set; }
+
+        [ForeignKey(nameof(PropertyId))]
+        public Property Property { get; set; }
+
+        public DateTime StartAt { get; set; }
+
+        public DateTime EndAt { get; set; }
+
+        public int Duration { get; set; } // hours or minutes
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? BuyNowPrice { get; set; }
+
+        [Required]
+        public string Status { get; set; } // Enum: Pending, Active, Closed, Cancelled
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // 🔗 Relations
+        public ICollection<Bid> Bids { get; set; } = new List<Bid>();
+    }
+}
