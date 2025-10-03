@@ -16,14 +16,14 @@ namespace PropertyFlipperAPI.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    UserId = table.Column<int>(type: "integer", nullable: false)
+                    UserId = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    PhoneNumber = table.Column<string>(type: "text", nullable: false),
-                    Email = table.Column<string>(type: "text", nullable: false),
-                    Gender = table.Column<string>(type: "text", nullable: false),
-                    HashedPassword = table.Column<string>(type: "text", nullable: false),
+                    PhoneNumber = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Gender = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    HashedPassword = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     IsVerified = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -37,13 +37,13 @@ namespace PropertyFlipperAPI.Migrations
                 name: "Properties",
                 columns: table => new
                 {
-                    PropertyId = table.Column<int>(type: "integer", nullable: false)
+                    PropertyId = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    OwnerId = table.Column<int>(type: "integer", nullable: false),
+                    OwnerId = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Description = table.Column<string>(type: "text", nullable: false),
-                    Location = table.Column<string>(type: "text", nullable: false),
-                    StartingPrice = table.Column<decimal>(type: "numeric", nullable: false),
+                    Location = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    StartingPrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     IsApproved = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -63,11 +63,11 @@ namespace PropertyFlipperAPI.Migrations
                 name: "UserDocs",
                 columns: table => new
                 {
-                    DocId = table.Column<int>(type: "integer", nullable: false)
+                    DocId = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    DocType = table.Column<string>(type: "text", nullable: false),
-                    ImgUrl = table.Column<string>(type: "text", nullable: false),
+                    UserId = table.Column<long>(type: "bigint", nullable: false),
+                    DocType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    ImgUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     UploadedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -85,14 +85,14 @@ namespace PropertyFlipperAPI.Migrations
                 name: "Auctions",
                 columns: table => new
                 {
-                    AuctionId = table.Column<int>(type: "integer", nullable: false)
+                    AuctionId = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    PropertyId = table.Column<int>(type: "integer", nullable: false),
-                    StartAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    PropertyId = table.Column<long>(type: "bigint", nullable: false),
+                    StartAt = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     EndAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Duration = table.Column<int>(type: "integer", nullable: false),
                     BuyNowPrice = table.Column<decimal>(type: "numeric(18,2)", nullable: true),
-                    Status = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -110,11 +110,11 @@ namespace PropertyFlipperAPI.Migrations
                 name: "PropertyDocs",
                 columns: table => new
                 {
-                    DocId = table.Column<int>(type: "integer", nullable: false)
+                    DocId = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    PropertyId = table.Column<int>(type: "integer", nullable: false),
-                    DocType = table.Column<string>(type: "text", nullable: false),
-                    ImgUrl = table.Column<string>(type: "text", nullable: false),
+                    PropertyId = table.Column<long>(type: "bigint", nullable: false),
+                    DocType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    ImgUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     UploadedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -132,10 +132,10 @@ namespace PropertyFlipperAPI.Migrations
                 name: "Bids",
                 columns: table => new
                 {
-                    BidId = table.Column<int>(type: "integer", nullable: false)
+                    BidId = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    AuctionId = table.Column<int>(type: "integer", nullable: false),
-                    BidderId = table.Column<int>(type: "integer", nullable: false),
+                    AuctionId = table.Column<long>(type: "bigint", nullable: false),
+                    BidderId = table.Column<long>(type: "bigint", nullable: false),
                     BidAmount = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },

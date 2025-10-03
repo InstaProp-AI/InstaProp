@@ -6,11 +6,11 @@ namespace PropertyFlipperAPI.Models
 {
     public class PropertyDoc
     {
-        [Key]
-        public int DocId { get; set; }
+    [Key]
+    public long DocId { get; set; }
 
-        [Required]
-        public int PropertyId { get; set; }
+    [Required]
+    public long PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         public Property Property { get; set; }

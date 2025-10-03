@@ -8,7 +8,7 @@ namespace PropertyFlipperAPI.Models
     public class User
     {
         [Key]
-        public int UserId { get; set; }
+        public long UserId { get; set; }
 
         [MaxLength(100)]
         public string FirstName { get; set; }

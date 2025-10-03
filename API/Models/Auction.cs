@@ -7,16 +7,17 @@ namespace PropertyFlipperAPI.Models
 {
     public class Auction
     {
-        [Key]
-        public int AuctionId { get; set; }
+    [Key]
+    public long AuctionId { get; set; }
 
-        [Required]
-        public int PropertyId { get; set; }
+    [Required]
+    public long PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         public Property Property { get; set; }
 
-        public DateTime StartAt { get; set; }
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal StartAt { get; set; }
 
         public DateTime EndAt { get; set; }
 

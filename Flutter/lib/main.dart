@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'add_property_page.dart';
 import 'profile_page.dart';
@@ -7,8 +8,12 @@ import 'calender_page.dart';
 import 'notification_page.dart';
 import 'auctions_page.dart'; // Add this import at the top with others
 import 'i18n.dart';
-
-void main() {
+import 'api_client.dart';
+import 'auth_service.dart';
+import 'login_signup.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await authState.init();
   runApp(const MyApp());
 }
 
@@ -21,94 +26,70 @@ const Color kText = Colors.black87;
 const Color kGray = Color(0xFFF5F5F5);
 
 class Auction {
-  final String id;
-  final String propertyName;
-  final double startPrice;
-  final int bidders;
-  final double currentPrice;
+  final int id;
+  final String name;
   final String imageUrl;
-  final String postedBy;
   final String category;
   final int beds;
   final int baths;
+  final double startPrice;
+  final double currentPrice;
+  final int bidders;
+  final String postedBy;
   final String symbol;
+  final String propertyName;
 
   Auction({
     required this.id,
-    required this.propertyName,
-    required this.startPrice,
-    required this.bidders,
-    required this.currentPrice,
+    required this.name,
     required this.imageUrl,
-    required this.postedBy,
     required this.category,
     required this.beds,
     required this.baths,
+    required this.startPrice,
+    required this.currentPrice,
+    required this.bidders,
+    required this.postedBy,
     required this.symbol,
+    required this.propertyName,
   });
 
   double get percentageChange =>
       ((currentPrice - startPrice) / startPrice) * 100;
-}
 
-final List<Auction> dummyAuctions = [
-  Auction(
-    id: '1',
-    propertyName: 'Luxury Villa',
-    startPrice: 500000,
-    bidders: 12,
-    currentPrice: 650000,
-    imageUrl:
-        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
-    postedBy: 'Alice',
-    category: 'Villa',
-    beds: 5,
-    baths: 4,
-    symbol: 'LV',
-  ),
-  Auction(
-    id: '2',
-    propertyName: 'Downtown Apartment',
-    startPrice: 200000,
-    bidders: 8,
-    currentPrice: 245000,
-    imageUrl:
-        'https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80',
-    postedBy: 'Bob',
-    category: 'Apartment',
-    beds: 2,
-    baths: 2,
-    symbol: 'DA',
-  ),
-  Auction(
-    id: '3',
-    propertyName: 'Cozy Cottage',
-    startPrice: 120000,
-    bidders: 5,
-    currentPrice: 135000,
-    imageUrl:
-        'https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=800&q=80',
-    postedBy: 'Carol',
-    category: 'Cottage',
-    beds: 3,
-    baths: 1,
-    symbol: 'CC',
-  ),
-  Auction(
-    id: '4',
-    propertyName: 'Beachfront Condo',
-    startPrice: 350000,
-    bidders: 10,
-    currentPrice: 410000,
-    imageUrl:
-        'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=800&q=80',
-    postedBy: 'Dave',
-    category: 'Condo',
-    beds: 4,
-    baths: 3,
-    symbol: 'BC',
-  ),
-];
+  static Auction fromApi(Map<String, dynamic> a) {
+    final property = a['property'] as Map<String, dynamic>? ?? {};
+    return Auction(
+      id: a['auctionId'] as int,
+      name: (property['name'] as String?) ?? 'Property',
+      imageUrl: '',
+      category: 'N/A',
+      beds: 0,
+      baths: 0,
+      startPrice: (property['startingPrice'] as num?)?.toDouble() ?? 0,
+      currentPrice: _extractCurrentPrice(a),
+      bidders: (a['bids'] as List?)?.length ?? 0,
+      postedBy: (property['owner'] != null
+          ? (property['owner']['firstName'] ?? '')
+          : ''),
+      symbol: 'LV', // Placeholder
+      propertyName: (property['name'] as String?) ?? 'Property',
+    );
+  }
+
+  static double _extractCurrentPrice(Map<String, dynamic> a) {
+    final bids = (a['bids'] as List?) ?? [];
+    if (bids.isEmpty) {
+      return (a['property']?['startingPrice'] as num?)?.toDouble() ?? 0;
+    }
+    bids.sort(
+      (x, y) => ((x['bidAmount'] as num).toDouble()).compareTo(
+        (y['bidAmount'] as num).toDouble(),
+      ),
+    );
+    return (bids.last['bidAmount'] as num).toDouble();
+  }
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -150,25 +131,47 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 2;
   String sortBy = 'Symbol';
   bool sortDesc = false;
+  int unreadNotifications = 0;
+  List<Auction> auctions = [];
 
-  int unreadNotifications = 3; // Example: 3 unread notifications
+  @override
+  void initState() {
+    super.initState();
+    _loadAuctions();
+  }
+
+  Future<void> _loadAuctions() async {
+    try {
+      final res = await api.get('/api/Auctions');
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body) as List? ?? [];
+        setState(() {
+          auctions = data
+              .map((a) => Auction.fromApi(a as Map<String, dynamic>))
+              .toList();
+        });
+      }
+    } catch (e) {
+      print('Error loading auctions: $e');
+    }
+  }
 
   List<Auction> get featuredAuctions {
-    final sorted = List<Auction>.from(dummyAuctions)
+    final sorted = List<Auction>.from(auctions)
       ..sort((a, b) => b.bidders.compareTo(a.bidders));
     return sorted.take(2).toList();
   }
 
   List<Auction> get filteredAuctions {
-    List<Auction> list = List<Auction>.from(dummyAuctions);
+    List<Auction> list = List<Auction>.from(auctions);
     list.sort((a, b) {
       int result = 0;
       switch (sortBy) {
         case 'Symbol':
-          result = a.symbol.compareTo(b.symbol);
+          result = a.name.compareTo(b.name);
           break;
         case 'Name':
-          result = a.propertyName.compareTo(b.propertyName);
+          result = a.name.compareTo(b.name);
           break;
         case 'Percentage':
           result = a.percentageChange.compareTo(b.percentageChange);
@@ -205,26 +208,42 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _onNavTap(int idx) {
+  Future<void> _onNavTap(int idx) async {
     setState(() {
       _selectedIndex = idx;
     });
     Widget page;
     switch (idx) {
       case 0:
-        page = const AddPropertyPage();
+        if (await requireLogin(context)) {
+          page = const AddPropertyPage();
+        } else {
+          return;
+        }
         break;
       case 1:
-        page = const ValuatePage();
+        if (await requireLogin(context)) {
+          page = const ValuatePage();
+        } else {
+          return;
+        }
         break;
       case 2:
         page = const HomePage();
         break;
       case 3:
-        page = const CalenderPage();
+        if (await requireLogin(context)) {
+          page = const CalenderPage();
+        } else {
+          return;
+        }
         break;
       case 4:
-        page = const ProfilePage();
+        if (await requireLogin(context)) {
+          page = const ProfilePage();
+        } else {
+          return;
+        }
         break;
       default:
         page = const HomePage();
@@ -401,7 +420,7 @@ class _HomePageState extends State<HomePage> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      auction.propertyName,
+                                      auction.name,
                                       style: TextStyle(
                                         color: kText,
                                         fontWeight: FontWeight.bold,
@@ -419,7 +438,7 @@ class _HomePageState extends State<HomePage> {
                                           size: 16,
                                         ),
                                         Text(
-                                          '${auction.currentPrice.toStringAsFixed(0)}',
+                                          auction.currentPrice.toStringAsFixed(0),
                                           style: TextStyle(
                                             color: kPrimary,
                                             fontWeight: FontWeight.bold,
@@ -639,7 +658,7 @@ class _HomePageState extends State<HomePage> {
                                       Expanded(
                                         flex: 1,
                                         child: Text(
-                                          auction.symbol,
+                                          auction.name,
                                           style: TextStyle(
                                             color: kText,
                                             fontWeight: FontWeight.bold,
@@ -652,7 +671,7 @@ class _HomePageState extends State<HomePage> {
                                       Expanded(
                                         flex: 2,
                                         child: Text(
-                                          auction.propertyName,
+                                          auction.name,
                                           style: TextStyle(
                                             color: kText,
                                             fontWeight: FontWeight.bold,

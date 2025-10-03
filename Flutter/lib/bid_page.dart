@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'main.dart'; // To get Auction class and color constants
 import 'package:fl_chart/fl_chart.dart';
 import 'i18n.dart';
+import 'api_client.dart';
+import 'auth_service.dart';
+import 'login_signup.dart';
 
 // Use the same color constants as main.dart
 // kBg, kCard, kPrimary, kAccent, kText, kGray, kWhite
@@ -16,14 +20,39 @@ class BidPage extends StatefulWidget {
 
 class _BidPageState extends State<BidPage> {
   int _currentImage = 0;
+  List<Map<String, dynamic>> leaderboard = [];
+  bool loading = true;
 
-  List<Map<String, dynamic>> get leaderboard => [
-    {"name": "Alice", "amount": widget.auction.currentPrice - 10000},
-    {"name": "Bob", "amount": widget.auction.currentPrice - 8000},
-    {"name": "Carol", "amount": widget.auction.currentPrice - 6000},
-    {"name": "Dave", "amount": widget.auction.currentPrice - 4000},
-    {"name": "Eve", "amount": widget.auction.currentPrice - 2000},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadBids();
+  }
+
+  Future<void> _loadBids() async {
+    try {
+      final res = await api.get('/api/Bids/by-auction/${widget.auction.id}');
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body) as List? ?? [];
+        setState(() {
+          leaderboard = data
+              .map(
+                (b) => {
+                  "name": b['bidder']?['firstName'] ?? 'Unknown',
+                  "amount": (b['bidAmount'] as num).toDouble(),
+                },
+              )
+              .toList();
+          loading = false;
+        });
+      } else {
+        setState(() => loading = false);
+      }
+    } catch (e) {
+      print('Error loading bids: $e');
+      setState(() => loading = false);
+    }
+  }
 
   List<FlSpot> get bidHistory => [
     FlSpot(0, widget.auction.startPrice),
@@ -130,7 +159,7 @@ class _BidPageState extends State<BidPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.auction.propertyName,
+                      widget.auction.name,
                       style: TextStyle(
                         color: kText,
                         fontWeight: FontWeight.bold,
@@ -165,7 +194,7 @@ class _BidPageState extends State<BidPage> {
                 children: [
                   Icon(Icons.attach_money, color: kPrimary, size: 22),
                   Text(
-                    '${widget.auction.currentPrice.toStringAsFixed(0)}',
+                    widget.auction.currentPrice.toStringAsFixed(0),
                     style: TextStyle(
                       color: kPrimary,
                       fontWeight: FontWeight.bold,
@@ -374,7 +403,7 @@ class _BidPageState extends State<BidPage> {
                     _detailPoint(t.bidders, '${widget.auction.bidders}'),
                     _detailPoint(t.category, widget.auction.category),
                     _detailPoint(t.postedBy, widget.auction.postedBy),
-                    _detailPoint(t.symbol, widget.auction.symbol),
+                    _detailPoint(t.symbol, widget.auction.name),
                     _detailPoint(t.location, t.primeArea),
                     _detailPoint(t.description, t.spaciousModern),
                   ],
@@ -386,10 +415,12 @@ class _BidPageState extends State<BidPage> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(t.bidPlaced)));
+                  onPressed: () async {
+                    if (!authState.isLoggedIn) {
+                      final loggedIn = await requireLogin(context);
+                      if (!loggedIn) return;
+                    }
+                    _showBidDialog();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimary,
@@ -441,5 +472,70 @@ class _BidPageState extends State<BidPage> {
         ],
       ),
     );
+  }
+
+  void _showBidDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Place Bid'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Bid Amount (EGP)',
+            hintText:
+                'Minimum: ${widget.auction.currentPrice.toStringAsFixed(0)}',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(controller.text);
+              if (amount == null || amount <= widget.auction.currentPrice) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Bid must be higher than current price'),
+                  ),
+                );
+                return;
+              }
+              await _placeBid(amount);
+              Navigator.pop(context);
+            },
+            child: const Text('Place Bid'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _placeBid(double amount) async {
+    try {
+      final res = await api.post('/api/Bids', {
+        'auctionId': widget.auction.id,
+        'bidderId': authState.user?['userId'],
+        'bidAmount': amount,
+      });
+      if (res.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bid placed successfully!')),
+        );
+        _loadBids(); // Refresh bids
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to place bid: ${res.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error placing bid: $e')));
+    }
   }
 }

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'main.dart'; // For Auction class and color constants
 import 'bid_page.dart';
 import 'i18n.dart';
+import 'api_client.dart';
 
 class AuctionsPage extends StatefulWidget {
   const AuctionsPage({super.key});
@@ -18,6 +20,8 @@ class _AuctionsPageState extends State<AuctionsPage> {
   int? minBeds;
   int? minBaths;
   int? minBidders;
+  List<Auction> auctions = [];
+  bool loading = true;
 
   final List<String> categories = [
     'All',
@@ -31,66 +35,31 @@ class _AuctionsPageState extends State<AuctionsPage> {
     'Cabin',
   ];
 
-  // Add more demo auctions for a richer table
-  final List<Auction> auctions = List<Auction>.from(dummyAuctions)
-    ..addAll([
-      Auction(
-        id: '5',
-        propertyName: 'Penthouse Suite',
-        startPrice: 900000,
-        bidders: 15,
-        currentPrice: 1200000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80',
-        postedBy: 'Eve',
-        category: 'Penthouse',
-        beds: 6,
-        baths: 5,
-        symbol: 'PH',
-      ),
-      Auction(
-        id: '6',
-        propertyName: 'Country House',
-        startPrice: 300000,
-        bidders: 7,
-        currentPrice: 340000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1505691723518-41cb85eeaf1c?auto=format&fit=crop&w=800&q=80',
-        postedBy: 'Frank',
-        category: 'House',
-        beds: 4,
-        baths: 3,
-        symbol: 'CH',
-      ),
-      Auction(
-        id: '7',
-        propertyName: 'Studio Flat',
-        startPrice: 100000,
-        bidders: 3,
-        currentPrice: 115000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=800&q=80',
-        postedBy: 'Grace',
-        category: 'Studio',
-        beds: 1,
-        baths: 1,
-        symbol: 'SF',
-      ),
-      Auction(
-        id: '8',
-        propertyName: 'Mountain Cabin',
-        startPrice: 180000,
-        bidders: 5,
-        currentPrice: 210000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=800&q=80',
-        postedBy: 'Henry',
-        category: 'Cabin',
-        beds: 2,
-        baths: 1,
-        symbol: 'MC',
-      ),
-    ]);
+  @override
+  void initState() {
+    super.initState();
+    _loadAuctions();
+  }
+
+  Future<void> _loadAuctions() async {
+    try {
+      final res = await api.get('/api/Auctions');
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body) as List? ?? [];
+        setState(() {
+          auctions = data
+              .map((a) => Auction.fromApi(a as Map<String, dynamic>))
+              .toList();
+          loading = false;
+        });
+      } else {
+        setState(() => loading = false);
+      }
+    } catch (e) {
+      print('Error loading auctions: $e');
+      setState(() => loading = false);
+    }
+  }
 
   List<Auction> get filteredAuctions {
     List<Auction> list = List<Auction>.from(auctions);
@@ -110,11 +79,8 @@ class _AuctionsPageState extends State<AuctionsPage> {
       list = list
           .where(
             (a) =>
-                a.propertyName.toLowerCase().contains(
-                  searchText.toLowerCase(),
-                ) ||
-                a.category.toLowerCase().contains(searchText.toLowerCase()) ||
-                a.symbol.toLowerCase().contains(searchText.toLowerCase()),
+                a.name.toLowerCase().contains(searchText.toLowerCase()) ||
+                a.category.toLowerCase().contains(searchText.toLowerCase()),
           )
           .toList();
     }
@@ -122,10 +88,10 @@ class _AuctionsPageState extends State<AuctionsPage> {
       int result = 0;
       switch (sortBy) {
         case 'Symbol':
-          result = a.symbol.compareTo(b.symbol);
+          result = a.name.compareTo(b.name);
           break;
         case 'Name':
-          result = a.propertyName.compareTo(b.propertyName);
+          result = a.name.compareTo(b.name);
           break;
         case 'Percentage':
           result = a.percentageChange.compareTo(b.percentageChange);
@@ -180,7 +146,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: selectedCategory,
+              initialValue: selectedCategory,
               decoration: InputDecoration(
                 labelText: t.category,
                 labelStyle: TextStyle(color: kPrimary),
@@ -310,260 +276,253 @@ class _AuctionsPageState extends State<AuctionsPage> {
       ),
       body: Directionality(
         textDirection: t.direction,
-        child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-        children: [
-          // Search Bar & Filters
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: t.searchProperties,
-                      prefixIcon: Icon(Icons.search, color: kPrimary),
-                      filled: true,
-                      fillColor: kGray,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 16,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+        child: loading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                children: [
+                  // Search Bar & Filters
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: t.searchProperties,
+                              prefixIcon: Icon(Icons.search, color: kPrimary),
+                              filled: true,
+                              fillColor: kGray,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 0,
+                                horizontal: 16,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                searchText = value;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton(
+                          icon: Icon(Icons.filter_alt, color: kPrimary),
+                          tooltip: t.filters,
+                          onPressed: _showFiltersDialog,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Auctions Table Title
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                    child: Text(
+                      t.allAuctions,
+                      style: TextStyle(
+                        color: kText,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
                       ),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        searchText = value;
-                      });
-                    },
                   ),
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  icon: Icon(Icons.filter_alt, color: kPrimary),
-                  tooltip: t.filters,
-                  onPressed: _showFiltersDialog,
-                ),
-              ],
-            ),
-          ),
-          // Auctions Table Title
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-            child: Text(
-              t.allAuctions,
-              style: TextStyle(
-                color: kText,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-          ),
-          // Matrix Table Headers and Rows (scrollable together)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: kGray,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: 1100,
-                  child: Column(
-                    children: [
-                      // Matrix Table Headers
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            _matrixHeader(t.symbol, flex: 1),
-                            _matrixHeader(t.name, flex: 2),
-                            _matrixHeader(t.category, flex: 1),
-                            _matrixHeader(t.beds, flex: 1),
-                            _matrixHeader(t.bathrooms, flex: 1),
-                            _matrixHeader(t.startPrice, flex: 1),
-                            _matrixHeader(t.currentPrice, flex: 1),
-                            _matrixHeader(t.bidders, flex: 1),
-                            _matrixHeader(t.postedBy, flex: 1),
-                            _matrixHeader(t.changePercent, flex: 1),
-                          ],
-                        ),
+                  // Matrix Table Headers and Rows (scrollable together)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: kGray,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      // Matrix Table Rows
-                      SizedBox(
-                        height: 500,
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: filteredAuctions.length,
-                          itemBuilder: (context, idx) {
-                            final auction = filteredAuctions[idx];
-                            return InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        BidPage(auction: auction),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                color: idx % 2 == 0
-                                    ? kCard
-                                    : kGray.withOpacity(0.6),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: 1100,
+                          child: Column(
+                            children: [
+                              // Matrix Table Headers
+                              Container(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                                  vertical: 10,
                                   horizontal: 8,
                                 ),
                                 child: Row(
                                   children: [
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        auction.symbol,
-                                        style: TextStyle(
-                                          color: kText,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        auction.propertyName,
-                                        style: TextStyle(
-                                          color: kText,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        auction.category,
-                                        style: TextStyle(
-                                          color: kAccent,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        '${auction.beds}',
-                                        style: TextStyle(
-                                          color: kText,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        '${auction.baths}',
-                                        style: TextStyle(
-                                          color: kText,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        'EGP ${auction.startPrice.toStringAsFixed(0)}',
-                                        style: TextStyle(
-                                          color: kText,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        'EGP ${auction.currentPrice.toStringAsFixed(0)}',
-                                        style: TextStyle(
-                                          color: kPrimary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        '${auction.bidders}',
-                                        style: TextStyle(
-                                          color: kText,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        auction.postedBy,
-                                        style: TextStyle(
-                                          color: kAccent,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
-                                        '${auction.percentageChange.toStringAsFixed(1)}%',
-                                        style: TextStyle(
-                                          color: auction.percentageChange >= 0
-                                              ? kPrimary
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
+                                    _matrixHeader(t.name, flex: 2),
+                                    _matrixHeader(t.category, flex: 1),
+                                    _matrixHeader(t.beds, flex: 1),
+                                    _matrixHeader(t.bathrooms, flex: 1),
+                                    _matrixHeader(t.startPrice, flex: 1),
+                                    _matrixHeader(t.currentPrice, flex: 1),
+                                    _matrixHeader(t.bidders, flex: 1),
+                                    _matrixHeader(t.postedBy, flex: 1),
+                                    _matrixHeader(t.changePercent, flex: 1),
                                   ],
                                 ),
                               ),
-                            );
-                          },
+                              // Matrix Table Rows
+                              SizedBox(
+                                height: 500,
+                                child: ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: filteredAuctions.length,
+                                  itemBuilder: (context, idx) {
+                                    final auction = filteredAuctions[idx];
+                                    return InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                BidPage(auction: auction),
+                                          ),
+                                        );
+                                      },
+                                      child: Container(
+                                        color: idx % 2 == 0
+                                            ? kCard
+                                            : kGray.withOpacity(0.6),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                          horizontal: 8,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 2,
+                                              child: Text(
+                                                auction.name,
+                                                style: TextStyle(
+                                                  color: kText,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                auction.category,
+                                                style: TextStyle(
+                                                  color: kAccent,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                '${auction.beds}',
+                                                style: TextStyle(
+                                                  color: kText,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                '${auction.baths}',
+                                                style: TextStyle(
+                                                  color: kText,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                'EGP ${auction.startPrice.toStringAsFixed(0)}',
+                                                style: TextStyle(
+                                                  color: kText,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                'EGP ${auction.currentPrice.toStringAsFixed(0)}',
+                                                style: TextStyle(
+                                                  color: kPrimary,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                '${auction.bidders}',
+                                                style: TextStyle(
+                                                  color: kText,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                auction.postedBy,
+                                                style: TextStyle(
+                                                  color: kAccent,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                '${auction.percentageChange.toStringAsFixed(1)}%',
+                                                style: TextStyle(
+                                                  color:
+                                                      auction.percentageChange >=
+                                                          0
+                                                      ? kPrimary
+                                                      : Colors.red,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
       ),
     );
   }

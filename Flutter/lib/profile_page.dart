@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'i18n.dart';
+import 'auth_service.dart';
 
 // Use the same color constants as main.dart for consistency
 const Color kBg = Colors.white;
@@ -19,22 +20,23 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool isEditing = false;
+  bool loading = true;
+  Map<String, dynamic>? userData;
 
-  // Dummy user data
-  String name = "John Doe";
-  String email = "john.doe@email.com";
-  String phone = "+1 555 123 4567";
-  String address = "123 Main St, Springfield, USA";
-  String company = "Dream Homes Realty";
-  String license = "RE-2025-12345";
-  String bio =
-      "Experienced real estate agent specializing in luxury properties and auctions.";
-  String website = "www.johndoerealty.com";
-  String joined = "March 2022";
-  String totalBids = "34";
-  String wonAuctions = "7";
-  String rating = "4.8";
-  String password = "********";
+  // User data from API
+  String name = 'User';
+  String email = '';
+  String phone = '';
+  String address = 'Not specified';
+  String company = 'Not specified';
+  String license = 'Not specified';
+  String bio = 'Not specified';
+  String website = 'Not specified';
+  String joined = 'Unknown';
+  String totalBids = '0';
+  String wonAuctions = '0'; // Not tracked in current API
+  String rating = '4.8'; // Not tracked in current API
+  String password = '********';
 
   final _formKey = GlobalKey<FormState>();
 
@@ -51,6 +53,34 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    if (authState.user != null) {
+      setState(() {
+        userData = authState.user;
+
+        // Update the variables
+        name = userData?['firstName'] != null && userData?['lastName'] != null
+            ? '${userData!['firstName']} ${userData!['lastName']}'
+            : 'User';
+        email = userData?['email'] ?? '';
+        phone = userData?['phoneNumber'] ?? '';
+        joined = userData?['createdAt'] != null
+            ? DateTime.parse(userData!['createdAt']).toString().split(' ')[0]
+            : 'Unknown';
+        totalBids = userData?['bids']?.length?.toString() ?? '0';
+
+        loading = false;
+      });
+      _initControllers();
+    } else {
+      setState(() => loading = false);
+    }
+  }
+
+  void _initControllers() {
     nameController = TextEditingController(text: name);
     emailController = TextEditingController(text: email);
     phoneController = TextEditingController(text: phone);
@@ -166,174 +196,188 @@ class _ProfilePageState extends State<ProfilePage> {
           final t = Strings(lang);
           return Directionality(
             textDirection: t.direction,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // Avatar
-                    CircleAvatar(
-                      radius: 48,
-                      backgroundColor: kPrimary,
-                      child: Icon(Icons.person, size: 60, color: kWhite),
+            child: loading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
                     ),
-                    const SizedBox(height: 18),
-                    // Name
-                    _profileField(
-                      label: t.fullName,
-                      value: name,
-                      controller: nameController,
-                      isEditing: isEditing,
-                      icon: Icons.person,
-                      validator: (v) => v == null || v.isEmpty
-                          ? (t.isAr ? 'أدخل الاسم' : 'Enter your name')
-                          : null,
-                    ),
-                    // Email
-                    _profileField(
-                      label: t.email,
-                      value: email,
-                      controller: emailController,
-                      isEditing: isEditing,
-                      icon: Icons.email,
-                      validator: (v) => v == null || v.isEmpty
-                          ? (t.isAr
-                                ? 'أدخل البريد الإلكتروني'
-                                : 'Enter your email')
-                          : null,
-                    ),
-                    // Phone
-                    _profileField(
-                      label: t.phone,
-                      value: phone,
-                      controller: phoneController,
-                      isEditing: isEditing,
-                      icon: Icons.phone,
-                      validator: (v) => v == null || v.isEmpty
-                          ? (t.isAr ? 'أدخل الهاتف' : 'Enter your phone')
-                          : null,
-                    ),
-                    // Address
-                    _profileField(
-                      label: t.address,
-                      value: address,
-                      controller: addressController,
-                      isEditing: isEditing,
-                      icon: Icons.location_on,
-                    ),
-                    // Company
-                    _profileField(
-                      label: t.company,
-                      value: company,
-                      controller: companyController,
-                      isEditing: isEditing,
-                      icon: Icons.business,
-                    ),
-                    // License
-                    _profileField(
-                      label: t.license,
-                      value: license,
-                      controller: licenseController,
-                      isEditing: isEditing,
-                      icon: Icons.verified,
-                    ),
-                    // Website
-                    _profileField(
-                      label: t.website,
-                      value: website,
-                      controller: websiteController,
-                      isEditing: isEditing,
-                      icon: Icons.language,
-                    ),
-                    // Bio
-                    _profileField(
-                      label: t.bio,
-                      value: bio,
-                      controller: bioController,
-                      isEditing: isEditing,
-                      icon: Icons.info_outline,
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 18),
-                    // Change Password
-                    ListTile(
-                      tileColor: kGray,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      leading: Icon(Icons.lock, color: kPrimary),
-                      title: Text(
-                        t.password,
-                        style: TextStyle(
-                          color: kPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text(password, style: TextStyle(color: kText)),
-                      trailing: TextButton(
-                        onPressed: changePassword,
-                        style: TextButton.styleFrom(foregroundColor: kPrimary),
-                        child: Text(t.change),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    // Stats
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _statCard(t.totalBids, totalBids, Icons.gavel),
-                        _statCard(
-                          t.wonAuctions,
-                          wonAuctions,
-                          Icons.emoji_events,
-                        ),
-                        _statCard(t.rating, rating, Icons.star),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    // Joined
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.calendar_today, color: kAccent, size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          t.joined(joined),
-                          style: TextStyle(color: kText, fontSize: 15),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-                    // Save Button
-                    if (isEditing)
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: saveProfile,
-                          style: ElevatedButton.styleFrom(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          // Avatar
+                          CircleAvatar(
+                            radius: 48,
                             backgroundColor: kPrimary,
+                            child: Icon(Icons.person, size: 60, color: kWhite),
+                          ),
+                          const SizedBox(height: 18),
+                          // Name
+                          _profileField(
+                            label: t.fullName,
+                            value: name,
+                            controller: nameController,
+                            isEditing: isEditing,
+                            icon: Icons.person,
+                            validator: (v) => v == null || v.isEmpty
+                                ? (t.isAr ? 'أدخل الاسم' : 'Enter your name')
+                                : null,
+                          ),
+                          // Email
+                          _profileField(
+                            label: t.email,
+                            value: email,
+                            controller: emailController,
+                            isEditing: isEditing,
+                            icon: Icons.email,
+                            validator: (v) => v == null || v.isEmpty
+                                ? (t.isAr
+                                      ? 'أدخل البريد الإلكتروني'
+                                      : 'Enter your email')
+                                : null,
+                          ),
+                          // Phone
+                          _profileField(
+                            label: t.phone,
+                            value: phone,
+                            controller: phoneController,
+                            isEditing: isEditing,
+                            icon: Icons.phone,
+                            validator: (v) => v == null || v.isEmpty
+                                ? (t.isAr ? 'أدخل الهاتف' : 'Enter your phone')
+                                : null,
+                          ),
+                          // Address
+                          _profileField(
+                            label: t.address,
+                            value: address,
+                            controller: addressController,
+                            isEditing: isEditing,
+                            icon: Icons.location_on,
+                          ),
+                          // Company
+                          _profileField(
+                            label: t.company,
+                            value: company,
+                            controller: companyController,
+                            isEditing: isEditing,
+                            icon: Icons.business,
+                          ),
+                          // License
+                          _profileField(
+                            label: t.license,
+                            value: license,
+                            controller: licenseController,
+                            isEditing: isEditing,
+                            icon: Icons.verified,
+                          ),
+                          // Website
+                          _profileField(
+                            label: t.website,
+                            value: website,
+                            controller: websiteController,
+                            isEditing: isEditing,
+                            icon: Icons.language,
+                          ),
+                          // Bio
+                          _profileField(
+                            label: t.bio,
+                            value: bio,
+                            controller: bioController,
+                            isEditing: isEditing,
+                            icon: Icons.info_outline,
+                            maxLines: 3,
+                          ),
+                          const SizedBox(height: 18),
+                          // Change Password
+                          ListTile(
+                            tileColor: kGray,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            t.saveChanges,
-                            style: TextStyle(
-                              color: kWhite,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              letterSpacing: 1.1,
+                            leading: Icon(Icons.lock, color: kPrimary),
+                            title: Text(
+                              t.password,
+                              style: TextStyle(
+                                color: kPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              password,
+                              style: TextStyle(color: kText),
+                            ),
+                            trailing: TextButton(
+                              onPressed: changePassword,
+                              style: TextButton.styleFrom(
+                                foregroundColor: kPrimary,
+                              ),
+                              child: Text(t.change),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 18),
+                          // Stats
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _statCard(t.totalBids, totalBids, Icons.gavel),
+                              _statCard(
+                                t.wonAuctions,
+                                wonAuctions,
+                                Icons.emoji_events,
+                              ),
+                              _statCard(t.rating, rating, Icons.star),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          // Joined
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: kAccent,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                t.joined(joined),
+                                style: TextStyle(color: kText, fontSize: 15),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          // Save Button
+                          if (isEditing)
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: saveProfile,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: kPrimary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  t.saveChanges,
+                                  style: TextStyle(
+                                    color: kWhite,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-              ),
-            ),
+                    ),
+                  ),
           );
         },
       ),

@@ -6,17 +6,17 @@ namespace PropertyFlipperAPI.Models
 {
     public class Bid
     {
-        [Key]
-        public int BidId { get; set; }
+    [Key]
+    public long BidId { get; set; }
 
-        [Required]
-        public int AuctionId { get; set; }
+    [Required]
+    public long AuctionId { get; set; }
 
-        [ForeignKey(nameof(AuctionId))]
-        public Auction Auction { get; set; }
+    [ForeignKey(nameof(AuctionId))]
+    public Auction Auction { get; set; }
 
-        [Required]
-        public int BidderId { get; set; }
+    [Required]
+    public long BidderId { get; set; }
 
         [ForeignKey(nameof(BidderId))]
         public User Bidder { get; set; }

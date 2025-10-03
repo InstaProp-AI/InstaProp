@@ -12,7 +12,7 @@ using PropertyFlipperAPI.Data;
 namespace PropertyFlipperAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250929155637_InitialCreate")]
+    [Migration("20251003190651_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -27,11 +27,11 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Auction", b =>
                 {
-                    b.Property<int>("AuctionId")
+                    b.Property<long>("AuctionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AuctionId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("AuctionId"));
 
                     b.Property<decimal?>("BuyNowPrice")
                         .HasColumnType("decimal(18,2)");
@@ -45,15 +45,16 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<DateTime>("EndAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("bigint");
 
-                    b.Property<DateTime>("StartAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<decimal>("StartAt")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("AuctionId");
 
@@ -64,20 +65,20 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Bid", b =>
                 {
-                    b.Property<int>("BidId")
+                    b.Property<long>("BidId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("BidId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("BidId"));
 
-                    b.Property<int>("AuctionId")
-                        .HasColumnType("integer");
+                    b.Property<long>("AuctionId")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("BidAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("BidderId")
-                        .HasColumnType("integer");
+                    b.Property<long>("BidderId")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -93,11 +94,11 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Property", b =>
                 {
-                    b.Property<int>("PropertyId")
+                    b.Property<long>("PropertyId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PropertyId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PropertyId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -111,18 +112,19 @@ namespace PropertyFlipperAPI.Migrations
 
                     b.Property<string>("Location")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<int>("OwnerId")
-                        .HasColumnType("integer");
+                    b.Property<long>("OwnerId")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("StartingPrice")
-                        .HasColumnType("numeric");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -136,22 +138,24 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyDoc", b =>
                 {
-                    b.Property<int>("DocId")
+                    b.Property<long>("DocId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("DocId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DocId"));
 
                     b.Property<string>("DocType")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("ImgUrl")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
@@ -165,18 +169,19 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.User", b =>
                 {
-                    b.Property<int>("UserId")
+                    b.Property<long>("UserId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("UserId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("UserId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -185,11 +190,13 @@ namespace PropertyFlipperAPI.Migrations
 
                     b.Property<string>("Gender")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("HashedPassword")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
@@ -201,7 +208,8 @@ namespace PropertyFlipperAPI.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -213,25 +221,27 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserDoc", b =>
                 {
-                    b.Property<int>("DocId")
+                    b.Property<long>("DocId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("DocId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DocId"));
 
                     b.Property<string>("DocType")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("ImgUrl")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("DocId");
 

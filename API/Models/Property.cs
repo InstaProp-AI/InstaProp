@@ -10,10 +10,10 @@ namespace PropertyFlipperAPI.Models
 public class Property
 {
     [Key]
-    public int PropertyId { get; set; }
+    public long PropertyId { get; set; }
 
     [Required]
-    public int OwnerId { get; set; }
+    public long OwnerId { get; set; }
 
     [ForeignKey(nameof(OwnerId))]
     public User Owner { get; set; }

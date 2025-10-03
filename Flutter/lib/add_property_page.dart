@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'i18n.dart';
+import 'api_client.dart';
+import 'auth_service.dart';
 
 // Use the same color constants as main.dart for consistency
 const Color kBg = Colors.white;
@@ -40,7 +42,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     'Cabin',
   ];
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       final t = Strings.of(context);
       final double? startPrice = double.tryParse(startPriceController.text);
@@ -51,21 +53,30 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         return;
       }
 
-      final Map<String, dynamic> newProperty = {
-        'name': nameController.text,
-        'category': selectedCategory,
-        'startPrice': startPrice,
-        'imageUrl': imageUrlController.text,
-        'postedBy': postedByController.text,
-        'address': addressController.text,
-        'description': descriptionController.text,
-        'createdAt': DateTime.now().toIso8601String(),
-      };
+      try {
+        final res = await api.post('/api/User/property', {
+          'ownerId': authState.user?['userId'],
+          'name': nameController.text,
+          'description': descriptionController.text,
+          'location': addressController.text,
+          'startingPrice': startPrice,
+        });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.propertyListedSuccess)));
-      Navigator.pop(context, newProperty);
+        if (res.statusCode == 200) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(t.propertyListedSuccess)));
+          Navigator.pop(context, true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to create property: ${res.body}')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error creating property: $e')));
+      }
     }
   }
 
@@ -103,7 +114,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    initialValue: selectedCategory,
                     dropdownColor: kCard,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.category, color: kPrimary),
