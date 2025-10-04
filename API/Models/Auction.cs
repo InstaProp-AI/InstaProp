@@ -19,12 +19,17 @@ namespace PropertyFlipperAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal StartAt { get; set; }
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal CurrentPrice { get; set; }
+
         public DateTime EndAt { get; set; }
 
         public int Duration { get; set; } // hours or minutes
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal? BuyNowPrice { get; set; }
+
+        public int BidCount { get; set; } = 0;
 
         [Required]
         public string Status { get; set; } // Enum: Pending, Active, Closed, Cancelled

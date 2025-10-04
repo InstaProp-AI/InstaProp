@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using PropertyFlipperAPI.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -6,37 +8,74 @@ namespace PropertyFlipperAPI.Controllers
     [Route("api/[controller]")]
     public class TestController : ControllerBase
     {
-        [HttpGet]
-        public IActionResult Get()
+        private readonly AppDbContext _context;
+
+        public TestController(AppDbContext context)
         {
-            return Ok(new { message = "API is working!", timestamp = DateTime.UtcNow });
+            _context = context;
         }
 
-        [HttpPost("user")]
-        public IActionResult CreateTestUser([FromBody] TestUserRequest request)
+        [HttpGet("database")]
+        public async Task<IActionResult> TestDatabase()
         {
-            // Simulate user creation without database
-            var user = new
+            try
             {
-                id = 1,
-                firstName = request.FirstName,
-                lastName = request.LastName,
-                email = request.Email,
-                createdAt = DateTime.UtcNow
-            };
+                // Test database connection
+                var userCount = await _context.Users.CountAsync();
+                var propertyCount = await _context.Properties.CountAsync();
+                var auctionCount = await _context.Auctions.CountAsync();
 
-            var token = "test-jwt-token-" + Guid.NewGuid().ToString("N")[..8];
-            
-            return Ok(new { token = token, user = user });
+                return Ok(new
+                {
+                    message = "Database connection successful",
+                    userCount,
+                    propertyCount,
+                    auctionCount,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Database connection failed",
+                    error = ex.Message,
+                    timestamp = DateTime.UtcNow
+                });
+            }
         }
-    }
 
-    public class TestUserRequest
-    {
-        public string FirstName { get; set; } = "";
-        public string LastName { get; set; } = "";
-        public string Email { get; set; } = "";
-        public string Password { get; set; } = "";
+        [HttpGet("seed")]
+        public async Task<IActionResult> SeedData()
+        {
+            try
+            {
+                // Clear existing data first
+                _context.Users.RemoveRange(_context.Users);
+                _context.Properties.RemoveRange(_context.Properties);
+                _context.Auctions.RemoveRange(_context.Auctions);
+                _context.Bids.RemoveRange(_context.Bids);
+                await _context.SaveChangesAsync();
+
+                var seedService = new Services.SeedDataService(_context);
+                await seedService.SeedDataAsync();
+
+                return Ok(new
+                {
+                    message = "Data seeded successfully",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Seeding failed",
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+        }
     }
 }
-
