@@ -18,10 +18,26 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   final _priceController = TextEditingController();
+  final _bedroomsController = TextEditingController();
+  final _bathroomsController = TextEditingController();
+  final _squareFeetController = TextEditingController();
+  final _yearBuiltController = TextEditingController();
+  final _imageUrlController = TextEditingController();
 
+  String _selectedCategory = 'Single Family';
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
+
+  final List<String> _categories = [
+    'Single Family',
+    'Condo',
+    'Townhouse',
+    'Commercial',
+    'Multi-Family',
+    'Land',
+    'Other',
+  ];
 
   @override
   void dispose() {
@@ -29,6 +45,11 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     _descriptionController.dispose();
     _locationController.dispose();
     _priceController.dispose();
+    _bedroomsController.dispose();
+    _bathroomsController.dispose();
+    _squareFeetController.dispose();
+    _yearBuiltController.dispose();
+    _imageUrlController.dispose();
     super.dispose();
   }
 
@@ -47,6 +68,12 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         description: _descriptionController.text.trim(),
         location: _locationController.text.trim(),
         startingPrice: double.parse(_priceController.text),
+        bedrooms: int.parse(_bedroomsController.text),
+        bathrooms: int.parse(_bathroomsController.text),
+        squareFeet: int.parse(_squareFeetController.text),
+        yearBuilt: int.parse(_yearBuiltController.text),
+        category: _selectedCategory,
+        imageUrl: _imageUrlController.text.trim(),
       );
 
       if (response.success) {
@@ -59,6 +86,14 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         _descriptionController.clear();
         _locationController.clear();
         _priceController.clear();
+        _bedroomsController.clear();
+        _bathroomsController.clear();
+        _squareFeetController.clear();
+        _yearBuiltController.clear();
+        _imageUrlController.clear();
+        setState(() {
+          _selectedCategory = 'Single Family';
+        });
 
         // Refresh properties in app state
         context.read<AppState>().loadProperties();
@@ -209,6 +244,155 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                     },
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // Property Details Section
+                  Text(
+                    'Property Details',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Bedrooms and Bathrooms Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _bedroomsController,
+                          labelText: 'Bedrooms',
+                          hintText: 'e.g., 3',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isEmpty == true)
+                              return 'Bedrooms required';
+                            if (int.tryParse(value!) == null)
+                              return 'Enter valid number';
+                            if (int.parse(value) < 0)
+                              return 'Must be 0 or more';
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _bathroomsController,
+                          labelText: 'Bathrooms',
+                          hintText: 'e.g., 2',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isEmpty == true)
+                              return 'Bathrooms required';
+                            if (int.tryParse(value!) == null)
+                              return 'Enter valid number';
+                            if (int.parse(value) < 0)
+                              return 'Must be 0 or more';
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Square Feet and Year Built Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _squareFeetController,
+                          labelText: 'Square Feet',
+                          hintText: 'e.g., 2000',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isEmpty == true)
+                              return 'Square feet required';
+                            if (int.tryParse(value!) == null)
+                              return 'Enter valid number';
+                            if (int.parse(value) <= 0)
+                              return 'Must be greater than 0';
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _yearBuiltController,
+                          labelText: 'Year Built',
+                          hintText: 'e.g., 2020',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isEmpty == true)
+                              return 'Year built required';
+                            if (int.tryParse(value!) == null)
+                              return 'Enter valid number';
+                            final year = int.parse(value);
+                            final currentYear = DateTime.now().year;
+                            if (year < 1800 || year > currentYear + 1)
+                              return 'Enter valid year';
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Property Category
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Property Category',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    items: _categories.map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category,
+                        child: Text(category),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCategory = value!;
+                      });
+                    },
+                    validator: (value) =>
+                        value == null ? 'Please select a category' : null,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Image URL
+                  CustomTextField(
+                    controller: _imageUrlController,
+                    labelText: 'Image URL (Optional)',
+                    hintText: 'https://example.com/image.jpg',
+                    keyboardType: TextInputType.url,
+                    validator: (value) {
+                      if (value?.isNotEmpty == true) {
+                        final uri = Uri.tryParse(value!);
+                        if (uri == null ||
+                            !uri.hasScheme ||
+                            !uri.hasAuthority) {
+                          return 'Please enter a valid URL';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+
                   const SizedBox(height: 32),
 
                   // Submit button
@@ -295,77 +479,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildPreviewPage(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Property'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_home, size: 80, color: Colors.green[700]),
-              const SizedBox(height: 24),
-              Text(
-                'Add Your Property',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'List your property for auction and reach thousands of potential buyers',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange[200]!),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.lock, color: Colors.orange[700], size: 32),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Login to add your property to our platform',
-                      style: TextStyle(
-                        color: Colors.orange[700],
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => Navigator.of(context).pushNamed('/auth'),
-                      icon: const Icon(Icons.login),
-                      label: const Text('Login to Continue'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[700],
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

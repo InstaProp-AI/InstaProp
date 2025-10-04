@@ -15,12 +15,24 @@ class PropertyService {
     required String description,
     required String location,
     required double startingPrice,
+    required int bedrooms,
+    required int bathrooms,
+    required int squareFeet,
+    required int yearBuilt,
+    required String category,
+    required String imageUrl,
   }) async {
     return await ApiClient.post('/api/property', {
       'name': name,
       'description': description,
       'location': location,
       'startingPrice': startingPrice,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'squareFeet': squareFeet,
+      'yearBuilt': yearBuilt,
+      'category': category,
+      'imageUrl': imageUrl,
     }, Property.fromJson);
   }
 

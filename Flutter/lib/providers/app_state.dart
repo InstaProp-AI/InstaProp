@@ -80,7 +80,7 @@ class AppState extends ChangeNotifier {
 
   void _startAutoRefresh() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
       _refreshData();
     });
   }
@@ -97,17 +97,57 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Refresh all data
-      await Future.wait([
-        loadAuctions(),
-        loadProperties(),
-        if (isLoggedIn) loadUserBids(),
-      ]);
+      // Only refresh bid counts and check for new auctions
+      await _refreshBidCounts();
+      await _checkForNewAuctions();
     } catch (e) {
       print('Error during auto-refresh: $e');
     } finally {
       _isRefreshing = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _refreshBidCounts() async {
+    try {
+      // Get fresh auction data to update bid counts
+      final response =
+          await AuctionService.getAuctions(); // Changed to get all auctions
+      if (response.success && response.data != null) {
+        // Update existing auctions with new bid counts
+        for (final newAuction in response.data!) {
+          final existingIndex = _auctions.indexWhere(
+            (a) => a.auctionId == newAuction.auctionId,
+          );
+          if (existingIndex != -1) {
+            _auctions[existingIndex] = newAuction;
+          }
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error refreshing bid counts: $e');
+    }
+  }
+
+  Future<void> _checkForNewAuctions() async {
+    try {
+      // Get fresh auction data to check for new auctions
+      final response =
+          await AuctionService.getAuctions(); // Changed to get all auctions
+      if (response.success && response.data != null) {
+        final newAuctionCount = response.data!.length;
+        final currentAuctionCount = _auctions.length;
+
+        // Only refresh if there are new auctions
+        if (newAuctionCount != currentAuctionCount) {
+          _auctions = response.data!;
+          notifyListeners();
+          print('New auctions detected, refreshed auction list');
+        }
+      }
+    } catch (e) {
+      print('Error checking for new auctions: $e');
     }
   }
 
@@ -136,7 +176,8 @@ class AppState extends ChangeNotifier {
       print('Loading auctions...');
       // Add a small delay to ensure API is ready
       await Future.delayed(const Duration(milliseconds: 500));
-      final response = await AuctionService.getActiveAuctions();
+      final response =
+          await AuctionService.getAuctions(); // Changed to get all auctions
       print(
         'Auction response: ${response.success}, data: ${response.data?.length}',
       );

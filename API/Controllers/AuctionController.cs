@@ -18,13 +18,18 @@ namespace PropertyFlipperAPI.Controllers
 
         // GET: api/Auction
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Auction>>> GetAuctions()
+        public async Task<ActionResult<IEnumerable<AuctionDto>>> GetAuctions()
         {
-            return await _context.Auctions
+            var auctions = await _context.Auctions
                 .Include(a => a.Property)
                 .Include(a => a.Bids)
                 .ThenInclude(b => b.Bidder)
                 .ToListAsync();
+
+            // Convert to DTOs with calculated values
+            var auctionDtos = auctions.Select(AuctionDto.FromAuction).ToList();
+
+            return auctionDtos;
         }
 
         // GET: api/Auction/5
@@ -40,6 +45,18 @@ namespace PropertyFlipperAPI.Controllers
             if (auction == null)
             {
                 return NotFound();
+            }
+
+            // Calculate current price and bid count
+            if (auction.Bids.Any())
+            {
+                auction.CurrentPrice = auction.Bids.Max(b => b.BidAmount);
+                auction.BidCount = auction.Bids.Count;
+            }
+            else
+            {
+                auction.CurrentPrice = auction.StartAt;
+                auction.BidCount = 0;
             }
 
             return auction;
@@ -103,38 +120,76 @@ namespace PropertyFlipperAPI.Controllers
 
         // GET: api/Auction/active
         [HttpGet("active")]
-        public async Task<ActionResult<IEnumerable<Auction>>> GetActiveAuctions()
+        public async Task<ActionResult<IEnumerable<AuctionDto>>> GetActiveAuctions()
         {
             var now = DateTime.UtcNow;
-            return await _context.Auctions
+            var auctions = await _context.Auctions
                 .Where(a => a.EndAt >= now && a.Status == "Active")
                 .Include(a => a.Property)
                 .Include(a => a.Bids)
                 .ToListAsync();
+
+            // Convert to DTOs with calculated values
+            var auctionDtos = auctions.Select(AuctionDto.FromAuction).ToList();
+
+            return auctionDtos;
         }
 
         // GET: api/Auction/featured
         [HttpGet("featured")]
         public async Task<ActionResult<IEnumerable<Auction>>> GetFeaturedAuctions()
         {
-            return await _context.Auctions
+            var auctions = await _context.Auctions
                 .Where(a => a.Status == "Active")
                 .Include(a => a.Property)
                 .Include(a => a.Bids)
-                .OrderByDescending(a => a.CurrentPrice)
-                .Take(5)
                 .ToListAsync();
+
+            // Calculate current price and bid count for each auction
+            foreach (var auction in auctions)
+            {
+                if (auction.Bids.Any())
+                {
+                    auction.CurrentPrice = auction.Bids.Max(b => b.BidAmount);
+                    auction.BidCount = auction.Bids.Count;
+                }
+                else
+                {
+                    auction.CurrentPrice = auction.StartAt;
+                    auction.BidCount = 0;
+                }
+            }
+
+            // Order by current price and take top 5
+            return auctions.OrderByDescending(a => a.CurrentPrice).Take(5).ToList();
         }
 
         // GET: api/Auction/property/5
         [HttpGet("property/{propertyId}")]
         public async Task<ActionResult<IEnumerable<Auction>>> GetPropertyAuctions(int propertyId)
         {
-            return await _context.Auctions
+            var auctions = await _context.Auctions
                 .Where(a => a.PropertyId == propertyId)
                 .Include(a => a.Property)
                 .Include(a => a.Bids)
                 .ToListAsync();
+
+            // Calculate current price and bid count for each auction
+            foreach (var auction in auctions)
+            {
+                if (auction.Bids.Any())
+                {
+                    auction.CurrentPrice = auction.Bids.Max(b => b.BidAmount);
+                    auction.BidCount = auction.Bids.Count;
+                }
+                else
+                {
+                    auction.CurrentPrice = auction.StartAt;
+                    auction.BidCount = 0;
+                }
+            }
+
+            return auctions;
         }
 
         // PUT: api/Auction/5/start
@@ -169,6 +224,32 @@ namespace PropertyFlipperAPI.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        // POST: api/Auction/recalculate-prices
+        [HttpPost("recalculate-prices")]
+        public async Task<IActionResult> RecalculateAllAuctionPrices()
+        {
+            var auctions = await _context.Auctions
+                .Include(a => a.Bids)
+                .ToListAsync();
+
+            foreach (var auction in auctions)
+            {
+                if (auction.Bids.Any())
+                {
+                    auction.CurrentPrice = auction.Bids.Max(b => b.BidAmount);
+                    auction.BidCount = auction.Bids.Count;
+                }
+                else
+                {
+                    auction.CurrentPrice = auction.StartAt;
+                    auction.BidCount = 0;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok($"Updated {auctions.Count} auctions");
         }
 
         private bool AuctionExists(int id)

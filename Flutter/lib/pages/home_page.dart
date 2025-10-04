@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
-import '../models/property.dart';
+import '../widgets/auction_timer.dart';
+import '../widgets/calendar_widget.dart';
 import 'auction_details_page.dart';
 import 'add_property_page.dart';
 import 'profile_page.dart';
-import 'auth_page.dart';
+import 'featured_auctions_page.dart';
+import 'valuate_page.dart';
+import 'auctions_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,7 +19,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  int _selectedIndex = 0;
+  int _selectedIndex = 2; // Start on Home page (middle position)
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -25,7 +27,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -46,6 +48,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _refreshData(AppState appState) {
+    return appState.loadInitialData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,17 +60,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           return IndexedStack(
             index: _selectedIndex,
             children: [
-              _buildHomeContent(context, appState),
-              _buildAuctionsPage(context, appState),
-              _buildValuatePage(context, appState),
-              _buildCalendarPage(context, appState),
-              _buildProfilePage(context, appState),
+              const AuctionsPage(), // Index 0: Auctions
+              _buildValuatePage(context, appState), // Index 1: Valuate
+              _buildHomeContent(context, appState), // Index 2: Home
+              _buildCalendarPage(context, appState), // Index 3: Calendar
+              _buildProfilePage(context, appState), // Index 4: Profile
             ],
           );
         },
       ),
       bottomNavigationBar: _buildModernBottomNav(),
-      floatingActionButton: _selectedIndex == 1
+      floatingActionButton:
+          _selectedIndex ==
+              0 // Show FAB on Auctions page (index 0)
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
@@ -83,12 +91,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildModernBottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
-            offset: const Offset(0, -2),
+            offset: const Offset(0, -5),
           ),
         ],
       ),
@@ -98,14 +106,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
-              _buildNavItem(1, Icons.gavel_outlined, Icons.gavel, 'Auctions'),
+              _buildNavItem(0, Icons.gavel_outlined, Icons.gavel, 'Auctions'),
               _buildNavItem(
-                2,
+                1,
                 Icons.analytics_outlined,
                 Icons.analytics,
                 'Valuate',
               ),
+              _buildNavItem(2, Icons.home_outlined, Icons.home, 'Home'),
               _buildNavItem(
                 3,
                 Icons.calendar_today_outlined,
@@ -122,41 +130,42 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildNavItem(
     int index,
-    IconData icon,
-    IconData activeIcon,
+    IconData iconOutline,
+    IconData iconFilled,
     String label,
   ) {
     final isSelected = _selectedIndex == index;
     return GestureDetector(
       onTap: () => _onNavTap(index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF2E7D32).withOpacity(0.1)
+              ? Theme.of(context).primaryColor.withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                isSelected ? activeIcon : icon,
-                key: ValueKey('$index-$isSelected'),
-                color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[600],
-                size: 24,
-              ),
+            Icon(
+              isSelected ? iconFilled : iconOutline,
+              color: isSelected
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey[600],
+              size: 24,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
+                color: isSelected
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey[600],
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[600],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ],
@@ -166,169 +175,261 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildHomeContent(BuildContext context, AppState appState) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: CustomScrollView(
-        slivers: [
-          _buildModernAppBar(context, appState),
-          _buildStatsSection(context, appState),
-          _buildFeaturedAuctions(context, appState),
-          _buildRecentProperties(context, appState),
-          _buildQuickActions(context, appState),
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModernAppBar(BuildContext context, AppState appState) {
-    return SliverAppBar(
-      expandedHeight: 200,
-      floating: false,
-      pinned: true,
-      backgroundColor: const Color(0xFF2E7D32),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return RefreshIndicator(
+      onRefresh: () => _refreshData(appState),
+      color: Theme.of(context).primaryColor,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Hero Section
+              Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome to',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: Colors.white70),
-                          ),
-                          Text(
-                            'Property Flipper',
-                            style: Theme.of(context).textTheme.headlineLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ],
+                      Text(
+                        'Property Flipper',
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(color: Colors.white),
                       ),
-                      if (appState.isRefreshing)
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your ultimate platform for real estate auctions',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  if (!appState.isLoggedIn)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Login/Signup Prompt for Unauthenticated Users
+              if (!appState.isLoggedIn)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Card(
+                    color: Theme.of(context).colorScheme.surface,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
                         children: [
-                          const Icon(
-                            Icons.info_outline,
-                            color: Colors.white,
-                            size: 20,
+                          Icon(
+                            Icons.lock_outline,
+                            color: Theme.of(context).primaryColor,
+                            size: 40,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Sign in to access all features and save your data',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: Colors.white),
-                            ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Unlock Full Potential',
+                            style: Theme.of(context).textTheme.titleLarge,
+                            textAlign: TextAlign.center,
                           ),
-                          TextButton(
+                          const SizedBox(height: 8),
+                          Text(
+                            'Login or sign up to save your progress, manage properties, and participate in auctions.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
                             onPressed: () =>
                                 Navigator.of(context).pushNamed('/auth'),
-                            child: const Text(
-                              'Sign In',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            icon: const Icon(Icons.login),
+                            label: const Text('Login / Sign Up'),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 45),
                             ),
                           ),
                         ],
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+                  ),
+                ),
+              const SizedBox(height: 24),
 
-  Widget _buildStatsSection(BuildContext context, AppState appState) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                context,
-                'Active Auctions',
-                '${appState.activeAuctions.length}',
-                Icons.gavel,
-                const Color(0xFF4CAF50),
+              // Statistics Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Overview',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.2,
+                      children: [
+                        _buildStatCard(
+                          context,
+                          'Active Auctions',
+                          appState.activeAuctions.length.toString(),
+                          Icons.gavel,
+                          Colors.blue,
+                        ),
+                        _buildStatCard(
+                          context,
+                          'Total Properties',
+                          appState.properties.length.toString(),
+                          Icons.home,
+                          Colors.orange,
+                        ),
+                        _buildStatCard(
+                          context,
+                          'Total Bids',
+                          appState.auctions
+                              .fold<int>(0, (sum, a) => sum + a.bidCount)
+                              .toString(),
+                          Icons.attach_money,
+                          Colors.purple,
+                        ),
+                        _buildStatCard(
+                          context,
+                          'Users',
+                          '3+', // Placeholder for demo
+                          Icons.people,
+                          Colors.teal,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                context,
-                'Properties',
-                '${appState.properties.length}',
-                Icons.home,
-                const Color(0xFF2196F3),
+              const SizedBox(height: 32),
+
+              // Featured Auctions Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Featured Auctions',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const FeaturedAuctionsPage(),
+                        ),
+                      ),
+                      child: const Text('View All'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                context,
-                'Total Bids',
-                '${appState.auctions.fold(0, (sum, auction) => sum + auction.bidCount)}',
-                Icons.trending_up,
-                const Color(0xFFFF9800),
+              const SizedBox(height: 16),
+              if (appState.loadingAuctions)
+                const Center(child: CircularProgressIndicator())
+              else if (appState.featuredAuctions.isEmpty)
+                _buildEmptyState(
+                  context,
+                  'No Featured Auctions',
+                  'Check back later for exciting new properties!',
+                  Icons.star_border,
+                )
+              else
+                SizedBox(
+                  height: 280, // Height for horizontal scroll
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: appState.featuredAuctions.length,
+                    itemBuilder: (context, index) {
+                      final auction = appState.featuredAuctions[index];
+                      return _buildAuctionCard(context, auction);
+                    },
+                  ),
+                ),
+              const SizedBox(height: 32),
+
+              // All Auctions Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'All Auctions',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AuctionsPage(),
+                        ),
+                      ),
+                      child: const Text('View All'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              if (appState.loadingAuctions)
+                const Center(child: CircularProgressIndicator())
+              else if (appState.auctions.isEmpty)
+                _buildEmptyState(
+                  context,
+                  'No Auctions',
+                  'New auctions will be listed soon!',
+                  Icons.gavel_outlined,
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: appState.auctions.length > 6
+                      ? 6
+                      : appState.auctions.length,
+                  itemBuilder: (context, index) {
+                    final auction = appState.auctions[index];
+                    return _buildAuctionListItem(context, auction);
+                  },
+                ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -341,91 +442,38 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     IconData icon,
     Color color,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Card(
+      color: color.withOpacity(0.1),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        side: BorderSide(color: color.withOpacity(0.3), width: 1),
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturedAuctions(BuildContext context, AppState appState) {
-    return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Icon(icon, size: 36, color: color),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Featured Auctions',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                 ),
-                TextButton(
-                  onPressed: () => _onNavTap(1),
-                  child: const Text('View All'),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            if (appState.loadingAuctions)
-              const Center(child: CircularProgressIndicator())
-            else if (appState.featuredAuctions.isEmpty)
-              _buildEmptyState(
-                context,
-                'No Featured Auctions',
-                'Check back later for new property auctions',
-                Icons.gavel_outlined,
-              )
-            else
-              SizedBox(
-                height: 280,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: appState.featuredAuctions.length,
-                  itemBuilder: (context, index) {
-                    final auction = appState.featuredAuctions[index];
-                    return _buildAuctionCard(context, auction);
-                  },
-                ),
-              ),
           ],
         ),
       ),
@@ -433,19 +481,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildAuctionCard(BuildContext context, Auction auction) {
-    return Container(
-      width: 280,
-      margin: const EdgeInsets.only(right: 16),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AuctionDetailsPage(auction: auction),
-            ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AuctionDetailsPage(auction: auction),
           ),
-          borderRadius: BorderRadius.circular(16),
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(right: 16),
+        child: SizedBox(
+          width: 280,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -453,46 +500,67 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
-                child: Container(
-                  height: 140,
+                child: Image.network(
+                  auction.property?.imageUrl ??
+                      'https://via.placeholder.com/280x150',
+                  height: 150,
                   width: double.infinity,
-                  decoration: BoxDecoration(
-                    image: auction.property?.imageUrl.isNotEmpty == true
-                        ? DecorationImage(
-                            image: NetworkImage(auction.property!.imageUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 150,
                     color: Colors.grey[200],
+                    child: Icon(Icons.broken_image, color: Colors.grey[400]),
                   ),
-                  child: auction.property?.imageUrl.isEmpty != false
-                      ? const Icon(Icons.home, size: 50, color: Colors.grey)
-                      : null,
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      auction.property?.name ?? 'Property',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            auction.property?.name ?? 'Unknown Property',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${auction.bidCount} bids',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      auction.property?.location ?? '',
+                      auction.property?.location ?? 'Unknown Location',
                       style: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -500,16 +568,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
+                              'Start Price',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            Text(
+                              '\$${auction.startAt.toStringAsFixed(0)}',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[600],
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
                               'Current Bid',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Colors.grey[600]),
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                             Text(
                               '\$${auction.currentPrice.toStringAsFixed(0)}',
-                              style: Theme.of(context).textTheme.titleMedium
+                              style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF2E7D32),
+                                    color: Theme.of(context).primaryColor,
                                   ),
                             ),
                           ],
@@ -518,44 +598,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              'Bids',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Colors.grey[600]),
+                              'Time Left',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                            Text(
-                              '${auction.bidCount}',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF4CAF50),
-                                  ),
+                            AuctionTimer(
+                              auction: auction,
+                              textStyle: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: auction.isActive
-                            ? Colors.green[100]
-                            : Colors.orange[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        auction.isActive ? 'Active' : 'Ended',
-                        style: TextStyle(
-                          color: auction.isActive
-                              ? Colors.green[700]
-                              : Colors.orange[700],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -567,172 +620,108 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildRecentProperties(BuildContext context, AppState appState) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Recent Properties',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            if (appState.loadingProperties)
-              const Center(child: CircularProgressIndicator())
-            else if (appState.properties.isEmpty)
-              _buildEmptyState(
-                context,
-                'No Properties',
-                'No properties available at the moment',
-                Icons.home_outlined,
-              )
-            else
-              ...appState.properties
-                  .take(3)
-                  .map((property) => _buildPropertyTile(context, property)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPropertyTile(BuildContext context, Property property) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: CircleAvatar(
-            radius: 30,
-            backgroundColor: const Color(0xFF2E7D32).withOpacity(0.1),
-            child: const Icon(Icons.home, color: Color(0xFF2E7D32)),
-          ),
-          title: Text(
-            property.name,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(property.location),
-              const SizedBox(height: 4),
-              Text(
-                '\$${property.startingPrice.toStringAsFixed(0)}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: const Color(0xFF2E7D32),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: property.isApproved
-                  ? Colors.green[100]
-                  : Colors.orange[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              property.isApproved ? 'Approved' : 'Pending',
-              style: TextStyle(
-                color: property.isApproved
-                    ? Colors.green[700]
-                    : Colors.orange[700],
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context, AppState appState) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    'Add Property',
-                    Icons.add_home,
-                    const Color(0xFF4CAF50),
-                    () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const AddPropertyPage(),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    'View Auctions',
-                    Icons.gavel,
-                    const Color(0xFF2196F3),
-                    () => _onNavTap(1),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+  Widget _buildAuctionListItem(BuildContext context, Auction auction) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AuctionDetailsPage(auction: auction),
+          ),
+        ),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+          padding: const EdgeInsets.all(12),
+          child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  auction.property?.imageUrl ??
+                      'https://via.placeholder.com/80x80',
+                  height: 80,
+                  width: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 80,
+                    width: 80,
+                    color: Colors.grey[200],
+                    child: Icon(Icons.broken_image, color: Colors.grey[400]),
+                  ),
                 ),
-                child: Icon(icon, color: color, size: 32),
               ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            auction.property?.name ?? 'Unknown Property',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: auction.isActive
+                                ? Colors.green[100]
+                                : Colors.orange[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            auction.isActive ? 'Active' : 'Ended',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: auction.isActive
+                                  ? Colors.green[700]
+                                  : Colors.orange[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      auction.property?.location ?? 'Unknown Location',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'Current: \$${auction.currentPrice.toStringAsFixed(0)}',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          '${auction.bidCount} bids',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
+              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 18),
             ],
           ),
         ),
@@ -743,65 +732,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildEmptyState(
     BuildContext context,
     String title,
-    String subtitle,
+    String message,
     IconData icon,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        children: [
-          Icon(icon, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
-            textAlign: TextAlign.center,
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 60, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(color: Colors.grey[700]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // Placeholder pages for other tabs
-  Widget _buildAuctionsPage(BuildContext context, AppState appState) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Auctions'),
-        actions: [
-          IconButton(
-            onPressed: () => _refreshData(appState),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: appState.loadingAuctions
-          ? const Center(child: CircularProgressIndicator())
-          : appState.auctions.isEmpty
-          ? _buildEmptyState(
-              context,
-              'No Auctions',
-              'No auctions available at the moment',
-              Icons.gavel_outlined,
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: appState.auctions.length,
-              itemBuilder: (context, index) {
-                final auction = appState.auctions[index];
-                return _buildAuctionCard(context, auction);
-              },
-            ),
-    );
-  }
 
   Widget _buildValuatePage(BuildContext context, AppState appState) {
     return const ValuatePage();
@@ -813,401 +776,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildProfilePage(BuildContext context, AppState appState) {
     return const ProfilePage();
-  }
-
-  void _refreshData(AppState appState) {
-    appState.loadInitialData();
-  }
-}
-
-// Property Valuation Page with Demo Functionality
-class ValuatePage extends StatefulWidget {
-  const ValuatePage({super.key});
-
-  @override
-  State<ValuatePage> createState() => _ValuatePageState();
-}
-
-class _ValuatePageState extends State<ValuatePage> {
-  final _addressController = TextEditingController();
-  final _bedroomsController = TextEditingController();
-  final _bathroomsController = TextEditingController();
-  final _squareFeetController = TextEditingController();
-  final _yearBuiltController = TextEditingController();
-
-  bool _isLoading = false;
-  bool _hasValuation = false;
-  double _estimatedValue = 0;
-  String _valuationRange = '';
-  List<Map<String, dynamic>> _comparableProperties = [];
-
-  @override
-  void dispose() {
-    _addressController.dispose();
-    _bedroomsController.dispose();
-    _bathroomsController.dispose();
-    _squareFeetController.dispose();
-    _yearBuiltController.dispose();
-    super.dispose();
-  }
-
-  void _performValuation() {
-    if (_addressController.text.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Simulate AI valuation process
-    Future.delayed(const Duration(seconds: 3), () {
-      setState(() {
-        _isLoading = false;
-        _hasValuation = true;
-        _estimatedValue = 450000.0 + (Random().nextInt(200000)).toDouble();
-        _valuationRange =
-            '${(_estimatedValue * 0.9).toStringAsFixed(0)} - ${(_estimatedValue * 1.1).toStringAsFixed(0)}';
-
-        // Generate comparable properties
-        _comparableProperties = [
-          {
-            'address': '123 Oak Street',
-            'price': 425000,
-            'bedrooms': 3,
-            'bathrooms': 2,
-            'sqft': 1800,
-            'soldDate': '2 months ago',
-          },
-          {
-            'address': '456 Pine Avenue',
-            'price': 480000,
-            'bedrooms': 4,
-            'bathrooms': 3,
-            'sqft': 2200,
-            'soldDate': '1 month ago',
-          },
-          {
-            'address': '789 Maple Drive',
-            'price': 465000,
-            'bedrooms': 3,
-            'bathrooms': 2.5,
-            'sqft': 1950,
-            'soldDate': '3 months ago',
-          },
-        ];
-      });
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Property Valuation')),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFE3F2FD), Color(0xFFE8F5E8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.blue[200]!),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.analytics, size: 48, color: Colors.blue[700]),
-                      const SizedBox(height: 12),
-                      Text(
-                        'AI Property Valuation',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Get instant property valuations using our advanced AI technology',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey[700],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Valuation Form
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Property Details',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 20),
-
-                        TextField(
-                          controller: _addressController,
-                          decoration: const InputDecoration(
-                            labelText: 'Property Address',
-                            hintText: 'Enter the full address',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _bedroomsController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Bedrooms',
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextField(
-                                controller: _bathroomsController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Bathrooms',
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _squareFeetController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Square Feet',
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextField(
-                                controller: _yearBuiltController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Year Built',
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoading ? null : _performValuation,
-                            icon: _isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.analytics),
-                            label: Text(
-                              _isLoading ? 'Analyzing...' : 'Get Valuation',
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[700],
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Valuation Results
-                if (_hasValuation) ...[
-                  const SizedBox(height: 24),
-
-                  Card(
-                    color: Colors.green[50],
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                color: Colors.green[700],
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Valuation Complete',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green[700],
-                                    ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          Center(
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Estimated Value',
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(color: Colors.grey[600]),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '\$${_estimatedValue.toStringAsFixed(0)}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green[700],
-                                      ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Range: \$${_valuationRange}',
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Comparable Properties
-                  Text(
-                    'Comparable Properties',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  ..._comparableProperties
-                      .map(
-                        (property) => Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue[100],
-                              child: Icon(Icons.home, color: Colors.blue[700]),
-                            ),
-                            title: Text(property['address']),
-                            subtitle: Text(
-                              '${property['bedrooms']} bed • ${property['bathrooms']} bath • ${property['sqft']} sqft',
-                            ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '\$${property['price'].toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  property['soldDate'],
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ],
-
-                // Login Prompt for Unauthenticated Users
-                if (!appState.isLoggedIn) ...[
-                  const SizedBox(height: 32),
-
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange[200]!),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.lock, color: Colors.orange[700], size: 32),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Save Your Valuations',
-                          style: TextStyle(
-                            color: Colors.orange[700],
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Login to save your property valuations and access advanced features',
-                          style: TextStyle(color: Colors.orange[600]),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () =>
-                              Navigator.of(context).pushNamed('/auth'),
-                          icon: const Icon(Icons.login),
-                          label: const Text('Login to Save'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 
@@ -1221,298 +789,276 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage> {
   DateTime _selectedDate = DateTime.now();
-  List<Map<String, dynamic>> _events = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _generateDemoEvents();
-  }
-
-  void _generateDemoEvents() {
-    final now = DateTime.now();
-    _events = [
-      {
-        'title': 'Property Viewing - Downtown Condo',
-        'date': now.add(const Duration(days: 1)),
-        'time': '10:00 AM',
-        'type': 'viewing',
-      },
-      {
-        'title': 'Auction Ends - Victorian Home',
-        'date': now.add(const Duration(days: 2)),
-        'time': '3:00 PM',
-        'type': 'auction',
-      },
-      {
-        'title': 'Property Inspection - Modern Townhouse',
-        'date': now.add(const Duration(days: 3)),
-        'time': '2:00 PM',
-        'type': 'inspection',
-      },
-      {
-        'title': 'Bid Deadline - Luxury Penthouse',
-        'date': now.add(const Duration(days: 5)),
-        'time': '5:00 PM',
-        'type': 'bid',
-      },
-    ];
-  }
+  List<Map<String, dynamic>> _events = [
+    {
+      'title': 'Property Auction',
+      'date': DateTime.now().add(const Duration(days: 2)),
+      'time': '2:00 PM',
+      'location': 'Auction House Downtown',
+    },
+    {
+      'title': 'Property Inspection',
+      'date': DateTime.now().add(const Duration(days: 5)),
+      'time': '10:00 AM',
+      'location': '123 Main Street',
+    },
+    {
+      'title': 'Bid Deadline',
+      'date': DateTime.now().add(const Duration(days: 7)),
+      'time': '5:00 PM',
+      'location': 'Online',
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Calendar')),
-          body: Column(
-            children: [
-              // Calendar Header
-              Container(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Calendar'),
+        backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Calendar Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE3F2FD), Color(0xFFE8F5E8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.calendar_today, size: 48, color: Colors.blue[700]),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Event Calendar',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Stay organized with your property events and auctions',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(color: Colors.grey[700]),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Real Calendar Widget
+            CalendarWidget(
+              selectedDate: _selectedDate,
+              onDateSelected: (date) {
+                setState(() {
+                  _selectedDate = date;
+                });
+              },
+              eventDates: _events
+                  .map((event) => event['date'] as DateTime)
+                  .toList(),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Selected Date
+            Card(
+              child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_getMonthName(_selectedDate.month)} ${_selectedDate.year}',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                      'Selected Date',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedDate = DateTime(
-                                _selectedDate.year,
-                                _selectedDate.month - 1,
-                              );
-                            });
-                          },
-                          icon: const Icon(Icons.chevron_left),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedDate = DateTime(
-                                _selectedDate.year,
-                                _selectedDate.month + 1,
-                              );
-                            });
-                          },
-                          icon: const Icon(Icons.chevron_right),
+                        Icon(Icons.calendar_today, color: Colors.green[700]),
+                        const SizedBox(width: 12),
+                        Text(
+                          '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
+                              ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
+            ),
 
-              // Calendar Grid
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildCalendarGrid(),
-                ),
-              ),
+            const SizedBox(height: 24),
 
-              // Events List
-              Container(
-                height: 200,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Upcoming Events',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _events.length,
-                        itemBuilder: (context, index) {
-                          final event = _events[index];
-                          return _buildEventCard(context, event);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            // Events for Selected Date
+            Text(
+              'Events for ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
 
-              // Login Prompt for Unauthenticated Users
-              if (!appState.isLoggedIn)
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    border: Border(top: BorderSide(color: Colors.orange[200]!)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.lock, color: Colors.orange[700], size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Login to sync your calendar and manage events',
-                          style: TextStyle(color: Colors.orange[600]),
+            // Filter events for selected date
+            Builder(
+              builder: (context) {
+                final selectedDateEvents = _events.where((event) {
+                  final eventDate = event['date'] as DateTime;
+                  return eventDate.year == _selectedDate.year &&
+                      eventDate.month == _selectedDate.month &&
+                      eventDate.day == _selectedDate.day;
+                }).toList();
+
+                if (selectedDateEvents.isEmpty)
+                  return _buildEmptyState(
+                    context,
+                    'No Events',
+                    'No events scheduled for this date',
+                    Icons.event_note,
+                  );
+                else
+                  return Column(
+                    children: selectedDateEvents
+                        .map(
+                          (event) => Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.blue[100],
+                                child: Icon(
+                                  Icons.event,
+                                  color: Colors.blue[700],
+                                ),
+                              ),
+                              title: Text(event['title']),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${event['date'].day}/${event['date'].month}/${event['date'].year} at ${event['time']}',
+                                  ),
+                                  Text(event['location']),
+                                ],
+                              ),
+                              trailing: Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.grey[400],
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  );
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // All Upcoming Events
+            Text(
+              'All Upcoming Events',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            if (_events.isEmpty)
+              _buildEmptyState(
+                context,
+                'No Events',
+                'No events scheduled at the moment',
+                Icons.event_note,
+              )
+            else
+              ..._events
+                  .map(
+                    (event) => Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.blue[100],
+                          child: Icon(Icons.event, color: Colors.blue[700]),
+                        ),
+                        title: Text(event['title']),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${event['date'].day}/${event['date'].month}/${event['date'].year} at ${event['time']}',
+                            ),
+                            Text(event['location']),
+                          ],
+                        ),
+                        trailing: Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.grey[400],
+                          size: 18,
                         ),
                       ),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.of(context).pushNamed('/auth'),
-                        child: const Text('Login'),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCalendarGrid() {
-    final firstDayOfMonth = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      1,
-    );
-    final lastDayOfMonth = DateTime(
-      _selectedDate.year,
-      _selectedDate.month + 1,
-      0,
-    );
-    final firstDayOfWeek = firstDayOfMonth.weekday;
-    final daysInMonth = lastDayOfMonth.day;
-
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        childAspectRatio: 1,
-      ),
-      itemCount: 42, // 6 weeks * 7 days
-      itemBuilder: (context, index) {
-        final day = index - firstDayOfWeek + 1;
-        final isCurrentMonth = day > 0 && day <= daysInMonth;
-        final isToday =
-            isCurrentMonth &&
-            day == DateTime.now().day &&
-            _selectedDate.month == DateTime.now().month &&
-            _selectedDate.year == DateTime.now().year;
-
-        return Container(
-          margin: const EdgeInsets.all(1),
-          decoration: BoxDecoration(
-            color: isCurrentMonth
-                ? (isToday ? const Color(0xFF2E7D32) : Colors.white)
-                : Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isToday ? const Color(0xFF2E7D32) : Colors.grey[300]!,
-              width: isToday ? 2 : 1,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              isCurrentMonth ? day.toString() : '',
-              style: TextStyle(
-                color: isCurrentMonth
-                    ? (isToday ? Colors.white : Colors.black87)
-                    : Colors.grey[400],
-                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEventCard(BuildContext context, Map<String, dynamic> event) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          leading: Container(
-            width: 4,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _getEventColor(event['type']),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          title: Text(
-            event['title'],
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Text(
-            '${event['date'].day}/${event['date'].month} at ${event['time']}',
-          ),
-          trailing: Icon(
-            _getEventIcon(event['type']),
-            color: _getEventColor(event['type']),
-          ),
+                    ),
+                  )
+                  .toList(),
+          ],
         ),
       ),
     );
   }
 
-  Color _getEventColor(String type) {
-    switch (type) {
-      case 'viewing':
-        return Colors.blue;
-      case 'auction':
-        return Colors.green;
-      case 'inspection':
-        return Colors.orange;
-      case 'bid':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getEventIcon(String type) {
-    switch (type) {
-      case 'viewing':
-        return Icons.visibility;
-      case 'auction':
-        return Icons.gavel;
-      case 'inspection':
-        return Icons.search;
-      case 'bid':
-        return Icons.trending_up;
-      default:
-        return Icons.event;
-    }
-  }
-
-  String _getMonthName(int month) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return months[month - 1];
+  Widget _buildEmptyState(
+    BuildContext context,
+    String title,
+    String message,
+    IconData icon,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 60, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(color: Colors.grey[700]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -45,10 +45,17 @@ namespace PropertyFlipperAPI.Controllers
 
         // POST: api/Bid
         [HttpPost]
-        public async Task<ActionResult<Bid>> PostBid(Bid bid)
+        public async Task<ActionResult<Bid>> PostBid(CreateBidDto createBidDto)
         {
-            // Check if auction is still active
-            var auction = await _context.Auctions.FindAsync(bid.AuctionId);
+            // Get user ID from authentication (for now, we'll use a default user ID for testing)
+            // In a real app, this would come from JWT token or session
+            var userId = 9L; // Default test user ID - in production this would be from authentication
+
+            // Check if auction is still active and get current bids
+            var auction = await _context.Auctions
+                .Include(a => a.Bids)
+                .FirstOrDefaultAsync(a => a.AuctionId == createBidDto.AuctionId);
+                
             if (auction == null)
             {
                 return NotFound("Auction not found");
@@ -64,19 +71,39 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Auction has ended");
             }
 
-            // Check if bid amount is higher than current price
-            if (bid.BidAmount <= auction.CurrentPrice)
+            // Calculate the actual current price from bids
+            var currentHighestBid = auction.Bids.Any() ? auction.Bids.Max(b => b.BidAmount) : auction.StartAt;
+
+            // Check if bid amount is higher than current highest bid
+            if (createBidDto.BidAmount <= currentHighestBid)
             {
-                return BadRequest("Bid amount must be higher than current price");
+                return BadRequest($"Bid amount must be higher than current highest bid of {currentHighestBid:C}");
             }
 
-            // Update auction current price
+            // Create the bid
+            var bid = new Bid
+            {
+                AuctionId = createBidDto.AuctionId,
+                BidderId = userId,
+                BidAmount = createBidDto.BidAmount,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Update auction current price and bid count
             auction.CurrentPrice = bid.BidAmount;
-            auction.BidCount++;
+            auction.BidCount = auction.Bids.Count + 1;
 
             _context.Bids.Add(bid);
             _context.Entry(auction).State = EntityState.Modified;
             await _context.SaveChangesAsync();
+
+            // Load the bid with related data for response
+            await _context.Entry(bid)
+                .Reference(b => b.Auction)
+                .LoadAsync();
+            await _context.Entry(bid)
+                .Reference(b => b.Bidder)
+                .LoadAsync();
 
             return CreatedAtAction("GetBid", new { id = bid.BidId }, bid);
         }

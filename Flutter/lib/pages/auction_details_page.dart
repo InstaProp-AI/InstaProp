@@ -67,14 +67,27 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     });
 
     try {
+      print('Loading bids for auction ID: ${widget.auction.auctionId}');
       final response = await BidService.getBids(widget.auction.auctionId);
+      print(
+        'Bid response: ${response.success}, data: ${response.data?.length}',
+      );
       if (response.success && response.data != null) {
         setState(() {
           _bids = response.data!;
         });
+        print('Loaded ${_bids.length} bids');
+      } else {
+        print('Error loading bids: ${response.error}');
+        setState(() {
+          _bids = [];
+        });
       }
     } catch (e) {
       print('Error loading bids: $e');
+      setState(() {
+        _bids = [];
+      });
     } finally {
       setState(() {
         _isLoadingBids = false;
@@ -93,10 +106,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
     try {
       final bidAmount = double.parse(_bidController.text);
+      print('Placing bid: $bidAmount for auction: ${widget.auction.auctionId}');
+
       final response = await BidService.placeBid(
         auctionId: widget.auction.auctionId,
         bidAmount: bidAmount,
       );
+
+      print('Bid response: ${response.success}, error: ${response.error}');
 
       if (response.success) {
         setState(() {
@@ -110,6 +127,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         });
       }
     } catch (e) {
+      print('Error placing bid: $e');
       setState(() {
         _errorMessage = 'Error placing bid: $e';
       });
@@ -633,7 +651,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             radius: 20,
             backgroundColor: const Color(0xFF2E7D32).withOpacity(0.1),
             child: Text(
-              'B',
+              _getBidderInitial(bid),
               style: const TextStyle(
                 color: Color(0xFF2E7D32),
                 fontWeight: FontWeight.bold,
@@ -646,7 +664,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Bidder #${bid.bidderId}',
+                  _getBidderName(bid),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text(
@@ -850,7 +868,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Bidder #${bid.bidderId}',
+                  _getBidderName(bid),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
@@ -915,5 +933,22 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     } else {
       return 'Just now';
     }
+  }
+
+  String _getBidderInitial(Bid bid) {
+    final firstName = bid.bidder?.firstName;
+    if (firstName != null && firstName.isNotEmpty) {
+      return firstName[0].toUpperCase();
+    }
+    return 'B';
+  }
+
+  String _getBidderName(Bid bid) {
+    final firstName = bid.bidder?.firstName;
+    final lastName = bid.bidder?.lastName;
+    if (firstName != null && firstName.isNotEmpty) {
+      return '$firstName $lastName';
+    }
+    return 'Bidder #${bid.bidderId}';
   }
 }

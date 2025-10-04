@@ -26,7 +26,7 @@ class ApiResponse<T> {
 }
 
 class ApiClient {
-  static const String baseUrl = 'http://localhost:5001';
+  static const String baseUrl = 'http://localhost:5284';
   static const Duration timeout = Duration(seconds: 30);
 
   static Future<String?> getToken() async {
@@ -170,6 +170,9 @@ class ApiClient {
       final response = await http
           .post(uri, headers: headers, body: jsonEncode(body))
           .timeout(timeout);
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       return _handleResponse(response, fromJson);
     } on SocketException {
