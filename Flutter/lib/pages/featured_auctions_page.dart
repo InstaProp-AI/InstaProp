@@ -32,18 +32,15 @@ class FeaturedAuctionsPage extends StatelessWidget {
 
           return RefreshIndicator(
             onRefresh: () => appState.loadAuctions(),
-            child: GridView.builder(
+            child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.8,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
               itemCount: appState.featuredAuctions.length,
               itemBuilder: (context, index) {
                 final auction = appState.featuredAuctions[index];
-                return _buildFeaturedAuctionCard(context, auction);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildFeaturedAuctionCard(context, auction),
+                );
               },
             ),
           );
@@ -63,17 +60,17 @@ class FeaturedAuctionsPage extends StatelessWidget {
           ),
         ),
         borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
             // Property Image
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
               ),
               child: Container(
                 height: 120,
-                width: double.infinity,
+                width: 140,
                 decoration: BoxDecoration(
                   image: auction.property?.imageUrl.isNotEmpty == true
                       ? DecorationImage(
@@ -92,82 +89,92 @@ class FeaturedAuctionsPage extends StatelessWidget {
             // Content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Property Name
-                    Text(
-                      auction.property?.name ?? 'Property',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    // Location
-                    Text(
-                      auction.property?.location ?? '',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Current Price
-                    Text(
-                      '\$${auction.currentPrice.toStringAsFixed(0)}',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF2E7D32),
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    // Bid Count
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.gavel, size: 16, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
+                        // Property Name
                         Text(
-                          '${auction.bidCount} bids',
+                          auction.property?.name ?? 'Property',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        // Location
+                        Text(
+                          auction.property?.location ?? '',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: Colors.grey[600]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Current Price
+                        Text(
+                          '\$${auction.currentPrice.toStringAsFixed(0)}',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF2E7D32),
+                              ),
                         ),
                       ],
                     ),
 
-                    const Spacer(),
-
-                    // Status Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: auction.isActive
-                            ? Colors.green[100]
-                            : Colors.orange[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        auction.isActive ? 'Active' : 'Ended',
-                        style: TextStyle(
-                          color: auction.isActive
-                              ? Colors.green[700]
-                              : Colors.orange[700],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Bid Count
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.gavel,
+                              size: 16,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${auction.bidCount} bids',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey[600]),
+                            ),
+                          ],
                         ),
-                      ),
+
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: auction.isActive
+                                ? Colors.green[100]
+                                : Colors.orange[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            auction.isActive ? 'Active' : 'Ended',
+                            style: TextStyle(
+                              color: auction.isActive
+                                  ? Colors.green[700]
+                                  : Colors.orange[700],
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
