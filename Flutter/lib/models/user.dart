@@ -1,34 +1,41 @@
-class User {
-  final int userId;
+enum AccountType { user, developer }
+
+class Account {
+  final int accountId;
   final String firstName;
   final String lastName;
   final String phoneNumber;
   final String email;
-  final String gender;
+  final AccountType type;
   final bool isVerified;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
-  User({
-    required this.userId,
+  Account({
+    required this.accountId,
     required this.firstName,
     required this.lastName,
     required this.phoneNumber,
     required this.email,
-    required this.gender,
+    required this.type,
     required this.isVerified,
     required this.createdAt,
     this.updatedAt,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      userId: json['userId'] ?? json['UserId'] ?? 0,
+  factory Account.fromJson(Map<String, dynamic> json) {
+    return Account(
+      accountId: json['accountId'] ?? json['AccountId'] ?? 0,
       firstName: json['firstName'] ?? json['FirstName'] ?? '',
       lastName: json['lastName'] ?? json['LastName'] ?? '',
       phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'] ?? '',
       email: json['email'] ?? json['Email'] ?? '',
-      gender: json['gender'] ?? json['Gender'] ?? '',
+      type: AccountType.values.firstWhere(
+        (e) =>
+            e.toString().split('.').last ==
+            (json['type'] ?? json['Type'] ?? 'user'),
+        orElse: () => AccountType.user,
+      ),
       isVerified: json['isVerified'] ?? json['IsVerified'] ?? false,
       createdAt: DateTime.parse(
         json['createdAt'] ??
@@ -43,12 +50,12 @@ class User {
 
   Map<String, dynamic> toJson() {
     return {
-      'userId': userId,
+      'accountId': accountId,
       'firstName': firstName,
       'lastName': lastName,
       'phoneNumber': phoneNumber,
       'email': email,
-      'gender': gender,
+      'type': type.toString().split('.').last,
       'isVerified': isVerified,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),

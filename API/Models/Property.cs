@@ -8,48 +8,61 @@ using System.Text.Json.Serialization;
 
 namespace PropertyFlipperAPI.Models
 {
-public class Property
-{
-    [Key]
-    public long PropertyId { get; set; }
+    public class Property
+    {
+        [Key]
+        public long PropertyId { get; set; }
 
-    [Required]
-    public long OwnerId { get; set; }
+        [Required]
+        public long OwnerId { get; set; }
 
-    [ForeignKey(nameof(OwnerId))]
-    [JsonIgnore]
-    public User? Owner { get; set; }
+        [ForeignKey(nameof(OwnerId))]
+        [JsonIgnore]
+        public Account? Owner { get; set; }
 
-    [Required]
-    [MaxLength(200)]
-    public string Name { get; set; } = string.Empty;
+        public long? ProjectId { get; set; }
 
-    public string? Description { get; set; }
+        [ForeignKey(nameof(ProjectId))]
+        [JsonIgnore]
+        public Project? Project { get; set; }
 
-    public string? Location { get; set; } // could be address or lat-long string
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
 
-    public decimal StartingPrice { get; set; }
+        public string? Description { get; set; }
 
-    public bool IsApproved { get; set; } = false; // set by admin
+        public string? Location { get; set; } // could be address or lat-long string
 
-    public int Bedrooms { get; set; }
+        public decimal StartingPrice { get; set; }
 
-    public int Bathrooms { get; set; }
+        [Required]
+        public PropertyType Type { get; set; } = PropertyType.Resale;
 
-    public int SquareFeet { get; set; }
+        public bool IsApproved { get; set; } = false; // set by admin
+        
+        public bool IsVerified { get; set; } = false; // KYC and docs verified by admin
+        
+        public bool IsEditable { get; set; } = true; // Can be edited only before verification
 
-    public int YearBuilt { get; set; }
+        public int Bedrooms { get; set; }
 
-    public string? Category { get; set; } = "Residential";
+        public int Bathrooms { get; set; }
 
-    public string ImageUrl { get; set; } = string.Empty;
+        public int SquareFeet { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public int YearBuilt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+        public string? Category { get; set; } = "Residential";
 
-    // 🔗 Relations
-    public ICollection<PropertyDoc> PropertyDocs { get; set; } = new List<PropertyDoc>();
-    public ICollection<Auction> Auctions { get; set; } = new List<Auction>();
-}
+        public string ImageUrl { get; set; } = string.Empty;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? UpdatedAt { get; set; }
+
+        // 🔗 Relations
+        public ICollection<PropertyDoc> PropertyDocs { get; set; } = new List<PropertyDoc>();
+        public ICollection<Auction> Auctions { get; set; } = new List<Auction>();
+    }
 }

@@ -20,7 +20,22 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Property Flipper API", Version = "v1" });
+    
+    // Add JWT Authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new()
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    
+    // Don't apply security globally - only to specific endpoints
+});
 
 // CORS
 builder.Services.AddCors(options =>
@@ -68,12 +83,12 @@ app.UseCors("AppCors");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed data
-using (var scope = app.Services.CreateScope())
-{
-    var seedService = scope.ServiceProvider.GetRequiredService<SeedDataService>();
-    await seedService.SeedDataAsync();
-}
+// Seed data - DISABLED
+// using (var scope = app.Services.CreateScope())
+// {
+//     var seedService = scope.ServiceProvider.GetRequiredService<SeedDataService>();
+//     await seedService.SeedDataAsync();
+// }
 
 app.MapControllers();
 await app.RunAsync();

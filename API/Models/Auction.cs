@@ -32,7 +32,7 @@ namespace PropertyFlipperAPI.Models
         public int BidCount { get; set; } = 0;
 
         [Required]
-        public string Status { get; set; } // Enum: Pending, Active, Closed, Cancelled
+        public string Status { get; set; } // Enum: Requested, Approved, Active, Closed, Cancelled
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

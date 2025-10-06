@@ -13,10 +13,10 @@ namespace PropertyFlipperAPI.Models
     public long UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public User User { get; set; }
+        public Account User { get; set; } = null!;
 
         [Required]
-        public string DocType { get; set; } // Enum: NationalID, ProofOfAddress, etc.
+        public string DocType { get; set; } // Enum: ID_Front, ID_Back, Passport_Front, Passport_Back, ProofOfAddress, etc.
 
         [Required]
         public string ImgUrl { get; set; }

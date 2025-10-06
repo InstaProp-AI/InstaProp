@@ -6,6 +6,7 @@ using PropertyFlipperAPI.Models;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Claims;
+using PropertyFlipperAPI.Attributes;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -21,6 +22,8 @@ namespace PropertyFlipperAPI.Controllers
 
         // GET: api/bids/by-auction/{auctionId}
         [HttpGet("by-auction/{auctionId}")]
+        [Authorize]
+        [AdminAuthorize]
         public async Task<IActionResult> GetBidsForAuction(long auctionId)
         {
             var bids = await _context.Bids
@@ -58,7 +61,7 @@ namespace PropertyFlipperAPI.Controllers
 
                 // Check if bid amount is higher than current price
                 var currentPrice = await GetCurrentPrice(bidDto.AuctionId);
-                if (bidDto.BidAmount <= currentPrice)
+                if ((decimal)bidDto.BidAmount <= currentPrice)
                 {
                     return BadRequest("Bid amount must be higher than current price.");
                 }
@@ -110,6 +113,7 @@ namespace PropertyFlipperAPI.Controllers
 
         // GET: api/bids/{bidId}
         [HttpGet("{bidId}")]
+        [Authorize]
         public async Task<IActionResult> GetBid(long bidId)
         {
             var bid = await _context.Bids
@@ -128,6 +132,7 @@ namespace PropertyFlipperAPI.Controllers
         // DELETE: api/bids/{bidId}
         [HttpDelete("{bidId}")]
         [Authorize]
+        [AdminAuthorize]
         public async Task<IActionResult> DeleteBid(long bidId)
         {
             var userIdClaim = User.FindFirst("uid");

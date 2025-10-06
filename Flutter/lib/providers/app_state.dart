@@ -14,7 +14,7 @@ class AppState extends ChangeNotifier {
   Timer? _refreshTimer;
 
   // Auth state
-  User? get user => _authService.user;
+  Account? get user => _authService.user;
   bool get isLoggedIn => _authService.isLoggedIn;
   bool get isLoading => _authService.isLoading;
 
@@ -266,7 +266,6 @@ class AppState extends ChangeNotifier {
     required String lastName,
     required String phoneNumber,
     required String email,
-    required String gender,
     required String password,
   }) async {
     final response = await _authService.signup(
@@ -274,7 +273,6 @@ class AppState extends ChangeNotifier {
       lastName: lastName,
       phoneNumber: phoneNumber,
       email: email,
-      gender: gender,
       password: password,
     );
     return response.success;

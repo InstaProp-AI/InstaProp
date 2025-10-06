@@ -19,7 +19,7 @@ namespace PropertyFlipperAPI.Models
     public long BidderId { get; set; }
 
         [ForeignKey(nameof(BidderId))]
-        public User Bidder { get; set; }
+        public Account Bidder { get; set; } = null!;
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal BidAmount { get; set; }

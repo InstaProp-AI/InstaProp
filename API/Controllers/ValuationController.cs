@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -16,199 +17,140 @@ namespace PropertyFlipperAPI.Controllers
             _context = context;
         }
 
-        // POST: api/Valuation/estimate
-        [HttpPost("estimate")]
-        public async Task<ActionResult<object>> EstimatePropertyValue([FromBody] ValuationRequest request)
+        // POST: api/Valuation/calculate
+        [HttpPost("calculate")]
+        [Authorize]
+        public async Task<ActionResult<ValuationResult>> CalculateValuation([FromBody] ValuationRequest request)
         {
-            // Simulate AI valuation process
-            var baseValue = CalculateBaseValue(request);
-            var marketAdjustment = CalculateMarketAdjustment(request);
-            var conditionAdjustment = CalculateConditionAdjustment(request);
-            
-            var estimatedValue = baseValue + marketAdjustment + conditionAdjustment;
-            var range = new
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            // Get property details if PropertyId is provided
+            Property? property = null;
+            if (request.PropertyId.HasValue)
             {
-                Min = estimatedValue * 0.9,
-                Max = estimatedValue * 1.1
-            };
+                property = await _context.Properties
+                    .FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
+                
+                if (property == null)
+                    return NotFound("Property not found");
+            }
 
-            var comparableProperties = await GetComparableProperties(request);
+            // Calculate valuation based on property details
+            var valuation = CalculatePropertyValuation(property, request);
 
-            var result = new
-            {
-                EstimatedValue = estimatedValue,
-                Range = range,
-                ComparableProperties = comparableProperties,
-                Confidence = CalculateConfidence(request),
-                MarketTrends = GetMarketTrends(),
-                Recommendations = GetRecommendations(request, estimatedValue)
-            };
-
-            return Ok(result);
+            return Ok(valuation);
         }
 
-        // GET: api/Valuation/trends
-        [HttpGet("trends")]
-        public async Task<ActionResult<object>> GetMarketTrends()
+        // GET: api/Valuation/history
+        [HttpGet("history")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<ValuationHistory>>> GetValuationHistory()
         {
-            var trends = new
-            {
-                AveragePrice = 450000,
-                PriceChange = 5.2,
-                DaysOnMarket = 45,
-                InventoryLevel = "Low",
-                MarketCondition = "Seller's Market",
-                PricePerSqFt = 250
-            };
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
 
-            return Ok(trends);
-        }
-
-        // GET: api/Valuation/comparables
-        [HttpGet("comparables")]
-        public async Task<ActionResult<IEnumerable<object>>> GetComparableProperties([FromQuery] string location, [FromQuery] int bedrooms, [FromQuery] int bathrooms)
-        {
-            var comparables = await _context.Properties
-                .Where(p => p.IsApproved && 
-                           p.Location.Contains(location) &&
-                           p.Bedrooms == bedrooms &&
-                           p.Bathrooms == bathrooms)
-                .Select(p => new
+            // Get user's properties and their valuations
+            var properties = await _context.Properties
+                .Where(p => p.OwnerId == accountId)
+                .Select(p => new ValuationHistory
                 {
-                    p.PropertyId,
-                    p.Name,
-                    p.Location,
-                    p.Bedrooms,
-                    p.Bathrooms,
-                    p.SquareFeet,
-                    p.StartingPrice,
-                    p.CreatedAt
+                    PropertyId = p.PropertyId,
+                    PropertyName = p.Name,
+                    Location = p.Location,
+                    CalculatedValue = p.StartingPrice, // This would be replaced with actual valuation
+                    CalculatedAt = p.CreatedAt
                 })
-                .Take(10)
                 .ToListAsync();
 
-            return Ok(comparables);
+            return Ok(properties);
         }
 
-        private double CalculateBaseValue(ValuationRequest request)
+        private ValuationResult CalculatePropertyValuation(Property? property, ValuationRequest request)
         {
-            // Base calculation using square footage and location
-            var basePricePerSqFt = 200; // Base price per square foot
+            // Simple valuation algorithm (in real app, this would be more sophisticated)
+            decimal basePrice = 0;
             
-            // Adjust for location (simplified)
-            if (request.Location.ToLower().Contains("downtown"))
-                basePricePerSqFt = 300;
-            else if (request.Location.ToLower().Contains("suburb"))
-                basePricePerSqFt = 180;
+            if (property != null)
+            {
+                basePrice = property.StartingPrice;
+            }
+            else if (request.Bedrooms > 0 && request.Bathrooms > 0 && request.SquareFeet > 0)
+            {
+                // Calculate based on provided details
+                basePrice = (request.Bedrooms * 50000) + (request.Bathrooms * 30000) + (request.SquareFeet * 100);
+            }
 
-            return request.SquareFeet * basePricePerSqFt;
-        }
-
-        private double CalculateMarketAdjustment(ValuationRequest request)
-        {
-            // Market adjustment based on current trends
-            var adjustment = 0.0;
-            
-            // Adjust for market conditions
-            adjustment += 5000; // Current market is up 5k
-            
-            // Adjust for property type
-            if (request.Bedrooms >= 4)
-                adjustment += 10000;
-            
-            return adjustment;
-        }
-
-        private double CalculateConditionAdjustment(ValuationRequest request)
-        {
-            // Condition adjustment based on year built
-            var currentYear = DateTime.Now.Year;
-            var age = currentYear - request.YearBuilt;
-            
-            if (age < 5)
-                return 15000; // New construction premium
-            else if (age < 15)
-                return 5000; // Recent construction
-            else if (age < 30)
-                return 0; // Average condition
-            else
-                return -10000; // Older property discount
-        }
-
-        private async Task<IEnumerable<object>> GetComparableProperties(ValuationRequest request)
-        {
-            return await _context.Properties
-                .Where(p => p.IsApproved && 
-                           p.Bedrooms == request.Bedrooms &&
-                           p.Bathrooms == request.Bathrooms &&
-                           Math.Abs(p.SquareFeet - request.SquareFeet) <= 500)
-                .Select(p => new
-                {
-                    p.Name,
-                    p.Location,
-                    p.Bedrooms,
-                    p.Bathrooms,
-                    p.SquareFeet,
-                    p.StartingPrice,
-                    p.CreatedAt
-                })
-                .Take(5)
-                .ToListAsync();
-        }
-
-        private double CalculateConfidence(ValuationRequest request)
-        {
-            var confidence = 0.8; // Base confidence
-            
-            // Increase confidence with more data
+            // Apply location multiplier (simplified)
+            decimal locationMultiplier = 1.0m;
             if (!string.IsNullOrEmpty(request.Location))
-                confidence += 0.1;
-            if (request.SquareFeet > 0)
-                confidence += 0.05;
-            if (request.YearBuilt > 0)
-                confidence += 0.05;
-                
-            return Math.Min(confidence, 1.0);
-        }
-
-        private object GetMarketTrendsData()
-        {
-            return new
             {
-                AveragePrice = 450000,
-                PriceChange = 5.2,
-                DaysOnMarket = 45,
-                InventoryLevel = "Low",
-                MarketCondition = "Seller's Market"
+                if (request.Location.ToLower().Contains("downtown") || request.Location.ToLower().Contains("city"))
+                    locationMultiplier = 1.5m;
+                else if (request.Location.ToLower().Contains("suburb"))
+                    locationMultiplier = 1.2m;
+            }
+
+            // Apply year built factor
+            decimal yearFactor = 1.0m;
+            if (request.YearBuilt > 0)
+            {
+                int age = DateTime.Now.Year - request.YearBuilt;
+                if (age < 5) yearFactor = 1.2m;
+                else if (age < 15) yearFactor = 1.0m;
+                else if (age < 30) yearFactor = 0.9m;
+                else yearFactor = 0.8m;
+            }
+
+            decimal finalValue = basePrice * locationMultiplier * yearFactor;
+
+            return new ValuationResult
+            {
+                EstimatedValue = finalValue,
+                BasePrice = basePrice,
+                LocationMultiplier = locationMultiplier,
+                YearFactor = yearFactor,
+                CalculatedAt = DateTime.UtcNow,
+                Confidence = 0.85m // 85% confidence in the estimate
             };
         }
 
-        private IEnumerable<string> GetRecommendations(ValuationRequest request, double estimatedValue)
+        private long? GetCurrentAccountId()
         {
-            var recommendations = new List<string>();
-            
-            if (estimatedValue > 500000)
-                recommendations.Add("Consider staging the property for luxury market");
-            
-            if (request.YearBuilt < 2000)
-                recommendations.Add("Highlight recent renovations or updates");
-            
-            if (request.Bedrooms >= 4)
-                recommendations.Add("Emphasize family-friendly features");
-                
-            return recommendations;
+            var uidClaim = User.FindFirst("uid");
+            return uidClaim != null ? long.Parse(uidClaim.Value) : null;
         }
     }
 
     public class ValuationRequest
     {
-        public string Address { get; set; } = string.Empty;
-        public string Location { get; set; } = string.Empty;
+        public long? PropertyId { get; set; }
+        public string? Location { get; set; }
         public int Bedrooms { get; set; }
         public int Bathrooms { get; set; }
         public int SquareFeet { get; set; }
         public int YearBuilt { get; set; }
-        public string PropertyType { get; set; } = string.Empty;
-        public string Condition { get; set; } = string.Empty;
+        public string? PropertyType { get; set; }
+    }
+
+    public class ValuationResult
+    {
+        public decimal EstimatedValue { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal LocationMultiplier { get; set; }
+        public decimal YearFactor { get; set; }
+        public decimal Confidence { get; set; }
+        public DateTime CalculatedAt { get; set; }
+    }
+
+    public class ValuationHistory
+    {
+        public long PropertyId { get; set; }
+        public string PropertyName { get; set; } = string.Empty;
+        public string? Location { get; set; }
+        public decimal CalculatedValue { get; set; }
+        public DateTime CalculatedAt { get; set; }
     }
 }

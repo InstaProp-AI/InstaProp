@@ -7,27 +7,28 @@ namespace PropertyFlipperAPI.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {}
 
-        public DbSet<User> Users { get; set; }
+        public DbSet<Account> Accounts { get; set; }
         public DbSet<Property> Properties { get; set; }
         public DbSet<PropertyDoc> PropertyDocs { get; set; }
         public DbSet<UserDoc> UserDocs { get; set; }
         public DbSet<Auction> Auctions { get; set; }
         public DbSet<Bid> Bids { get; set; }
+        public DbSet<Project> Projects { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure User
-            modelBuilder.Entity<User>(entity =>
+            // Configure Account
+            modelBuilder.Entity<Account>(entity =>
             {
-                entity.HasKey(e => e.UserId);
-                entity.Property(e => e.UserId).ValueGeneratedOnAdd();
+                entity.HasKey(e => e.AccountId);
+                entity.Property(e => e.AccountId).ValueGeneratedOnAdd();
                 entity.Property(e => e.FirstName).HasMaxLength(100);
                 entity.Property(e => e.LastName).HasMaxLength(100);
                 entity.Property(e => e.PhoneNumber).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
-                entity.Property(e => e.Gender).HasMaxLength(10).IsRequired();
+                entity.Property(e => e.Type).HasConversion<int>();
                 entity.Property(e => e.HashedPassword).HasMaxLength(255).IsRequired();
             });
 
@@ -39,10 +40,15 @@ namespace PropertyFlipperAPI.Data
                 entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
                 entity.Property(e => e.Location).HasMaxLength(255);
                 entity.Property(e => e.StartingPrice).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Type).HasConversion<int>();
                 entity.HasOne(e => e.Owner)
                     .WithMany(u => u.Properties)
                     .HasForeignKey(e => e.OwnerId)
                     .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Project)
+                    .WithMany(p => p.Properties)
+                    .HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure Auction
@@ -98,6 +104,19 @@ namespace PropertyFlipperAPI.Data
                 entity.HasOne(e => e.User)
                     .WithMany(u => u.UserDocs)
                     .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Project
+            modelBuilder.Entity<Project>(entity =>
+            {
+                entity.HasKey(e => e.ProjectId);
+                entity.Property(e => e.ProjectId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Location).HasMaxLength(255);
+                entity.HasOne(e => e.Developer)
+                    .WithMany(a => a.Projects)
+                    .HasForeignKey(e => e.DeveloperId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

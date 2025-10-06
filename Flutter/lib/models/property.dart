@@ -1,13 +1,17 @@
 import 'user.dart';
 
+enum PropertyType { resale, primary }
+
 class Property {
   final int propertyId;
   final int ownerId;
-  final User? owner;
+  final Account? owner;
+  final int? projectId;
   final String name;
   final String description;
   final String location;
   final double startingPrice;
+  final PropertyType type;
   final bool isApproved;
   final int bedrooms;
   final int bathrooms;
@@ -22,10 +26,12 @@ class Property {
     required this.propertyId,
     required this.ownerId,
     this.owner,
+    this.projectId,
     required this.name,
     required this.description,
     required this.location,
     required this.startingPrice,
+    required this.type,
     required this.isApproved,
     required this.bedrooms,
     required this.bathrooms,
@@ -42,10 +48,10 @@ class Property {
       propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
       ownerId: json['ownerId'] ?? json['OwnerId'] ?? 0,
       owner: json['owner'] != null || json['Owner'] != null
-          ? User.fromJson({
-              'userId':
-                  (json['owner'] ?? json['Owner'])['userId'] ??
-                  (json['owner'] ?? json['Owner'])['UserId'] ??
+          ? Account.fromJson({
+              'accountId':
+                  (json['owner'] ?? json['Owner'])['accountId'] ??
+                  (json['owner'] ?? json['Owner'])['AccountId'] ??
                   0,
               'firstName':
                   (json['owner'] ?? json['Owner'])['firstName'] ??
@@ -63,10 +69,10 @@ class Property {
                   (json['owner'] ?? json['Owner'])['email'] ??
                   (json['owner'] ?? json['Owner'])['Email'] ??
                   '',
-              'gender':
-                  (json['owner'] ?? json['Owner'])['gender'] ??
-                  (json['owner'] ?? json['Owner'])['Gender'] ??
-                  '',
+              'type':
+                  (json['owner'] ?? json['Owner'])['type'] ??
+                  (json['owner'] ?? json['Owner'])['Type'] ??
+                  'user',
               'isVerified':
                   (json['owner'] ?? json['Owner'])['isVerified'] ??
                   (json['owner'] ?? json['Owner'])['IsVerified'] ??
@@ -80,11 +86,18 @@ class Property {
                   (json['owner'] ?? json['Owner'])['UpdatedAt'],
             })
           : null,
+      projectId: json['projectId'] ?? json['ProjectId'],
       name: json['name'] ?? json['Name'] ?? '',
       description: json['description'] ?? json['Description'] ?? '',
       location: json['location'] ?? json['Location'] ?? '',
       startingPrice: (json['startingPrice'] ?? json['StartingPrice'] ?? 0)
           .toDouble(),
+      type: PropertyType.values.firstWhere(
+        (e) =>
+            e.toString().split('.').last ==
+            (json['type'] ?? json['Type'] ?? 'resale'),
+        orElse: () => PropertyType.resale,
+      ),
       isApproved: json['isApproved'] ?? json['IsApproved'] ?? false,
       bedrooms: json['bedrooms'] ?? json['Bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? json['Bathrooms'] ?? 0,
@@ -108,10 +121,12 @@ class Property {
       'propertyId': propertyId,
       'ownerId': ownerId,
       'owner': owner?.toJson(),
+      'projectId': projectId,
       'name': name,
       'description': description,
       'location': location,
       'startingPrice': startingPrice,
+      'type': type.toString().split('.').last,
       'isApproved': isApproved,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,

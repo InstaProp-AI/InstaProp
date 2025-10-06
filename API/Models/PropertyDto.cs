@@ -25,5 +25,7 @@ namespace PropertyFlipperAPI.Models
         public string? Category { get; set; } = "Residential";
 
         public string? ImageUrl { get; set; } = string.Empty;
+
+        public long? ProjectId { get; set; }
     }
 }
