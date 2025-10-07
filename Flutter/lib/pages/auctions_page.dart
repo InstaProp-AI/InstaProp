@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
+import '../widgets/auction_timer.dart';
 import 'auction_details_page.dart';
 
 class AuctionsPage extends StatefulWidget {
@@ -14,7 +15,6 @@ class AuctionsPage extends StatefulWidget {
 class _AuctionsPageState extends State<AuctionsPage> {
   List<Auction> _filteredAuctions = [];
   Map<String, dynamic> _activeFilters = {};
-  bool _showFilters = false;
 
   // Filter options
   final Map<String, String> _categoryOptions = {
@@ -41,81 +41,143 @@ class _AuctionsPageState extends State<AuctionsPage> {
     'high_bids': '16+ Bids',
   };
 
+  final Map<String, String> _projectOptions = {
+    'all': 'All Projects',
+    'Luxury': 'Luxury',
+    'Affordable': 'Affordable',
+    'Commercial': 'Commercial',
+    'Residential': 'Residential',
+  };
+
+  final Map<String, String> _locationOptions = {
+    'all': 'All Locations',
+    'Downtown': 'Downtown',
+    'Suburbs': 'Suburbs',
+    'Waterfront': 'Waterfront',
+    'Historic': 'Historic District',
+  };
+
+  // Sort options
+  final Map<String, String> _sortOptions = {
+    'none': 'No Sorting',
+    'bidders_asc': 'Bidders (Low to High)',
+    'bidders_desc': 'Bidders (High to Low)',
+    'price_asc': 'Price (Low to High)',
+    'price_desc': 'Price (High to Low)',
+    'end_time_asc': 'End Time (Soonest First)',
+    'end_time_desc': 'End Time (Latest First)',
+  };
+
+  String _currentSort = 'none';
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _applyFilters();
+      // Ensure auctions are loaded before applying filters
+      final appState = context.read<AppState>();
+      if (appState.auctions.isEmpty) {
+        appState.loadAuctions().then((_) {
+          _applyFilters();
+        });
+      } else {
+        _applyFilters();
+      }
     });
   }
 
   void _applyFilters() {
-    final appState = context.read<AppState>();
-    List<Auction> auctions = List.from(appState.auctions);
+    try {
+      final appState = context.read<AppState>();
+      print('Applying filters - auctions count: ${appState.auctions.length}');
+      List<Auction> auctions = List.from(appState.auctions);
 
-    // Apply category filter
-    if (_activeFilters.containsKey('category') &&
-        _activeFilters['category'] != 'all') {
-      auctions = auctions.where((auction) {
-        return auction.property?.category == _activeFilters['category'];
-      }).toList();
+      // Apply category filter
+      if (_activeFilters.containsKey('category') &&
+          _activeFilters['category'] != 'all') {
+        auctions = auctions.where((auction) {
+          return auction.property?.category == _activeFilters['category'];
+        }).toList();
+      }
+
+      // Apply price range filter
+      if (_activeFilters.containsKey('priceRange') &&
+          _activeFilters['priceRange'] != 'all') {
+        auctions = auctions.where((auction) {
+          final currentPrice = auction.currentPrice;
+          switch (_activeFilters['priceRange']) {
+            case 'under_300k':
+              return currentPrice < 300000;
+            case '300k_500k':
+              return currentPrice >= 300000 && currentPrice < 500000;
+            case '500k_750k':
+              return currentPrice >= 500000 && currentPrice < 750000;
+            case 'over_750k':
+              return currentPrice >= 750000;
+            default:
+              return true;
+          }
+        }).toList();
+      }
+
+      // Apply bid count filter
+      if (_activeFilters.containsKey('bidCount') &&
+          _activeFilters['bidCount'] != 'all') {
+        auctions = auctions.where((auction) {
+          final bidCount = auction.bidCount;
+          switch (_activeFilters['bidCount']) {
+            case 'no_bids':
+              return bidCount == 0;
+            case 'low_bids':
+              return bidCount >= 1 && bidCount <= 5;
+            case 'medium_bids':
+              return bidCount >= 6 && bidCount <= 15;
+            case 'high_bids':
+              return bidCount >= 16;
+            default:
+              return true;
+          }
+        }).toList();
+      }
+
+      // Apply project filter
+      if (_activeFilters.containsKey('project') &&
+          _activeFilters['project'] != 'all') {
+        auctions = auctions.where((auction) {
+          return auction.property?.project == _activeFilters['project'];
+        }).toList();
+      }
+
+      // Apply location filter
+      if (_activeFilters.containsKey('location') &&
+          _activeFilters['location'] != 'all') {
+        auctions = auctions.where((auction) {
+          return auction.property?.location.contains(
+                _activeFilters['location'],
+              ) ??
+              false;
+        }).toList();
+      }
+
+      // Apply sorting
+      _applySorting(auctions);
+
+      print('Filtered auctions count: ${auctions.length}');
+      setState(() {
+        _filteredAuctions = auctions;
+      });
+    } catch (e) {
+      print('Error applying filters: $e');
+      setState(() {
+        _filteredAuctions = [];
+      });
     }
-
-    // Apply price range filter
-    if (_activeFilters.containsKey('priceRange') &&
-        _activeFilters['priceRange'] != 'all') {
-      auctions = auctions.where((auction) {
-        final currentPrice = auction.currentPrice;
-        switch (_activeFilters['priceRange']) {
-          case 'under_300k':
-            return currentPrice < 300000;
-          case '300k_500k':
-            return currentPrice >= 300000 && currentPrice < 500000;
-          case '500k_750k':
-            return currentPrice >= 500000 && currentPrice < 750000;
-          case 'over_750k':
-            return currentPrice >= 750000;
-          default:
-            return true;
-        }
-      }).toList();
-    }
-
-    // Apply bid count filter
-    if (_activeFilters.containsKey('bidCount') &&
-        _activeFilters['bidCount'] != 'all') {
-      auctions = auctions.where((auction) {
-        final bidCount = auction.bidCount;
-        switch (_activeFilters['bidCount']) {
-          case 'no_bids':
-            return bidCount == 0;
-          case 'low_bids':
-            return bidCount >= 1 && bidCount <= 5;
-          case 'medium_bids':
-            return bidCount >= 6 && bidCount <= 15;
-          case 'high_bids':
-            return bidCount >= 16;
-          default:
-            return true;
-        }
-      }).toList();
-    }
-
-    setState(() {
-      _filteredAuctions = auctions;
-    });
   }
 
   void _setFilter(String key, String value) {
+    print('Setting filter: $key = $value');
     setState(() {
       _activeFilters[key] = value;
-    });
-    _applyFilters();
-  }
-
-  void _removeFilter(String key) {
-    setState(() {
-      _activeFilters.remove(key);
     });
     _applyFilters();
   }
@@ -127,39 +189,107 @@ class _AuctionsPageState extends State<AuctionsPage> {
     _applyFilters();
   }
 
+  void _refreshAuctionData() {
+    final appState = context.read<AppState>();
+    appState.loadAuctions();
+    _applyFilters();
+  }
+
+  void _applySorting(List<Auction> auctions) {
+    if (_currentSort == 'none') return;
+
+    switch (_currentSort) {
+      case 'bidders_asc':
+        auctions.sort((a, b) => a.bidCount.compareTo(b.bidCount));
+        break;
+      case 'bidders_desc':
+        auctions.sort((a, b) => b.bidCount.compareTo(a.bidCount));
+        break;
+      case 'price_asc':
+        auctions.sort((a, b) => a.currentPrice.compareTo(b.currentPrice));
+        break;
+      case 'price_desc':
+        auctions.sort((a, b) => b.currentPrice.compareTo(a.currentPrice));
+        break;
+      case 'end_time_asc':
+        auctions.sort((a, b) => a.endAt.compareTo(b.endAt));
+        break;
+      case 'end_time_desc':
+        auctions.sort((a, b) => b.endAt.compareTo(a.endAt));
+        break;
+    }
+  }
+
+  void _setSort(String sortKey) {
+    setState(() {
+      _currentSort = sortKey;
+    });
+    _applyFilters();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Auctions'),
+        title: Row(
+          children: [
+            const Text('Auctions'),
+            const SizedBox(width: 8),
+            // Small refresh indicator
+            Consumer<AppState>(
+              builder: (context, appState, child) {
+                if (appState.loadingAuctions) {
+                  return const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            onPressed: () {
-              final appState = context.read<AppState>();
-              appState.loadAuctions();
+          PopupMenuButton<String>(
+            onSelected: _setSort,
+            icon: const Icon(Icons.sort),
+            itemBuilder: (BuildContext context) {
+              return _sortOptions.entries.map((entry) {
+                return PopupMenuItem<String>(
+                  value: entry.key,
+                  child: Row(
+                    children: [
+                      if (_currentSort == entry.key)
+                        Icon(Icons.check, color: Colors.green[700], size: 20)
+                      else
+                        const SizedBox(width: 20),
+                      const SizedBox(width: 8),
+                      Text(entry.value),
+                    ],
+                  ),
+                );
+              }).toList();
             },
-            icon: const Icon(Icons.refresh),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
-            icon: Icon(
-              _showFilters ? Icons.filter_list_off : Icons.filter_list,
-            ),
           ),
         ],
       ),
       body: Consumer<AppState>(
         builder: (context, appState, child) {
+          print(
+            'AuctionsPage builder - loadingAuctions: ${appState.loadingAuctions}, auctions length: ${appState.auctions.length}',
+          );
+
           if (appState.loadingAuctions) {
             return const Center(child: CircularProgressIndicator());
           }
 
+          // Add null safety check
           if (appState.auctions.isEmpty) {
             return _buildEmptyState(
               context,
@@ -171,14 +301,19 @@ class _AuctionsPageState extends State<AuctionsPage> {
 
           return Column(
             children: [
-              // Filter Bar
-              if (_activeFilters.isNotEmpty) _buildFilterBar(),
+              // Scrollable filter bar
+              _buildScrollableFilterBar(),
 
-              // Filter Options
-              if (_showFilters) _buildFilterOptions(),
-
-              // Auctions Tables
-              Expanded(child: _buildAuctionsTables(appState)),
+              // Auctions Tables with pull-to-refresh
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await appState.loadAuctions();
+                    _applyFilters();
+                  },
+                  child: _buildAuctionsTables(appState),
+                ),
+              ),
             ],
           );
         },
@@ -186,171 +321,87 @@ class _AuctionsPageState extends State<AuctionsPage> {
     );
   }
 
-  Widget _buildFilterBar() {
+  Widget _buildScrollableFilterBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.blue[50],
-        border: Border(bottom: BorderSide(color: Colors.blue[200]!)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.filter_list, color: Colors.blue[700], size: 20),
-          const SizedBox(width: 8),
-          Text(
-            'Active Filters:',
-            style: TextStyle(
-              color: Colors.blue[700],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _activeFilters.entries.map((entry) {
-                  return Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[100],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue[300]!),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _getFilterDisplayText(entry.key, entry.value),
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: () => _removeFilter(entry.key),
-                          child: Icon(
-                            Icons.close,
-                            size: 16,
-                            color: Colors.blue[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          if (_activeFilters.isNotEmpty)
-            TextButton(
-              onPressed: _clearAllFilters,
-              child: Text(
-                'Clear All',
-                style: TextStyle(
-                  color: Colors.blue[700],
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterOptions() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
         color: Colors.grey[50],
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Filter Auctions',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            // Clear All
+            _buildFilterButton('Clear All', 'clear', {}),
+            const SizedBox(width: 8),
 
-          // Category Filter
-          _buildFilterSection(
-            'Property Category',
-            'category',
-            _categoryOptions,
-          ),
+            // Category Filter
+            _buildFilterButton('Category', 'category', _categoryOptions),
+            const SizedBox(width: 8),
 
-          const SizedBox(height: 16),
+            // Price Filter
+            _buildFilterButton('Price', 'priceRange', _priceRangeOptions),
+            const SizedBox(width: 8),
 
-          // Price Range Filter
-          _buildFilterSection('Price Range', 'priceRange', _priceRangeOptions),
+            // Bids Filter
+            _buildFilterButton('Bids', 'bidCount', _bidCountOptions),
+            const SizedBox(width: 8),
 
-          const SizedBox(height: 16),
+            // Project Filter
+            _buildFilterButton('Project', 'project', _projectOptions),
+            const SizedBox(width: 8),
 
-          // Bid Count Filter
-          _buildFilterSection('Bid Count', 'bidCount', _bidCountOptions),
-        ],
+            // Location Filter
+            _buildFilterButton('Location', 'location', _locationOptions),
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildFilterSection(
-    String title,
-    String filterKey,
-    Map<String, String> options,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: options.entries.map((entry) {
-            final isSelected = _activeFilters[filterKey] == entry.key;
-            return FilterChip(
-              label: Text(entry.value),
-              selected: isSelected,
-              onSelected: (selected) {
-                _setFilter(filterKey, entry.key);
-              },
-              selectedColor: Colors.blue[100],
-              checkmarkColor: Colors.blue[700],
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.blue[700] : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 
   Widget _buildAuctionsTables(AppState appState) {
+    print(
+      '_buildAuctionsTables - appState.auctions: ${appState.auctions.length}, _filteredAuctions: ${_filteredAuctions.length}',
+    );
+
     final auctionsToShow = _filteredAuctions.isEmpty
         ? appState.auctions
         : _filteredAuctions;
 
     // Separate live and ended auctions
     final liveAuctions = auctionsToShow
-        .where((auction) => auction.isActive)
+        .where(
+          (auction) =>
+              auction.isActive &&
+              auction.status != 'Ended' &&
+              !DateTime.now().isAfter(auction.endAt),
+        )
         .toList();
     final endedAuctions = auctionsToShow
-        .where((auction) => auction.isEnded)
+        .where(
+          (auction) =>
+              auction.isEnded ||
+              auction.status == 'Ended' ||
+              DateTime.now().isAfter(auction.endAt),
+        )
         .toList();
+
+    print(
+      'Auctions separation - Total: ${auctionsToShow.length}, Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}',
+    );
+
+    // Debug each auction
+    for (var auction in auctionsToShow) {
+      print(
+        'Auction ${auction.auctionId}: status=${auction.status}, endAt=${auction.endAt}, isActive=${auction.isActive}, isEnded=${auction.isEnded}',
+      );
+      print('  - Current time: ${DateTime.now()}');
+      print('  - End time: ${auction.endAt}');
+      print(
+        '  - Time difference: ${auction.endAt.difference(DateTime.now()).inMinutes} minutes',
+      );
+    }
 
     return SingleChildScrollView(
       child: Column(
@@ -392,37 +443,73 @@ class _AuctionsPageState extends State<AuctionsPage> {
           ],
 
           // Ended Auctions Section
-          if (endedAuctions.isNotEmpty) ...[
-            const SizedBox(height: 16),
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.orange[50]!, Colors.orange[100]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.orange[700], size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  'Ended Auctions (${endedAuctions.length})',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (endedAuctions.isNotEmpty)
+            _buildAuctionsTable(context, endedAuctions, isLive: false)
+          else
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(32),
+              margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.orange[50]!, Colors.orange[100]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: Colors.grey[200]!),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.orange[700], size: 24),
-                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.hourglass_empty,
+                    size: 48,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    'Ended Auctions (${endedAuctions.length})',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange[700],
+                    'No Ended Auctions',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Check back later for completed auctions',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
-            _buildAuctionsTable(context, endedAuctions, isLive: false),
-          ],
 
           // Empty state if no auctions
           if (auctionsToShow.isEmpty) ...[
@@ -459,102 +546,121 @@ class _AuctionsPageState extends State<AuctionsPage> {
           ),
         ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Container(
-          constraints: BoxConstraints(
-            minWidth: MediaQuery.of(context).size.width - 32,
-          ),
-          child: Column(
-            children: [
-              // Header row
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: (isLive ? Colors.green : Colors.orange)[50],
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
+      child: Container(
+        height: 5 * 60.0 + 48.0, // 5 rows × 60px + header height
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            constraints: BoxConstraints(
+              minWidth: MediaQuery.of(context).size.width - 32,
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: Column(
+                children: [
+                  // Header row
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (isLive ? Colors.green : Colors.orange)[50],
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 80, // Fixed width for property image
+                          child: Text(
+                            'Image',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 200, // Fixed width for property name
+                          child: Text(
+                            'Property Name',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 120, // Fixed width for start price
+                          child: Text(
+                            'Start Price',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 120, // Fixed width for current price
+                          child: Text(
+                            'Current Price',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 80, // Fixed width for bids
+                          child: Text(
+                            'Bids',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 100, // Fixed width for time left
+                          child: Text(
+                            isLive ? 'Time Left' : 'Ended',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 120, // Fixed width for project
+                          child: Text(
+                            'Project',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 120, // Fixed width for category
+                          child: Text(
+                            'Category',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 200, // Fixed width for property name
-                      child: Text(
-                        'Property Name',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 120, // Fixed width for start price
-                      child: Text(
-                        'Start Price',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 120, // Fixed width for current price
-                      child: Text(
-                        'Current Price',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 80, // Fixed width for bids
-                      child: Text(
-                        'Bids',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 100, // Fixed width for time left
-                      child: Text(
-                        isLive ? 'Time Left' : 'Ended',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 120, // Fixed width for category
-                      child: Text(
-                        'Category',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-              // Data rows
-              ...auctions
-                  .map(
-                    (auction) => _buildAuctionMatrixRow(
-                      context,
-                      auction,
-                      isLive: isLive,
-                    ),
-                  )
-                  .toList(),
-            ],
+                  // Data rows
+                  ...auctions
+                      .map(
+                        (auction) => _buildAuctionMatrixRow(
+                          context,
+                          auction,
+                          isLive: isLive,
+                          onAuctionEnded: _refreshAuctionData,
+                        ),
+                      )
+                      .toList(),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -565,6 +671,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
     BuildContext context,
     Auction auction, {
     required bool isLive,
+    VoidCallback? onAuctionEnded,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -580,6 +687,44 @@ class _AuctionsPageState extends State<AuctionsPage> {
         ),
         child: Row(
           children: [
+            // Property Image
+            SizedBox(
+              width: 80, // Fixed width for property image
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: auction.property?.imageUrl.isNotEmpty == true
+                      ? Image.network(
+                          auction.property!.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: Icon(
+                                Icons.home,
+                                color: Colors.grey[400],
+                                size: 24,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: Icon(
+                            Icons.home,
+                            color: Colors.grey[400],
+                            size: 24,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
             SizedBox(
               width: 200, // Fixed width for property name
               child: Column(
@@ -631,13 +776,14 @@ class _AuctionsPageState extends State<AuctionsPage> {
             SizedBox(
               width: 100, // Fixed width for time left/ended
               child: isLive
-                  ? Text(
-                      auction.timeRemaining,
-                      style: TextStyle(
+                  ? AuctionTimer(
+                      auction: auction,
+                      textStyle: TextStyle(
                         fontWeight: FontWeight.w500,
                         color: Colors.red[600],
                         fontSize: 12,
                       ),
+                      onAuctionEnded: onAuctionEnded,
                     )
                   : Text(
                       'Ended',
@@ -647,6 +793,14 @@ class _AuctionsPageState extends State<AuctionsPage> {
                         fontSize: 12,
                       ),
                     ),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(
+              width: 120, // Fixed width for project
+              child: Text(
+                auction.property?.project ?? 'N/A',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
             ),
             const SizedBox(width: 16),
             SizedBox(
@@ -697,16 +851,83 @@ class _AuctionsPageState extends State<AuctionsPage> {
     );
   }
 
-  String _getFilterDisplayText(String key, String value) {
-    switch (key) {
-      case 'category':
-        return _categoryOptions[value] ?? value;
-      case 'priceRange':
-        return _priceRangeOptions[value] ?? value;
-      case 'bidCount':
-        return _bidCountOptions[value] ?? value;
-      default:
-        return value;
+  Widget _buildFilterButton(
+    String title,
+    String filterKey,
+    Map<String, String> options,
+  ) {
+    if (filterKey == 'clear') {
+      return InkWell(
+        onTap: _clearAllFilters,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.red[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red[300]!),
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.red[700],
+            ),
+          ),
+        ),
+      );
     }
+
+    final currentValue = _activeFilters[filterKey] ?? 'all';
+    final currentLabel = options[currentValue] ?? 'All';
+    final hasFilter = currentValue != 'all';
+
+    return InkWell(
+      onTap: () => _showFilterMenu(filterKey, options),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: hasFilter ? Colors.blue[100] : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasFilter ? Colors.blue[300]! : Colors.grey[300]!,
+          ),
+        ),
+        child: Text(
+          currentLabel,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: hasFilter ? FontWeight.w600 : FontWeight.normal,
+            color: hasFilter ? Colors.blue[700] : Colors.grey[700],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFilterMenu(String filterKey, Map<String, String> options) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select ${filterKey.toUpperCase()}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: options.entries.map((entry) {
+            final isSelected =
+                entry.key == (_activeFilters[filterKey] ?? 'all');
+            return ListTile(
+              title: Text(entry.value),
+              leading: isSelected
+                  ? Icon(Icons.check, color: Colors.blue[700])
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                _setFilter(filterKey, entry.key);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
   }
 }

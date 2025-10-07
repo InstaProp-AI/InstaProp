@@ -60,7 +60,44 @@ class PropertyService {
     return await ApiClient.delete('/api/property/$propertyId');
   }
 
+  static Future<ApiResponse<List<Property>>> getAllProperties() async {
+    return await ApiClient.getList('/api/property/all', Property.fromJson);
+  }
+
   static Future<ApiResponse<List<Property>>> getUserProperties() async {
     return await ApiClient.getList('/api/user/properties', Property.fromJson);
+  }
+
+  static Future<ApiResponse<Property>> createPropertySkipDocuments({
+    required String name,
+    required String description,
+    required String location,
+    required double startingPrice,
+    required int bedrooms,
+    required int bathrooms,
+    required int squareFeet,
+    required int yearBuilt,
+    required String category,
+    required String imageUrl,
+  }) async {
+    return await ApiClient.post('/api/property/skip-documents', {
+      'name': name,
+      'description': description,
+      'location': location,
+      'startingPrice': startingPrice,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'squareFeet': squareFeet,
+      'yearBuilt': yearBuilt,
+      'category': category,
+      'imageUrl': imageUrl,
+    }, Property.fromJson);
+  }
+
+  static Future<ApiResponse<List<Property>>> getMyProperties() async {
+    return await ApiClient.getList(
+      '/api/property/my-properties',
+      Property.fromJson,
+    );
   }
 }

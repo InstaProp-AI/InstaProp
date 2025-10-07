@@ -13,6 +13,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Add Services
 builder.Services.AddScoped<SeedDataService>();
+builder.Services.AddSingleton<AuctionWebSocketManager>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -91,4 +92,20 @@ app.UseAuthorization();
 // }
 
 app.MapControllers();
+
+// WebSocket endpoint for real-time auction updates
+app.Map("/ws/auction", async (HttpContext context) =>
+{
+    if (context.WebSockets.IsWebSocketRequest)
+    {
+        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var webSocketManager = context.RequestServices.GetRequiredService<AuctionWebSocketManager>();
+        await webSocketManager.HandleWebSocketAsync(webSocket, context);
+    }
+    else
+    {
+        context.Response.StatusCode = 400;
+    }
+});
+
 await app.RunAsync();

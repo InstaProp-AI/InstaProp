@@ -145,6 +145,78 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Bids");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Event", b =>
+                {
+                    b.Property<long>("EventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("EventId"));
+
+                    b.Property<long?>("AuctionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BidId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EventDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsAllDay")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsReminderSet")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<long?>("PropertyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("ReminderMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Events");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
                 {
                     b.Property<long>("ProjectId")
@@ -290,6 +362,43 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("PropertyDocs");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyImage", b =>
+                {
+                    b.Property<long>("PropertyImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PropertyImageId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ImageType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsMainImage")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PropertyImageId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.ToTable("PropertyImages");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserDoc", b =>
                 {
                     b.Property<long>("DocId")
@@ -351,6 +460,17 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Bidder");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Event", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
                 {
                     b.HasOne("PropertyFlipperAPI.Models.Account", "Developer")
@@ -384,6 +504,17 @@ namespace PropertyFlipperAPI.Migrations
                 {
                     b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
                         .WithMany("PropertyDocs")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyImage", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                        .WithMany("PropertyImages")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -428,6 +559,8 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Auctions");
 
                     b.Navigation("PropertyDocs");
+
+                    b.Navigation("PropertyImages");
                 });
 #pragma warning restore 612, 618
         }

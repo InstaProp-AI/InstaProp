@@ -1,4 +1,36 @@
-enum AccountType { user, developer }
+enum AccountType { user, developer, admin }
+
+class KycDocument {
+  final String docType;
+  final String imageUrl;
+  final DateTime uploadedAt;
+
+  KycDocument({
+    required this.docType,
+    required this.imageUrl,
+    required this.uploadedAt,
+  });
+
+  factory KycDocument.fromJson(Map<String, dynamic> json) {
+    return KycDocument(
+      docType: json['docType'] ?? json['DocType'] ?? '',
+      imageUrl: json['imageUrl'] ?? json['ImgUrl'] ?? '',
+      uploadedAt: DateTime.parse(
+        json['uploadedAt'] ??
+            json['UploadedAt'] ??
+            DateTime.now().toIso8601String(),
+      ),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'docType': docType,
+      'imageUrl': imageUrl,
+      'uploadedAt': uploadedAt.toIso8601String(),
+    };
+  }
+}
 
 class Account {
   final int accountId;
@@ -10,6 +42,7 @@ class Account {
   final bool isVerified;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final List<KycDocument> kycDocuments;
 
   Account({
     required this.accountId,
@@ -21,6 +54,7 @@ class Account {
     required this.isVerified,
     required this.createdAt,
     this.updatedAt,
+    this.kycDocuments = const [],
   });
 
   factory Account.fromJson(Map<String, dynamic> json) {
@@ -32,8 +66,8 @@ class Account {
       email: json['email'] ?? json['Email'] ?? '',
       type: AccountType.values.firstWhere(
         (e) =>
-            e.toString().split('.').last ==
-            (json['type'] ?? json['Type'] ?? 'user'),
+            e.toString().split('.').last.toLowerCase() ==
+            (json['type'] ?? json['Type'] ?? 'user').toString().toLowerCase(),
         orElse: () => AccountType.user,
       ),
       isVerified: json['isVerified'] ?? json['IsVerified'] ?? false,
@@ -45,6 +79,11 @@ class Account {
       updatedAt: json['updatedAt'] != null || json['UpdatedAt'] != null
           ? DateTime.parse(json['updatedAt'] ?? json['UpdatedAt'])
           : null,
+      kycDocuments: json['userDocs'] != null || json['UserDocs'] != null
+          ? (json['userDocs'] ?? json['UserDocs'] ?? [])
+                .map<KycDocument>((doc) => KycDocument.fromJson(doc))
+                .toList()
+          : [],
     );
   }
 
@@ -59,6 +98,7 @@ class Account {
       'isVerified': isVerified,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
+      'kycDocuments': kycDocuments.map((doc) => doc.toJson()).toList(),
     };
   }
 

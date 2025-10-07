@@ -68,6 +68,7 @@ class AuthService extends ChangeNotifier {
     required String phoneNumber,
     required String email,
     required String password,
+    required List<Map<String, String>> kycDocuments,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -82,6 +83,7 @@ class AuthService extends ChangeNotifier {
           'email': email,
           'password': password,
           'accountType': 'User',
+          'kycDocuments': kycDocuments,
         },
         (data) {
           _token = data['token'] ?? data['Token'];

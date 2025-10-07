@@ -4,6 +4,7 @@ import '../providers/app_state.dart';
 import '../services/property_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
+import 'property_docs_upload_page.dart';
 
 class AddPropertyPage extends StatefulWidget {
   const AddPropertyPage({super.key});
@@ -98,11 +99,96 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         // Refresh properties in app state
         context.read<AppState>().loadProperties();
 
+        // Navigate to documents upload page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PropertyDocsUploadPage(
+              propertyId: response.data!.propertyId,
+              propertyName: _nameController.text.trim(),
+            ),
+          ),
+        ).then((completed) {
+          // Show success message after returning from upload page
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Property added successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        });
+      } else {
+        setState(() {
+          _errorMessage = response.error ?? 'Failed to add property';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'An error occurred: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _submitPropertySkipDocuments() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
+
+    try {
+      final response = await PropertyService.createPropertySkipDocuments(
+        name: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        location: _locationController.text.trim(),
+        startingPrice: double.parse(_priceController.text),
+        bedrooms: int.parse(_bedroomsController.text),
+        bathrooms: int.parse(_bathroomsController.text),
+        squareFeet: int.parse(_squareFeetController.text),
+        yearBuilt: int.parse(_yearBuiltController.text),
+        category: _selectedCategory,
+        imageUrl: _imageUrlController.text.trim(),
+      );
+
+      if (response.success) {
+        setState(() {
+          _successMessage =
+              'Property added successfully! Documents can be uploaded later.';
+        });
+
+        // Clear form
+        _nameController.clear();
+        _descriptionController.clear();
+        _locationController.clear();
+        _priceController.clear();
+        _bedroomsController.clear();
+        _bathroomsController.clear();
+        _squareFeetController.clear();
+        _yearBuiltController.clear();
+        _imageUrlController.clear();
+        setState(() {
+          _selectedCategory = 'Single Family';
+        });
+
+        // Refresh properties in app state
+        context.read<AppState>().loadProperties();
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Property added successfully!'),
+            content: Text(
+              'Property saved successfully! You can upload documents later from your properties page.',
+            ),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
           ),
         );
       } else {
@@ -404,6 +490,17 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
                   const SizedBox(height: 16),
 
+                  // Skip Documents button
+                  OutlinedButton(
+                    onPressed: _isLoading ? null : _submitPropertySkipDocuments,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Add Property (Skip Documents)'),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Info card
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -412,17 +509,31 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.blue[200]!),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info, color: Colors.blue[700]),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Your property will be reviewed by our team before being approved for auction.',
-                            style: TextStyle(
-                              color: Colors.blue[700],
-                              fontSize: 14,
+                        Row(
+                          children: [
+                            Icon(Icons.info, color: Colors.blue[700]),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Property Submission Options',
+                                style: TextStyle(
+                                  color: Colors.blue[700],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '• Add Property: Submit with documents for faster verification\n• Add Property (Skip Documents): Save now, upload documents later',
+                          style: TextStyle(
+                            color: Colors.blue[700],
+                            fontSize: 14,
                           ),
                         ),
                       ],

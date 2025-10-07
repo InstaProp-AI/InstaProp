@@ -84,12 +84,45 @@ class Auction {
   String get timeRemaining {
     if (isEnded) return 'Ended';
     final remaining = endAt.difference(DateTime.now());
+
     if (remaining.inDays > 0) {
       return '${remaining.inDays}d ${remaining.inHours % 24}h';
     } else if (remaining.inHours > 0) {
       return '${remaining.inHours}h ${remaining.inMinutes % 60}m';
+    } else if (remaining.inMinutes > 0) {
+      return '${remaining.inMinutes}m ${remaining.inSeconds % 60}s';
     } else {
-      return '${remaining.inMinutes}m';
+      return '${remaining.inSeconds}s';
     }
+  }
+
+  Auction copyWith({
+    int? auctionId,
+    int? propertyId,
+    Property? property,
+    double? startAt,
+    double? currentPrice,
+    DateTime? endAt,
+    int? duration,
+    double? buyNowPrice,
+    int? bidCount,
+    String? status,
+    DateTime? createdAt,
+    List<Bid>? bids,
+  }) {
+    return Auction(
+      auctionId: auctionId ?? this.auctionId,
+      propertyId: propertyId ?? this.propertyId,
+      property: property ?? this.property,
+      startAt: startAt ?? this.startAt,
+      currentPrice: currentPrice ?? this.currentPrice,
+      endAt: endAt ?? this.endAt,
+      duration: duration ?? this.duration,
+      buyNowPrice: buyNowPrice ?? this.buyNowPrice,
+      bidCount: bidCount ?? this.bidCount,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      bids: bids ?? this.bids,
+    );
   }
 }

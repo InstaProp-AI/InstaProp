@@ -18,12 +18,45 @@ namespace PropertyFlipperAPI.Controllers
             _context = context;
         }
 
-        // GET: api/Property
+        // GET: api/Property (Public - only properties with auctions)
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Property>>> GetProperties()
         {
             return await _context.Properties
+                .Where(p => p.Auctions.Any()) // Only properties that have auctions
                 .Include(p => p.Owner)
+                .Include(p => p.Auctions.Where(a => a.Status == "Active")) // Only active auctions
+                .ToListAsync();
+        }
+
+        // GET: api/Property/all (Admin only - all properties)
+        [HttpGet("all")]
+        [Authorize]
+        [AdminAuthorize]
+        public async Task<ActionResult<IEnumerable<Property>>> GetAllProperties()
+        {
+            return await _context.Properties
+                .Include(p => p.Owner)
+                .Include(p => p.PropertyDocs)
+                .Include(p => p.Auctions)
+                .ToListAsync();
+        }
+
+        // GET: api/Property/my-properties (User's own properties)
+        [HttpGet("my-properties")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<Property>>> GetMyProperties()
+        {
+            var userIdClaim = User.FindFirst("uid");
+            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            {
+                return BadRequest("Invalid user ID");
+            }
+
+            return await _context.Properties
+                .Where(p => p.OwnerId == userId)
+                .Include(p => p.PropertyDocs)
+                .Include(p => p.Auctions)
                 .ToListAsync();
         }
 
@@ -80,8 +113,57 @@ namespace PropertyFlipperAPI.Controllers
                 SquareFeet = propertyDto.SquareFeet,
                 YearBuilt = propertyDto.YearBuilt,
                 Category = propertyDto.Category,
-                ImageUrl = propertyDto.ImageUrl,
+                ImageUrl = propertyDto.ImageUrl ?? "",
                 IsVerified = false, // Will be verified by admin
+                IsEditable = true, // Can be edited until verified
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Properties.Add(property);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetProperty", new { id = property.PropertyId }, property);
+        }
+
+        // POST: api/Property/skip-documents
+        [HttpPost("skip-documents")]
+        [Authorize]
+        public async Task<ActionResult<Property>> PostPropertySkipDocuments(PropertyDto propertyDto)
+        {
+            // Get the current user ID from the JWT token
+            var userIdClaim = User.FindFirst("uid");
+            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            {
+                return BadRequest("Invalid user ID");
+            }
+
+            // Get account to determine property type
+            var account = await _context.Accounts.FindAsync(userId);
+            if (account == null)
+            {
+                return BadRequest("Account not found");
+            }
+
+            // Determine property type based on account type
+            var propertyType = account.Type == AccountType.Developer ? PropertyType.Primary : PropertyType.Resale;
+
+            // Create Property entity from DTO
+            var property = new Property
+            {
+                OwnerId = userId,
+                ProjectId = propertyDto.ProjectId, // Optional for developers
+                Name = propertyDto.Name,
+                Description = propertyDto.Description,
+                Location = propertyDto.Location,
+                StartingPrice = propertyDto.StartingPrice,
+                Type = propertyType,
+                Bedrooms = propertyDto.Bedrooms,
+                Bathrooms = propertyDto.Bathrooms,
+                SquareFeet = propertyDto.SquareFeet,
+                YearBuilt = propertyDto.YearBuilt,
+                Category = propertyDto.Category,
+                ImageUrl = propertyDto.ImageUrl ?? "",
+                IsVerified = false, // Not verified because no documents uploaded
                 IsEditable = true, // Can be edited until verified
                 CreatedAt = DateTime.UtcNow
             };
@@ -278,11 +360,70 @@ namespace PropertyFlipperAPI.Controllers
             var typeClaim = User.FindFirst("type");
             return typeClaim?.Value;
         }
+
+        // POST: api/Property/estimate (Public - simple property valuation)
+        [HttpPost("estimate")]
+        public ActionResult<object> EstimateProperty([FromBody] PropertyEstimateDto estimateDto)
+        {
+            // Simple estimation algorithm based on basic factors
+            double basePrice = 0;
+            
+            // Base price by location (simplified)
+            var location = estimateDto.Location.ToLower();
+            if (location.Contains("manhattan") || location.Contains("beverly hills") || location.Contains("miami beach"))
+                basePrice = 800000; // High-end areas
+            else if (location.Contains("downtown") || location.Contains("city center"))
+                basePrice = 500000; // Urban areas
+            else if (location.Contains("suburb") || location.Contains("residential"))
+                basePrice = 350000; // Suburban areas
+            else
+                basePrice = 250000; // Default
+
+            // Adjust by bedrooms
+            basePrice += (estimateDto.Bedrooms - 1) * 50000;
+
+            // Adjust by bathrooms
+            basePrice += (estimateDto.Bathrooms - 1) * 30000;
+
+            // Adjust by square feet
+            basePrice += (estimateDto.SquareFeet - 1000) * 100;
+
+            // Adjust by year built (newer = more expensive)
+            var currentYear = DateTime.Now.Year;
+            var age = currentYear - estimateDto.YearBuilt;
+            if (age < 5) basePrice *= 1.2;
+            else if (age < 10) basePrice *= 1.1;
+            else if (age > 30) basePrice *= 0.9;
+
+            var estimatedValue = Math.Max(basePrice, 100000); // Minimum $100k
+
+            return Ok(new {
+                estimatedValue = Math.Round(estimatedValue, 2),
+                confidence = "Low - Basic estimation only",
+                message = "For detailed valuation with market analysis, please log in",
+                factors = new {
+                    location = estimateDto.Location,
+                    bedrooms = estimateDto.Bedrooms,
+                    bathrooms = estimateDto.Bathrooms,
+                    squareFeet = estimateDto.SquareFeet,
+                    yearBuilt = estimateDto.YearBuilt
+                }
+            });
+        }
     }
 
     public class PropertyDocUploadDto
     {
         public string DocType { get; set; } = string.Empty; // Ownership, Legal, FloorPlan, etc.
         public string ImageUrl { get; set; } = string.Empty;
+    }
+
+    public class PropertyEstimateDto
+    {
+        public string Location { get; set; } = string.Empty;
+        public int Bedrooms { get; set; }
+        public int Bathrooms { get; set; }
+        public int SquareFeet { get; set; }
+        public int YearBuilt { get; set; }
     }
 }

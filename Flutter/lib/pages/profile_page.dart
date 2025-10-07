@@ -293,11 +293,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     const SizedBox(height: 16),
 
-                    // Gender (read-only)
+                    // Account Type (read-only)
                     TextFormField(
-                      initialValue: appState.user?.gender ?? 'Not specified',
+                      initialValue:
+                          appState.user?.type.toString().split('.').last ??
+                          'Not specified',
                       decoration: const InputDecoration(
-                        labelText: 'Gender',
+                        labelText: 'Account Type',
                         border: OutlineInputBorder(),
                       ),
                       enabled: false,

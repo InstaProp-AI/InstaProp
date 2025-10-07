@@ -7,12 +7,15 @@ class Property {
   final int ownerId;
   final Account? owner;
   final int? projectId;
+  final String? project;
   final String name;
   final String description;
   final String location;
   final double startingPrice;
   final PropertyType type;
   final bool isApproved;
+  final bool isVerified;
+  final bool isEditable;
   final int bedrooms;
   final int bathrooms;
   final int squareFeet;
@@ -27,12 +30,15 @@ class Property {
     required this.ownerId,
     this.owner,
     this.projectId,
+    this.project,
     required this.name,
     required this.description,
     required this.location,
     required this.startingPrice,
     required this.type,
     required this.isApproved,
+    this.isVerified = false,
+    this.isEditable = true,
     required this.bedrooms,
     required this.bathrooms,
     required this.squareFeet,
@@ -87,6 +93,7 @@ class Property {
             })
           : null,
       projectId: json['projectId'] ?? json['ProjectId'],
+      project: json['project'] ?? json['Project'],
       name: json['name'] ?? json['Name'] ?? '',
       description: json['description'] ?? json['Description'] ?? '',
       location: json['location'] ?? json['Location'] ?? '',
@@ -99,6 +106,8 @@ class Property {
         orElse: () => PropertyType.resale,
       ),
       isApproved: json['isApproved'] ?? json['IsApproved'] ?? false,
+      isVerified: json['isVerified'] ?? json['IsVerified'] ?? false,
+      isEditable: json['isEditable'] ?? json['IsEditable'] ?? true,
       bedrooms: json['bedrooms'] ?? json['Bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? json['Bathrooms'] ?? 0,
       squareFeet: json['squareFeet'] ?? json['SquareFeet'] ?? 0,
@@ -122,12 +131,15 @@ class Property {
       'ownerId': ownerId,
       'owner': owner?.toJson(),
       'projectId': projectId,
+      'project': project,
       'name': name,
       'description': description,
       'location': location,
       'startingPrice': startingPrice,
       'type': type.toString().split('.').last,
       'isApproved': isApproved,
+      'isVerified': isVerified,
+      'isEditable': isEditable,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'squareFeet': squareFeet,

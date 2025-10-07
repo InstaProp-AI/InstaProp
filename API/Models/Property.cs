@@ -63,6 +63,7 @@ namespace PropertyFlipperAPI.Models
 
         // 🔗 Relations
         public ICollection<PropertyDoc> PropertyDocs { get; set; } = new List<PropertyDoc>();
+        public ICollection<PropertyImage> PropertyImages { get; set; } = new List<PropertyImage>();
         public ICollection<Auction> Auctions { get; set; } = new List<Auction>();
     }
 }

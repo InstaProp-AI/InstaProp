@@ -21,20 +21,18 @@ namespace PropertyFlipperAPI.Models
 
         public static AuctionDto FromAuction(Auction auction)
         {
-            var maxBid = auction.Bids.Any() ? auction.Bids.Max(b => b.BidAmount) : 0;
-            var currentPrice = auction.Bids.Any() ? maxBid : auction.StartAt;
-            
+            // Use the database values directly instead of calculating from bids collection
             return new AuctionDto
             {
                 AuctionId = auction.AuctionId,
                 PropertyId = auction.PropertyId,
                 Property = auction.Property,
                 StartAt = auction.StartAt,
-                CurrentPrice = currentPrice,
+                CurrentPrice = auction.CurrentPrice, // Use database value
                 EndAt = auction.EndAt,
                 Duration = auction.Duration,
                 BuyNowPrice = auction.BuyNowPrice,
-                BidCount = auction.Bids.Count,
+                BidCount = auction.BidCount, // Use database value
                 Status = auction.Status,
                 CreatedAt = auction.CreatedAt,
                 Bids = auction.Bids.ToList()

@@ -15,7 +15,11 @@ class PropertyFlipperApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => AppState()..init(),
+      create: (context) {
+        final appState = AppState();
+        appState.init(); // This is async but we don't await it
+        return appState;
+      },
       child: MaterialApp(
         title: 'Property Flipper',
         debugShowCheckedModeBanner: false,
@@ -116,6 +120,10 @@ class AppRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
+        print(
+          'AppRouter - isLoading: ${appState.isLoading}, auctions length: ${appState.auctions?.length ?? 'null'}',
+        );
+
         if (appState.isLoading) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),

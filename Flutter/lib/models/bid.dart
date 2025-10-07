@@ -1,4 +1,4 @@
-import 'account.dart';
+import 'user.dart';
 
 class Bid {
   final int bidId;

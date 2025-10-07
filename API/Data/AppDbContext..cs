@@ -10,10 +10,12 @@ namespace PropertyFlipperAPI.Data
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Property> Properties { get; set; }
         public DbSet<PropertyDoc> PropertyDocs { get; set; }
+        public DbSet<PropertyImage> PropertyImages { get; set; }
         public DbSet<UserDoc> UserDocs { get; set; }
         public DbSet<Auction> Auctions { get; set; }
         public DbSet<Bid> Bids { get; set; }
         public DbSet<Project> Projects { get; set; }
+        public DbSet<Event> Events { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -94,6 +96,19 @@ namespace PropertyFlipperAPI.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Configure PropertyImage
+            modelBuilder.Entity<PropertyImage>(entity =>
+            {
+                entity.HasKey(e => e.PropertyImageId);
+                entity.Property(e => e.PropertyImageId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ImageUrl).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.ImageType).HasMaxLength(50).IsRequired();
+                entity.HasOne(e => e.Property)
+                    .WithMany(p => p.PropertyImages)
+                    .HasForeignKey(e => e.PropertyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // Configure UserDoc
             modelBuilder.Entity<UserDoc>(entity =>
             {
@@ -117,6 +132,19 @@ namespace PropertyFlipperAPI.Data
                 entity.HasOne(e => e.Developer)
                     .WithMany(a => a.Projects)
                     .HasForeignKey(e => e.DeveloperId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Event
+            modelBuilder.Entity<Event>(entity =>
+            {
+                entity.HasKey(e => e.EventId);
+                entity.Property(e => e.EventId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Location).HasMaxLength(50);
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

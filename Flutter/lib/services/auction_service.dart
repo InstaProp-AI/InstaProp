@@ -1,5 +1,6 @@
 import 'api_client.dart';
 import '../models/auction.dart';
+import '../models/auction_request.dart';
 
 class AuctionService {
   static Future<ApiResponse<List<Auction>>> getAuctions() async {
@@ -58,5 +59,15 @@ class AuctionService {
 
   static Future<ApiResponse<List<Auction>>> getUserAuctions() async {
     return await ApiClient.getList('/api/user/auctions', Auction.fromJson);
+  }
+
+  static Future<ApiResponse<AuctionRequestResponse>> requestAuction(
+    AuctionRequest request,
+  ) async {
+    return await ApiClient.post(
+      '/api/auction/request',
+      request.toJson(),
+      (data) => AuctionRequestResponse.fromJson(data),
+    );
   }
 }

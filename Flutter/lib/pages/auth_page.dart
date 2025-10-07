@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
@@ -30,6 +31,15 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   final _signupPasswordController = TextEditingController();
   final _signupConfirmPasswordController = TextEditingController();
   String _selectedGender = 'Male';
+
+  // KYC Documents
+  final Map<String, XFile?> _kycDocuments = {
+    'ID_Front': null,
+    'ID_Back': null,
+    'Passport_Front': null,
+    'Passport_Back': null,
+  };
+  final ImagePicker _imagePicker = ImagePicker();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -101,6 +111,27 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _pickKycDocument(String docType) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _kycDocuments[docType] = image;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to pick image: $e';
+      });
+    }
+  }
+
   Future<void> _handleSignup() async {
     if (!_signupFormKey.currentState!.validate()) return;
 
@@ -112,6 +143,21 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       return;
     }
 
+    // Validate KYC documents
+    bool hasIdDocs =
+        _kycDocuments['ID_Front'] != null && _kycDocuments['ID_Back'] != null;
+    bool hasPassportDocs =
+        _kycDocuments['Passport_Front'] != null &&
+        _kycDocuments['Passport_Back'] != null;
+
+    if (!hasIdDocs && !hasPassportDocs) {
+      setState(() {
+        _errorMessage =
+            'Please upload either ID (front and back) or Passport (front and back) documents';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -119,19 +165,54 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     });
 
     try {
+      // Prepare KYC documents for upload
+      List<Map<String, String>> kycDocs = [];
+
+      // For now, we'll use placeholder URLs since we don't have actual file upload
+      // In a real app, you'd upload these files to a storage service first
+      if (_kycDocuments['ID_Front'] != null) {
+        kycDocs.add({
+          'docType': 'ID_Front',
+          'imageUrl':
+              'placeholder_id_front_url', // Replace with actual upload logic
+        });
+      }
+      if (_kycDocuments['ID_Back'] != null) {
+        kycDocs.add({
+          'docType': 'ID_Back',
+          'imageUrl':
+              'placeholder_id_back_url', // Replace with actual upload logic
+        });
+      }
+      if (_kycDocuments['Passport_Front'] != null) {
+        kycDocs.add({
+          'docType': 'Passport_Front',
+          'imageUrl':
+              'placeholder_passport_front_url', // Replace with actual upload logic
+        });
+      }
+      if (_kycDocuments['Passport_Back'] != null) {
+        kycDocs.add({
+          'docType': 'Passport_Back',
+          'imageUrl':
+              'placeholder_passport_back_url', // Replace with actual upload logic
+        });
+      }
+
       final appState = context.read<AppState>();
       final success = await appState.signup(
         firstName: _signupFirstNameController.text.trim(),
         lastName: _signupLastNameController.text.trim(),
         phoneNumber: _signupPhoneController.text.trim(),
         email: _signupEmailController.text.trim(),
-        gender: _selectedGender,
         password: _signupPasswordController.text,
+        kycDocuments: kycDocs,
       );
 
       if (success) {
         setState(() {
-          _successMessage = 'Account created successfully!';
+          _successMessage =
+              'Account created successfully! Please wait for admin verification.';
         });
         Navigator.of(context).pop();
       } else {
@@ -475,6 +556,57 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 return null;
               },
             ),
+
+            const SizedBox(height: 24),
+
+            // KYC Documents Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.verified_user,
+                        color: Colors.blue[700],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'KYC Documents Required',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Upload either ID (front and back) or Passport (front and back)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ID Documents
+                  _buildKycSection('ID Documents', ['ID_Front', 'ID_Back']),
+                  const SizedBox(height: 16),
+
+                  // Passport Documents
+                  _buildKycSection('Passport Documents', [
+                    'Passport_Front',
+                    'Passport_Back',
+                  ]),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 24),
             LoadingButton(
               onPressed: _isLoading ? null : _handleSignup,
@@ -484,6 +616,69 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildKycSection(String title, List<String> docTypes) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: docTypes.map((docType) {
+            final hasDocument = _kycDocuments[docType] != null;
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  onTap: () => _pickKycDocument(docType),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: hasDocument ? Colors.green : Colors.grey[300]!,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      color: hasDocument ? Colors.green[50] : Colors.white,
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          hasDocument
+                              ? Icons.check_circle
+                              : Icons.add_photo_alternate,
+                          color: hasDocument
+                              ? Colors.green[700]
+                              : Colors.grey[600],
+                          size: 24,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          docType.replaceAll('_', ' '),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: hasDocument
+                                ? Colors.green[700]
+                                : Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

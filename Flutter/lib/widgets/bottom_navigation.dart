@@ -33,14 +33,14 @@ class BottomNavigation extends StatelessWidget {
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            activeIcon: Icon(Icons.add_circle),
-            label: 'Add Property',
+            icon: Icon(Icons.home_work_outlined),
+            activeIcon: Icon(Icons.home_work),
+            label: 'Properties',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_outlined),
-            activeIcon: Icon(Icons.analytics),
-            label: 'Valuate',
+            icon: Icon(Icons.gavel_outlined),
+            activeIcon: Icon(Icons.gavel),
+            label: 'Auctions',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),

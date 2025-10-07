@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -5,8 +6,11 @@ import '../providers/app_state.dart';
 import '../models/auction.dart';
 import '../models/bid.dart';
 import '../services/bid_service.dart';
+import '../services/auction_service.dart';
+import '../services/websocket_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
+import '../widgets/auction_timer.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
   final Auction auction;
@@ -18,7 +22,7 @@ class AuctionDetailsPage extends StatefulWidget {
 }
 
 class _AuctionDetailsPageState extends State<AuctionDetailsPage>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final _bidController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -26,7 +30,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   String? _errorMessage;
   String? _successMessage;
   List<Bid> _bids = [];
-  bool _isLoadingBids = false;
+
+  // Real-time updates
+  StreamSubscription<AuctionUpdate>? _auctionUpdateSubscription;
+  StreamSubscription<BidUpdate>? _bidUpdateSubscription;
+  Auction? _currentAuction;
+
+  // Fallback polling (only if WebSocket fails)
+  Timer? _fallbackTimer;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -35,6 +46,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   @override
   void initState() {
     super.initState();
+    _currentAuction = widget.auction;
+    WidgetsBinding.instance.addObserver(this);
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -52,31 +66,38 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
     _animationController.forward();
     _loadBids();
+    _startRealTimeUpdates();
   }
 
   @override
   void dispose() {
     _bidController.dispose();
     _animationController.dispose();
+    _auctionUpdateSubscription?.cancel();
+    _bidUpdateSubscription?.cancel();
+    _fallbackTimer?.cancel();
+    WebSocketService.instance.disconnect();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   Future<void> _loadBids() async {
-    setState(() {
-      _isLoadingBids = true;
-    });
-
     try {
-      print('Loading bids for auction ID: ${widget.auction.auctionId}');
-      final response = await BidService.getBids(widget.auction.auctionId);
+      print('Loading bids for auction ID: ${_currentAuction!.auctionId}');
+      final response = await BidService.getBids(_currentAuction!.auctionId);
       print(
         'Bid response: ${response.success}, data: ${response.data?.length}',
       );
       if (response.success && response.data != null) {
-        setState(() {
-          _bids = response.data!;
-        });
-        print('Loaded ${_bids.length} bids');
+        // Only update if the number of bids changed
+        if (response.data!.length != _bids.length) {
+          setState(() {
+            _bids = response.data!;
+          });
+          print('Loaded ${_bids.length} bids');
+        } else {
+          print('No new bids, skipping update');
+        }
       } else {
         print('Error loading bids: ${response.error}');
         setState(() {
@@ -88,10 +109,127 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       setState(() {
         _bids = [];
       });
-    } finally {
-      setState(() {
-        _isLoadingBids = false;
-      });
+    }
+  }
+
+  void _startRealTimeUpdates() {
+    // Connect to WebSocket for real-time updates
+    WebSocketService.instance.connect(_currentAuction!.auctionId.toString());
+
+    // Listen for auction updates (price, bid count, status changes)
+    _auctionUpdateSubscription = WebSocketService.instance.auctionUpdateStream
+        .listen(
+          (AuctionUpdate update) {
+            if (mounted) {
+              setState(() {
+                _currentAuction = update.auction;
+              });
+            }
+          },
+          onError: (error) {
+            print('Auction update error: $error');
+          },
+        );
+
+    // Listen for bid updates (new bids)
+    _bidUpdateSubscription = WebSocketService.instance.bidUpdateStream.listen(
+      (BidUpdate update) {
+        if (mounted) {
+          // Add new bid to the list
+          setState(() {
+            _bids.insert(0, update.bid); // Add to beginning for newest first
+          });
+        }
+      },
+      onError: (error) {
+        print('Bid update error: $error');
+      },
+    );
+
+    // Check if WebSocket connected after a short delay
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!WebSocketService.instance.isConnected) {
+        print('WebSocket failed to connect, starting fallback polling');
+        _startFallbackPolling();
+      }
+    });
+  }
+
+  void _refreshAuctionData() {
+    // Refresh the auction data when auction ends
+    final appState = context.read<AppState>();
+    appState.loadAuctions();
+
+    // Also refresh the current auction data
+    if (_currentAuction != null) {
+      // Find the updated auction in the global list
+      final updatedAuction = appState.auctions.firstWhere(
+        (auction) => auction.auctionId == _currentAuction!.auctionId,
+        orElse: () => _currentAuction!,
+      );
+
+      if (mounted) {
+        setState(() {
+          _currentAuction = updatedAuction;
+        });
+      }
+    }
+  }
+
+  void _startFallbackPolling() {
+    // Only start fallback if not already running
+    if (_fallbackTimer != null) return;
+
+    print('Starting fallback polling every 30 seconds');
+    _fallbackTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        _refreshAuctionDataFallback();
+      }
+    });
+  }
+
+  Future<void> _refreshAuctionDataFallback() async {
+    try {
+      final response = await AuctionService.getAuction(
+        _currentAuction!.auctionId,
+      );
+      if (response.success && response.data != null) {
+        if (mounted) {
+          final newAuction = response.data!;
+
+          // Only update if data actually changed
+          bool hasChanges = false;
+
+          if (newAuction.currentPrice != _currentAuction!.currentPrice) {
+            hasChanges = true;
+          }
+
+          if (newAuction.bidCount != _currentAuction!.bidCount) {
+            hasChanges = true;
+          }
+
+          if (newAuction.isActive != _currentAuction!.isActive) {
+            hasChanges = true;
+          }
+
+          if (newAuction.timeRemaining != _currentAuction!.timeRemaining) {
+            hasChanges = true;
+          }
+
+          if (hasChanges) {
+            setState(() {
+              _currentAuction = newAuction;
+            });
+
+            // Only load bids if bid count changed
+            if (newAuction.bidCount != _currentAuction!.bidCount) {
+              _loadBids();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Fallback polling error: $e');
     }
   }
 
@@ -106,11 +244,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
     try {
       final bidAmount = double.parse(_bidController.text);
-      print('Placing bid: $bidAmount for auction: ${widget.auction.auctionId}');
+      print(
+        'Placing bid: $bidAmount for auction: ${_currentAuction!.auctionId}',
+      );
 
       final response = await BidService.placeBid(
-        auctionId: widget.auction.auctionId,
+        auctionId: _currentAuction!.auctionId,
         bidAmount: bidAmount,
+        context: context,
       );
 
       print('Bid response: ${response.success}, error: ${response.error}');
@@ -120,7 +261,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           _successMessage = 'Bid placed successfully!';
           _bidController.clear();
         });
-        _loadBids(); // Refresh bids
+        // WebSocket will automatically update the UI with new data
       } else {
         setState(() {
           _errorMessage = response.error ?? 'Failed to place bid';
@@ -145,16 +286,21 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         opacity: _fadeAnimation,
         child: SlideTransition(
           position: _slideAnimation,
-          child: CustomScrollView(
-            slivers: [
-              _buildModernAppBar(),
-              _buildPropertyDetails(),
-              _buildBiddingSection(),
-              _buildBidHistory(),
-              _buildChartsSection(),
-              _buildLeaderboard(),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
+          child: RefreshIndicator(
+            onRefresh: () async {
+              _refreshAuctionData();
+            },
+            child: CustomScrollView(
+              slivers: [
+                _buildModernAppBar(),
+                _buildPropertyDetails(),
+                _buildBiddingSection(),
+                _buildLeaderboard(),
+                _buildChartsSection(),
+                _buildPropertyDescription(),
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
+            ),
           ),
         ),
       ),
@@ -172,9 +318,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           fit: StackFit.expand,
           children: [
             // Property Image
-            if (widget.auction.property?.imageUrl.isNotEmpty == true)
+            if (_currentAuction!.property?.imageUrl.isNotEmpty == true)
               Image.network(
-                widget.auction.property!.imageUrl,
+                _currentAuction!.property!.imageUrl,
                 fit: BoxFit.cover,
               )
             else
@@ -203,7 +349,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.auction.property?.name ?? 'Property',
+                    _currentAuction!.property?.name ?? 'Property',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -212,7 +358,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.auction.property?.location ?? '',
+                    _currentAuction!.property?.location ?? '',
                     style: const TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
@@ -222,13 +368,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: widget.auction.isActive
+                      color: _currentAuction!.isActive
                           ? Colors.green
                           : Colors.orange,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      widget.auction.isActive ? 'LIVE AUCTION' : 'ENDED',
+                      _currentAuction!.isActive ? 'LIVE AUCTION' : 'ENDED',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -267,10 +413,10 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 ),
                 const SizedBox(height: 16),
 
-                if (widget.auction.property != null) ...[
+                if (_currentAuction!.property != null) ...[
                   _buildDetailRow(
                     'Description',
-                    widget.auction.property!.description,
+                    _currentAuction!.property!.description,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -278,13 +424,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       Expanded(
                         child: _buildDetailRow(
                           'Bedrooms',
-                          '${widget.auction.property!.bedrooms}',
+                          '${_currentAuction!.property!.bedrooms}',
                         ),
                       ),
                       Expanded(
                         child: _buildDetailRow(
                           'Bathrooms',
-                          '${widget.auction.property!.bathrooms}',
+                          '${_currentAuction!.property!.bathrooms}',
                         ),
                       ),
                     ],
@@ -295,13 +441,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       Expanded(
                         child: _buildDetailRow(
                           'Square Feet',
-                          '${widget.auction.property!.squareFeet}',
+                          '${_currentAuction!.property!.squareFeet}',
                         ),
                       ),
                       Expanded(
                         child: _buildDetailRow(
                           'Year Built',
-                          '${widget.auction.property!.yearBuilt}',
+                          '${_currentAuction!.property!.yearBuilt}',
                         ),
                       ),
                     ],
@@ -309,7 +455,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   const SizedBox(height: 12),
                   _buildDetailRow(
                     'Category',
-                    widget.auction.property!.category,
+                    _currentAuction!.property!.category,
                   ),
                 ],
               ],
@@ -375,7 +521,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '${widget.auction.bidCount} bids',
+                        '${_currentAuction!.bidCount} bids',
                         style: const TextStyle(
                           color: Color(0xFF2E7D32),
                           fontWeight: FontWeight.w600,
@@ -388,7 +534,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
                 Center(
                   child: Text(
-                    '\$${widget.auction.currentPrice.toStringAsFixed(0)}',
+                    '\$${_currentAuction!.currentPrice.toStringAsFixed(0)}',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF2E7D32),
@@ -399,18 +545,18 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
                 Center(
                   child: Text(
-                    'Starting Price: \$${widget.auction.startAt.toStringAsFixed(0)}',
+                    'Starting Price: \$${_currentAuction!.startAt.toStringAsFixed(0)}',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
                   ),
                 ),
 
-                if (widget.auction.buyNowPrice != null) ...[
+                if (_currentAuction!.buyNowPrice != null) ...[
                   const SizedBox(height: 8),
                   Center(
                     child: Text(
-                      'Buy Now: \$${widget.auction.buyNowPrice!.toStringAsFixed(0)}',
+                      'Buy Now: \$${_currentAuction!.buyNowPrice!.toStringAsFixed(0)}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.orange[700],
                         fontWeight: FontWeight.bold,
@@ -425,12 +571,12 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: widget.auction.isActive
+                    color: _currentAuction!.isActive
                         ? Colors.green[50]
                         : Colors.orange[50],
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: widget.auction.isActive
+                      color: _currentAuction!.isActive
                           ? Colors.green[200]!
                           : Colors.orange[200]!,
                     ),
@@ -440,23 +586,41 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     children: [
                       Icon(
                         Icons.access_time,
-                        color: widget.auction.isActive
+                        color: _currentAuction!.isActive
                             ? Colors.green[700]
                             : Colors.orange[700],
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        widget.auction.isActive
-                            ? 'Ends in ${widget.auction.timeRemaining}'
-                            : 'Auction Ended',
-                        style: TextStyle(
-                          color: widget.auction.isActive
-                              ? Colors.green[700]
-                              : Colors.orange[700],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
+                      _currentAuction!.isActive
+                          ? Row(
+                              children: [
+                                Text(
+                                  'Ends in ',
+                                  style: TextStyle(
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                AuctionTimer(
+                                  auction: _currentAuction!,
+                                  textStyle: TextStyle(
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                  onAuctionEnded: _refreshAuctionData,
+                                ),
+                              ],
+                            )
+                          : Text(
+                              'Auction Ended',
+                              style: TextStyle(
+                                color: Colors.orange[700],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
                     ],
                   ),
                 ),
@@ -464,7 +628,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 const SizedBox(height: 24),
 
                 // Bidding form
-                if (widget.auction.isActive) ...[
+                if (_currentAuction!.isActive) ...[
                   Text(
                     'Place a Bid',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -554,7 +718,52 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         );
                       }
 
-                      // Logged in user can bid
+                      // Check if user owns this property
+                      final userOwnsProperty = appState.userProperties.any(
+                        (property) =>
+                            property.propertyId == _currentAuction!.propertyId,
+                      );
+
+                      if (userOwnsProperty) {
+                        return Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red[200]!),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.block,
+                                color: Colors.red[700],
+                                size: 32,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Cannot bid on your own property',
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'You cannot place bids on properties you own',
+                                style: TextStyle(
+                                  color: Colors.red[600],
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      // Logged in user can bid (and doesn't own the property)
                       return Form(
                         key: _formKey,
                         child: Column(
@@ -570,7 +779,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                 final bidAmount = double.tryParse(value!);
                                 if (bidAmount == null)
                                   return 'Please enter a valid number';
-                                if (bidAmount <= widget.auction.currentPrice) {
+                                if (bidAmount <=
+                                    _currentAuction!.currentPrice) {
                                   return 'Bid must be higher than current price';
                                 }
                                 return null;
@@ -592,97 +802,6 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBidHistory() {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bid History',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-
-                if (_isLoadingBids)
-                  const Center(child: CircularProgressIndicator())
-                else if (_bids.isEmpty)
-                  _buildEmptyState(
-                    'No Bids Yet',
-                    'Be the first to place a bid on this property',
-                    Icons.gavel_outlined,
-                  )
-                else
-                  ..._bids.take(10).map((bid) => _buildBidItem(bid)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBidItem(Bid bid) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: const Color(0xFF2E7D32).withOpacity(0.1),
-            child: Text(
-              _getBidderInitial(bid),
-              style: const TextStyle(
-                color: Color(0xFF2E7D32),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getBidderName(bid),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  _formatDateTime(bid.createdAt),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            '\$${bid.bidAmount.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Color(0xFF2E7D32),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -935,14 +1054,6 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     }
   }
 
-  String _getBidderInitial(Bid bid) {
-    final firstName = bid.bidder?.firstName;
-    if (firstName != null && firstName.isNotEmpty) {
-      return firstName[0].toUpperCase();
-    }
-    return 'B';
-  }
-
   String _getBidderName(Bid bid) {
     final firstName = bid.bidder?.firstName;
     final lastName = bid.bidder?.lastName;
@@ -950,5 +1061,348 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       return '$firstName $lastName';
     }
     return 'Bidder #${bid.bidderId}';
+  }
+
+  Widget _buildPropertyDescription() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.description,
+                      color: const Color(0xFF2E7D32),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Property Description',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2E7D32),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Property Overview
+                _buildDescriptionSection(
+                  'Overview',
+                  _currentAuction?.property?.description ??
+                      'No description available.',
+                  Icons.info_outline,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Property Details Grid
+                _buildPropertyDetailsGrid(),
+
+                const SizedBox(height: 16),
+
+                // Location & Amenities
+                _buildLocationSection(),
+
+                const SizedBox(height: 16),
+
+                // Investment Highlights
+                _buildInvestmentHighlights(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDescriptionSection(String title, String content, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: const Color(0xFF2E7D32)),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF2E7D32),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            height: 1.6,
+            color: Colors.grey[700],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPropertyDetailsGrid() {
+    final property = _currentAuction?.property;
+    if (property == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.home, size: 20, color: const Color(0xFF2E7D32)),
+            const SizedBox(width: 8),
+            Text(
+              'Property Details',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF2E7D32),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Column(
+          children: [
+            _buildDetailItem('Bedrooms', '${property.bedrooms}', Icons.bed),
+            const SizedBox(height: 8),
+            _buildDetailItem(
+              'Bathrooms',
+              '${property.bathrooms}',
+              Icons.bathtub,
+            ),
+            const SizedBox(height: 8),
+            _buildDetailItem(
+              'Square Feet',
+              '${property.squareFeet}',
+              Icons.square_foot,
+            ),
+            const SizedBox(height: 8),
+            _buildDetailItem(
+              'Year Built',
+              '${property.yearBuilt}',
+              Icons.calendar_today,
+            ),
+            const SizedBox(height: 8),
+            _buildDetailItem(
+              'Type',
+              property.type.toString().split('.').last.toUpperCase(),
+              Icons.category,
+            ),
+            const SizedBox(height: 8),
+            _buildDetailItem('Category', property.category, Icons.label),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFF2E7D32)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2E7D32),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationSection() {
+    final property = _currentAuction?.property;
+    if (property == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.location_on, size: 20, color: const Color(0xFF2E7D32)),
+            const SizedBox(width: 8),
+            Text(
+              'Location & Accessibility',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF2E7D32),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Address',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                property.location,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2E7D32),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This property is strategically located in a prime area with excellent connectivity to major business districts, shopping centers, and educational institutions. The location offers great potential for both residential and investment purposes.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[700],
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInvestmentHighlights() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.trending_up, size: 20, color: const Color(0xFF2E7D32)),
+            const SizedBox(width: 8),
+            Text(
+              'Investment Highlights',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF2E7D32),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green[50]!, Colors.green[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green[200]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Why This Property?',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2E7D32),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ..._getInvestmentHighlights().map(
+                (highlight) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: Colors.green[600],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          highlight,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[700], height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<String> _getInvestmentHighlights() {
+    final property = _currentAuction?.property;
+    if (property == null) return [];
+
+    List<String> highlights = [
+      'Prime location with excellent growth potential',
+      'Modern construction with quality finishes',
+      'Strong rental yield potential',
+      'Close proximity to major amenities and transport links',
+      'Verified property with all legal clearances',
+    ];
+
+    if (property.isVerified) {
+      highlights.insert(0, 'Verified property with complete documentation');
+    }
+
+    if (property.bedrooms >= 3) {
+      highlights.add(
+        'Spacious ${property.bedrooms}-bedroom layout ideal for families',
+      );
+    }
+
+    if (property.yearBuilt >= 2020) {
+      highlights.add('New construction with modern amenities');
+    }
+
+    return highlights;
   }
 }
