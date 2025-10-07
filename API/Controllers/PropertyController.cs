@@ -106,7 +106,6 @@ namespace PropertyFlipperAPI.Controllers
                 Name = propertyDto.Name,
                 Description = propertyDto.Description,
                 Location = propertyDto.Location,
-                StartingPrice = propertyDto.StartingPrice,
                 Type = propertyType,
                 Bedrooms = propertyDto.Bedrooms,
                 Bathrooms = propertyDto.Bathrooms,
@@ -114,8 +113,7 @@ namespace PropertyFlipperAPI.Controllers
                 YearBuilt = propertyDto.YearBuilt,
                 Category = propertyDto.Category,
                 ImageUrl = propertyDto.ImageUrl ?? "",
-                IsVerified = false, // Will be verified by admin
-                IsEditable = true, // Can be edited until verified
+                Status = PropertyStatus.NotApproved, // Default status
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -155,7 +153,6 @@ namespace PropertyFlipperAPI.Controllers
                 Name = propertyDto.Name,
                 Description = propertyDto.Description,
                 Location = propertyDto.Location,
-                StartingPrice = propertyDto.StartingPrice,
                 Type = propertyType,
                 Bedrooms = propertyDto.Bedrooms,
                 Bathrooms = propertyDto.Bathrooms,
@@ -163,8 +160,7 @@ namespace PropertyFlipperAPI.Controllers
                 YearBuilt = propertyDto.YearBuilt,
                 Category = propertyDto.Category,
                 ImageUrl = propertyDto.ImageUrl ?? "",
-                IsVerified = false, // Not verified because no documents uploaded
-                IsEditable = true, // Can be edited until verified
+                Status = PropertyStatus.NotApproved, // Default status
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -184,14 +180,14 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest();
             }
 
-            // Check if property is editable (only before verification)
+            // Check if property is editable (only before approval)
             var existingProperty = await _context.Properties.FindAsync(id);
             if (existingProperty == null)
                 return NotFound();
 
-            if (!existingProperty.IsEditable)
+            if (existingProperty.Status == PropertyStatus.Approved)
             {
-                return BadRequest(new { message = "Property cannot be edited after verification" });
+                return BadRequest(new { message = "Property cannot be edited after approval" });
             }
 
             // Check if user owns the property (unless admin)
@@ -259,10 +255,21 @@ namespace PropertyFlipperAPI.Controllers
                 return NotFound();
             }
 
-            property.IsApproved = true;
+            // Check if property has documents before approval
+            var hasDocuments = await _context.PropertyDocs
+                .AnyAsync(d => d.PropertyId == id);
+            
+            if (!hasDocuments)
+            {
+                return BadRequest(new { message = "Property must have documents before approval" });
+            }
+
+            // Approve property
+            property.Status = PropertyStatus.Approved;
+            property.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new { message = "Property approved successfully" });
         }
 
         // POST: api/Property/{id}/documents
@@ -281,6 +288,13 @@ namespace PropertyFlipperAPI.Controllers
 
             if (property.OwnerId != accountId)
                 return Forbid("You can only upload documents for your own properties");
+
+            // Change status to Pending when first document is uploaded
+            if (property.Status == PropertyStatus.NotApproved)
+            {
+                property.Status = PropertyStatus.Pending;
+                property.UpdatedAt = DateTime.UtcNow;
+            }
 
             // Check if document type already exists for this property
             var existingDoc = await _context.PropertyDocs
@@ -325,23 +339,15 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(documents);
         }
 
-        // PUT: api/Property/{id}/verify
+        // PUT: api/Property/{id}/verify (DEPRECATED - use /approve instead)
+        // This endpoint is kept for backward compatibility but redirects to approve
         [HttpPut("{id}/verify")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<ActionResult> VerifyProperty(long id)
+        public async Task<IActionResult> VerifyProperty(long id)
         {
-            var property = await _context.Properties.FindAsync(id);
-            if (property == null)
-                return NotFound();
-
-            // Verify property and make it non-editable
-            property.IsVerified = true;
-            property.IsEditable = false;
-            property.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Property verified successfully" });
+            // Redirect to ApproveProperty method
+            return await ApproveProperty((int)id);
         }
 
         private bool PropertyExists(int id)

@@ -5,6 +5,7 @@ import '../services/auction_service.dart';
 import '../services/property_service.dart';
 import '../services/bid_service.dart';
 import '../services/websocket_service.dart';
+import '../services/dashboard_service.dart';
 import '../models/user.dart';
 import '../models/auction.dart';
 import '../models/property.dart';
@@ -28,21 +29,25 @@ class AppState extends ChangeNotifier {
   List<Auction> _auctions = [];
   List<Property> _properties = [];
   List<Bid> _userBids = [];
+  DashboardStats? _dashboardStats;
 
   // Loading states
   bool _loadingAuctions = false;
   bool _loadingProperties = false;
   bool _loadingBids = false;
+  bool _loadingStats = false;
   bool _isRefreshing = false;
 
   // Getters
   List<Auction> get auctions => _auctions;
   List<Property> get properties => _properties;
   List<Bid> get userBids => _userBids;
+  DashboardStats? get dashboardStats => _dashboardStats;
 
   bool get loadingAuctions => _loadingAuctions;
   bool get loadingProperties => _loadingProperties;
   bool get loadingBids => _loadingBids;
+  bool get loadingStats => _loadingStats;
   bool get isRefreshing => _isRefreshing;
 
   // Featured auctions (top 2 by bid count)
@@ -52,17 +57,33 @@ class AppState extends ChangeNotifier {
     return sorted.take(2).toList();
   }
 
-  // Active auctions
+  // Active auctions (started and not ended)
   List<Auction> get activeAuctions {
     return _auctions.where((auction) => auction.isActive).toList();
   }
 
+  // Upcoming auctions (approved but not started yet)
+  List<Auction> get upcomingAuctions {
+    return _auctions.where((auction) => auction.isUpcoming).toList();
+  }
+
   // User's properties
   List<Property> get userProperties {
-    if (user == null) return [];
-    return _properties
+    if (user == null) {
+      print('⚠️ userProperties: No user logged in');
+      return [];
+    }
+
+    final filtered = _properties
         .where((property) => property.ownerId == user!.accountId)
         .toList();
+
+    print('🏠 userProperties getter:');
+    print('  User ID: ${user!.accountId}');
+    print('  Total properties: ${_properties.length}');
+    print('  Filtered (user owns): ${filtered.length}');
+
+    return filtered;
   }
 
   // User's auctions
@@ -153,15 +174,21 @@ class AppState extends ChangeNotifier {
       (a) => a.auctionId == updatedAuction.auctionId,
     );
     if (existingIndex != -1) {
+      print(
+        '🔄 Updating auction ${updatedAuction.auctionId}: Price=\$${updatedAuction.currentPrice}, Bids=${updatedAuction.bidCount}',
+      );
       _auctions[existingIndex] = updatedAuction;
       notifyListeners();
+    } else {
+      print('⚠️ Auction ${updatedAuction.auctionId} not found in local list');
     }
   }
 
   void _updateBidCount(int auctionId) {
     final existingIndex = _auctions.indexWhere((a) => a.auctionId == auctionId);
     if (existingIndex != -1) {
-      // Increment bid count
+      print('💰 Bid count updated for auction $auctionId');
+      // Just increment bid count - the auction update will handle price
       _auctions[existingIndex] = _auctions[existingIndex].copyWith(
         bidCount: _auctions[existingIndex].bidCount + 1,
       );
@@ -219,11 +246,32 @@ class AppState extends ChangeNotifier {
   Future<void> loadInitialData() async {
     print('loadInitialData called');
     // Load public data for all users (freemium experience)
-    await Future.wait([loadAuctions(), loadProperties()]);
+    await Future.wait([loadAuctions(), loadProperties(), loadDashboardStats()]);
 
     // Load user-specific data only if logged in
     if (isLoggedIn) {
       await loadUserBids();
+    }
+  }
+
+  Future<void> loadDashboardStats() async {
+    _loadingStats = true;
+    notifyListeners();
+
+    try {
+      print('Loading dashboard stats...');
+      final response = await DashboardService.getPublicStats();
+      if (response.success && response.data != null) {
+        _dashboardStats = response.data;
+        print('Loaded dashboard stats successfully');
+      } else {
+        print('Error loading stats: ${response.error}');
+      }
+    } catch (e) {
+      print('Error loading dashboard stats: $e');
+    } finally {
+      _loadingStats = false;
+      notifyListeners();
     }
   }
 
@@ -268,9 +316,9 @@ class AppState extends ChangeNotifier {
       // Add a small delay to ensure API is ready
       await Future.delayed(const Duration(milliseconds: 500));
 
-      // Use public endpoint for non-authenticated users, full endpoint for authenticated users
+      // Use my-properties endpoint for logged-in users, public endpoint for non-authenticated users
       final response = isLoggedIn
-          ? await PropertyService.getAllProperties()
+          ? await PropertyService.getMyProperties()
           : await PropertyService.getProperties();
 
       print(
@@ -279,6 +327,12 @@ class AppState extends ChangeNotifier {
       if (response.success && response.data != null) {
         _properties = response.data!;
         print('Loaded ${_properties.length} properties');
+        // Debug: Log each property
+        for (var prop in _properties) {
+          print(
+            '  Property: ${prop.name} (ID: ${prop.propertyId}, Owner: ${prop.ownerId})',
+          );
+        }
       } else {
         print('Error loading properties: ${response.error}');
         _properties = [];
@@ -334,7 +388,6 @@ class AppState extends ChangeNotifier {
     required String phoneNumber,
     required String email,
     required String password,
-    required List<Map<String, String>> kycDocuments,
   }) async {
     final response = await _authService.signup(
       firstName: firstName,
@@ -342,9 +395,47 @@ class AppState extends ChangeNotifier {
       phoneNumber: phoneNumber,
       email: email,
       password: password,
-      kycDocuments: kycDocuments,
     );
     return response.success;
+  }
+
+  Future<String?> uploadKycFile({
+    required String filePath,
+    required String docType,
+  }) async {
+    final response = await _authService.uploadKycFile(
+      filePath: filePath,
+      docType: docType,
+    );
+    return response.success ? response.data : null;
+  }
+
+  Future<bool> uploadKycDocuments({
+    required List<Map<String, String>> kycDocuments,
+  }) async {
+    final response = await _authService.uploadKycDocuments(
+      kycDocuments: kycDocuments,
+    );
+
+    // Refresh user profile to get updated verification status
+    if (response.success) {
+      await refreshUserProfile();
+    }
+
+    return response.success;
+  }
+
+  Future<void> refreshUserProfile() async {
+    if (!isLoggedIn) return;
+
+    try {
+      final response = await _authService.getCurrentUser();
+      if (response.success) {
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error refreshing user profile: $e');
+    }
   }
 
   Future<void> logout() async {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
+using PropertyFlipperAPI.Models;
 using PropertyFlipperAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
 
@@ -17,6 +18,82 @@ namespace PropertyFlipperAPI.Controllers
             _context = context;
         }
 
+        // GET: api/Dashboard/public-stats (No auth required)
+        [HttpGet("public-stats")]
+        public async Task<ActionResult<object>> GetPublicStats()
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                var oneWeekAgo = now.AddDays(-7);
+                var today = now.Date;
+
+                var totalUsers = await _context.Accounts.Where(a => a.Type == Models.AccountType.User).CountAsync();
+                var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
+                var totalBids = await _context.Bids.CountAsync();
+                var bidsLastWeek = await _context.Bids.Where(b => b.CreatedAt >= oneWeekAgo).CountAsync();
+                var bidsToday = await _context.Bids.Where(b => b.CreatedAt >= today).CountAsync();
+                
+                // Total auction volume (sum of all current prices)
+                var totalVolume = await _context.Auctions
+                    .Where(a => a.Status == "Active")
+                    .SumAsync(a => (decimal?)a.CurrentPrice) ?? 0;
+
+                // Average bid per auction
+                var avgBidsPerAuction = activeAuctions > 0 
+                    ? Math.Round((double)totalBids / activeAuctions, 1)
+                    : 0;
+
+                // Auctions ending today
+                var endOfDay = today.AddDays(1);
+                var allActiveAuctions = await _context.Auctions
+                    .Where(a => a.Status == "Active")
+                    .ToListAsync();
+                
+                // Calculate auctions ending today (EndAt = StartAt + Duration)
+                var auctionsEndingToday = allActiveAuctions
+                    .Count(a => 
+                    {
+                        var endAt = a.StartAt.AddHours(a.Duration);
+                        return endAt >= today && endAt < endOfDay;
+                    });
+
+                // Total properties
+                var totalProperties = await _context.Properties.CountAsync();
+
+                var stats = new
+                {
+                    TotalUsers = totalUsers,
+                    ActiveAuctions = activeAuctions,
+                    TotalBids = totalBids,
+                    BidsLastWeek = bidsLastWeek,
+                    BidsToday = bidsToday,
+                    TotalVolume = totalVolume,
+                    AverageBidsPerAuction = avgBidsPerAuction,
+                    AuctionsEndingToday = auctionsEndingToday,
+                    TotalProperties = totalProperties
+                };
+
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                return Ok(new
+                {
+                    TotalUsers = 0,
+                    ActiveAuctions = 0,
+                    TotalBids = 0,
+                    BidsLastWeek = 0,
+                    BidsToday = 0,
+                    TotalVolume = 0.0,
+                    AverageBidsPerAuction = 0.0,
+                    AuctionsEndingToday = 0,
+                    TotalProperties = 0,
+                    Error = ex.Message
+                });
+            }
+        }
+
         // GET: api/Dashboard/stats
         [HttpGet("stats")]
         [Authorize]
@@ -30,8 +107,8 @@ namespace PropertyFlipperAPI.Controllers
                 var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
                 var totalBids = await _context.Bids.CountAsync();
                 var totalAccounts = await _context.Accounts.CountAsync();
-                var verifiedAccounts = await _context.Accounts.Where(a => a.IsVerified).CountAsync();
-                var propertiesPendingApproval = await _context.Properties.Where(p => !p.IsApproved).CountAsync();
+                var verifiedAccounts = await _context.Accounts.Where(a => a.Status == VerificationStatus.Verified).CountAsync();
+                var propertiesPendingApproval = await _context.Properties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
 
                 var stats = new
                 {

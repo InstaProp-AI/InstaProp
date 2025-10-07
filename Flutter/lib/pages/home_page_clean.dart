@@ -785,7 +785,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   ).textTheme.bodySmall?.copyWith(fontSize: 10),
                                 ),
                                 Text(
-                                  '\$${auction.startAt.toStringAsFixed(0)}',
+                                  '\$${auction.startPrice.toStringAsFixed(0)}',
                                   style: Theme.of(context).textTheme.titleSmall
                                       ?.copyWith(
                                         fontWeight: FontWeight.w500,
@@ -1012,13 +1012,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   double _calculateAveragePropertyPrice(AppState appState) {
     if (appState.properties.isEmpty) return 0.0;
 
-    final totalPrice = appState.properties.fold<double>(
+    // Calculate based on auction prices instead
+    final totalPrice = appState.auctions.fold<double>(
       0.0,
-      (sum, property) => sum + property.startingPrice,
+      (sum, auction) => sum + auction.startPrice,
     );
 
-    return (totalPrice / appState.properties.length) /
-        1000; // Convert to thousands
+    return appState.auctions.isNotEmpty
+        ? (totalPrice / appState.auctions.length) /
+              1000 // Convert to thousands
+        : 0.0;
   }
 
   int _getAuctionsEndingToday(AppState appState) {
@@ -1040,4 +1043,3 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return highestCurrentPrice / 1000; // Convert to thousands
   }
 }
-

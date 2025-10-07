@@ -28,7 +28,8 @@ namespace PropertyFlipperAPI.Models
         [Required]
         public string HashedPassword { get; set; } = string.Empty;
 
-        public bool IsVerified { get; set; } = false;
+        [Required]
+        public VerificationStatus Status { get; set; } = VerificationStatus.NotVerified;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

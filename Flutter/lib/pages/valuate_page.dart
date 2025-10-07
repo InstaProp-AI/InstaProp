@@ -99,6 +99,32 @@ class _ValuatePageState extends State<ValuatePage> {
     });
   }
 
+  Widget _buildFeatureChip(IconData icon, String label, MaterialColor color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color[700]),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color[700],
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
@@ -161,6 +187,18 @@ class _ValuatePageState extends State<ValuatePage> {
 
           const SizedBox(height: 32),
 
+          // Debug logging
+          Builder(
+            builder: (context) {
+              print('📊 Valuate Page Debug:');
+              print('  Is Logged In: ${appState.isLoggedIn}');
+              print('  Total Properties: ${appState.properties.length}');
+              print('  User ID: ${appState.user?.accountId}');
+              print('  User Properties: ${appState.userProperties.length}');
+              return const SizedBox.shrink();
+            },
+          ),
+
           // User Properties Section
           if (appState.isLoggedIn && appState.userProperties.isNotEmpty) ...[
             Text(
@@ -173,37 +211,125 @@ class _ValuatePageState extends State<ValuatePage> {
 
             ...appState.userProperties
                 .map(
-                  (property) => Card(
+                  (property) => Container(
                     margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.white, Colors.green[50]!],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green[200]!, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: ListTile(
-                      leading: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: const Color(
-                          0xFF2E7D32,
-                        ).withOpacity(0.1),
-                        child: const Icon(Icons.home, color: Color(0xFF2E7D32)),
+                      contentPadding: const EdgeInsets.all(16),
+                      leading: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.green[600]!, Colors.green[400]!],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.home,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                       title: Text(
                         property.name,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(property.location),
                           const SizedBox(height: 4),
-                          Text(
-                            '${property.bedrooms} bed • ${property.bathrooms} bath • ${property.squareFeet} sqft',
-                            style: TextStyle(
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 14,
                               color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  property.location,
+                                  style: TextStyle(color: Colors.grey[700]),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              _buildFeatureChip(
+                                Icons.bed,
+                                '${property.bedrooms} bed',
+                                Colors.blue,
+                              ),
+                              _buildFeatureChip(
+                                Icons.bathtub,
+                                '${property.bathrooms} bath',
+                                Colors.purple,
+                              ),
+                              _buildFeatureChip(
+                                Icons.square_foot,
+                                '${property.squareFeet} sqft',
+                                Colors.orange,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      trailing: ElevatedButton(
+                      trailing: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue[600]!, Colors.blue[400]!],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton.icon(
                         onPressed: () => _valuateProperty(property),
-                        child: const Text('Valuate'),
+                          icon: const Icon(Icons.analytics, size: 18),
+                          label: const Text('Valuate'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -222,39 +348,94 @@ class _ValuatePageState extends State<ValuatePage> {
           ),
           const SizedBox(height: 16),
 
-          Card(
-            child: Padding(
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.purple[50]!, Colors.purple[100]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.purple[300]!, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.purple.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  Icon(Icons.add_home, size: 48, color: Colors.green[700]),
-                  const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.purple[600]!, Colors.purple[400]!],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.purple.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.add_home,
+                    size: 32,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
                   Text(
                     'Don\'t see your property?',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                    ),
+                    color: Colors.purple[900],
+                  ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Enter property details manually for instant valuation',
                     style: Theme.of(
                       context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.purple[700]),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton.icon(
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.purple[600]!, Colors.purple[400]!],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.purple.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
                     onPressed: () => setState(() => _showManualForm = true),
                     icon: const Icon(Icons.edit),
                     label: const Text('Enter Property Details'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                    ),
                     ),
                   ),
                 ],
-              ),
             ),
           ),
 

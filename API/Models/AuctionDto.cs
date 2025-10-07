@@ -9,9 +9,10 @@ namespace PropertyFlipperAPI.Models
         public long AuctionId { get; set; }
         public long PropertyId { get; set; }
         public Property Property { get; set; }
-        public decimal StartAt { get; set; }
+        public decimal StartPrice { get; set; }
         public decimal CurrentPrice { get; set; }
-        public DateTime EndAt { get; set; }
+        public DateTime StartAt { get; set; }
+        public DateTime EndAt { get; set; } // Calculated: StartAt + Duration
         public int Duration { get; set; }
         public decimal? BuyNowPrice { get; set; }
         public int BidCount { get; set; }
@@ -27,9 +28,10 @@ namespace PropertyFlipperAPI.Models
                 AuctionId = auction.AuctionId,
                 PropertyId = auction.PropertyId,
                 Property = auction.Property,
-                StartAt = auction.StartAt,
+                StartPrice = auction.StartPrice,
                 CurrentPrice = auction.CurrentPrice, // Use database value
-                EndAt = auction.EndAt,
+                StartAt = auction.StartAt,
+                EndAt = auction.StartAt.AddHours(auction.Duration), // Calculated
                 Duration = auction.Duration,
                 BuyNowPrice = auction.BuyNowPrice,
                 BidCount = auction.BidCount, // Use database value

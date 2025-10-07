@@ -5,9 +5,9 @@ class Auction {
   final int auctionId;
   final int propertyId;
   final Property? property;
-  final double startAt;
+  final double startPrice;
   final double currentPrice;
-  final DateTime endAt;
+  final DateTime startAt;
   final int duration;
   final double? buyNowPrice;
   final int bidCount;
@@ -19,9 +19,9 @@ class Auction {
     required this.auctionId,
     required this.propertyId,
     this.property,
-    required this.startAt,
+    required this.startPrice,
     required this.currentPrice,
-    required this.endAt,
+    required this.startAt,
     required this.duration,
     this.buyNowPrice,
     required this.bidCount,
@@ -30,18 +30,33 @@ class Auction {
     this.bids = const [],
   });
 
+  // Calculated property: EndAt = StartAt + Duration
+  DateTime get endAt => startAt.add(Duration(hours: duration));
+
   factory Auction.fromJson(Map<String, dynamic> json) {
+    Property? parseProperty() {
+      try {
+        if (json['property'] != null || json['Property'] != null) {
+          final propertyData = json['property'] ?? json['Property'];
+          if (propertyData is Map<String, dynamic>) {
+            return Property.fromJson(propertyData);
+          }
+        }
+      } catch (e) {
+        print('⚠️ Error parsing property in auction: $e');
+      }
+      return null;
+    }
+
     return Auction(
       auctionId: json['auctionId'] ?? json['AuctionId'] ?? 0,
       propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
-      property: json['property'] != null || json['Property'] != null
-          ? Property.fromJson(json['property'] ?? json['Property'])
-          : null,
-      startAt: (json['startAt'] ?? json['StartAt'] ?? 0).toDouble(),
+      property: parseProperty(),
+      startPrice: (json['startPrice'] ?? json['StartPrice'] ?? 0).toDouble(),
       currentPrice: (json['currentPrice'] ?? json['CurrentPrice'] ?? 0)
           .toDouble(),
-      endAt: DateTime.parse(
-        json['endAt'] ?? json['EndAt'] ?? DateTime.now().toIso8601String(),
+      startAt: DateTime.parse(
+        json['startAt'] ?? json['StartAt'] ?? DateTime.now().toIso8601String(),
       ),
       duration: json['duration'] ?? json['Duration'] ?? 0,
       buyNowPrice: json['buyNowPrice'] != null || json['BuyNowPrice'] != null
@@ -65,9 +80,9 @@ class Auction {
       'auctionId': auctionId,
       'propertyId': propertyId,
       'property': property?.toJson(),
-      'startAt': startAt,
+      'startPrice': startPrice,
       'currentPrice': currentPrice,
-      'endAt': endAt.toIso8601String(),
+      'startAt': startAt.toIso8601String(),
       'duration': duration,
       'buyNowPrice': buyNowPrice,
       'bidCount': bidCount,
@@ -77,12 +92,37 @@ class Auction {
     };
   }
 
-  bool get isActive => status == 'Active' && DateTime.now().isBefore(endAt);
+  // Auction is active only if: status is Active, has started, and hasn't ended
+  bool get isActive =>
+      status == 'Active' &&
+      DateTime.now().isAfter(startAt) &&
+      DateTime.now().isBefore(endAt);
+
+  // Auction is upcoming if: approved and hasn't started yet
+  bool get isUpcoming =>
+      (status == 'Active' || status == 'Approved') &&
+      DateTime.now().isBefore(startAt);
 
   bool get isEnded => DateTime.now().isAfter(endAt);
 
   String get timeRemaining {
     if (isEnded) return 'Ended';
+
+    // For upcoming auctions, show time until start
+    if (isUpcoming) {
+      final untilStart = startAt.difference(DateTime.now());
+      if (untilStart.inDays > 0) {
+        return 'Starts in ${untilStart.inDays}d ${untilStart.inHours % 24}h';
+      } else if (untilStart.inHours > 0) {
+        return 'Starts in ${untilStart.inHours}h ${untilStart.inMinutes % 60}m';
+      } else if (untilStart.inMinutes > 0) {
+        return 'Starts in ${untilStart.inMinutes}m';
+      } else {
+        return 'Starting soon';
+      }
+    }
+
+    // For active auctions, show time until end
     final remaining = endAt.difference(DateTime.now());
 
     if (remaining.inDays > 0) {
@@ -100,9 +140,9 @@ class Auction {
     int? auctionId,
     int? propertyId,
     Property? property,
-    double? startAt,
+    double? startPrice,
     double? currentPrice,
-    DateTime? endAt,
+    DateTime? startAt,
     int? duration,
     double? buyNowPrice,
     int? bidCount,
@@ -114,9 +154,9 @@ class Auction {
       auctionId: auctionId ?? this.auctionId,
       propertyId: propertyId ?? this.propertyId,
       property: property ?? this.property,
-      startAt: startAt ?? this.startAt,
+      startPrice: startPrice ?? this.startPrice,
       currentPrice: currentPrice ?? this.currentPrice,
-      endAt: endAt ?? this.endAt,
+      startAt: startAt ?? this.startAt,
       duration: duration ?? this.duration,
       buyNowPrice: buyNowPrice ?? this.buyNowPrice,
       bidCount: bidCount ?? this.bidCount,

@@ -1,5 +1,7 @@
 enum AccountType { user, developer, admin }
 
+enum VerificationStatus { notVerified, pending, verified }
+
 class KycDocument {
   final String docType;
   final String imageUrl;
@@ -39,7 +41,7 @@ class Account {
   final String phoneNumber;
   final String email;
   final AccountType type;
-  final bool isVerified;
+  final VerificationStatus status;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final List<KycDocument> kycDocuments;
@@ -51,7 +53,7 @@ class Account {
     required this.phoneNumber,
     required this.email,
     required this.type,
-    required this.isVerified,
+    required this.status,
     required this.createdAt,
     this.updatedAt,
     this.kycDocuments = const [],
@@ -70,7 +72,7 @@ class Account {
             (json['type'] ?? json['Type'] ?? 'user').toString().toLowerCase(),
         orElse: () => AccountType.user,
       ),
-      isVerified: json['isVerified'] ?? json['IsVerified'] ?? false,
+      status: _parseVerificationStatus(json['status'] ?? json['Status']),
       createdAt: DateTime.parse(
         json['createdAt'] ??
             json['CreatedAt'] ??
@@ -87,6 +89,34 @@ class Account {
     );
   }
 
+  static VerificationStatus _parseVerificationStatus(dynamic status) {
+    if (status == null) return VerificationStatus.notVerified;
+
+    // Handle numeric values (from enum)
+    if (status is int) {
+      switch (status) {
+        case 0:
+          return VerificationStatus.notVerified;
+        case 1:
+          return VerificationStatus.pending;
+        case 2:
+          return VerificationStatus.verified;
+        default:
+          return VerificationStatus.notVerified;
+      }
+    }
+
+    // Handle string values
+    final statusStr = status.toString().toLowerCase();
+    if (statusStr.contains('verified') && !statusStr.contains('not')) {
+      return VerificationStatus.verified;
+    } else if (statusStr.contains('pending')) {
+      return VerificationStatus.pending;
+    } else {
+      return VerificationStatus.notVerified;
+    }
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'accountId': accountId,
@@ -95,12 +125,17 @@ class Account {
       'phoneNumber': phoneNumber,
       'email': email,
       'type': type.toString().split('.').last,
-      'isVerified': isVerified,
+      'status': status.index,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'kycDocuments': kycDocuments.map((doc) => doc.toJson()).toList(),
     };
   }
+
+  // Helper getters for verification status
+  bool get isVerified => status == VerificationStatus.verified;
+  bool get isPending => status == VerificationStatus.pending;
+  bool get isNotVerified => status == VerificationStatus.notVerified;
 
   String get fullName => '$firstName $lastName';
 }

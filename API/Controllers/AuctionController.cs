@@ -88,7 +88,7 @@ namespace PropertyFlipperAPI.Controllers
         [HttpDelete("{id}")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<IActionResult> DeleteAuction(int id)
+        public async Task<IActionResult> DeleteAuction(long id)
         {
             var auction = await _context.Auctions.FindAsync(id);
             if (auction == null)
@@ -108,14 +108,63 @@ namespace PropertyFlipperAPI.Controllers
         {
             var now = DateTime.UtcNow;
             var auctions = await _context.Auctions
-                .Where(a => a.EndAt >= now && a.Status == "Active")
                 .Include(a => a.Property)
                 .ToListAsync();
 
+            // Filter active auctions (must have started and not ended)
+            // Active only if: Status is Active, StartAt has passed, and EndAt hasn't passed
+            var activeAuctions = auctions
+                .Where(a => a.Status == "Active" && 
+                           a.StartAt <= now &&  // Has started
+                           a.StartAt.AddHours(a.Duration) >= now)  // Hasn't ended
+                .ToList();
+
             // Convert to DTOs with calculated values
-            var auctionDtos = auctions.Select(AuctionDto.FromAuction).ToList();
+            var auctionDtos = activeAuctions.Select(AuctionDto.FromAuction).ToList();
 
             return auctionDtos;
+        }
+
+        // POST: api/Auction (Admin only - direct creation)
+        [HttpPost]
+        [Authorize]
+        [AdminAuthorize]
+        public async Task<ActionResult<Auction>> CreateAuction([FromBody] CreateAuctionDto auctionDto)
+        {
+            // Check if property exists
+            var property = await _context.Properties.FindAsync(auctionDto.PropertyId);
+            if (property == null)
+                return NotFound("Property not found");
+
+            // Check if property already has an active auction
+            var existingAuction = await _context.Auctions
+                .FirstOrDefaultAsync(a => a.PropertyId == auctionDto.PropertyId && 
+                    (a.Status == "Requested" || a.Status == "Active"));
+
+            if (existingAuction != null)
+                return BadRequest(new { message = "Property already has an auction request or active auction" });
+
+            // Create auction directly as Active
+            var auction = new Auction
+            {
+                PropertyId = auctionDto.PropertyId,
+                StartPrice = auctionDto.StartPrice,
+                CurrentPrice = auctionDto.StartPrice,
+                StartAt = auctionDto.StartAt,
+                Duration = auctionDto.Duration,
+                BuyNowPrice = auctionDto.BuyNowPrice,
+                Status = "Active",
+                BidCount = 0,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Auctions.Add(auction);
+            await _context.SaveChangesAsync();
+
+            // Load the property for the response
+            await _context.Entry(auction).Reference(a => a.Property).LoadAsync();
+
+            return CreatedAtAction(nameof(GetAuction), new { id = auction.AuctionId }, auction);
         }
 
         // POST: api/Auction/request
@@ -151,9 +200,9 @@ namespace PropertyFlipperAPI.Controllers
             var auction = new Auction
             {
                 PropertyId = requestDto.PropertyId,
+                StartPrice = requestDto.StartPrice,
+                CurrentPrice = requestDto.StartPrice,
                 StartAt = requestDto.StartAt,
-                CurrentPrice = requestDto.StartAt,
-                EndAt = requestDto.EndAt,
                 Duration = requestDto.Duration,
                 BuyNowPrice = requestDto.BuyNowPrice,
                 Status = "Requested",
@@ -232,8 +281,8 @@ namespace PropertyFlipperAPI.Controllers
     public class AuctionRequestDto
     {
         public long PropertyId { get; set; }
-        public decimal StartAt { get; set; }
-        public DateTime EndAt { get; set; }
+        public decimal StartPrice { get; set; }
+        public DateTime StartAt { get; set; }
         public int Duration { get; set; } // hours
         public decimal? BuyNowPrice { get; set; }
     }
@@ -241,5 +290,14 @@ namespace PropertyFlipperAPI.Controllers
     public class AuctionStatusUpdateDto
     {
         public string Status { get; set; } = string.Empty; // "Approved" or "Rejected"
+    }
+
+    public class CreateAuctionDto
+    {
+        public long PropertyId { get; set; }
+        public decimal StartPrice { get; set; }
+        public DateTime StartAt { get; set; }
+        public int Duration { get; set; } // hours
+        public decimal? BuyNowPrice { get; set; }
     }
 }

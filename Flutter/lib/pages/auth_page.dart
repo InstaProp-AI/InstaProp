@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
-import '../widgets/custom_text_field.dart';
+import '../services/auth_service.dart';
 import '../widgets/loading_button.dart';
+import 'kyc_verification_page.dart';
+import 'home_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -12,10 +14,12 @@ class AuthPage extends StatefulWidget {
   State<AuthPage> createState() => _AuthPageState();
 }
 
-class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
-  late TabController _tabController;
+class _AuthPageState extends State<AuthPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
+  bool _isLogin = true;
 
   // Login form
   final _loginFormKey = GlobalKey<FormState>();
@@ -32,36 +36,46 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   final _signupConfirmPasswordController = TextEditingController();
   String _selectedGender = 'Male';
 
-  // KYC Documents
-  final Map<String, XFile?> _kycDocuments = {
-    'ID_Front': null,
-    'ID_Back': null,
-    'Passport_Front': null,
-    'Passport_Back': null,
-  };
-  final ImagePicker _imagePicker = ImagePicker();
-
   bool _isLoading = false;
   String? _errorMessage;
-  String? _successMessage;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _obscureLoginPassword = true;
+
+  // Live validation states
+  bool _passwordsMatch = true;
+  bool _emailValid = true;
+  bool _phoneValid = true;
+  bool _emailExists = false;
+  bool _phoneExists = false;
+  bool _checkingEmail = false;
+  bool _checkingPhone = false;
+
+  // Password strength requirements
+  bool _hasMinLength = false;
+  bool _hasLetters = false;
+  bool _hasNumbers = false;
+
+  // Debounce timers
+  Timer? _emailDebounce;
+  Timer? _phoneDebounce;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
     );
     _animationController.forward();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _animationController.dispose();
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
@@ -71,7 +85,70 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     _signupEmailController.dispose();
     _signupPasswordController.dispose();
     _signupConfirmPasswordController.dispose();
+    _emailDebounce?.cancel();
+    _phoneDebounce?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkEmailAvailability(String email) async {
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        _emailExists = false;
+        _checkingEmail = false;
+      });
+      return;
+    }
+
+    setState(() => _checkingEmail = true);
+
+    try {
+      final authService = AuthService();
+      final response = await authService.checkEmailExists(email);
+
+      if (mounted) {
+        setState(() {
+          _emailExists = response.success && response.data == true;
+          _checkingEmail = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _checkingEmail = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkPhoneAvailability(String phone) async {
+    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    if (digitsOnly.length < 10) {
+      setState(() {
+        _phoneExists = false;
+        _checkingPhone = false;
+      });
+      return;
+    }
+
+    setState(() => _checkingPhone = true);
+
+    try {
+      final authService = AuthService();
+      final response = await authService.checkPhoneExists(phone);
+
+      if (mounted) {
+        setState(() {
+          _phoneExists = response.success && response.data == true;
+          _checkingPhone = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _checkingPhone = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -80,7 +157,6 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _successMessage = null;
     });
 
     try {
@@ -90,11 +166,26 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
         _loginPasswordController.text,
       );
 
-      if (success) {
-        setState(() {
-          _successMessage = 'Login successful!';
+      if (success && mounted) {
+        // Navigate to home page and remove all previous routes
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+
+        // Show welcome message
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Welcome back, ${appState.user?.firstName}! 👋'),
+                backgroundColor: Colors.green[700],
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         });
-        Navigator.of(context).pop();
       } else {
         setState(() {
           _errorMessage = 'Invalid email or password';
@@ -102,32 +193,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Login failed: $e';
+        _errorMessage = 'Login failed. Please try again.';
       });
     } finally {
       setState(() {
         _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _pickKycDocument(String docType) async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        setState(() {
-          _kycDocuments[docType] = image;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to pick image: $e';
       });
     }
   }
@@ -143,17 +213,16 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       return;
     }
 
-    // Validate KYC documents
-    bool hasIdDocs =
-        _kycDocuments['ID_Front'] != null && _kycDocuments['ID_Back'] != null;
-    bool hasPassportDocs =
-        _kycDocuments['Passport_Front'] != null &&
-        _kycDocuments['Passport_Back'] != null;
-
-    if (!hasIdDocs && !hasPassportDocs) {
+    if (_emailExists) {
       setState(() {
-        _errorMessage =
-            'Please upload either ID (front and back) or Passport (front and back) documents';
+        _errorMessage = 'This email is already registered';
+      });
+      return;
+    }
+
+    if (_phoneExists) {
+      setState(() {
+        _errorMessage = 'This phone number is already registered';
       });
       return;
     }
@@ -161,44 +230,10 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _successMessage = null;
     });
 
     try {
-      // Prepare KYC documents for upload
-      List<Map<String, String>> kycDocs = [];
-
-      // For now, we'll use placeholder URLs since we don't have actual file upload
-      // In a real app, you'd upload these files to a storage service first
-      if (_kycDocuments['ID_Front'] != null) {
-        kycDocs.add({
-          'docType': 'ID_Front',
-          'imageUrl':
-              'placeholder_id_front_url', // Replace with actual upload logic
-        });
-      }
-      if (_kycDocuments['ID_Back'] != null) {
-        kycDocs.add({
-          'docType': 'ID_Back',
-          'imageUrl':
-              'placeholder_id_back_url', // Replace with actual upload logic
-        });
-      }
-      if (_kycDocuments['Passport_Front'] != null) {
-        kycDocs.add({
-          'docType': 'Passport_Front',
-          'imageUrl':
-              'placeholder_passport_front_url', // Replace with actual upload logic
-        });
-      }
-      if (_kycDocuments['Passport_Back'] != null) {
-        kycDocs.add({
-          'docType': 'Passport_Back',
-          'imageUrl':
-              'placeholder_passport_back_url', // Replace with actual upload logic
-        });
-      }
-
+      // Create account immediately
       final appState = context.read<AppState>();
       final success = await appState.signup(
         firstName: _signupFirstNameController.text.trim(),
@@ -206,15 +241,24 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
         phoneNumber: _signupPhoneController.text.trim(),
         email: _signupEmailController.text.trim(),
         password: _signupPasswordController.text,
-        kycDocuments: kycDocs,
       );
 
-      if (success) {
-        setState(() {
-          _successMessage =
-              'Account created successfully! Please wait for admin verification.';
-        });
-        Navigator.of(context).pop();
+      if (success && mounted) {
+        // Account created! Now navigate to KYC page for optional document upload
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => KycVerificationPage(
+              firstName: _signupFirstNameController.text.trim(),
+              lastName: _signupLastNameController.text.trim(),
+              phoneNumber: _signupPhoneController.text.trim(),
+              email: _signupEmailController.text.trim(),
+              password: _signupPasswordController.text,
+              gender: _selectedGender,
+              isNewSignup: true, // New user during signup
+            ),
+          ),
+        );
       } else {
         setState(() {
           _errorMessage = 'Signup failed. Please try again.';
@@ -234,169 +278,234 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-            ),
-          ),
-          child: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Card(
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Logo and Title
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2E7D32).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.home,
-                                  size: 48,
-                                  color: const Color(0xFF2E7D32),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Property Flipper',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF2E7D32),
-                                      ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Your gateway to property investment',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Tab Bar
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: TabBar(
-                              controller: _tabController,
-                              indicator: BoxDecoration(
-                                color: const Color(0xFF2E7D32),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              labelColor: Colors.white,
-                              unselectedLabelColor: Colors.grey[600],
-                              labelStyle: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                              tabs: const [
-                                Tab(text: 'Login'),
-                                Tab(text: 'Sign Up'),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Messages
-                          if (_errorMessage != null)
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.red[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red[200]!),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.error,
-                                    color: Colors.red[700],
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: TextStyle(color: Colors.red[700]),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          if (_successMessage != null)
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.green[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.green[200]!),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green[700],
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _successMessage!,
-                                      style: TextStyle(
-                                        color: Colors.green[700],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          // Tab Content
-                          SizedBox(
-                            height: 400,
-                            child: TabBarView(
-                              controller: _tabController,
-                              children: [_buildLoginForm(), _buildSignupForm()],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Background Design
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF4CAF50).withOpacity(0.3),
+                    Color(0xFF2E7D32).withOpacity(0.1),
+                  ],
                 ),
               ),
             ),
           ),
-        ),
+          Positioned(
+            bottom: -150,
+            left: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF1B5E20).withOpacity(0.2),
+                    Color(0xFF2E7D32).withOpacity(0.05),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Content
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                children: [
+                  // Close Button
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: IconButton(
+                        onPressed: () {
+                          // Try to pop, if can't pop (no previous route), go to home
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            Navigator.pushReplacementNamed(context, '/');
+                          }
+                        },
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Logo
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF2E7D32),
+                                    Color(0xFF4CAF50),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(30),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color(0xFF4CAF50).withOpacity(0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.home_work_rounded,
+                                size: 50,
+                                color: Colors.white,
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Title
+                            const Text(
+                              'Property Flipper',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1B5E20),
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Text(
+                              _isLogin
+                                  ? 'Welcome back!'
+                                  : 'Create your account',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+
+                            const SizedBox(height: 48),
+
+                            // Error Message
+                            if (_errorMessage != null)
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.only(bottom: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.red[50],
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.red[200]!),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red[700],
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: TextStyle(
+                                          color: Colors.red[700],
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // Forms
+                            Container(
+                              constraints: const BoxConstraints(maxWidth: 440),
+                              child: _isLogin
+                                  ? _buildLoginForm()
+                                  : _buildSignupForm(),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Toggle Login/Signup
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _isLogin
+                                      ? "Don't have an account? "
+                                      : "Already have an account? ",
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _isLogin = !_isLogin;
+                                      _errorMessage = null;
+                                    });
+                                  },
+                                  child: Text(
+                                    _isLogin ? 'Sign Up' : 'Login',
+                                    style: const TextStyle(
+                                      color: Color(0xFF2E7D32),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -405,43 +514,90 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     return Form(
       key: _loginFormKey,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CustomTextField(
+          _buildTextField(
             controller: _loginEmailController,
-            labelText: 'Email',
-            hintText: 'Enter your email',
+            label: 'Email',
+            hint: 'your.email@example.com',
+            icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-            prefixIcon: const Icon(Icons.email),
             validator: (value) {
               if (value?.isEmpty == true) return 'Email is required';
-              if (!value!.contains('@')) return 'Please enter a valid email';
+              if (!value!.contains('@')) return 'Enter a valid email';
               return null;
             },
           ),
-          const SizedBox(height: 16),
-          CustomTextField(
+          const SizedBox(height: 20),
+          _buildTextField(
             controller: _loginPasswordController,
-            labelText: 'Password',
-            hintText: 'Enter your password',
-            obscureText: true,
-            prefixIcon: const Icon(Icons.lock),
+            label: 'Password',
+            hint: 'Enter your password',
+            icon: Icons.lock_outline,
+            obscureText: _obscureLoginPassword,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureLoginPassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Colors.grey[400],
+              ),
+              onPressed: () {
+                setState(() => _obscureLoginPassword = !_obscureLoginPassword);
+              },
+            ),
             validator: (value) {
               if (value?.isEmpty == true) return 'Password is required';
               return null;
             },
           ),
-          const SizedBox(height: 24),
-          LoadingButton(
-            onPressed: _isLoading ? null : _handleLogin,
-            isLoading: _isLoading,
-            child: const Text('Login'),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {},
+              child: const Text(
+                'Forgot Password?',
+                style: TextStyle(
+                  color: Color(0xFF2E7D32),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () {
-              // Forgot password functionality
-            },
-            child: const Text('Forgot Password?'),
+          const SizedBox(height: 32),
+          Container(
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _isLoading
+                    ? [Colors.grey[300]!, Colors.grey[400]!]
+                    : [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: !_isLoading
+                  ? [
+                      BoxShadow(
+                        color: Color(0xFF4CAF50).withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: LoadingButton(
+              onPressed: _isLoading ? null : _handleLogin,
+              isLoading: _isLoading,
+              child: const Text(
+                'Login',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -451,232 +607,422 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   Widget _buildSignupForm() {
     return Form(
       key: _signupFormKey,
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: CustomTextField(
-                    controller: _signupFirstNameController,
-                    labelText: 'First Name',
-                    hintText: 'Enter first name',
-                    validator: (value) {
-                      if (value?.isEmpty == true)
-                        return 'First name is required';
-                      return null;
-                    },
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  controller: _signupFirstNameController,
+                  label: 'First Name',
+                  hint: 'John',
+                  icon: Icons.person_outline,
+                  validator: (value) =>
+                      value?.isEmpty == true ? 'Required' : null,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: CustomTextField(
-                    controller: _signupLastNameController,
-                    labelText: 'Last Name',
-                    hintText: 'Enter last name',
-                    validator: (value) {
-                      if (value?.isEmpty == true)
-                        return 'Last name is required';
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              controller: _signupPhoneController,
-              labelText: 'Phone Number',
-              hintText: 'Enter phone number',
-              keyboardType: TextInputType.phone,
-              prefixIcon: const Icon(Icons.phone),
-              validator: (value) {
-                if (value?.isEmpty == true) return 'Phone number is required';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              controller: _signupEmailController,
-              labelText: 'Email',
-              hintText: 'Enter your email',
-              keyboardType: TextInputType.emailAddress,
-              prefixIcon: const Icon(Icons.email),
-              validator: (value) {
-                if (value?.isEmpty == true) return 'Email is required';
-                if (!value!.contains('@')) return 'Please enter a valid email';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _selectedGender,
-              decoration: InputDecoration(
-                labelText: 'Gender',
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.white,
               ),
-              items: ['Male', 'Female', 'Other'].map((gender) {
-                return DropdownMenuItem(value: gender, child: Text(gender));
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedGender = value!;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              controller: _signupPasswordController,
-              labelText: 'Password',
-              hintText: 'Enter password',
-              obscureText: true,
-              prefixIcon: const Icon(Icons.lock),
-              validator: (value) {
-                if (value?.isEmpty == true) return 'Password is required';
-                if (value!.length < 6)
-                  return 'Password must be at least 6 characters';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              controller: _signupConfirmPasswordController,
-              labelText: 'Confirm Password',
-              hintText: 'Confirm your password',
-              obscureText: true,
-              prefixIcon: const Icon(Icons.lock_outline),
-              validator: (value) {
-                if (value?.isEmpty == true)
-                  return 'Please confirm your password';
-                return null;
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // KYC Documents Section
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTextField(
+                  controller: _signupLastNameController,
+                  label: 'Last Name',
+                  hint: 'Doe',
+                  icon: Icons.person_outline,
+                  validator: (value) =>
+                      value?.isEmpty == true ? 'Required' : null,
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildTextField(
+            controller: _signupEmailController,
+            label: 'Email',
+            hint: 'your.email@example.com',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            onChanged: (value) {
+              setState(() {
+                _emailValid =
+                    value.isEmpty ||
+                    (value.contains('@') && value.contains('.'));
+              });
+
+              // Debounce email check
+              _emailDebounce?.cancel();
+              _emailDebounce = Timer(const Duration(milliseconds: 800), () {
+                _checkEmailAvailability(value);
+              });
+            },
+            suffixIcon: _checkingEmail
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : null,
+            validator: (value) {
+              if (value?.isEmpty == true) return 'Email is required';
+              if (!value!.contains('@')) return 'Enter a valid email';
+              return null;
+            },
+          ),
+          if (!_emailValid && _signupEmailController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.verified_user,
-                        color: Colors.blue[700],
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'KYC Documents Required',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const SizedBox(width: 6),
                   Text(
-                    'Upload either ID (front and back) or Passport (front and back)',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    'Please enter a valid email address',
+                    style: TextStyle(
+                      color: Colors.red[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // ID Documents
-                  _buildKycSection('ID Documents', ['ID_Front', 'ID_Back']),
-                  const SizedBox(height: 16),
-
-                  // Passport Documents
-                  _buildKycSection('Passport Documents', [
-                    'Passport_Front',
-                    'Passport_Back',
-                  ]),
                 ],
               ),
             ),
+          if (_emailExists && _signupEmailController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'This email is already registered',
+                    style: TextStyle(
+                      color: Colors.red[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 20),
+          _buildTextField(
+            controller: _signupPhoneController,
+            label: 'Phone Number',
+            hint: '+1 234 567 8900',
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            onChanged: (value) {
+              setState(() {
+                // Basic phone validation - at least 10 digits
+                final digitsOnly = value.replaceAll(RegExp(r'\D'), '');
+                _phoneValid = value.isEmpty || digitsOnly.length >= 10;
+              });
 
-            const SizedBox(height: 24),
-            LoadingButton(
+              // Debounce phone check
+              _phoneDebounce?.cancel();
+              _phoneDebounce = Timer(const Duration(milliseconds: 800), () {
+                _checkPhoneAvailability(value);
+              });
+            },
+            suffixIcon: _checkingPhone
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : null,
+            validator: (value) =>
+                value?.isEmpty == true ? 'Phone is required' : null,
+          ),
+          if (!_phoneValid && _signupPhoneController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Phone number must have at least 10 digits',
+                    style: TextStyle(
+                      color: Colors.red[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_phoneExists && _signupPhoneController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'This phone number is already registered',
+                    style: TextStyle(
+                      color: Colors.red[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 20),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: _selectedGender,
+              decoration: InputDecoration(
+                labelText: 'Gender',
+                labelStyle: TextStyle(color: Colors.grey[700]),
+                prefixIcon: Icon(Icons.wc_outlined, color: Color(0xFF2E7D32)),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+              ),
+              dropdownColor: Colors.white,
+              items: ['Male', 'Female'].map((gender) {
+                return DropdownMenuItem(value: gender, child: Text(gender));
+              }).toList(),
+              onChanged: (value) => setState(() => _selectedGender = value!),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildTextField(
+            controller: _signupPasswordController,
+            label: 'Password',
+            hint: 'At least 8 characters',
+            icon: Icons.lock_outline,
+            obscureText: _obscurePassword,
+            onChanged: (value) {
+              setState(() {
+                // Check password requirements
+                _hasMinLength = value.length >= 8;
+                _hasLetters = RegExp(r'[a-zA-Z]').hasMatch(value);
+                _hasNumbers = RegExp(r'[0-9]').hasMatch(value);
+
+                // Check if passwords match
+                _passwordsMatch =
+                    _signupConfirmPasswordController.text.isEmpty ||
+                    value == _signupConfirmPasswordController.text;
+              });
+            },
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Colors.grey[400],
+              ),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
+            validator: (value) {
+              if (value?.isEmpty == true) return 'Password is required';
+              if (value!.length < 8) return 'Min 8 characters';
+              if (!RegExp(r'[a-zA-Z]').hasMatch(value))
+                return 'Must contain letters';
+              if (!RegExp(r'[0-9]').hasMatch(value))
+                return 'Must contain numbers';
+              return null;
+            },
+          ),
+          if (_signupPasswordController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12, left: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPasswordRequirement(
+                    'At least 8 characters',
+                    _hasMinLength,
+                  ),
+                  const SizedBox(height: 6),
+                  _buildPasswordRequirement('Contains letters', _hasLetters),
+                  const SizedBox(height: 6),
+                  _buildPasswordRequirement('Contains numbers', _hasNumbers),
+                ],
+              ),
+            ),
+          const SizedBox(height: 20),
+          _buildTextField(
+            controller: _signupConfirmPasswordController,
+            label: 'Confirm Password',
+            hint: 'Re-enter password',
+            icon: Icons.lock_outline,
+            obscureText: _obscureConfirmPassword,
+            onChanged: (value) {
+              setState(() {
+                _passwordsMatch =
+                    _signupPasswordController.text.isEmpty ||
+                    value == _signupPasswordController.text;
+              });
+            },
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureConfirmPassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: Colors.grey[400],
+              ),
+              onPressed: () => setState(
+                () => _obscureConfirmPassword = !_obscureConfirmPassword,
+              ),
+            ),
+            validator: (value) =>
+                value?.isEmpty == true ? 'Confirm password' : null,
+          ),
+          if (!_passwordsMatch &&
+              _signupConfirmPasswordController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Passwords do not match',
+                    style: TextStyle(
+                      color: Colors.red[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_passwordsMatch &&
+              _signupConfirmPasswordController.text.isNotEmpty &&
+              _signupPasswordController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green[600], size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Passwords match',
+                    style: TextStyle(
+                      color: Colors.green[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 32),
+          Container(
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _isLoading
+                    ? [Colors.grey[300]!, Colors.grey[400]!]
+                    : [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: !_isLoading
+                  ? [
+                      BoxShadow(
+                        color: Color(0xFF4CAF50).withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: LoadingButton(
               onPressed: _isLoading ? null : _handleSignup,
               isLoading: _isLoading,
-              child: const Text('Create Account'),
+              child: const Text(
+                'Sign up',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
-          ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+    void Function(String)? onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        validator: validator,
+        onChanged: onChanged,
+        style: const TextStyle(fontSize: 16),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          labelStyle: TextStyle(color: Colors.grey[700]),
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          prefixIcon: Icon(icon, color: Color(0xFF2E7D32)),
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildKycSection(String title, List<String> docTypes) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildPasswordRequirement(String text, bool isMet) {
+    return Row(
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        Icon(
+          isMet ? Icons.check_circle : Icons.circle_outlined,
+          size: 16,
+          color: isMet ? Colors.green[600] : Colors.grey[400],
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: docTypes.map((docType) {
-            final hasDocument = _kycDocuments[docType] != null;
-            return Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                child: InkWell(
-                  onTap: () => _pickKycDocument(docType),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: hasDocument ? Colors.green : Colors.grey[300]!,
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      color: hasDocument ? Colors.green[50] : Colors.white,
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          hasDocument
-                              ? Icons.check_circle
-                              : Icons.add_photo_alternate,
-                          color: hasDocument
-                              ? Colors.green[700]
-                              : Colors.grey[600],
-                          size: 24,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          docType.replaceAll('_', ' '),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: hasDocument
-                                ? Colors.green[700]
-                                : Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: isMet ? Colors.green[600] : Colors.grey[600],
+            fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+          ),
         ),
       ],
     );

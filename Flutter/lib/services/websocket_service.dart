@@ -4,6 +4,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import '../models/auction.dart';
 import '../models/bid.dart';
+import 'api_client.dart';
 
 class WebSocketService {
   static WebSocketService? _instance;
@@ -39,45 +40,36 @@ class WebSocketService {
 
     await disconnect(); // Disconnect from previous auction if any
 
-    // Try different ports in case the API is running on different ports
-    final List<String> possibleUrls = [
-      'ws://localhost:5000/ws/auction',
-      'ws://localhost:5284/ws/auction',
-      'ws://localhost:7135/ws/auction',
-    ];
+    // Get WebSocket URL from API base URL
+    final wsBaseUrl = ApiClient.baseUrl
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final wsUrl = '$wsBaseUrl/ws/auction';
 
-    for (String wsUrl in possibleUrls) {
-      try {
-        print('Attempting to connect to: $wsUrl');
-        _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-        _currentAuctionId = auctionId;
+    print('🔌 Connecting to WebSocket: $wsUrl');
 
-        // Send subscription message
-        _channel!.sink.add(
-          jsonEncode({'type': 'subscribe', 'auctionId': auctionId}),
-        );
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _currentAuctionId = auctionId;
 
-        // Listen for messages
-        _channel!.stream.listen(
-          _handleMessage,
-          onError: _handleError,
-          onDone: _handleDisconnect,
-        );
+      // Send subscription message
+      _channel!.sink.add(
+        jsonEncode({'type': 'subscribe', 'auctionId': auctionId}),
+      );
 
-        _isConnected = true;
-        print('WebSocket connected for auction: $auctionId on $wsUrl');
-        return; // Success, exit the loop
-      } catch (e) {
-        print('WebSocket connection error on $wsUrl: $e');
-        _isConnected = false;
-        // Continue to next URL
-      }
+      // Listen for messages
+      _channel!.stream.listen(
+        _handleMessage,
+        onError: _handleError,
+        onDone: _handleDisconnect,
+      );
+
+      _isConnected = true;
+      print('✅ WebSocket connected for auction: $auctionId');
+    } catch (e) {
+      print('❌ WebSocket connection error: $e');
+      _isConnected = false;
     }
-
-    print(
-      'Failed to connect to WebSocket on any port. Real-time updates disabled.',
-    );
-    _isConnected = false;
   }
 
   Future<void> connectToGeneralFeed() async {
@@ -87,68 +79,58 @@ class WebSocketService {
 
     await disconnect(); // Disconnect from previous connection if any
 
-    // Try different ports in case the API is running on different ports
-    final List<String> possibleUrls = [
-      'ws://localhost:5000/ws/auction',
-      'ws://localhost:5284/ws/auction',
-      'ws://localhost:7135/ws/auction',
-      'ws://127.0.0.1:5000/ws/auction',
-      'ws://127.0.0.1:5284/ws/auction',
-    ];
+    // Get WebSocket URL from API base URL
+    final wsBaseUrl = ApiClient.baseUrl
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final wsUrl = '$wsBaseUrl/ws/auction';
 
-    for (String wsUrl in possibleUrls) {
-      try {
-        print('🔌 Attempting to connect to general feed: $wsUrl');
-        _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-        _currentAuctionId = 'general';
+    try {
+      print('🔌 Attempting to connect to general feed: $wsUrl');
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _currentAuctionId = 'general';
 
-        // Wait a bit for connection to establish
-        await Future.delayed(const Duration(milliseconds: 1000));
+      // Wait a bit for connection to establish
+      await Future.delayed(const Duration(milliseconds: 1000));
 
-        // Check if connection is still valid
-        if (_channel == null) {
-          print('❌ Channel is null after connection attempt');
-          continue;
-        }
-
-        // Send subscription message for general feed
-        try {
-          _channel!.sink.add(
-            jsonEncode({'type': 'subscribe', 'auctionId': 'general'}),
-          );
-          print('📤 Sent subscription message for general feed');
-        } catch (e) {
-          print('❌ Error sending subscription message: $e');
-          continue;
-        }
-
-        // Listen for messages
-        _channel!.stream.listen(
-          _handleMessage,
-          onError: (error) {
-            print('❌ WebSocket stream error: $error');
-            _handleError(error);
-          },
-          onDone: () {
-            print('🔌 WebSocket connection closed');
-            _handleDisconnect();
-          },
-        );
-
-        _isConnected = true;
-        print('✅ WebSocket connected to general feed on $wsUrl');
-        return; // Success, exit the loop
-      } catch (e) {
-        print('❌ WebSocket connection error on $wsUrl: $e');
+      // Check if connection is still valid
+      if (_channel == null) {
+        print('❌ Channel is null after connection attempt');
         _isConnected = false;
-        // Continue to next URL
+        return;
       }
-    }
 
-    print(
-      'Failed to connect to WebSocket general feed on any port. Real-time updates disabled.',
-    );
-    _isConnected = false;
+      // Send subscription message for general feed
+      try {
+        _channel!.sink.add(
+          jsonEncode({'type': 'subscribe', 'auctionId': 'general'}),
+        );
+        print('📤 Sent subscription message for general feed');
+      } catch (e) {
+        print('❌ Error sending subscription message: $e');
+        _isConnected = false;
+        return;
+      }
+
+      // Listen for messages
+      _channel!.stream.listen(
+        _handleMessage,
+        onError: (error) {
+          print('❌ WebSocket stream error: $error');
+          _handleError(error);
+        },
+        onDone: () {
+          print('🔌 WebSocket connection closed');
+          _handleDisconnect();
+        },
+      );
+
+      _isConnected = true;
+      print('✅ WebSocket connected to general feed');
+    } catch (e) {
+      print('❌ WebSocket connection error: $e');
+      _isConnected = false;
+    }
   }
 
   void _handleMessage(dynamic message) {

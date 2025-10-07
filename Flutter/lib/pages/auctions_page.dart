@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
 import '../widgets/auction_timer.dart';
 import 'auction_details_page.dart';
+import '../services/websocket_service.dart';
 
 class AuctionsPage extends StatefulWidget {
   const AuctionsPage({super.key});
@@ -15,6 +17,13 @@ class AuctionsPage extends StatefulWidget {
 class _AuctionsPageState extends State<AuctionsPage> {
   List<Auction> _filteredAuctions = [];
   Map<String, dynamic> _activeFilters = {};
+
+  // WebSocket subscriptions
+  StreamSubscription<AuctionUpdate>? _auctionUpdateSubscription;
+  StreamSubscription<BidUpdate>? _bidUpdateSubscription;
+
+  // Track recently updated auctions for highlighting
+  final Set<int> _recentlyUpdatedAuctions = {};
 
   // Filter options
   final Map<String, String> _categoryOptions = {
@@ -82,6 +91,68 @@ class _AuctionsPageState extends State<AuctionsPage> {
         });
       } else {
         _applyFilters();
+      }
+
+      // Start listening to WebSocket updates
+      _startRealTimeUpdates();
+    });
+  }
+
+  @override
+  void dispose() {
+    _auctionUpdateSubscription?.cancel();
+    _bidUpdateSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _startRealTimeUpdates() {
+    print('🔌 Starting WebSocket listeners on Auctions Page');
+
+    // Listen for auction updates (price, bid count, status changes)
+    _auctionUpdateSubscription = WebSocketService.instance.auctionUpdateStream
+        .listen(
+          (AuctionUpdate update) {
+            if (mounted) {
+              print(
+                '🔄 Auction update received on list: ID=${update.auction.auctionId}, Price=\$${update.auction.currentPrice}, Bids=${update.auction.bidCount}',
+              );
+              _highlightAuction(update.auction.auctionId);
+              _applyFilters();
+            }
+          },
+          onError: (error) {
+            print('Auction update error on list page: $error');
+          },
+        );
+
+    // Listen for bid updates (new bids)
+    _bidUpdateSubscription = WebSocketService.instance.bidUpdateStream.listen(
+      (BidUpdate update) {
+        if (mounted) {
+          print(
+            '💰 New bid received on list: Auction ID=${update.bid.auctionId}',
+          );
+          _highlightAuction(update.bid.auctionId);
+          _applyFilters();
+        }
+      },
+      onError: (error) {
+        print('Bid update error on list page: $error');
+      },
+    );
+  }
+
+  void _highlightAuction(int auctionId) {
+    setState(() {
+      _recentlyUpdatedAuctions.add(auctionId);
+    });
+
+    // Remove highlight after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _recentlyUpdatedAuctions.remove(auctionId);
+        });
       }
     });
   }
@@ -369,26 +440,37 @@ class _AuctionsPageState extends State<AuctionsPage> {
         ? appState.auctions
         : _filteredAuctions;
 
-    // Separate live and ended auctions
+    // Separate upcoming, live and ended auctions
+    final now = DateTime.now();
+
+    final upcomingAuctions = auctionsToShow
+        .where(
+          (auction) =>
+              auction.status == 'Active' && now.isBefore(auction.startAt),
+        )
+        .toList();
+
     final liveAuctions = auctionsToShow
         .where(
           (auction) =>
               auction.isActive &&
               auction.status != 'Ended' &&
-              !DateTime.now().isAfter(auction.endAt),
+              now.isAfter(auction.startAt) &&
+              !now.isAfter(auction.endAt),
         )
         .toList();
+
     final endedAuctions = auctionsToShow
         .where(
           (auction) =>
               auction.isEnded ||
               auction.status == 'Ended' ||
-              DateTime.now().isAfter(auction.endAt),
+              now.isAfter(auction.endAt),
         )
         .toList();
 
     print(
-      'Auctions separation - Total: ${auctionsToShow.length}, Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}',
+      'Auctions separation - Total: ${auctionsToShow.length}, Upcoming: ${upcomingAuctions.length}, Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}',
     );
 
     // Debug each auction
@@ -404,14 +486,58 @@ class _AuctionsPageState extends State<AuctionsPage> {
     }
 
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         children: [
+          // Upcoming Auctions Section
+          if (upcomingAuctions.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[50]!, Colors.blue[100]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.blue[700], size: 24),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Upcoming Auctions (${upcomingAuctions.length})',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _buildAuctionsTable(
+              context,
+              upcomingAuctions,
+              isLive: false,
+              isUpcoming: true,
+            ),
+            const SizedBox(height: 24), // Spacing between sections
+          ],
+
           // Live Auctions Section
           if (liveAuctions.isNotEmpty) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(16),
+              margin: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: upcomingAuctions.isEmpty ? 16 : 0,
+                bottom: 16,
+              ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.green[50]!, Colors.green[100]!],
@@ -439,7 +565,12 @@ class _AuctionsPageState extends State<AuctionsPage> {
                 ],
               ),
             ),
-            _buildAuctionsTable(context, liveAuctions, isLive: true),
+            _buildAuctionsTable(
+              context,
+              liveAuctions,
+              isLive: true,
+              isUpcoming: false,
+            ),
           ],
 
           // Ended Auctions Section
@@ -530,14 +661,32 @@ class _AuctionsPageState extends State<AuctionsPage> {
     BuildContext context,
     List<Auction> auctions, {
     required bool isLive,
+    bool isUpcoming = false,
   }) {
+    Color borderColor;
+    Color headerColor;
+
+    if (isUpcoming) {
+      borderColor = Colors.blue[200]!;
+      headerColor = Colors.blue[50]!;
+    } else if (isLive) {
+      borderColor = Colors.green[200]!;
+      headerColor = Colors.green[50]!;
+    } else {
+      borderColor = Colors.orange[200]!;
+      headerColor = Colors.orange[50]!;
+    }
+
+    // Calculate dynamic height based on actual auction count (max 5)
+    final displayCount = auctions.length > 5 ? 5 : auctions.length;
+    final dynamicHeight =
+        displayCount * 60.0 + 48.0; // rows × 60px + header height
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isLive ? Colors.green[200]! : Colors.orange[200]!,
-        ),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -547,7 +696,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
         ],
       ),
       child: Container(
-        height: 5 * 60.0 + 48.0, // 5 rows × 60px + header height
+        height: dynamicHeight,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Container(
@@ -565,7 +714,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: (isLive ? Colors.green : Colors.orange)[50],
+                      color: headerColor,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(12),
                       ),
@@ -620,7 +769,9 @@ class _AuctionsPageState extends State<AuctionsPage> {
                         SizedBox(
                           width: 100, // Fixed width for time left
                           child: Text(
-                            isLive ? 'Time Left' : 'Ended',
+                            isUpcoming
+                                ? 'Starts In'
+                                : (isLive ? 'Time Left' : 'Ended'),
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
@@ -654,6 +805,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                           context,
                           auction,
                           isLive: isLive,
+                          isUpcoming: isUpcoming,
                           onAuctionEnded: _refreshAuctionData,
                         ),
                       )
@@ -671,13 +823,27 @@ class _AuctionsPageState extends State<AuctionsPage> {
     BuildContext context,
     Auction auction, {
     required bool isLive,
+    bool isUpcoming = false,
     VoidCallback? onAuctionEnded,
   }) {
-    return Container(
+    final isHighlighted = _recentlyUpdatedAuctions.contains(auction.auctionId);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isHighlighted ? Colors.green[50] : Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        boxShadow: isHighlighted
+            ? [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.3),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: InkWell(
         onTap: () => Navigator.of(context).push(
@@ -749,50 +915,83 @@ class _AuctionsPageState extends State<AuctionsPage> {
             SizedBox(
               width: 120, // Fixed width for start price
               child: Text(
-                '\$${auction.startAt.toStringAsFixed(0)}',
+                '\$${auction.startPrice.toStringAsFixed(0)}',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             ),
             const SizedBox(width: 16),
             SizedBox(
               width: 120, // Fixed width for current price
-              child: Text(
-                '\$${auction.currentPrice.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E7D32),
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    '\$${auction.currentPrice.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isHighlighted
+                          ? Colors.green[700]
+                          : const Color(0xFF2E7D32),
+                      fontSize: isHighlighted ? 16 : 14,
+                    ),
+                  ),
+                  if (isHighlighted) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.trending_up, color: Colors.green[700], size: 16),
+                  ],
+                ],
               ),
             ),
             const SizedBox(width: 16),
             SizedBox(
               width: 80, // Fixed width for bids
-              child: Text(
-                '${auction.bidCount}',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+              child: Container(
+                padding: isHighlighted
+                    ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                    : EdgeInsets.zero,
+                decoration: isHighlighted
+                    ? BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.green[300]!,
+                          width: 1.5,
+                        ),
+                      )
+                    : null,
+                child: Text(
+                  '${auction.bidCount}',
+                  style: TextStyle(
+                    fontWeight: isHighlighted
+                        ? FontWeight.bold
+                        : FontWeight.w500,
+                    color: isHighlighted ? Colors.green[700] : Colors.black,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 16),
             SizedBox(
               width: 100, // Fixed width for time left/ended
-              child: isLive
-                  ? AuctionTimer(
-                      auction: auction,
-                      textStyle: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.red[600],
-                        fontSize: 12,
-                      ),
-                      onAuctionEnded: onAuctionEnded,
-                    )
-                  : Text(
-                      'Ended',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
+              child: isUpcoming
+                  ? _buildStartsInWidget(auction)
+                  : (isLive
+                        ? AuctionTimer(
+                            auction: auction,
+                            textStyle: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red[600],
+                              fontSize: 12,
+                            ),
+                            onAuctionEnded: onAuctionEnded,
+                          )
+                        : Text(
+                            'Ended',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          )),
             ),
             const SizedBox(width: 16),
             SizedBox(
@@ -812,6 +1011,31 @@ class _AuctionsPageState extends State<AuctionsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStartsInWidget(Auction auction) {
+    final now = DateTime.now();
+    final difference = auction.startAt.difference(now);
+
+    String timeText;
+    if (difference.inDays > 0) {
+      timeText = '${difference.inDays}d ${difference.inHours % 24}h';
+    } else if (difference.inHours > 0) {
+      timeText = '${difference.inHours}h ${difference.inMinutes % 60}m';
+    } else if (difference.inMinutes > 0) {
+      timeText = '${difference.inMinutes}m';
+    } else {
+      timeText = 'Starting soon';
+    }
+
+    return Text(
+      timeText,
+      style: TextStyle(
+        fontWeight: FontWeight.w500,
+        color: Colors.blue[700],
+        fontSize: 12,
       ),
     );
   }

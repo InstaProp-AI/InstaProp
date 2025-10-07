@@ -71,7 +71,7 @@ namespace PropertyFlipperAPI.Controllers
                 var userIdClaim = User.FindFirst("uid");
                 if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
                 {
-                    return Unauthorized("User not authenticated");
+                    return Unauthorized(new { message = "User not authenticated" });
                 }
 
                 var auction = await _context.Auctions
@@ -79,25 +79,25 @@ namespace PropertyFlipperAPI.Controllers
                     .FirstOrDefaultAsync(a => a.AuctionId == bidDto.AuctionId);
                 if (auction == null)
                 {
-                    return BadRequest("Auction not found.");
+                    return BadRequest(new { message = "Auction not found." });
                 }
 
                 if (auction.Status != "Active")
                 {
-                    return BadRequest("Auction is not active.");
+                    return BadRequest(new { message = "Auction is not active." });
                 }
 
                 // Check if user is trying to bid on their own property
                 if (auction.Property?.OwnerId == userId)
                 {
-                    return BadRequest("You cannot bid on your own property.");
+                    return BadRequest(new { message = "You cannot bid on your own property." });
                 }
 
                 // Check if bid amount is higher than current price
                 var currentPrice = await GetCurrentPrice(bidDto.AuctionId);
                 if ((decimal)bidDto.BidAmount <= currentPrice)
                 {
-                    return BadRequest("Bid amount must be higher than current price.");
+                    return BadRequest(new { message = "Bid amount must be higher than current price." });
                 }
 
                 var bid = new Bid
@@ -133,6 +133,10 @@ namespace PropertyFlipperAPI.Controllers
                     .Include(a => a.Property)
                     .FirstAsync(a => a.AuctionId == bidDto.AuctionId);
                 await _webSocketManager.BroadcastAuctionUpdateAsync(bidDto.AuctionId.ToString(), updatedAuction);
+                
+                // Also broadcast to general feed for auction list pages
+                await _webSocketManager.BroadcastToGeneralFeedAsync(createdBid, "new_bid");
+                await _webSocketManager.BroadcastToGeneralFeedAsync(updatedAuction, "auction_update");
 
                 return Ok(createdBid);
             }
@@ -150,11 +154,12 @@ namespace PropertyFlipperAPI.Controllers
             var userIdClaim = User.FindFirst("uid");
             if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
             {
-                return Unauthorized("User not authenticated");
+                return Unauthorized(new { message = "User not authenticated" });
             }
 
             var bids = await _context.Bids
                 .Include(b => b.Auction)
+                    .ThenInclude(a => a.Property)
                 .Include(b => b.Bidder)
                 .Where(b => b.BidderId == userId)
                 .OrderByDescending(b => b.CreatedAt)
@@ -175,7 +180,7 @@ namespace PropertyFlipperAPI.Controllers
 
             if (bid == null)
             {
-                return NotFound("Bid not found");
+                return NotFound(new { message = "Bid not found" });
             }
 
             return Ok(bid);
@@ -190,7 +195,7 @@ namespace PropertyFlipperAPI.Controllers
             var userIdClaim = User.FindFirst("uid");
             if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
             {
-                return Unauthorized("User not authenticated");
+                return Unauthorized(new { message = "User not authenticated" });
             }
 
             var bid = await _context.Bids
@@ -199,18 +204,18 @@ namespace PropertyFlipperAPI.Controllers
 
             if (bid == null)
             {
-                return NotFound("Bid not found");
+                return NotFound(new { message = "Bid not found" });
             }
 
             if (bid.BidderId != userId)
             {
-                return Forbid("You can only delete your own bids");
+                return StatusCode(403, new { message = "You can only delete your own bids" });
             }
 
             // Check if auction is still active
             if (bid.Auction.Status != "Active")
             {
-                return BadRequest("Cannot delete bid from inactive auction");
+                return BadRequest(new { message = "Cannot delete bid from inactive auction" });
             }
 
             _context.Bids.Remove(bid);
@@ -229,7 +234,7 @@ namespace PropertyFlipperAPI.Controllers
             }
             else
             {
-                auction.CurrentPrice = auction.StartAt;
+                auction.CurrentPrice = auction.StartPrice;
                 auction.BidCount = 0;
             }
             
@@ -252,7 +257,7 @@ namespace PropertyFlipperAPI.Controllers
 
             // If no bids, return the starting price
             var auction = await _context.Auctions.FindAsync(auctionId);
-            return auction?.StartAt ?? 0;
+            return auction?.StartPrice ?? 0;
         }
     }
 

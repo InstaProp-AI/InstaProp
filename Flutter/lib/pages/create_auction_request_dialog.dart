@@ -42,6 +42,18 @@ class _CreateAuctionRequestDialogState
   }
 
   Future<void> _submitRequest() async {
+    // Check if user is verified
+    final appState = context.read<AppState>();
+    if (appState.user == null || !appState.user!.isVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be verified to create auction requests'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate() || _selectedProperty == null) {
       print('❌ Form validation failed or no property selected');
       return;
@@ -56,8 +68,8 @@ class _CreateAuctionRequestDialogState
     try {
       final request = AuctionRequest(
         propertyId: _selectedProperty!.propertyId,
-        startAt: double.parse(_startingPriceController.text),
-        endAt: _endDate,
+        startPrice: double.parse(_startingPriceController.text),
+        startAt: _startDate,
         duration: int.parse(_durationController.text),
         buyNowPrice: _buyNowPriceController.text.isNotEmpty
             ? double.parse(_buyNowPriceController.text)
@@ -155,228 +167,292 @@ class _CreateAuctionRequestDialogState
             // Content
             Padding(
               padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Property Selection
-                    Text(
-                      'Select Property',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+              child: Consumer<AppState>(
+                builder: (context, appState, child) {
+                  // Check if user is verified
+                  if (appState.user == null || !appState.user!.isVerified) {
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange[200]!),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Consumer<AppState>(
-                      builder: (context, appState, child) {
-                        final verifiedProperties = appState.userProperties
-                            .where((p) => p.isVerified)
-                            .toList();
-
-                        if (verifiedProperties.isEmpty) {
-                          return Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.orange[200]!),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.verified_user,
+                            color: Colors.orange[700],
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Account Not Verified',
+                            style: TextStyle(
+                              color: Colors.orange[700],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.warning, color: Colors.orange[700]),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'No verified properties available. Please verify your properties first.',
-                                    style: TextStyle(color: Colors.orange[700]),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'You need to verify your account to create auction requests. Please upload your verification documents from your profile.',
+                            style: TextStyle(
+                              color: Colors.orange[600],
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pushNamed('/profile');
+                            },
+                            icon: const Icon(Icons.upload_file),
+                            label: const Text('Go to Profile'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange[700],
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // User is verified, show the form
+                  return Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Property Selection
+                        Text(
+                          'Select Property',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (context) {
+                            final approvedProperties = appState.userProperties
+                                .where((p) => p.canRequestAuction)
+                                .toList();
+
+                            if (approvedProperties.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.orange[200]!,
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return DropdownButtonFormField<Property>(
-                          value: _selectedProperty,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.home),
-                          ),
-                          hint: const Text('Choose a property'),
-                          items: verifiedProperties.map((property) {
-                            return DropdownMenuItem(
-                              value: property,
-                              child: Text(property.name),
-                            );
-                          }).toList(),
-                          onChanged: (property) {
-                            setState(() {
-                              _selectedProperty = property;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null)
-                              return 'Please select a property';
-                            return null;
-                          },
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Starting Price
-                    TextFormField(
-                      controller: _startingPriceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Starting Price',
-                        prefixIcon: Icon(Icons.attach_money),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value?.isEmpty == true)
-                          return 'Starting price is required';
-                        if (double.tryParse(value!) == null)
-                          return 'Invalid price';
-                        if (double.parse(value) <= 0)
-                          return 'Price must be greater than 0';
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Duration and Start Date
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _durationController,
-                            decoration: const InputDecoration(
-                              labelText: 'Duration (hours)',
-                              prefixIcon: Icon(Icons.schedule),
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => _updateEndDate(),
-                            validator: (value) {
-                              if (value?.isEmpty == true) return 'Required';
-                              final duration = int.tryParse(value!);
-                              if (duration == null || duration <= 0)
-                                return 'Invalid duration';
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final date = await showDatePicker(
-                                context: context,
-                                initialDate: _startDate,
-                                firstDate: DateTime.now(),
-                                lastDate: DateTime.now().add(
-                                  const Duration(days: 365),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.warning,
+                                      color: Colors.orange[700],
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'No verified properties available. Please verify your properties first.',
+                                        style: TextStyle(
+                                          color: Colors.orange[700],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               );
-                              if (date != null) {
-                                setState(() {
-                                  _startDate = date;
-                                  _updateEndDate();
-                                });
-                              }
-                            },
-                            child: InputDecorator(
+                            }
+
+                            return DropdownButtonFormField<Property>(
+                              value: _selectedProperty,
                               decoration: const InputDecoration(
-                                labelText: 'Start Date',
-                                prefixIcon: Icon(Icons.calendar_today),
                                 border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.home),
                               ),
-                              child: Text(
-                                '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                              hint: const Text('Choose a property'),
+                              items: approvedProperties.map((property) {
+                                return DropdownMenuItem(
+                                  value: property,
+                                  child: Text(property.name),
+                                );
+                              }).toList(),
+                              onChanged: (property) {
+                                setState(() {
+                                  _selectedProperty = property;
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null)
+                                  return 'Please select a property';
+                                return null;
+                              },
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Starting Price
+                        TextFormField(
+                          controller: _startingPriceController,
+                          decoration: const InputDecoration(
+                            labelText: 'Starting Price',
+                            prefixIcon: Icon(Icons.attach_money),
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isEmpty == true)
+                              return 'Starting price is required';
+                            if (double.tryParse(value!) == null)
+                              return 'Invalid price';
+                            if (double.parse(value) <= 0)
+                              return 'Price must be greater than 0';
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Duration and Start Date
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _durationController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Duration (hours)',
+                                  prefixIcon: Icon(Icons.schedule),
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                onChanged: (_) => _updateEndDate(),
+                                validator: (value) {
+                                  if (value?.isEmpty == true) return 'Required';
+                                  final duration = int.tryParse(value!);
+                                  if (duration == null || duration <= 0)
+                                    return 'Invalid duration';
+                                  return null;
+                                },
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  final date = await showDatePicker(
+                                    context: context,
+                                    initialDate: _startDate,
+                                    firstDate: DateTime.now(),
+                                    lastDate: DateTime.now().add(
+                                      const Duration(days: 365),
+                                    ),
+                                  );
+                                  if (date != null) {
+                                    setState(() {
+                                      _startDate = date;
+                                      _updateEndDate();
+                                    });
+                                  }
+                                },
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Start Date',
+                                    prefixIcon: Icon(Icons.calendar_today),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  child: Text(
+                                    '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // End Date (read-only)
+                        TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: 'End Date (calculated)',
+                            prefixIcon: Icon(Icons.event),
+                            border: OutlineInputBorder(),
+                          ),
+                          readOnly: true,
+                          initialValue:
+                              '${_endDate.day}/${_endDate.month}/${_endDate.year} ${_endDate.hour}:${_endDate.minute.toString().padLeft(2, '0')}',
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Buy Now Price (optional)
+                        TextFormField(
+                          controller: _buyNowPriceController,
+                          decoration: const InputDecoration(
+                            labelText: 'Buy Now Price (optional)',
+                            prefixIcon: Icon(Icons.shopping_cart),
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value?.isNotEmpty == true) {
+                              if (double.tryParse(value!) == null)
+                                return 'Invalid price';
+                              if (double.parse(value) <= 0)
+                                return 'Price must be greater than 0';
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Submit Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _submitRequest,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Text(
+                                    'Submit Auction Request',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // End Date (read-only)
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'End Date (calculated)',
-                        prefixIcon: Icon(Icons.event),
-                        border: OutlineInputBorder(),
-                      ),
-                      readOnly: true,
-                      initialValue:
-                          '${_endDate.day}/${_endDate.month}/${_endDate.year} ${_endDate.hour}:${_endDate.minute.toString().padLeft(2, '0')}',
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Buy Now Price (optional)
-                    TextFormField(
-                      controller: _buyNowPriceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Buy Now Price (optional)',
-                        prefixIcon: Icon(Icons.shopping_cart),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value?.isNotEmpty == true) {
-                          if (double.tryParse(value!) == null)
-                            return 'Invalid price';
-                          if (double.parse(value) <= 0)
-                            return 'Price must be greater than 0';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _submitRequest,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Text(
-                                'Submit Auction Request',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],

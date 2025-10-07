@@ -14,7 +14,6 @@ class PropertyService {
     required String name,
     required String description,
     required String location,
-    required double startingPrice,
     required int bedrooms,
     required int bathrooms,
     required int squareFeet,
@@ -26,7 +25,6 @@ class PropertyService {
       'name': name,
       'description': description,
       'location': location,
-      'startingPrice': startingPrice,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'squareFeet': squareFeet,
@@ -41,13 +39,11 @@ class PropertyService {
     String? name,
     String? description,
     String? location,
-    double? startingPrice,
   }) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
     if (description != null) body['description'] = description;
     if (location != null) body['location'] = location;
-    if (startingPrice != null) body['startingPrice'] = startingPrice;
 
     return await ApiClient.put(
       '/api/property/$propertyId',
@@ -72,7 +68,6 @@ class PropertyService {
     required String name,
     required String description,
     required String location,
-    required double startingPrice,
     required int bedrooms,
     required int bathrooms,
     required int squareFeet,
@@ -84,7 +79,6 @@ class PropertyService {
       'name': name,
       'description': description,
       'location': location,
-      'startingPrice': startingPrice,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'squareFeet': squareFeet,

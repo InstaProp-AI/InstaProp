@@ -12,8 +12,6 @@ namespace PropertyFlipperAPI.Models
 
         public string? Location { get; set; }
 
-        public decimal StartingPrice { get; set; }
-
         public int Bedrooms { get; set; }
 
         public int Bathrooms { get; set; }

@@ -17,14 +17,14 @@ namespace PropertyFlipperAPI.Models
         public Property Property { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
-        public decimal StartAt { get; set; }
+        public decimal StartPrice { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal CurrentPrice { get; set; }
 
-        public DateTime EndAt { get; set; }
+        public DateTime StartAt { get; set; }
 
-        public int Duration { get; set; } // hours or minutes
+        public int Duration { get; set; } // hours
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal? BuyNowPrice { get; set; }

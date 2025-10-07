@@ -4,6 +4,7 @@ using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using PropertyFlipperAPI.Attributes;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using BCrypt.Net;
@@ -29,24 +30,31 @@ namespace PropertyFlipperAPI.Controllers
             _config = config;
         }
 
-        // Signup with KYC
+        // Check if email exists
+        [HttpGet("check-email")]
+        public async Task<IActionResult> CheckEmail([FromQuery] string email)
+        {
+            var exists = await _context.Accounts.AnyAsync(a => a.Email == email);
+            return Ok(new { exists });
+        }
+
+        // Check if phone exists
+        [HttpGet("check-phone")]
+        public async Task<IActionResult> CheckPhone([FromQuery] string phone)
+        {
+            var exists = await _context.Accounts.AnyAsync(a => a.PhoneNumber == phone);
+            return Ok(new { exists });
+        }
+
+        // Signup - Create account without KYC
         [HttpPost("signup")]
         public async Task<IActionResult> Signup([FromBody] SignupRequest signupRequest)
         {
             if (await _context.Accounts.AnyAsync(a => a.Email == signupRequest.Email))
                 return BadRequest("Email already exists.");
 
-            // Validate KYC documents
-            if (signupRequest.KycDocuments == null || signupRequest.KycDocuments.Count == 0)
-                return BadRequest("KYC documents are required for signup.");
-
-            // Check for required document types (at least ID front and back, or passport front and back)
-            var docTypes = signupRequest.KycDocuments.Select(d => d.DocType).ToList();
-            bool hasIdDocs = docTypes.Contains("ID_Front") && docTypes.Contains("ID_Back");
-            bool hasPassportDocs = docTypes.Contains("Passport_Front") && docTypes.Contains("Passport_Back");
-            
-            if (!hasIdDocs && !hasPassportDocs)
-                return BadRequest("Please provide either ID (front and back) or Passport (front and back) documents.");
+            if (await _context.Accounts.AnyAsync(a => a.PhoneNumber == signupRequest.PhoneNumber))
+                return BadRequest("Phone number already exists.");
 
             var account = new Account
             {
@@ -54,21 +62,92 @@ namespace PropertyFlipperAPI.Controllers
                 LastName = signupRequest.LastName,
                 Email = signupRequest.Email,
                 PhoneNumber = signupRequest.PhoneNumber,
-                Type = signupRequest.AccountType,
+                Type = signupRequest.Type,
                 HashedPassword = BCrypt.Net.BCrypt.HashPassword(signupRequest.Password),
-                IsVerified = false, // Will be verified by admin after KYC review
+                Status = VerificationStatus.NotVerified, // Will be verified by admin after KYC review
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.Accounts.Add(account);
             await _context.SaveChangesAsync();
 
-            // Save KYC documents
-            foreach (var kycDoc in signupRequest.KycDocuments)
+            var token = GenerateJwtToken(account);
+            return Ok(new AuthResponse { Token = token, Account = account });
+        }
+
+        // Upload single file (for KYC documents, property images, etc.)
+        [HttpPost("upload-file")]
+        [Authorize]
+        public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] string docType)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file provided");
+
+            var userId = GetCurrentAccountId();
+            if (userId == null)
+                return Unauthorized();
+
+            try
+            {
+                // Create uploads directory if it doesn't exist
+                var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "kyc");
+                Directory.CreateDirectory(uploadsPath);
+
+                // Generate unique filename
+                var fileName = $"{userId}_{docType}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                var filePath = Path.Combine(uploadsPath, fileName);
+
+                // Save file
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                // Return URL
+                var fileUrl = $"/uploads/kyc/{fileName}";
+                return Ok(new { success = true, url = fileUrl, docType });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error uploading file: {ex.Message}");
+            }
+        }
+
+        // Upload KYC Documents for existing user
+        [HttpPost("upload-kyc")]
+        [Authorize]
+        public async Task<IActionResult> UploadKycDocuments([FromBody] KycUploadRequest kycRequest)
+        {
+            var userId = GetCurrentAccountId();
+            if (userId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync((long)userId);
+            
+            if (account == null)
+                return NotFound("Account not found.");
+
+            // Validate KYC documents
+            if (kycRequest.KycDocuments == null || kycRequest.KycDocuments.Count == 0)
+                return BadRequest("KYC documents are required.");
+
+            var docTypes = kycRequest.KycDocuments.Select(d => d.DocType).ToList();
+            bool hasIdDocs = docTypes.Contains("ID_Front") && docTypes.Contains("ID_Back");
+            bool hasPassport = docTypes.Contains("Passport");
+            
+            if (!hasIdDocs && !hasPassport)
+                return BadRequest("Please provide either ID (front and back) or Passport.");
+
+            // Remove existing KYC documents for this user
+            var existingDocs = await _context.UserDocs.Where(d => d.UserId == (long)userId).ToListAsync();
+            _context.UserDocs.RemoveRange(existingDocs);
+
+            // Add new KYC documents
+            foreach (var kycDoc in kycRequest.KycDocuments)
             {
                 var userDoc = new UserDoc
                 {
-                    UserId = account.AccountId,
+                    UserId = (long)userId,
                     DocType = kycDoc.DocType,
                     ImgUrl = kycDoc.ImageUrl,
                     UploadedAt = DateTime.UtcNow
@@ -76,9 +155,12 @@ namespace PropertyFlipperAPI.Controllers
                 _context.UserDocs.Add(userDoc);
             }
 
+            // Update account status to Pending after uploading documents
+            account.Status = VerificationStatus.Pending;
+            account.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
-            var token = GenerateJwtToken(account);
-            return Ok(new AuthResponse { Token = token, Account = account });
+            return Ok(new { success = true, message = "KYC documents uploaded successfully. Status set to Pending." });
         }
 
         // Login
@@ -95,7 +177,7 @@ namespace PropertyFlipperAPI.Controllers
 
         private string GenerateJwtToken(Account account)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? ""));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
@@ -133,6 +215,14 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(account);
         }
 
+        // GET: api/Account/me (alias for current)
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<ActionResult<Account>> GetMe()
+        {
+            return await GetCurrentAccount();
+        }
+
         // PUT: api/Account/current
         [HttpPut("current")]
         [Authorize]
@@ -153,11 +243,17 @@ namespace PropertyFlipperAPI.Controllers
                 account.LastName = updateDto.LastName;
             if (!string.IsNullOrEmpty(updateDto.PhoneNumber))
                 account.PhoneNumber = updateDto.PhoneNumber;
+            if (!string.IsNullOrEmpty(updateDto.Email))
+                account.Email = updateDto.Email;
 
+            // Mark account as not verified when profile is updated
+            account.Status = VerificationStatus.NotVerified;
             account.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Account updated successfully" });
+            
+            // Return updated account
+            return Ok(account);
         }
 
         // POST: api/Account/kyc
@@ -194,6 +290,19 @@ namespace PropertyFlipperAPI.Controllers
                     UploadedAt = DateTime.UtcNow
                 };
                 _context.UserDocs.Add(userDoc);
+            }
+
+            // Check if user has uploaded sufficient documents to mark as Pending
+            var userDocs = await _context.UserDocs.Where(d => d.UserId == accountId).ToListAsync();
+            var docTypes = userDocs.Select(d => d.DocType).ToList();
+            bool hasIdDocs = docTypes.Contains("ID_Front") && docTypes.Contains("ID_Back");
+            bool hasPassport = docTypes.Contains("Passport");
+            
+            // Update status to Pending if user has uploaded complete documents
+            if (hasIdDocs || hasPassport)
+            {
+                account.Status = VerificationStatus.Pending;
+                account.UpdatedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();
@@ -241,7 +350,8 @@ namespace PropertyFlipperAPI.Controllers
                 return NotFound("User not found");
 
             // Verify the user's KYC
-            account.IsVerified = true;
+            account.Status = VerificationStatus.Verified;
+            account.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "User KYC verified successfully" });
@@ -254,14 +364,14 @@ namespace PropertyFlipperAPI.Controllers
         public async Task<ActionResult<IEnumerable<object>>> GetPendingKycUsers()
         {
             var pendingUsers = await _context.Accounts
-                .Where(a => !a.IsVerified && a.Type == AccountType.User)
+                .Where(a => a.Status == VerificationStatus.Pending && a.Type == AccountType.User)
                 .Select(a => new
                 {
                     a.AccountId,
                     a.FirstName,
                     a.LastName,
                     a.Email,
-                    a.IsVerified,
+                    a.Status,
                     KycDocumentsCount = _context.UserDocs.Count(d => d.UserId == a.AccountId)
                 })
                 .ToListAsync();
@@ -283,13 +393,17 @@ namespace PropertyFlipperAPI.Controllers
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public AccountType AccountType { get; set; } = AccountType.User;
+        public AccountType Type { get; set; } = AccountType.User;
+    }
+
+    public class KycUploadRequest
+    {
         public List<KycDocumentDto> KycDocuments { get; set; } = new List<KycDocumentDto>();
     }
 
     public class KycDocumentDto
     {
-        public string DocType { get; set; } = string.Empty; // ID_Front, ID_Back, Passport_Front, Passport_Back
+        public string DocType { get; set; } = string.Empty; // ID_Front, ID_Back, Passport
         public string ImageUrl { get; set; } = string.Empty;
     }
 
@@ -311,11 +425,12 @@ namespace PropertyFlipperAPI.Controllers
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? PhoneNumber { get; set; }
+        public string? Email { get; set; }
     }
 
     public class KycUploadDto
     {
-        public string DocType { get; set; } = string.Empty; // ID_Front, ID_Back, Passport_Front, Passport_Back
+        public string DocType { get; set; } = string.Empty; // ID_Front, ID_Back, Passport
         public string ImageUrl { get; set; } = string.Empty;
     }
 }

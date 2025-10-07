@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import '../providers/app_state.dart';
+import '../services/api_client.dart';
 import '../widgets/loading_button.dart';
+import 'properties_management_page.dart';
 
 class PropertyDocsUploadPage extends StatefulWidget {
   final int propertyId;
@@ -433,7 +435,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
           var request = http.MultipartRequest(
             'POST',
             Uri.parse(
-              'http://localhost:5284/api/Property/${widget.propertyId}/documents',
+              '${ApiClient.baseUrl}/api/Property/${widget.propertyId}/documents',
             ),
           );
 
@@ -474,10 +476,32 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
           }
         });
 
-        // Clear uploaded files
+        // If all files uploaded successfully, navigate to properties page
         if (failCount == 0) {
-          _selectedFiles.clear();
-          _docTypes.clear();
+          await Future.delayed(const Duration(seconds: 1));
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const PropertiesManagementPage(),
+              ),
+              (route) => false,
+            );
+
+            // Show success message on properties page
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Documents uploaded successfully! Property status: Pending Review 📋',
+                    ),
+                    backgroundColor: Colors.blue,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            });
+          }
         }
       } else {
         setState(() {
@@ -512,20 +536,29 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
-                Navigator.of(
-                  context,
-                ).pop(true); // Return to previous page with success
+
+                // Navigate to properties page
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const PropertiesManagementPage(),
+                  ),
+                  (route) => false,
+                );
 
                 // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Property saved successfully! Documents can be uploaded later.',
-                    ),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Property saved! Upload documents later to submit for review 📄',
+                        ),
+                        backgroundColor: Colors.orange,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                });
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange[700],

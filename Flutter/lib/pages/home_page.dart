@@ -19,7 +19,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  int _selectedIndex = 0;
+  int _selectedIndex = 2; // Start on Home tab
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -90,115 +90,170 @@ class _HomePageState extends State<HomePage>
       color: Theme.of(context).primaryColor,
       child: CustomScrollView(
         slivers: [
-          // Colorful Header
+          // Sticky Header with Logo and App Name
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: 180,
             floating: false,
             pinned: true,
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.white,
             elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF1B5E20),
-                      const Color(0xFF2E7D32),
-                      const Color(0xFF4CAF50),
-                      const Color(0xFF66BB6A),
-                    ],
-                    stops: const [0.0, 0.3, 0.7, 1.0],
-                  ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                  width: 2,
+            shadowColor: Colors.black.withOpacity(0.1),
+            surfaceTintColor: Colors.white,
+            flexibleSpace: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                // Calculate collapse ratio
+                // When fully expanded: constraints.maxHeight = 180 + status bar
+                // When collapsed: constraints.maxHeight = app bar height (~56)
+                final statusBarHeight = MediaQuery.of(context).padding.top;
+                final appBarHeight = kToolbarHeight;
+                final expandedHeight = 180.0;
+
+                // Calculate how much the app bar is collapsed (0 = expanded, 1 = collapsed)
+                final collapseRatio =
+                    ((expandedHeight +
+                                statusBarHeight -
+                                constraints.maxHeight) /
+                            (expandedHeight - appBarHeight))
+                        .clamp(0.0, 1.0);
+
+                return Stack(
+                  children: [
+                    // Main gradient header (visible when expanded)
+                    FlexibleSpaceBar(
+                      background: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xFF1B5E20),
+                              const Color(0xFF2E7D32),
+                              const Color(0xFF4CAF50),
+                              const Color(0xFF66BB6A),
+                            ],
+                            stops: const [0.0, 0.3, 0.7, 1.0],
+                          ),
+                        ),
+                        child: SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.3),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.home_work,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Property Flipper',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium
+                                                ?.copyWith(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 26,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Premium Real Estate Auctions',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.copyWith(
+                                                  color: Colors.white
+                                                      .withOpacity(0.9),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              child: const Icon(
-                                Icons.home_work,
-                                color: Colors.white,
-                                size: 28,
-                              ),
+                              ],
                             ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Compact header (visible when collapsed)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: collapseRatio,
+                        child: Container(
+                          height: kToolbarHeight + statusBarHeight,
+                          color: Colors.white,
+                          child: SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    'Property Flipper',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 26,
-                                        ),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF2E7D32),
+                                          Color(0xFF4CAF50),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.home_work,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
-                                  Text(
-                                    'Premium Real Estate Auctions',
-                                    style: Theme.of(context).textTheme.bodyLarge
-                                        ?.copyWith(
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Property Flipper',
+                                    style: TextStyle(
+                                      color: Color(0xFF1B5E20),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 32),
-                        Row(
-                          children: [
-                            _buildStatCard(
-                              context,
-                              '${appState.auctions.length}',
-                              'Active Auctions',
-                              Icons.gavel,
-                              Colors.blue,
-                            ),
-                            const SizedBox(width: 16),
-                            _buildStatCard(
-                              context,
-                              '${_getAuctionsEndingToday(appState)}',
-                              'Ending Today',
-                              Icons.schedule,
-                              Colors.orange,
-                            ),
-                            const SizedBox(width: 16),
-                            _buildStatCard(
-                              context,
-                              '\$${_calculateAveragePropertyPrice(appState).toStringAsFixed(0)}K',
-                              'Avg Price',
-                              Icons.attach_money,
-                              Colors.purple,
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -209,6 +264,10 @@ class _HomePageState extends State<HomePage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Platform Statistics Section
+                  _buildStatisticsSection(appState),
+                  const SizedBox(height: 24),
+
                   // Quick Actions
                   _buildQuickActions(context),
                   const SizedBox(height: 32),
@@ -285,6 +344,79 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  Widget _buildStatisticsSection(AppState appState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Platform Statistics',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // First row of stats
+        Row(
+          children: [
+            _buildStatCard(
+              context,
+              '${appState.dashboardStats?.activeAuctions ?? appState.auctions.length}',
+              'Active Auctions',
+              Icons.gavel,
+              Colors.blue,
+            ),
+            const SizedBox(width: 12),
+            _buildStatCard(
+              context,
+              '${appState.dashboardStats?.totalBids ?? 0}',
+              'Total Bids',
+              Icons.trending_up,
+              Colors.green,
+            ),
+            const SizedBox(width: 12),
+            _buildStatCard(
+              context,
+              '+${appState.dashboardStats?.totalUsers ?? 0}',
+              'Active Users',
+              Icons.people,
+              Colors.purple,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Second row of stats
+        Row(
+          children: [
+            _buildStatCard(
+              context,
+              '${appState.dashboardStats?.bidsLastWeek ?? 0}',
+              'Bids This Week',
+              Icons.calendar_today,
+              Colors.orange,
+            ),
+            const SizedBox(width: 12),
+            _buildStatCard(
+              context,
+              '\$${_formatVolume(appState.dashboardStats?.totalVolume ?? 0)}',
+              'Total Volume',
+              Icons.attach_money,
+              Colors.teal,
+            ),
+            const SizedBox(width: 12),
+            _buildStatCard(
+              context,
+              '${appState.dashboardStats?.averageBidsPerAuction.toStringAsFixed(1) ?? "0"}',
+              'Avg Bids/Auction',
+              Icons.bar_chart,
+              Colors.indigo,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatCard(
     BuildContext context,
     String value,
@@ -296,9 +428,16 @@ class _HomePageState extends State<HomePage>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.3), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           children: [
@@ -316,10 +455,11 @@ class _HomePageState extends State<HomePage>
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: color.withOpacity(0.8),
+                color: Colors.grey[700],
                 fontWeight: FontWeight.w600,
-                fontSize: 12,
+                fontSize: 11,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -887,9 +1027,12 @@ class _HomePageState extends State<HomePage>
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.analytics_rounded),
-          label: 'Valuate',
+          label: 'Properties',
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_rounded),
+           label: 'Home'
+           ),
         BottomNavigationBarItem(
           icon: Icon(Icons.calendar_today_rounded),
           label: 'Calendar',
@@ -918,20 +1061,13 @@ class _HomePageState extends State<HomePage>
     return const ProfilePage();
   }
 
-  double _calculateAveragePropertyPrice(AppState appState) {
-    if (appState.auctions.isEmpty) return 0.0;
-    final total = appState.auctions.fold<double>(
-      0.0,
-      (sum, auction) => sum + auction.currentPrice,
-    );
-    return total / appState.auctions.length / 1000;
-  }
-
-  int _getAuctionsEndingToday(AppState appState) {
-    final today = DateTime.now();
-    final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
-    return appState.auctions.where((auction) {
-      return auction.endAt.isBefore(endOfDay) && auction.endAt.isAfter(today);
-    }).length;
+  String _formatVolume(double volume) {
+    if (volume >= 1000000) {
+      return '${(volume / 1000000).toStringAsFixed(1)}M';
+    } else if (volume >= 1000) {
+      return '${(volume / 1000).toStringAsFixed(1)}K';
+    } else {
+      return volume.toStringAsFixed(0);
+    }
   }
 }

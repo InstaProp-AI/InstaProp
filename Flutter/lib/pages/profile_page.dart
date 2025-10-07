@@ -4,6 +4,8 @@ import '../providers/app_state.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
+import '../models/user.dart';
+import 'kyc_verification_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -32,14 +34,98 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload user data whenever dependencies change (e.g., when user logs in)
+    _loadUserData();
+  }
+
   void _loadUserData() {
-    final appState = context.read<AppState>();
+    final appState = Provider.of<AppState>(context, listen: false);
     if (appState.user != null) {
-      _firstNameController.text = appState.user!.firstName;
-      _lastNameController.text = appState.user!.lastName;
-      _phoneController.text = appState.user!.phoneNumber;
-      _emailController.text = appState.user!.email;
+      setState(() {
+        _firstNameController.text = appState.user!.firstName;
+        _lastNameController.text = appState.user!.lastName;
+        _phoneController.text = appState.user!.phoneNumber;
+        _emailController.text = appState.user!.email;
+      });
     }
+  }
+
+  void _showEditWarning() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange[700],
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text('Important Notice'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Editing your profile will change your account status to:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Pending Verification',
+                      style: TextStyle(
+                        color: Colors.orange[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Your account will need to be re-verified by an admin after you save changes.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() => _isEditing = true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[700],
+            ),
+            child: const Text('Continue Editing'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -70,15 +156,22 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (response.success) {
+        // Reload user data from AppState to get updated verification status
+        _loadUserData();
+
         setState(() {
-          _successMessage = 'Profile updated successfully!';
+          _successMessage =
+              'Profile updated successfully! Your account is now pending admin review.';
           _isEditing = false;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text(
+              'Profile updated! An admin will review your changes shortly.',
+            ),
+            backgroundColor: Colors.orange[700],
+            duration: const Duration(seconds: 4),
           ),
         );
       } else {
@@ -118,9 +211,9 @@ class _ProfilePageState extends State<ProfilePage> {
             backgroundColor: Colors.green[700],
             foregroundColor: Colors.white,
             actions: [
-              if (!_isEditing)
+              if (!_isEditing && appState.isLoggedIn)
                 IconButton(
-                  onPressed: () => setState(() => _isEditing = true),
+                  onPressed: _showEditWarning,
                   icon: const Icon(Icons.edit),
                 ),
             ],
@@ -175,22 +268,31 @@ class _ProfilePageState extends State<ProfilePage> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: appState.user!.isVerified
-                                  ? Colors.green[100]
-                                  : Colors.orange[100],
+                              color: _getStatusColor(appState.user!.status),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: Text(
-                              (appState.user?.isVerified ?? false)
-                                  ? 'Verified'
-                                  : 'Pending Verification',
-                              style: TextStyle(
-                                color: (appState.user?.isVerified ?? false)
-                                    ? Colors.green[700]
-                                    : Colors.orange[700],
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _getStatusIcon(appState.user!.status),
+                                  size: 14,
+                                  color: _getStatusTextColor(
+                                    appState.user!.status,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _getStatusText(appState.user!.status),
+                                  style: TextStyle(
+                                    color: _getStatusTextColor(
+                                      appState.user!.status,
+                                    ),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -293,20 +395,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     const SizedBox(height: 16),
 
-                    // Account Type (read-only)
-                    TextFormField(
-                      initialValue:
-                          appState.user?.type.toString().split('.').last ??
-                          'Not specified',
-                      decoration: const InputDecoration(
-                        labelText: 'Account Type',
-                        border: OutlineInputBorder(),
-                      ),
-                      enabled: false,
-                    ),
-
-                    const SizedBox(height: 16),
-
                     // Member since (read-only)
                     TextFormField(
                       initialValue:
@@ -318,10 +406,189 @@ class _ProfilePageState extends State<ProfilePage> {
                       enabled: false,
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+
+                    // Verification Status Warning (if not verified or pending)
+                    if (appState.user!.status != VerificationStatus.verified &&
+                        !_isEditing)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors:
+                                appState.user!.status ==
+                                    VerificationStatus.pending
+                                ? [
+                                    Colors.blue[50]!,
+                                    Colors.blue[100]!.withOpacity(0.3),
+                                  ]
+                                : [
+                                    Colors.orange[50]!,
+                                    Colors.orange[100]!.withOpacity(0.3),
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color:
+                                appState.user!.status ==
+                                    VerificationStatus.pending
+                                ? Colors.blue[300]!
+                                : Colors.orange[300]!,
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        appState.user!.status ==
+                                            VerificationStatus.pending
+                                        ? Colors.blue[100]
+                                        : Colors.orange[100],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    appState.user!.status ==
+                                            VerificationStatus.pending
+                                        ? Icons.hourglass_empty
+                                        : Icons.verified_user,
+                                    color:
+                                        appState.user!.status ==
+                                            VerificationStatus.pending
+                                        ? Colors.blue[700]
+                                        : Colors.orange[700],
+                                    size: 28,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        appState.user!.status ==
+                                                VerificationStatus.pending
+                                            ? 'Documents Under Review'
+                                            : 'Complete Your Verification',
+                                        style: TextStyle(
+                                          color:
+                                              appState.user!.status ==
+                                                  VerificationStatus.pending
+                                              ? Colors.blue[900]
+                                              : Colors.orange[900],
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        appState.user!.status ==
+                                                VerificationStatus.pending
+                                            ? 'Your documents are being reviewed by our team. We\'ll notify you once verified.'
+                                            : 'Upload your ID or Passport to unlock all features',
+                                        style: TextStyle(
+                                          color:
+                                              appState.user!.status ==
+                                                  VerificationStatus.pending
+                                              ? Colors.blue[700]
+                                              : Colors.orange[700],
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Only show upload button if NotVerified
+                            if (appState.user!.status ==
+                                VerificationStatus.notVerified) ...[
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => KycVerificationPage(
+                                          firstName: appState.user!.firstName,
+                                          lastName: appState.user!.lastName,
+                                          phoneNumber:
+                                              appState.user!.phoneNumber,
+                                          email: appState.user!.email,
+                                          password:
+                                              '', // Not needed for KYC upload only
+                                          gender:
+                                              'Male', // Not needed for KYC upload only
+                                          isNewSignup: false, // Existing user
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.upload_file),
+                                  label: const Text(
+                                    'Upload Verification Documents',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange[700],
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
 
                     // Action buttons
                     if (_isEditing) ...[
+                      // Warning about unverification
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.orange[700],
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Saving changes will set your account to pending. An admin will review your updates.',
+                                style: TextStyle(
+                                  color: Colors.orange[700],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       Row(
                         children: [
                           Expanded(
@@ -339,6 +606,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   : () {
                                       setState(() {
                                         _isEditing = false;
+                                        _errorMessage = null;
+                                        _successMessage = null;
                                         _loadUserData(); // Reset to original values
                                       });
                                     },
@@ -420,5 +689,50 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       },
     );
+  }
+
+  // Helper methods for verification status display
+  Color _getStatusColor(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return Colors.green[100]!;
+      case VerificationStatus.pending:
+        return Colors.blue[100]!;
+      case VerificationStatus.notVerified:
+        return Colors.orange[100]!;
+    }
+  }
+
+  Color _getStatusTextColor(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return Colors.green[700]!;
+      case VerificationStatus.pending:
+        return Colors.blue[700]!;
+      case VerificationStatus.notVerified:
+        return Colors.orange[700]!;
+    }
+  }
+
+  IconData _getStatusIcon(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return Icons.verified;
+      case VerificationStatus.pending:
+        return Icons.hourglass_empty;
+      case VerificationStatus.notVerified:
+        return Icons.warning_amber_rounded;
+    }
+  }
+
+  String _getStatusText(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return 'Verified';
+      case VerificationStatus.pending:
+        return 'Pending';
+      case VerificationStatus.notVerified:
+        return 'Not Verified';
+    }
   }
 }

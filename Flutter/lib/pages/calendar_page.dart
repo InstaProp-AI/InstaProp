@@ -517,7 +517,7 @@ class _CalendarPageState extends State<CalendarPage> {
               Icon(Icons.schedule, color: Colors.green[700], size: 20),
               const SizedBox(width: 8),
               Text(
-                'Next Events',
+                'Upcoming Events',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.green[700],

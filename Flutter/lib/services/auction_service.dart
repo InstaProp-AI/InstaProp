@@ -13,15 +13,15 @@ class AuctionService {
 
   static Future<ApiResponse<Auction>> createAuction({
     required int propertyId,
-    required double startAt,
-    required DateTime endAt,
+    required double startPrice,
+    required DateTime startAt,
     required int duration,
     double? buyNowPrice,
   }) async {
     return await ApiClient.post('/api/auction', {
       'propertyId': propertyId,
-      'startAt': startAt,
-      'endAt': endAt.toIso8601String(),
+      'startPrice': startPrice,
+      'startAt': startAt.toIso8601String(),
       'duration': duration,
       'buyNowPrice': buyNowPrice,
     }, Auction.fromJson);
@@ -29,15 +29,15 @@ class AuctionService {
 
   static Future<ApiResponse<Auction>> updateAuction({
     required int auctionId,
-    double? startAt,
-    DateTime? endAt,
+    double? startPrice,
+    DateTime? startAt,
     int? duration,
     double? buyNowPrice,
     String? status,
   }) async {
     final body = <String, dynamic>{};
-    if (startAt != null) body['startAt'] = startAt;
-    if (endAt != null) body['endAt'] = endAt.toIso8601String();
+    if (startPrice != null) body['startPrice'] = startPrice;
+    if (startAt != null) body['startAt'] = startAt.toIso8601String();
     if (duration != null) body['duration'] = duration;
     if (buyNowPrice != null) body['buyNowPrice'] = buyNowPrice;
     if (status != null) body['status'] = status;

@@ -34,16 +34,11 @@ namespace PropertyFlipperAPI.Models
 
         public string? Location { get; set; } // could be address or lat-long string
 
-        public decimal StartingPrice { get; set; }
-
         [Required]
         public PropertyType Type { get; set; } = PropertyType.Resale;
 
-        public bool IsApproved { get; set; } = false; // set by admin
-        
-        public bool IsVerified { get; set; } = false; // KYC and docs verified by admin
-        
-        public bool IsEditable { get; set; } = true; // Can be edited only before verification
+        [Required]
+        public PropertyStatus Status { get; set; } = PropertyStatus.NotApproved;
 
         public int Bedrooms { get; set; }
 

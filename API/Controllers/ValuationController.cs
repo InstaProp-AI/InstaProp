@@ -60,7 +60,7 @@ namespace PropertyFlipperAPI.Controllers
                     PropertyId = p.PropertyId,
                     PropertyName = p.Name,
                     Location = p.Location,
-                    CalculatedValue = p.StartingPrice, // This would be replaced with actual valuation
+                    CalculatedValue = (p.Bedrooms * 50000) + (p.Bathrooms * 30000) + (p.SquareFeet * 100), // Basic valuation
                     CalculatedAt = p.CreatedAt
                 })
                 .ToListAsync();
@@ -75,7 +75,8 @@ namespace PropertyFlipperAPI.Controllers
             
             if (property != null)
             {
-                basePrice = property.StartingPrice;
+                // Calculate based on property details
+                basePrice = (property.Bedrooms * 50000) + (property.Bathrooms * 30000) + (property.SquareFeet * 100);
             }
             else if (request.Bedrooms > 0 && request.Bathrooms > 0 && request.SquareFeet > 0)
             {

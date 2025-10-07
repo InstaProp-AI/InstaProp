@@ -1,11 +1,19 @@
 {
   "Version": 1,
-  "Hash": "csgwGoejrULtGBWTtaKuP3+jn75THBfd8KxoQVgAixw=",
+  "Hash": "U+t+KdEbKws+M1031QEfEr3XwggtrDB9d30RC4It4qQ=",
   "Source": "PropertyFlipperAPI",
   "BasePath": "_content/PropertyFlipperAPI",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "PropertyFlipperAPI/wwwroot",
+      "Source": "PropertyFlipperAPI",
+      "ContentRoot": "/Users/s/Desktop/Business/Real estate/Proerty Flipper/API/wwwroot/",
+      "BasePath": "_content/PropertyFlipperAPI",
+      "Pattern": "**"
+    }
+  ],
   "Assets": []
 }

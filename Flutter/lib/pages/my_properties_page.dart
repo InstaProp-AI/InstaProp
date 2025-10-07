@@ -24,11 +24,11 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
   }
 
   Future<void> _requestAuction(Property property) async {
-    if (!property.isVerified) {
+    if (!property.canRequestAuction) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Property must be verified before requesting an auction',
+            'Property must be approved before requesting an auction',
           ),
           backgroundColor: Colors.orange,
         ),
@@ -237,7 +237,7 @@ class PropertyCard extends StatelessWidget {
 
                 // Price
                 Text(
-                  '\$${property.startingPrice.toStringAsFixed(0)}',
+                  '\$${0.0.toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: Colors.green[700],
                     fontWeight: FontWeight.bold,
@@ -249,7 +249,7 @@ class PropertyCard extends StatelessWidget {
                 // Action Buttons
                 Row(
                   children: [
-                    if (property.isVerified && property.isEditable)
+                    if (property.isApproved && property.isEditable)
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
@@ -269,7 +269,7 @@ class PropertyCard extends StatelessWidget {
                         ),
                       ),
 
-                    if (property.isVerified) ...[
+                    if (property.isApproved) ...[
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
@@ -286,7 +286,7 @@ class PropertyCard extends StatelessWidget {
                   ],
                 ),
 
-                if (!property.isVerified)
+                if (!property.isApproved)
                   Container(
                     margin: const EdgeInsets.only(top: 8),
                     padding: const EdgeInsets.all(8),
@@ -312,7 +312,7 @@ class PropertyCard extends StatelessWidget {
                     ),
                   ),
 
-                if (property.isVerified && !property.isEditable)
+                if (property.isApproved && !property.isEditable)
                   Container(
                     margin: const EdgeInsets.only(top: 8),
                     padding: const EdgeInsets.all(8),
@@ -350,7 +350,7 @@ class PropertyCard extends StatelessWidget {
     Color textColor;
     String text;
 
-    if (property.isVerified) {
+    if (property.isApproved) {
       backgroundColor = Colors.green[100]!;
       textColor = Colors.green[800]!;
       text = 'Verified';
@@ -417,7 +417,7 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
   @override
   void initState() {
     super.initState();
-    _startPriceController.text = widget.property.startingPrice.toString();
+    _startPriceController.text = '';
     _durationController.text = '168'; // 7 days in hours
   }
 
@@ -439,8 +439,8 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
     try {
       final request = AuctionRequest(
         propertyId: widget.property.propertyId,
-        startAt: double.parse(_startPriceController.text),
-        endAt: _endDate,
+        startPrice: double.parse(_startPriceController.text),
+        startAt: _endDate,
         duration: int.parse(_durationController.text),
         buyNowPrice: _buyNowPriceController.text.isNotEmpty
             ? double.parse(_buyNowPriceController.text)

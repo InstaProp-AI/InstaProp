@@ -120,7 +120,11 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     _auctionUpdateSubscription = WebSocketService.instance.auctionUpdateStream
         .listen(
           (AuctionUpdate update) {
-            if (mounted) {
+            if (mounted &&
+                update.auction.auctionId == _currentAuction!.auctionId) {
+              print(
+                '🔄 Auction update received: Price=\$${update.auction.currentPrice}, Bids=${update.auction.bidCount}',
+              );
               setState(() {
                 _currentAuction = update.auction;
               });
@@ -134,11 +138,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     // Listen for bid updates (new bids)
     _bidUpdateSubscription = WebSocketService.instance.bidUpdateStream.listen(
       (BidUpdate update) {
-        if (mounted) {
-          // Add new bid to the list
+        if (mounted && update.bid.auctionId == _currentAuction!.auctionId) {
+          print('🆕 New bid received: \$${update.bid.bidAmount}');
+          // Add new bid to the list and reload to get fresh data
           setState(() {
             _bids.insert(0, update.bid); // Add to beginning for newest first
           });
+          // Also reload full bid list to ensure consistency
+          _loadBids();
         }
       },
       onError: (error) {
@@ -236,6 +243,10 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   Future<void> _placeBid() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Show confirmation dialog first
+    final confirmed = await _showBidConfirmationDialog();
+    if (!confirmed) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -277,6 +288,138 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         _isLoading = false;
       });
     }
+  }
+
+  Future<bool> _showBidConfirmationDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange[700],
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Confirm Your Bid'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You are about to place a bid of \$${_bidController.text}.',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Please note:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildWarningPoint(
+                    '• Once placed, bids are binding and cannot be withdrawn.',
+                  ),
+                  const SizedBox(height: 8),
+                  _buildWarningPoint(
+                    '• If you win an auction and decide not to proceed with the purchase, your account may face restrictions.',
+                  ),
+                  const SizedBox(height: 8),
+                  _buildWarningPoint(
+                    '• Withdrawing from 2 won auctions will result in a 14-day account suspension.',
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue[700],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Bid responsibly and only if you\'re committed to completing the purchase.',
+                            style: TextStyle(
+                              color: Colors.blue[900],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Confirm Bid',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Widget _buildWarningPoint(String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -545,7 +688,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
                 Center(
                   child: Text(
-                    'Starting Price: \$${_currentAuction!.startAt.toStringAsFixed(0)}',
+                    'Starting Price: \$${_currentAuction!.startPrice.toStringAsFixed(0)}',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
@@ -718,6 +861,57 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         );
                       }
 
+                      // Check if user is verified
+                      if (!appState.user!.isVerified) {
+                        return Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orange[200]!),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.verified_user,
+                                color: Colors.orange[700],
+                                size: 32,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Account Not Verified',
+                                style: TextStyle(
+                                  color: Colors.orange[700],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'You need to verify your account to place bids. Please upload your verification documents from your profile.',
+                                style: TextStyle(
+                                  color: Colors.orange[600],
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () =>
+                                    Navigator.of(context).pushNamed('/profile'),
+                                icon: const Icon(Icons.upload_file),
+                                label: const Text('Go to Profile'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange[700],
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
                       // Check if user owns this property
                       final userOwnsProperty = appState.userProperties.any(
                         (property) =>
@@ -850,11 +1044,109 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     final sortedBids = List<Bid>.from(_bids)
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
+    // Calculate min and max values for better chart display
+    final minY = 0.0; // Don't go below 0
+    final maxY =
+        sortedBids.map((b) => b.bidAmount).reduce((a, b) => a > b ? a : b) *
+        1.1;
+
     return LineChart(
       LineChartData(
-        gridData: FlGridData(show: false),
-        titlesData: FlTitlesData(show: false),
-        borderData: FlBorderData(show: false),
+        minY: minY,
+        maxY: maxY,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxY / 5,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(color: Colors.grey[300]!, strokeWidth: 1);
+          },
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 45,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '\$${value.toInt()}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() >= sortedBids.length) return const Text('');
+
+                final bid = sortedBids[value.toInt()];
+                final now = DateTime.now();
+                final difference = now.difference(bid.createdAt);
+
+                String timeLabel;
+                if (difference.inMinutes < 60) {
+                  timeLabel = '${difference.inMinutes}m';
+                } else if (difference.inHours < 24) {
+                  timeLabel = '${difference.inHours}h';
+                } else {
+                  timeLabel = '${difference.inDays}d';
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    timeLabel,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border(
+            bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+            left: BorderSide(color: Colors.grey[300]!, width: 1),
+          ),
+        ),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            tooltipBgColor: const Color(0xFF2E7D32),
+            tooltipRoundedRadius: 8,
+            getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+              return touchedBarSpots.map((barSpot) {
+                return LineTooltipItem(
+                  '\$${barSpot.y.toStringAsFixed(2)}',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
         lineBarsData: [
           LineChartBarData(
             spots: sortedBids.asMap().entries.map((entry) {
@@ -1389,8 +1681,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       'Verified property with all legal clearances',
     ];
 
-    if (property.isVerified) {
-      highlights.insert(0, 'Verified property with complete documentation');
+    if (property.isApproved) {
+      highlights.insert(0, 'Approved property with complete documentation');
     }
 
     if (property.bedrooms >= 3) {

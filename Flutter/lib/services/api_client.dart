@@ -26,7 +26,7 @@ class ApiResponse<T> {
 }
 
 class ApiClient {
-  static const String baseUrl = 'http://localhost:5284';
+  static const String baseUrl = 'http://192.168.1.11:5284';
   static const Duration timeout = Duration(seconds: 30);
 
   static Future<String?> getToken() async {
@@ -56,18 +56,41 @@ class ApiClient {
     T Function(Map<String, dynamic>) fromJson,
   ) async {
     try {
-      final data = jsonDecode(response.body);
-
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+
+        // Ensure data is a Map before calling fromJson
+        if (data is! Map<String, dynamic>) {
+          return ApiResponse.error(
+            'Invalid response format: expected object, got ${data.runtimeType}',
+            statusCode: response.statusCode,
+          );
+        }
+
         return ApiResponse.success(
           fromJson(data),
           statusCode: response.statusCode,
         );
       } else {
-        final errorMessage = data is Map<String, dynamic>
-            ? (data['message'] ?? data['error'] ?? 'Unknown error')
-            : 'Request failed with status ${response.statusCode}';
-        return ApiResponse.error(errorMessage, statusCode: response.statusCode);
+        // Handle error responses
+        try {
+          final data = jsonDecode(response.body);
+          final errorMessage = data is Map<String, dynamic>
+              ? (data['message'] ?? data['error'] ?? 'Unknown error')
+              : (data is String
+                    ? data
+                    : 'Request failed with status ${response.statusCode}');
+          return ApiResponse.error(
+            errorMessage,
+            statusCode: response.statusCode,
+          );
+        } catch (e) {
+          // If JSON decode fails, use response body as error message
+          return ApiResponse.error(
+            response.body.isNotEmpty ? response.body : 'Request failed',
+            statusCode: response.statusCode,
+          );
+        }
       }
     } catch (e) {
       return ApiResponse.error(
@@ -82,19 +105,54 @@ class ApiClient {
     T Function(Map<String, dynamic>) fromJson,
   ) async {
     try {
-      final data = jsonDecode(response.body);
-
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final List<dynamic> list = data is List ? data : [];
-        final items = list
-            .map((item) => fromJson(item as Map<String, dynamic>))
-            .toList();
+        final data = jsonDecode(response.body);
+
+        if (data is! List) {
+          print('❌ Expected List but got ${data.runtimeType}');
+          return ApiResponse.error(
+            'Invalid response format: expected array, got ${data.runtimeType}',
+            statusCode: response.statusCode,
+          );
+        }
+
+        final List<dynamic> list = data;
+        final items = <T>[];
+
+        for (int i = 0; i < list.length; i++) {
+          try {
+            final item = list[i];
+            if (item is! Map<String, dynamic>) {
+              print('❌ Item $i is not a Map: ${item.runtimeType}');
+              continue;
+            }
+            items.add(fromJson(item));
+          } catch (e) {
+            print('❌ Error parsing item $i: $e');
+            // Continue parsing other items
+          }
+        }
+
         return ApiResponse.success(items, statusCode: response.statusCode);
       } else {
-        final errorMessage = data is Map<String, dynamic>
-            ? (data['message'] ?? data['error'] ?? 'Unknown error')
-            : 'Request failed with status ${response.statusCode}';
-        return ApiResponse.error(errorMessage, statusCode: response.statusCode);
+        // Handle error responses
+        try {
+          final data = jsonDecode(response.body);
+          final errorMessage = data is Map<String, dynamic>
+              ? (data['message'] ?? data['error'] ?? 'Unknown error')
+              : (data is String
+                    ? data
+                    : 'Request failed with status ${response.statusCode}');
+          return ApiResponse.error(
+            errorMessage,
+            statusCode: response.statusCode,
+          );
+        } catch (e) {
+          return ApiResponse.error(
+            response.body.isNotEmpty ? response.body : 'Request failed',
+            statusCode: response.statusCode,
+          );
+        }
       }
     } catch (e) {
       return ApiResponse.error(

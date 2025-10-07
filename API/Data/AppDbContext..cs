@@ -41,7 +41,6 @@ namespace PropertyFlipperAPI.Data
                 entity.Property(e => e.PropertyId).ValueGeneratedOnAdd();
                 entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
                 entity.Property(e => e.Location).HasMaxLength(255);
-                entity.Property(e => e.StartingPrice).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Type).HasConversion<int>();
                 entity.HasOne(e => e.Owner)
                     .WithMany(u => u.Properties)
@@ -58,7 +57,8 @@ namespace PropertyFlipperAPI.Data
             {
                 entity.HasKey(e => e.AuctionId);
                 entity.Property(e => e.AuctionId).ValueGeneratedOnAdd();
-                entity.Property(e => e.StartAt).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.StartPrice).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CurrentPrice).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.BuyNowPrice).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Status).HasMaxLength(20);
                 entity.HasOne(e => e.Property)

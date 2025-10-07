@@ -191,6 +191,43 @@ namespace PropertyFlipperAPI.Services
                 await Task.WhenAll(tasks);
             }
         }
+
+        public async Task BroadcastToGeneralFeedAsync(object data, string messageType)
+        {
+            // Broadcast to clients subscribed to "general" feed
+            if (_auctionConnections.TryGetValue("general", out var connections))
+            {
+                Console.WriteLine($"📢 Broadcasting {messageType} to {connections.Count} general feed subscribers");
+                
+                var message = new
+                {
+                    type = messageType,
+                    data = data
+                };
+                var json = JsonSerializer.Serialize(message);
+                var buffer = Encoding.UTF8.GetBytes(json);
+
+                var tasks = connections.Where(ws => ws.State == WebSocketState.Open)
+                    .Select(async ws =>
+                    {
+                        try
+                        {
+                            await ws.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                            Console.WriteLine($"✅ Sent {messageType} to general feed client");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"❌ Error sending to general feed: {ex.Message}");
+                        }
+                    });
+
+                await Task.WhenAll(tasks);
+            }
+            else
+            {
+                Console.WriteLine($"⚠️ No clients subscribed to general feed");
+            }
+        }
     }
 
     public class WebSocketMessage

@@ -1,4 +1,5 @@
 import 'user.dart';
+import 'auction.dart';
 
 class Bid {
   final int bidId;
@@ -7,6 +8,7 @@ class Bid {
   final Account? bidder;
   final double bidAmount;
   final DateTime createdAt;
+  final Auction? auction;
 
   Bid({
     required this.bidId,
@@ -15,9 +17,24 @@ class Bid {
     this.bidder,
     required this.bidAmount,
     required this.createdAt,
+    this.auction,
   });
 
   factory Bid.fromJson(Map<String, dynamic> json) {
+    Auction? parseAuction() {
+      try {
+        if (json['auction'] != null || json['Auction'] != null) {
+          final auctionData = json['auction'] ?? json['Auction'];
+          if (auctionData is Map<String, dynamic>) {
+            return Auction.fromJson(auctionData);
+          }
+        }
+      } catch (e) {
+        print('⚠️ Error parsing auction in bid: $e');
+      }
+      return null;
+    }
+
     return Bid(
       bidId: json['bidId'] ?? json['BidId'] ?? 0,
       auctionId: json['auctionId'] ?? json['AuctionId'] ?? 0,
@@ -31,6 +48,7 @@ class Bid {
             json['CreatedAt'] ??
             DateTime.now().toIso8601String(),
       ),
+      auction: parseAuction(),
     );
   }
 
@@ -42,6 +60,7 @@ class Bid {
       'bidder': bidder?.toJson(),
       'bidAmount': bidAmount,
       'createdAt': createdAt.toIso8601String(),
+      'auction': auction?.toJson(),
     };
   }
 }

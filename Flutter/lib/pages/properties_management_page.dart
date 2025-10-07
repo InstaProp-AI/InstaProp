@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import '../providers/app_state.dart';
+import '../models/bid.dart';
+import '../models/auction.dart';
+import '../services/bid_service.dart';
 import 'add_property_page.dart';
 import 'valuate_page.dart';
 import 'my_properties_page.dart';
@@ -19,14 +22,63 @@ class PropertiesManagementPage extends StatefulWidget {
 }
 
 class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
+  List<Bid> _myBids = [];
+  bool _loadingBids = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (context.read<AppState>().isLoggedIn) {
         context.read<AppState>().loadProperties();
+        _loadMyBids();
       }
     });
+  }
+
+  Future<void> _loadMyBids() async {
+    print('🔄 Loading my bids...');
+    setState(() {
+      _loadingBids = true;
+    });
+
+    try {
+      final response = await BidService.getUserBids();
+      print(
+        '📊 My Bids Response - Success: ${response.success}, Data: ${response.data?.length}, Error: ${response.error}',
+      );
+
+      if (response.success && response.data != null) {
+        print('✅ Loaded ${response.data!.length} bids');
+        for (var bid in response.data!) {
+          print(
+            '  Bid #${bid.bidId}: \$${bid.bidAmount} on Auction #${bid.auctionId}',
+          );
+          print('    Has auction data: ${bid.auction != null}');
+          if (bid.auction != null) {
+            print(
+              '    Auction property: ${bid.auction!.property?.name ?? "No property"}',
+            );
+          }
+        }
+        setState(() {
+          _myBids = response.data!;
+          _loadingBids = false;
+        });
+      } else {
+        print('❌ Failed to load bids: ${response.error}');
+        setState(() {
+          _myBids = [];
+          _loadingBids = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading my bids: $e');
+      setState(() {
+        _myBids = [];
+        _loadingBids = false;
+      });
+    }
   }
 
   @override
@@ -72,24 +124,33 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome back, ${appState.user?.firstName}!',
+                  'Welcome back, ${appState.user?.firstName}! 👋',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Manage your properties and get valuations',
+                  'Manage properties & valuations',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 16,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 24),
+
+          // My Bids Section
+          _buildMyBidsSection(appState),
 
           const SizedBox(height: 24),
 
@@ -184,6 +245,329 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           // My Auctions Section
           _buildMyAuctionsSection(context, appState),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMyBidsSection(AppState appState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.gavel, color: Colors.blue[700]),
+            const SizedBox(width: 8),
+            Text(
+              'My Bids',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[700],
+              ),
+            ),
+            if (_loadingBids) ...[
+              const SizedBox(width: 12),
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (!_loadingBids && _myBids.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue[50]!, Colors.blue[100]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.blue[200]!, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.gavel_rounded,
+                      size: 48,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'No Bids Yet',
+                    style: TextStyle(
+                      color: Colors.blue[900],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start bidding on properties you love!',
+                    style: TextStyle(color: Colors.blue[700], fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Navigate to auctions page (index 1 in bottom nav)
+                      DefaultTabController.of(context).animateTo(1);
+                    },
+                    icon: const Icon(Icons.search, size: 20),
+                    label: const Text(
+                      'Browse Auctions',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 4,
+                      shadowColor: Colors.blue.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else if (!_loadingBids)
+          SizedBox(
+            height: 180,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _myBids.length,
+              itemBuilder: (context, index) {
+                final bid = _myBids[index];
+                final auction =
+                    bid.auction ??
+                    appState.auctions.firstWhere(
+                      (a) => a.auctionId == bid.auctionId,
+                      orElse: () => Auction(
+                        auctionId: bid.auctionId,
+                        propertyId: 0,
+                        startPrice: 0,
+                        currentPrice: bid.bidAmount,
+                        startAt: DateTime.now(),
+                        duration: 0,
+                        bidCount: 0,
+                        status: 'Unknown',
+                        createdAt: DateTime.now(),
+                      ),
+                    );
+                return _buildBidCard(bid, auction);
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBidCard(Bid bid, Auction auction) {
+    final isWinning = auction.currentPrice == bid.bidAmount;
+    final property = auction.property;
+
+    return Container(
+      width: 280,
+      margin: const EdgeInsets.only(right: 16),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isWinning ? Colors.green : Colors.grey[300]!,
+            width: isWinning ? 2 : 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AuctionDetailsPage(auction: auction),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Property Image
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child:
+                      property?.imageUrl != null &&
+                          property!.imageUrl.isNotEmpty
+                      ? Image.network(
+                          property.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Icon(
+                                Icons.home,
+                                size: 40,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.home,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
+                        ),
+                ),
+              ),
+
+              // Bid Details
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      property?.name ?? 'Property #${auction.propertyId}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Your Bid',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                            ),
+                            Text(
+                              '\$${bid.bidAmount.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Current',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                            ),
+                            Text(
+                              '\$${auction.currentPrice.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: isWinning
+                                    ? Colors.green[700]
+                                    : Colors.orange[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isWinning ? Colors.green[50] : Colors.orange[50],
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isWinning
+                              ? Colors.green[200]!
+                              : Colors.orange[200]!,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isWinning ? Icons.emoji_events : Icons.pending,
+                            size: 14,
+                            color: isWinning
+                                ? Colors.green[700]
+                                : Colors.orange[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isWinning ? 'Winning!' : 'Outbid',
+                            style: TextStyle(
+                              color: isWinning
+                                  ? Colors.green[700]
+                                  : Colors.orange[700],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -441,41 +825,24 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(property.location),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '\$${property.startingPrice.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    color: Colors.green[700],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: property.isApproved
+                    ? Colors.green[100]
+                    : Colors.orange[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                property.isApproved ? 'Approved' : 'Pending',
+                style: TextStyle(
+                  color: property.isApproved
+                      ? Colors.green[700]
+                      : Colors.orange[700],
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: property.isVerified
-                        ? Colors.green[100]
-                        : Colors.orange[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    property.isVerified ? 'Verified' : 'Pending',
-                    style: TextStyle(
-                      color: property.isVerified
-                          ? Colors.green[700]
-                          : Colors.orange[700],
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
             onTap: () {
               Navigator.push(

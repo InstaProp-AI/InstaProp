@@ -37,7 +37,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0000",
                     Type = AccountType.Admin,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("11111111"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-365)
                 },
                 // Regular Users
@@ -49,7 +49,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0101",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-30)
                 },
                 new Account
@@ -60,7 +60,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0102",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-25)
                 },
                 new Account
@@ -71,7 +71,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0103",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = false,
+                    Status = VerificationStatus.NotVerified,
                     CreatedAt = DateTime.UtcNow.AddDays(-20)
                 },
                 new Account
@@ -82,7 +82,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0104",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-15)
                 },
                 new Account
@@ -93,7 +93,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0105",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-10)
                 },
                 new Account
@@ -104,7 +104,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0106",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-8)
                 },
                 new Account
@@ -115,7 +115,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0107",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = false,
+                    Status = VerificationStatus.NotVerified,
                     CreatedAt = DateTime.UtcNow.AddDays(-5)
                 },
                 new Account
@@ -126,7 +126,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0108",
                     Type = AccountType.User,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-3)
                 },
 
@@ -139,7 +139,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0201",
                     Type = AccountType.Developer,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("developer123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-25)
                 },
                 new Account
@@ -150,7 +150,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0202",
                     Type = AccountType.Developer,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("developer123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-20)
                 },
                 new Account
@@ -161,7 +161,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0203",
                     Type = AccountType.Developer,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("developer123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-15)
                 },
                 new Account
@@ -172,7 +172,7 @@ namespace PropertyFlipperAPI.Services
                     PhoneNumber = "555-0204",
                     Type = AccountType.Developer,
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("developer123"),
-                    IsVerified = true,
+                    Status = VerificationStatus.Verified,
                     CreatedAt = DateTime.UtcNow.AddDays(-12)
                 }
             };
@@ -246,7 +246,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Cozy Family Home",
                     Description = "A lovely 3-bedroom house perfect for a growing family with a large backyard.",
                     Location = "123 Suburbia Lane, Suburbia, CA",
-                    StartingPrice = 300000,
                     Type = PropertyType.Resale,
                     Bedrooms = 3,
                     Bathrooms = 2,
@@ -254,7 +253,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2005,
                     Category = "Residential",
                     ImageUrl = "https://images.unsplash.com/photo-1582063289852-62f3e2047752?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-15)
                 },
                 new Property
@@ -263,7 +262,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Modern Downtown Apartment",
                     Description = "Contemporary 2-bedroom apartment in the city center with city views.",
                     Location = "456 City Hub, Downtown, NY",
-                    StartingPrice = 450000,
                     Type = PropertyType.Resale,
                     Bedrooms = 2,
                     Bathrooms = 2,
@@ -271,7 +269,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2018,
                     Category = "Apartment",
                     ImageUrl = "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-12)
                 },
                 new Property
@@ -280,7 +278,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Charming Victorian House",
                     Description = "Beautiful Victorian-style home with original features and modern updates.",
                     Location = "789 Heritage Street, Historic Town, MA",
-                    StartingPrice = 550000,
                     Type = PropertyType.Resale,
                     Bedrooms = 4,
                     Bathrooms = 3,
@@ -288,7 +285,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 1895,
                     Category = "Historic",
                     ImageUrl = "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-10)
                 },
                 new Property
@@ -297,7 +294,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Luxury Penthouse",
                     Description = "Stunning penthouse with panoramic city views and premium finishes.",
                     Location = "321 Sky Tower, Metropolis, NY",
-                    StartingPrice = 1200000,
                     Type = PropertyType.Resale,
                     Bedrooms = 3,
                     Bathrooms = 3,
@@ -305,7 +301,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2020,
                     Category = "Luxury",
                     ImageUrl = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-8)
                 },
                 new Property
@@ -314,7 +310,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Rustic Cabin Retreat",
                     Description = "Peaceful cabin in the woods perfect for weekend getaways.",
                     Location = "654 Forest Road, Mountain View, CO",
-                    StartingPrice = 250000,
                     Type = PropertyType.Resale,
                     Bedrooms = 2,
                     Bathrooms = 1,
@@ -322,7 +317,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 1990,
                     Category = "Cabin",
                     ImageUrl = "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-6)
                 },
                 new Property
@@ -331,7 +326,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Beach House Paradise",
                     Description = "Beautiful beachfront property with direct beach access and ocean views.",
                     Location = "987 Ocean Drive, Beach City, FL",
-                    StartingPrice = 800000,
                     Type = PropertyType.Resale,
                     Bedrooms = 3,
                     Bathrooms = 2,
@@ -339,7 +333,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2010,
                     Category = "Beach House",
                     ImageUrl = "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-4)
                 },
                 new Property
@@ -348,7 +342,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Fixer Upper Opportunity",
                     Description = "Great investment property that needs some TLC but has excellent potential.",
                     Location = "147 Renovation Street, Upcoming Area, TX",
-                    StartingPrice = 150000,
                     Type = PropertyType.Resale,
                     Bedrooms = 2,
                     Bathrooms = 1,
@@ -356,7 +349,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 1980,
                     Category = "Investment",
                     ImageUrl = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800",
-                    IsApproved = false,
+                    Status = PropertyStatus.NotApproved,
                     CreatedAt = DateTime.UtcNow.AddDays(-2)
                 },
                 new Property
@@ -365,7 +358,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Modern Studio Apartment",
                     Description = "Efficient studio apartment with smart storage solutions and modern design.",
                     Location = "258 Studio Lane, Urban Center, CA",
-                    StartingPrice = 200000,
                     Type = PropertyType.Resale,
                     Bedrooms = 1,
                     Bathrooms = 1,
@@ -373,7 +365,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2015,
                     Category = "Studio",
                     ImageUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-1)
                 },
 
@@ -385,7 +377,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Villa Ocean View A",
                     Description = "Stunning 4-bedroom villa with private beach access and infinity pool.",
                     Location = "Coastal Paradise, CA",
-                    StartingPrice = 2500000,
                     Type = PropertyType.Primary,
                     Bedrooms = 4,
                     Bathrooms = 4,
@@ -393,7 +384,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2023,
                     Category = "Villa",
                     ImageUrl = "https://images.unsplash.com/photo-1592595896551-f772cd1df4a7?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-10)
                 },
                 new Property
@@ -403,7 +394,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Villa Ocean View B",
                     Description = "Luxurious 5-bedroom villa with panoramic ocean views and private garden.",
                     Location = "Coastal Paradise, CA",
-                    StartingPrice = 3000000,
                     Type = PropertyType.Primary,
                     Bedrooms = 5,
                     Bathrooms = 5,
@@ -411,7 +401,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2023,
                     Category = "Villa",
                     ImageUrl = "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-8)
                 },
                 new Property
@@ -421,7 +411,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Loft Unit 301",
                     Description = "Spacious loft with high ceilings, exposed brick, and industrial design.",
                     Location = "Downtown Metropolis, NY",
-                    StartingPrice = 750000,
                     Type = PropertyType.Primary,
                     Bedrooms = 2,
                     Bathrooms = 2,
@@ -429,7 +418,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2024,
                     Category = "Loft",
                     ImageUrl = "https://images.unsplash.com/photo-1513584684374-8bab748fcd90?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-5)
                 },
                 new Property
@@ -439,7 +428,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Eco Home 1",
                     Description = "Sustainable home with solar panels, rainwater collection, and energy-efficient design.",
                     Location = "Green Valley, OR",
-                    StartingPrice = 400000,
                     Type = PropertyType.Primary,
                     Bedrooms = 3,
                     Bathrooms = 2,
@@ -447,7 +435,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2024,
                     Category = "Eco-Friendly",
                     ImageUrl = "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-7)
                 },
                 new Property
@@ -457,7 +445,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Tower Unit 15A",
                     Description = "High-floor apartment with stunning river views and premium amenities.",
                     Location = "Riverside City, TX",
-                    StartingPrice = 600000,
                     Type = PropertyType.Primary,
                     Bedrooms = 2,
                     Bathrooms = 2,
@@ -465,7 +452,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 2024,
                     Category = "High-Rise",
                     ImageUrl = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-3)
                 },
                 new Property
@@ -475,7 +462,6 @@ namespace PropertyFlipperAPI.Services
                     Name = "Historic Brownstone Unit 2",
                     Description = "Beautifully restored historic brownstone with original details and modern amenities.",
                     Location = "Historic District, MA",
-                    StartingPrice = 900000,
                     Type = PropertyType.Primary,
                     Bedrooms = 3,
                     Bathrooms = 2,
@@ -483,7 +469,7 @@ namespace PropertyFlipperAPI.Services
                     YearBuilt = 1890,
                     Category = "Historic",
                     ImageUrl = "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800",
-                    IsApproved = true,
+                    Status = PropertyStatus.Approved,
                     CreatedAt = DateTime.UtcNow.AddDays(-1)
                 }
             };
@@ -497,9 +483,9 @@ namespace PropertyFlipperAPI.Services
                 new Auction
                 {
                     PropertyId = properties.First(p => p.Name == "Cozy Family Home").PropertyId,
-                    StartAt = 300000,
+                    StartPrice = 300000,
                     CurrentPrice = 320000,
-                    EndAt = DateTime.UtcNow.AddDays(7),
+                    StartAt = DateTime.UtcNow.AddDays(-2),
                     Duration = 168,
                     BuyNowPrice = 350000,
                     Status = "Active",
@@ -509,9 +495,9 @@ namespace PropertyFlipperAPI.Services
                 new Auction
                 {
                     PropertyId = properties.First(p => p.Name == "Modern Downtown Apartment").PropertyId,
-                    StartAt = 450000,
+                    StartPrice = 450000,
                     CurrentPrice = 480000,
-                    EndAt = DateTime.UtcNow.AddDays(5),
+                    StartAt = DateTime.UtcNow.AddDays(-1),
                     Duration = 120,
                     BuyNowPrice = 520000,
                     Status = "Active",
@@ -521,9 +507,9 @@ namespace PropertyFlipperAPI.Services
                 new Auction
                 {
                     PropertyId = properties.First(p => p.Name == "Charming Victorian House").PropertyId,
-                    StartAt = 550000,
+                    StartPrice = 550000,
                     CurrentPrice = 580000,
-                    EndAt = DateTime.UtcNow.AddDays(3),
+                    StartAt = DateTime.UtcNow.AddHours(-12),
                     Duration = 72,
                     BuyNowPrice = 620000,
                     Status = "Active",
@@ -533,9 +519,9 @@ namespace PropertyFlipperAPI.Services
                 new Auction
                 {
                     PropertyId = properties.First(p => p.Name == "Luxury Penthouse").PropertyId,
-                    StartAt = 1200000,
+                    StartPrice = 1200000,
                     CurrentPrice = 1250000,
-                    EndAt = DateTime.UtcNow.AddDays(10),
+                    StartAt = DateTime.UtcNow.AddDays(-1),
                     Duration = 240,
                     BuyNowPrice = 1400000,
                     Status = "Active",
@@ -545,9 +531,9 @@ namespace PropertyFlipperAPI.Services
                 new Auction
                 {
                     PropertyId = properties.First(p => p.Name == "Beach House Paradise").PropertyId,
-                    StartAt = 800000,
+                    StartPrice = 800000,
                     CurrentPrice = 820000,
-                    EndAt = DateTime.UtcNow.AddDays(6),
+                    StartAt = DateTime.UtcNow.AddHours(-6),
                     Duration = 144,
                     BuyNowPrice = 900000,
                     Status = "Active",
@@ -557,14 +543,51 @@ namespace PropertyFlipperAPI.Services
                 new Auction
                 {
                     PropertyId = properties.First(p => p.Name == "Modern Studio Apartment").PropertyId,
-                    StartAt = 200000,
+                    StartPrice = 200000,
                     CurrentPrice = 210000,
-                    EndAt = DateTime.UtcNow.AddDays(2),
+                    StartAt = DateTime.UtcNow.AddHours(-3),
                     Duration = 48,
                     BuyNowPrice = 230000,
                     Status = "Active",
                     BidCount = 2,
                     CreatedAt = DateTime.UtcNow.AddHours(-3)
+                },
+                // UPCOMING AUCTIONS (Future StartAt dates)
+                new Auction
+                {
+                    PropertyId = properties.First(p => p.Name == "Lakefront Cabin").PropertyId,
+                    StartPrice = 380000,
+                    CurrentPrice = 380000,
+                    StartAt = DateTime.UtcNow.AddDays(2),  // Starts in 2 days
+                    Duration = 168,
+                    BuyNowPrice = 420000,
+                    Status = "Active",
+                    BidCount = 0,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Auction
+                {
+                    PropertyId = properties.First(p => p.Name == "Beachfront Property").PropertyId,
+                    StartPrice = 750000,
+                    CurrentPrice = 750000,
+                    StartAt = DateTime.UtcNow.AddHours(12),  // Starts in 12 hours
+                    Duration = 120,
+                    BuyNowPrice = 850000,
+                    Status = "Active",
+                    BidCount = 0,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Auction
+                {
+                    PropertyId = properties.First(p => p.Name == "Downtown Loft").PropertyId,
+                    StartPrice = 425000,
+                    CurrentPrice = 425000,
+                    StartAt = DateTime.UtcNow.AddDays(5),  // Starts in 5 days
+                    Duration = 96,
+                    BuyNowPrice = 475000,
+                    Status = "Active",
+                    BidCount = 0,
+                    CreatedAt = DateTime.UtcNow
                 }
             };
 

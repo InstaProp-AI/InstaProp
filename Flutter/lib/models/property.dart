@@ -2,6 +2,8 @@ import 'user.dart';
 
 enum PropertyType { resale, primary }
 
+enum PropertyStatus { notApproved, pending, approved }
+
 class Property {
   final int propertyId;
   final int ownerId;
@@ -11,11 +13,8 @@ class Property {
   final String name;
   final String description;
   final String location;
-  final double startingPrice;
   final PropertyType type;
-  final bool isApproved;
-  final bool isVerified;
-  final bool isEditable;
+  final PropertyStatus status;
   final int bedrooms;
   final int bathrooms;
   final int squareFeet;
@@ -34,11 +33,8 @@ class Property {
     required this.name,
     required this.description,
     required this.location,
-    required this.startingPrice,
     required this.type,
-    required this.isApproved,
-    this.isVerified = false,
-    this.isEditable = true,
+    required this.status,
     required this.bedrooms,
     required this.bathrooms,
     required this.squareFeet,
@@ -50,6 +46,71 @@ class Property {
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
+    // Handle PropertyType parsing
+    PropertyType parsePropertyType() {
+      final typeValue = json['type'] ?? json['Type'];
+      if (typeValue == null) return PropertyType.resale;
+
+      // Handle both string and integer type values
+      if (typeValue is int) {
+        return typeValue == 0 ? PropertyType.resale : PropertyType.primary;
+      } else if (typeValue is String) {
+        final typeStr = typeValue.toString().toLowerCase();
+        if (typeStr == 'resale' || typeStr == '0') return PropertyType.resale;
+        if (typeStr == 'primary' || typeStr == '1') return PropertyType.primary;
+      }
+      return PropertyType.resale;
+    }
+
+    // Handle PropertyStatus parsing
+    PropertyStatus parsePropertyStatus() {
+      final statusValue = json['status'] ?? json['Status'];
+
+      // BACKWARD COMPATIBILITY: If status field doesn't exist (old API format),
+      // try to infer from old isVerified/isApproved fields
+      if (statusValue == null) {
+        final isVerified = json['isVerified'] ?? json['IsVerified'] ?? false;
+        final isApproved = json['isApproved'] ?? json['IsApproved'] ?? false;
+
+        // If both true, it's approved
+        if (isVerified && isApproved) {
+          return PropertyStatus.approved;
+        }
+
+        // Default to notApproved for old data
+        return PropertyStatus.notApproved;
+      }
+
+      // Handle both string and integer status values
+      if (statusValue is int) {
+        switch (statusValue) {
+          case 0:
+            return PropertyStatus.notApproved;
+          case 1:
+            return PropertyStatus.pending;
+          case 2:
+            return PropertyStatus.approved;
+          default:
+            return PropertyStatus.notApproved;
+        }
+      } else if (statusValue is String) {
+        switch (statusValue.toLowerCase()) {
+          case 'notapproved':
+          case '0':
+            return PropertyStatus.notApproved;
+          case 'pending':
+          case '1':
+            return PropertyStatus.pending;
+          case 'approved':
+          case '2':
+            return PropertyStatus.approved;
+          default:
+            return PropertyStatus.notApproved;
+        }
+      }
+      return PropertyStatus.notApproved;
+    }
+
     return Property(
       propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
       ownerId: json['ownerId'] ?? json['OwnerId'] ?? 0,
@@ -79,10 +140,10 @@ class Property {
                   (json['owner'] ?? json['Owner'])['type'] ??
                   (json['owner'] ?? json['Owner'])['Type'] ??
                   'user',
-              'isVerified':
-                  (json['owner'] ?? json['Owner'])['isVerified'] ??
-                  (json['owner'] ?? json['Owner'])['IsVerified'] ??
-                  false,
+              'status':
+                  (json['owner'] ?? json['Owner'])['status'] ??
+                  (json['owner'] ?? json['Owner'])['Status'] ??
+                  0,
               'createdAt':
                   (json['owner'] ?? json['Owner'])['createdAt'] ??
                   (json['owner'] ?? json['Owner'])['CreatedAt'] ??
@@ -97,17 +158,8 @@ class Property {
       name: json['name'] ?? json['Name'] ?? '',
       description: json['description'] ?? json['Description'] ?? '',
       location: json['location'] ?? json['Location'] ?? '',
-      startingPrice: (json['startingPrice'] ?? json['StartingPrice'] ?? 0)
-          .toDouble(),
-      type: PropertyType.values.firstWhere(
-        (e) =>
-            e.toString().split('.').last ==
-            (json['type'] ?? json['Type'] ?? 'resale'),
-        orElse: () => PropertyType.resale,
-      ),
-      isApproved: json['isApproved'] ?? json['IsApproved'] ?? false,
-      isVerified: json['isVerified'] ?? json['IsVerified'] ?? false,
-      isEditable: json['isEditable'] ?? json['IsEditable'] ?? true,
+      type: parsePropertyType(),
+      status: parsePropertyStatus(),
       bedrooms: json['bedrooms'] ?? json['Bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? json['Bathrooms'] ?? 0,
       squareFeet: json['squareFeet'] ?? json['SquareFeet'] ?? 0,
@@ -135,11 +187,8 @@ class Property {
       'name': name,
       'description': description,
       'location': location,
-      'startingPrice': startingPrice,
-      'type': type.toString().split('.').last,
-      'isApproved': isApproved,
-      'isVerified': isVerified,
-      'isEditable': isEditable,
+      'type': type.index,
+      'status': status.index,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'squareFeet': squareFeet,
@@ -150,4 +199,11 @@ class Property {
       'updatedAt': updatedAt?.toIso8601String(),
     };
   }
+
+  // Helper getters for backward compatibility and convenience
+  bool get isEditable => status != PropertyStatus.approved;
+  bool get canRequestAuction => status == PropertyStatus.approved;
+  bool get isApproved => status == PropertyStatus.approved;
+  bool get isPending => status == PropertyStatus.pending;
+  bool get isNotApproved => status == PropertyStatus.notApproved;
 }

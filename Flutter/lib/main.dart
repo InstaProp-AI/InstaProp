@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/app_state.dart';
 import 'pages/home_page.dart';
 import 'pages/auth_page.dart';
+import 'pages/profile_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,7 +108,10 @@ class PropertyFlipperApp extends StatelessWidget {
           ),
         ),
         home: const AppRouter(),
-        routes: {'/auth': (context) => const AuthPage()},
+        routes: {
+          '/auth': (context) => const AuthPage(),
+          '/profile': (context) => const ProfilePage(),
+        },
       ),
     );
   }
@@ -118,21 +122,7 @@ class AppRouter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        print(
-          'AppRouter - isLoading: ${appState.isLoading}, auctions length: ${appState.auctions?.length ?? 'null'}',
-        );
-
-        if (appState.isLoading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        // Always show home page - authentication will be handled within pages
-        return const HomePage();
-      },
-    );
+    // Always show home page immediately - authentication will be handled within pages
+    return const HomePage();
   }
 }
