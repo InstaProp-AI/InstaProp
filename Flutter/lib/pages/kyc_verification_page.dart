@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../widgets/loading_button.dart';
+import 'email_verification_page.dart';
+import 'phone_verification_page.dart';
 
 class KycVerificationPage extends StatefulWidget {
   final String firstName;
@@ -407,6 +409,145 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
                         ),
 
                         const SizedBox(height: 32),
+
+                        // Email/Phone Verification Warning
+                        Consumer<AppState>(
+                          builder: (context, appState, child) {
+                            final user = appState.user;
+                            if (user != null &&
+                                (!user.emailVerified || !user.phoneVerified)) {
+                              return Container(
+                                padding: const EdgeInsets.all(20),
+                                margin: const EdgeInsets.only(bottom: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.orange[300]!,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.warning_amber_rounded,
+                                          color: Colors.orange[700],
+                                          size: 28,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Verification Required',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.orange[900],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Please verify your ${!user.emailVerified && !user.phoneVerified ? 'email and phone number' : (!user.emailVerified ? 'email' : 'phone number')} before uploading KYC documents.',
+                                      style: TextStyle(
+                                        color: Colors.orange[700],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        if (!user.emailVerified) ...[
+                                          Expanded(
+                                            child: ElevatedButton.icon(
+                                              onPressed: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        EmailVerificationPage(
+                                                          email: user.email,
+                                                          canSkip: false,
+                                                          onVerified: () {
+                                                            Navigator.pop(
+                                                              context,
+                                                            );
+                                                            setState(() {});
+                                                          },
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.email,
+                                                size: 18,
+                                              ),
+                                              label: const Text('Verify Email'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    Colors.orange[700],
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                          if (!user.phoneVerified)
+                                            const SizedBox(width: 12),
+                                        ],
+                                        if (!user.phoneVerified)
+                                          Expanded(
+                                            child: ElevatedButton.icon(
+                                              onPressed: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        PhoneVerificationPage(
+                                                          phoneNumber:
+                                                              user.phoneNumber,
+                                                          canSkip: false,
+                                                          onVerified: () {
+                                                            Navigator.pop(
+                                                              context,
+                                                            );
+                                                            setState(() {});
+                                                          },
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.phone,
+                                                size: 18,
+                                              ),
+                                              label: const Text('Verify Phone'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    Colors.orange[700],
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
 
                         // Error Message
                         if (_errorMessage != null)

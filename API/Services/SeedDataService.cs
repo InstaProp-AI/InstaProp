@@ -555,7 +555,7 @@ namespace PropertyFlipperAPI.Services
                 // UPCOMING AUCTIONS (Future StartAt dates)
                 new Auction
                 {
-                    PropertyId = properties.First(p => p.Name == "Lakefront Cabin").PropertyId,
+                    PropertyId = properties.First(p => p.Name == "Rustic Cabin Retreat").PropertyId,
                     StartPrice = 380000,
                     CurrentPrice = 380000,
                     StartAt = DateTime.UtcNow.AddDays(2),  // Starts in 2 days
@@ -567,7 +567,7 @@ namespace PropertyFlipperAPI.Services
                 },
                 new Auction
                 {
-                    PropertyId = properties.First(p => p.Name == "Beachfront Property").PropertyId,
+                    PropertyId = properties.First(p => p.Name == "Villa Ocean View A").PropertyId,
                     StartPrice = 750000,
                     CurrentPrice = 750000,
                     StartAt = DateTime.UtcNow.AddHours(12),  // Starts in 12 hours
@@ -579,7 +579,7 @@ namespace PropertyFlipperAPI.Services
                 },
                 new Auction
                 {
-                    PropertyId = properties.First(p => p.Name == "Downtown Loft").PropertyId,
+                    PropertyId = properties.First(p => p.Name == "Loft Unit 301").PropertyId,
                     StartPrice = 425000,
                     CurrentPrice = 425000,
                     StartAt = DateTime.UtcNow.AddDays(5),  // Starts in 5 days

@@ -7,13 +7,16 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DB Context with CockroachDB
+// Add DB Context with SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+   // options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// "DefaultConnection": "Host=metro.proxy.rlwy.net;Port=20873;Database=railway;Username=postgres;Password=wXQPZyZfdnrcYMrZCpXEcPJnJXQUUPmv;SslMode=Require"
 // Add Services
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddSingleton<AuctionWebSocketManager>();
+builder.Services.AddScoped<EmailVerificationService>();
+builder.Services.AddScoped<PhoneVerificationService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -85,7 +88,8 @@ app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed data - DISABLED
+// Seed data - DISABLED (already seeded)
+// Uncomment below to re-seed the database
 // using (var scope = app.Services.CreateScope())
 // {
 //     var seedService = scope.ServiceProvider.GetRequiredService<SeedDataService>();

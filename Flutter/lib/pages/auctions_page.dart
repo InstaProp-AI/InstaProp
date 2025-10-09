@@ -703,115 +703,119 @@ class _AuctionsPageState extends State<AuctionsPage> {
             constraints: BoxConstraints(
               minWidth: MediaQuery.of(context).size.width - 32,
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: Column(
-                children: [
-                  // Header row
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: headerColor,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 80, // Fixed width for property image
-                          child: Text(
-                            'Image',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 200, // Fixed width for property name
-                          child: Text(
-                            'Property Name',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 120, // Fixed width for start price
-                          child: Text(
-                            'Start Price',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 120, // Fixed width for current price
-                          child: Text(
-                            'Current Price',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 80, // Fixed width for bids
-                          child: Text(
-                            'Bids',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 100, // Fixed width for time left
-                          child: Text(
-                            isUpcoming
-                                ? 'Starts In'
-                                : (isLive ? 'Time Left' : 'Ended'),
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 120, // Fixed width for project
-                          child: Text(
-                            'Project',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 120, // Fixed width for category
-                          child: Text(
-                            'Category',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
+            child: Column(
+              children: [
+                // Sticky Header row
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: headerColor,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
                     ),
                   ),
-
-                  // Data rows
-                  ...auctions
-                      .map(
-                        (auction) => _buildAuctionMatrixRow(
-                          context,
-                          auction,
-                          isLive: isLive,
-                          isUpcoming: isUpcoming,
-                          onAuctionEnded: _refreshAuctionData,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 80, // Fixed width for property image
+                        child: Text(
+                          'Image',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                      )
-                      .toList(),
-                ],
-              ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 200, // Fixed width for property name
+                        child: Text(
+                          'Property Name',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 120, // Fixed width for start price
+                        child: Text(
+                          'Start Price',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 120, // Fixed width for current price
+                        child: Text(
+                          'Current Price',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 80, // Fixed width for bids
+                        child: Text(
+                          'Bids',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 100, // Fixed width for time left
+                        child: Text(
+                          isUpcoming
+                              ? 'Starts In'
+                              : (isLive ? 'Time Left' : 'Ended'),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 120, // Fixed width for project
+                        child: Text(
+                          'Project',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 120, // Fixed width for category
+                        child: Text(
+                          'Category',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Scrollable Data rows
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Column(
+                      children: auctions
+                          .map(
+                            (auction) => _buildAuctionMatrixRow(
+                              context,
+                              auction,
+                              isLive: isLive,
+                              isUpcoming: isUpcoming,
+                              onAuctionEnded: _refreshAuctionData,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -71,7 +71,7 @@ class Event {
       'title': title,
       'description': description,
       'eventDate': eventDate.toIso8601String(),
-      'type': type.toString().split('.').last,
+      'type': type.value,
       'location': location,
       'isAllDay': isAllDay,
       'startTime': startTime?.toIso8601String(),
@@ -164,6 +164,33 @@ extension EventTypeExtension on EventType {
         return 'Meeting';
       case EventType.other:
         return 'Other';
+    }
+  }
+
+  int get value {
+    switch (this) {
+      case EventType.installment:
+        return 0;
+      case EventType.auctionStart:
+        return 1;
+      case EventType.auctionEnd:
+        return 2;
+      case EventType.propertyInspection:
+        return 3;
+      case EventType.propertyValuation:
+        return 4;
+      case EventType.contractSigning:
+        return 5;
+      case EventType.moveInDate:
+        return 6;
+      case EventType.moveOutDate:
+        return 7;
+      case EventType.maintenance:
+        return 8;
+      case EventType.meeting:
+        return 9;
+      case EventType.other:
+        return 10;
     }
   }
 
@@ -291,7 +318,7 @@ class EventCreateDto {
       'title': title,
       'description': description,
       'eventDate': eventDate.toIso8601String(),
-      'type': type.toString().split('.').last,
+      'type': type.value,
       'location': location,
       'isAllDay': isAllDay,
       'startTime': startTime?.toIso8601String(),
@@ -337,7 +364,7 @@ class EventUpdateDto {
       'title': title,
       'description': description,
       'eventDate': eventDate.toIso8601String(),
-      'type': type.toString().split('.').last,
+      'type': type.value,
       'location': location,
       'isAllDay': isAllDay,
       'startTime': startTime?.toIso8601String(),
@@ -379,7 +406,7 @@ class PublicEventCreateDto {
       'title': title,
       'description': description,
       'eventDate': eventDate.toIso8601String(),
-      'type': type.toString().split('.').last,
+      'type': type.value,
       'location': location,
       'isAllDay': isAllDay,
       'startTime': startTime?.toIso8601String(),

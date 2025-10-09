@@ -663,11 +663,15 @@ class _HomePageState extends State<HomePage>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: auction.isActive ? Colors.green : Colors.red,
+                        color: auction.isUpcoming
+                            ? Colors.blue
+                            : (auction.isActive ? Colors.green : Colors.red),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        auction.isActive ? 'LIVE' : 'ENDED',
+                        auction.isUpcoming
+                            ? 'UPCOMING'
+                            : (auction.isActive ? 'LIVE' : 'ENDED'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -958,17 +962,23 @@ class _HomePageState extends State<HomePage>
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: auction.isActive
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.grey.withOpacity(0.1),
+                    color: auction.isUpcoming
+                        ? Colors.blue.withOpacity(0.1)
+                        : (auction.isActive
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    auction.isActive ? 'LIVE' : 'ENDED',
+                    auction.isUpcoming
+                        ? 'UPCOMING'
+                        : (auction.isActive ? 'LIVE' : 'ENDED'),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: auction.isActive
-                          ? Colors.green[600]
-                          : Colors.grey[600],
+                      color: auction.isUpcoming
+                          ? Colors.blue[600]
+                          : (auction.isActive
+                              ? Colors.green[600]
+                              : Colors.grey[600]),
                       fontWeight: FontWeight.bold,
                       fontSize: 9,
                     ),

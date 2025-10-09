@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using PropertyFlipperAPI.Attributes;
+using PropertyFlipperAPI.Services;
 using System;
 using System.IO;
 using System.Linq;
@@ -23,11 +24,19 @@ namespace PropertyFlipperAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
+        private readonly EmailVerificationService _emailVerificationService;
+        private readonly PhoneVerificationService _phoneVerificationService;
 
-        public AccountController(AppDbContext context, IConfiguration config)
+        public AccountController(
+            AppDbContext context, 
+            IConfiguration config,
+            EmailVerificationService emailVerificationService,
+            PhoneVerificationService phoneVerificationService)
         {
             _context = context;
             _config = config;
+            _emailVerificationService = emailVerificationService;
+            _phoneVerificationService = phoneVerificationService;
         }
 
         // Check if email exists
@@ -55,6 +64,16 @@ namespace PropertyFlipperAPI.Controllers
 
             if (await _context.Accounts.AnyAsync(a => a.PhoneNumber == signupRequest.PhoneNumber))
                 return BadRequest("Phone number already exists.");
+
+            // Validate password
+            if (signupRequest.Password.Length < 8)
+                return BadRequest("Password must be at least 8 characters long.");
+            
+            if (!System.Text.RegularExpressions.Regex.IsMatch(signupRequest.Password, @"[a-zA-Z]"))
+                return BadRequest("Password must contain letters.");
+            
+            if (!System.Text.RegularExpressions.Regex.IsMatch(signupRequest.Password, @"[0-9]"))
+                return BadRequest("Password must contain numbers.");
 
             var account = new Account
             {
@@ -138,6 +157,20 @@ namespace PropertyFlipperAPI.Controllers
             if (!hasIdDocs && !hasPassport)
                 return BadRequest("Please provide either ID (front and back) or Passport.");
 
+            // Check if email and phone are verified first
+            if (!account.EmailVerified || !account.PhoneVerified)
+            {
+                return BadRequest(new { 
+                    message = "Please verify your " + 
+                        (!account.EmailVerified && !account.PhoneVerified 
+                            ? "email and phone" 
+                            : (!account.EmailVerified ? "email" : "phone")) + 
+                        " before uploading KYC documents.",
+                    emailVerified = account.EmailVerified,
+                    phoneVerified = account.PhoneVerified
+                });
+            }
+
             // Remove existing KYC documents for this user
             var existingDocs = await _context.UserDocs.Where(d => d.UserId == (long)userId).ToListAsync();
             _context.UserDocs.RemoveRange(existingDocs);
@@ -156,11 +189,18 @@ namespace PropertyFlipperAPI.Controllers
             }
 
             // Update account status to Pending after uploading documents
+            // (only if email and phone are verified)
             account.Status = VerificationStatus.Pending;
             account.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            return Ok(new { success = true, message = "KYC documents uploaded successfully. Status set to Pending." });
+            return Ok(new { 
+                success = true, 
+                message = "KYC documents uploaded successfully. Status set to Pending.",
+                emailVerified = account.EmailVerified,
+                phoneVerified = account.PhoneVerified,
+                status = account.Status
+            });
         }
 
         // Login
@@ -171,8 +211,144 @@ namespace PropertyFlipperAPI.Controllers
             if (account == null || !BCrypt.Net.BCrypt.Verify(req.Password, account.HashedPassword))
                 return Unauthorized("Invalid credentials.");
 
+            // If password reset was requested, validate the email matches and token hasn't expired
+            if (account.RequiresPasswordChange && account.PasswordResetRequestedEmail != null)
+            {
+                // Check if the email matches the one that requested the reset
+                if (account.PasswordResetRequestedEmail != req.Email)
+                {
+                    return Unauthorized("Password reset was requested for a different email address.");
+                }
+
+                // Check if the reset token has expired
+                if (account.PasswordResetTokenExpiry.HasValue && account.PasswordResetTokenExpiry.Value < DateTime.UtcNow)
+                {
+                    // Clear expired reset data
+                    account.PasswordResetRequestedEmail = null;
+                    account.PasswordResetTokenExpiry = null;
+                    account.RequiresPasswordChange = false;
+                    await _context.SaveChangesAsync();
+                    
+                    return Unauthorized("Password reset token has expired. Please request a new password reset.");
+                }
+            }
+
             var token = GenerateJwtToken(account);
             return Ok(new AuthResponse { Token = token, Account = account });
+        }
+
+        // Forgot Password - Generate temporary password and send via email
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
+        {
+            var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Email == req.Email);
+            if (account == null)
+            {
+                // For security, don't reveal if email exists
+                return Ok(new { message = "If the email exists, a temporary password has been sent." });
+            }
+
+            // Generate a random temporary password
+            var tempPassword = GenerateTemporaryPassword();
+            
+            // Hash and save the temporary password
+            account.HashedPassword = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+            account.RequiresPasswordChange = true;
+            account.PasswordResetRequestedEmail = req.Email; // Store the email that requested the reset
+            account.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(24); // 24 hour expiry
+            account.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+
+            // Send email with temporary password
+            try
+            {
+                await _emailVerificationService.SendPasswordResetEmail(account.Email, account.FirstName, tempPassword);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't expose it to user
+                Console.WriteLine($"Error sending password reset email: {ex.Message}");
+            }
+
+            return Ok(new { message = "If the email exists, a temporary password has been sent." });
+        }
+
+        // Force Change Password - After logging in with temporary password
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
+        {
+            var userId = GetCurrentAccountId();
+            if (userId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FirstOrDefaultAsync(a => a.AccountId == userId);
+            if (account == null)
+                return NotFound("Account not found.");
+
+            // If this is NOT a password reset (RequiresPasswordChange is false),
+            // then verify the old password
+            if (!account.RequiresPasswordChange)
+            {
+                if (string.IsNullOrEmpty(req.OldPassword))
+                    return BadRequest("Current password is required.");
+                
+                if (!BCrypt.Net.BCrypt.Verify(req.OldPassword, account.HashedPassword))
+                    return BadRequest("Current password is incorrect.");
+            }
+            // If RequiresPasswordChange is true (temporary password reset),
+            // skip old password verification since they already logged in with it
+
+            // Validate new password
+            if (req.NewPassword != req.ConfirmPassword)
+                return BadRequest("New password and confirmation do not match.");
+
+            if (req.NewPassword.Length < 8)
+                return BadRequest("Password must be at least 8 characters long.");
+            
+            if (!System.Text.RegularExpressions.Regex.IsMatch(req.NewPassword, @"[a-zA-Z]"))
+                return BadRequest("Password must contain letters.");
+            
+            if (!System.Text.RegularExpressions.Regex.IsMatch(req.NewPassword, @"[0-9]"))
+                return BadRequest("Password must contain numbers.");
+
+            // Update password
+            account.HashedPassword = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+            account.RequiresPasswordChange = false;
+            account.PasswordResetRequestedEmail = null; // Clear reset tracking
+            account.PasswordResetTokenExpiry = null; // Clear reset expiry
+            account.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Password changed successfully." });
+        }
+
+        private string GenerateTemporaryPassword()
+        {
+            // Generate a secure random password (8 characters, no special characters)
+            const string upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const string lowerCase = "abcdefghijklmnopqrstuvwxyz";
+            const string numbers = "0123456789";
+            
+            var random = new Random();
+            var password = new char[8];
+            
+            // Ensure at least one of each type
+            password[0] = upperCase[random.Next(upperCase.Length)];
+            password[1] = lowerCase[random.Next(lowerCase.Length)];
+            password[2] = numbers[random.Next(numbers.Length)];
+            
+            // Fill the rest randomly
+            var allChars = upperCase + lowerCase + numbers;
+            for (int i = 3; i < 8; i++)
+            {
+                password[i] = allChars[random.Next(allChars.Length)];
+            }
+            
+            // Shuffle the password
+            return new string(password.OrderBy(x => random.Next()).ToArray());
         }
 
         private string GenerateJwtToken(Account account)
@@ -202,7 +378,7 @@ namespace PropertyFlipperAPI.Controllers
         // GET: api/Account/current
         [HttpGet("current")]
         [Authorize]
-        public async Task<ActionResult<Account>> GetCurrentAccount()
+        public async Task<ActionResult> GetCurrentAccount()
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -212,13 +388,29 @@ namespace PropertyFlipperAPI.Controllers
             if (account == null)
                 return NotFound();
 
-            return Ok(account);
+            // Return account without sensitive PIN data
+            var accountResponse = new
+            {
+                account.AccountId,
+                account.FirstName,
+                account.LastName,
+                account.PhoneNumber,
+                account.Email,
+                account.Type,
+                account.Status,
+                account.EmailVerified,
+                account.PhoneVerified,
+                account.CreatedAt,
+                account.UpdatedAt
+            };
+
+            return Ok(accountResponse);
         }
 
         // GET: api/Account/me (alias for current)
         [HttpGet("me")]
         [Authorize]
-        public async Task<ActionResult<Account>> GetMe()
+        public async Task<ActionResult> GetMe()
         {
             return await GetCurrentAccount();
         }
@@ -236,24 +428,106 @@ namespace PropertyFlipperAPI.Controllers
             if (account == null)
                 return NotFound();
 
-            // Update fields
+            bool emailChanged = false;
+            bool phoneChanged = false;
+
+            // Update fields and detect changes
             if (!string.IsNullOrEmpty(updateDto.FirstName))
                 account.FirstName = updateDto.FirstName;
             if (!string.IsNullOrEmpty(updateDto.LastName))
                 account.LastName = updateDto.LastName;
-            if (!string.IsNullOrEmpty(updateDto.PhoneNumber))
+            
+            // Check if phone number changed
+            if (!string.IsNullOrEmpty(updateDto.PhoneNumber) && updateDto.PhoneNumber != account.PhoneNumber)
+            {
                 account.PhoneNumber = updateDto.PhoneNumber;
-            if (!string.IsNullOrEmpty(updateDto.Email))
+                account.PhoneVerified = false; // Invalidate phone verification
+                account.PhoneVerificationPin = null;
+                account.PhoneVerificationPinExpiry = null;
+                phoneChanged = true;
+            }
+            
+            // Check if email changed
+            if (!string.IsNullOrEmpty(updateDto.Email) && updateDto.Email != account.Email)
+            {
                 account.Email = updateDto.Email;
+                account.EmailVerified = false; // Invalidate email verification
+                account.EmailVerificationPin = null;
+                account.EmailVerificationPinExpiry = null;
+                emailChanged = true;
+            }
 
-            // Mark account as not verified when profile is updated
+            // Mark account as not verified when profile is updated (for KYC purposes)
             account.Status = VerificationStatus.NotVerified;
             account.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             
-            // Return updated account
-            return Ok(account);
+            // Return updated account with verification status (excluding sensitive PIN data)
+            var accountResponse = new
+            {
+                account.AccountId,
+                account.FirstName,
+                account.LastName,
+                account.PhoneNumber,
+                account.Email,
+                account.Type,
+                account.Status,
+                account.EmailVerified,
+                account.PhoneVerified,
+                account.CreatedAt,
+                account.UpdatedAt
+            };
+            
+            return Ok(new { 
+                account = accountResponse, 
+                emailChanged,
+                phoneChanged,
+                message = (emailChanged || phoneChanged) 
+                    ? "Profile updated. Please verify your " + 
+                      (emailChanged && phoneChanged ? "email and phone" : 
+                       emailChanged ? "email" : "phone") + "."
+                    : "Profile updated successfully."
+            });
+        }
+
+        // PUT: api/Account/change-password
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<ActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+                return NotFound();
+
+            // Verify current password
+            if (!BCrypt.Net.BCrypt.Verify(changePasswordDto.CurrentPassword, account.HashedPassword))
+                return BadRequest("Current password is incorrect.");
+
+            // Validate new password
+            if (changePasswordDto.NewPassword.Length < 8)
+                return BadRequest("Password must be at least 8 characters long.");
+            
+            if (!System.Text.RegularExpressions.Regex.IsMatch(changePasswordDto.NewPassword, @"[a-zA-Z]"))
+                return BadRequest("Password must contain letters.");
+            
+            if (!System.Text.RegularExpressions.Regex.IsMatch(changePasswordDto.NewPassword, @"[0-9]"))
+                return BadRequest("Password must contain numbers.");
+
+            // Update password (does NOT affect verification status)
+            account.HashedPassword = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
+            account.RequiresPasswordChange = false;
+            account.PasswordResetRequestedEmail = null; // Clear reset tracking
+            account.PasswordResetTokenExpiry = null; // Clear reset expiry
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            
+            return Ok(new { message = "Password changed successfully" });
         }
 
         // POST: api/Account/kyc
@@ -298,15 +572,41 @@ namespace PropertyFlipperAPI.Controllers
             bool hasIdDocs = docTypes.Contains("ID_Front") && docTypes.Contains("ID_Back");
             bool hasPassport = docTypes.Contains("Passport");
             
-            // Update status to Pending if user has uploaded complete documents
-            if (hasIdDocs || hasPassport)
+            // Update status to Pending ONLY if user has:
+            // 1. Uploaded complete documents (ID or Passport)
+            // 2. Verified email
+            // 3. Verified phone
+            if ((hasIdDocs || hasPassport) && account.EmailVerified && account.PhoneVerified)
             {
                 account.Status = VerificationStatus.Pending;
                 account.UpdatedAt = DateTime.UtcNow;
             }
+            else if ((hasIdDocs || hasPassport) && (!account.EmailVerified || !account.PhoneVerified))
+            {
+                // Documents uploaded but email/phone not verified
+                account.Status = VerificationStatus.NotVerified;
+                account.UpdatedAt = DateTime.UtcNow;
+            }
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "KYC document uploaded successfully" });
+            
+            var message = (hasIdDocs || hasPassport)
+                ? (account.EmailVerified && account.PhoneVerified
+                    ? "KYC documents uploaded successfully. Status set to Pending."
+                    : "KYC documents uploaded. Please verify your " +
+                      (!account.EmailVerified && !account.PhoneVerified 
+                        ? "email and phone" 
+                        : (!account.EmailVerified ? "email" : "phone")) + 
+                      " to submit for review.")
+                : "KYC document uploaded successfully";
+            
+            return Ok(new { 
+                success = true, 
+                message,
+                emailVerified = account.EmailVerified,
+                phoneVerified = account.PhoneVerified,
+                status = account.Status
+            });
         }
 
         // GET: api/Account/kyc
@@ -349,12 +649,24 @@ namespace PropertyFlipperAPI.Controllers
             if (account == null)
                 return NotFound("User not found");
 
-            // Verify the user's KYC
+            // Check if email and phone are verified
+            if (!account.EmailVerified)
+                return BadRequest("User must verify their email before KYC approval");
+            
+            if (!account.PhoneVerified)
+                return BadRequest("User must verify their phone before KYC approval");
+
+            // Verify the user's KYC (only if email and phone are verified)
             account.Status = VerificationStatus.Verified;
             account.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "User KYC verified successfully" });
+            return Ok(new { 
+                message = "User KYC verified successfully",
+                emailVerified = account.EmailVerified,
+                phoneVerified = account.PhoneVerified,
+                status = account.Status
+            });
         }
 
         // GET: api/Account/kyc/pending
@@ -377,6 +689,136 @@ namespace PropertyFlipperAPI.Controllers
                 .ToListAsync();
 
             return Ok(pendingUsers);
+        }
+
+        // POST: api/Account/send-email-verification
+        [HttpPost("send-email-verification")]
+        [Authorize]
+        public async Task<ActionResult> SendEmailVerification()
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+                return NotFound("Account not found");
+
+            // Generate PIN and set expiry
+            var pin = _emailVerificationService.GenerateEmailPin();
+            account.EmailVerificationPin = pin;
+            account.EmailVerificationPinExpiry = _emailVerificationService.GetPinExpiry();
+
+            await _context.SaveChangesAsync();
+
+            // Send email
+            await _emailVerificationService.SendVerificationEmail(
+                account.Email, 
+                pin, 
+                account.FirstName);
+
+            return Ok(new { message = "Verification PIN sent to your email" });
+        }
+
+        // POST: api/Account/verify-email
+        [HttpPost("verify-email")]
+        [Authorize]
+        public async Task<ActionResult> VerifyEmail([FromBody] VerifyPinDto dto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+                return NotFound("Account not found");
+
+            // Check if PIN is valid
+            if (!_emailVerificationService.IsPinValid(account.EmailVerificationPinExpiry))
+                return BadRequest("PIN has expired. Please request a new one.");
+
+            // Verify PIN
+            if (account.EmailVerificationPin != dto.Pin)
+                return BadRequest("Invalid PIN");
+
+            // Mark email as verified
+            account.EmailVerified = true;
+            account.EmailVerificationPin = null;
+            account.EmailVerificationPinExpiry = null;
+            account.PreviousEmail = account.Email; // Store verified email
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                message = "Email verified successfully", 
+                emailVerified = true 
+            });
+        }
+
+        // POST: api/Account/send-phone-verification
+        [HttpPost("send-phone-verification")]
+        [Authorize]
+        public async Task<ActionResult> SendPhoneVerification()
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+                return NotFound("Account not found");
+
+            // Generate PIN and set expiry
+            var pin = _phoneVerificationService.GeneratePhonePin();
+            account.PhoneVerificationPin = pin;
+            account.PhoneVerificationPinExpiry = _phoneVerificationService.GetPinExpiry();
+
+            await _context.SaveChangesAsync();
+
+            // Send SMS
+            await _phoneVerificationService.SendVerificationSMS(
+                account.PhoneNumber, 
+                pin, 
+                account.FirstName);
+
+            return Ok(new { message = "Verification PIN sent to your phone" });
+        }
+
+        // POST: api/Account/verify-phone
+        [HttpPost("verify-phone")]
+        [Authorize]
+        public async Task<ActionResult> VerifyPhone([FromBody] VerifyPinDto dto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+                return NotFound("Account not found");
+
+            // Check if PIN is valid
+            if (!_phoneVerificationService.IsPinValid(account.PhoneVerificationPinExpiry))
+                return BadRequest("PIN has expired. Please request a new one.");
+
+            // Verify PIN
+            if (account.PhoneVerificationPin != dto.Pin)
+                return BadRequest("Invalid PIN");
+
+            // Mark phone as verified
+            account.PhoneVerified = true;
+            account.PhoneVerificationPin = null;
+            account.PhoneVerificationPinExpiry = null;
+            account.PreviousPhoneNumber = account.PhoneNumber; // Store verified phone
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                message = "Phone verified successfully", 
+                phoneVerified = true 
+            });
         }
 
         private long? GetCurrentAccountId()
@@ -413,6 +855,17 @@ namespace PropertyFlipperAPI.Controllers
         public string Password { get; set; } = string.Empty;
     }
 
+    public class ForgotPasswordRequest
+    {
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ChangePasswordRequest
+    {
+        public string? OldPassword { get; set; }
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
 
     public class AuthResponse
     {
@@ -432,6 +885,17 @@ namespace PropertyFlipperAPI.Controllers
     {
         public string DocType { get; set; } = string.Empty; // ID_Front, ID_Back, Passport
         public string ImageUrl { get; set; } = string.Empty;
+    }
+
+    public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
+    public class VerifyPinDto
+    {
+        public string Pin { get; set; } = string.Empty;
     }
 }
 

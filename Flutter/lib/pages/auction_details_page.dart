@@ -511,13 +511,17 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _currentAuction!.isActive
-                          ? Colors.green
-                          : Colors.orange,
+                      color: _currentAuction!.isUpcoming
+                          ? Colors.blue
+                          : (_currentAuction!.isActive
+                              ? Colors.green
+                              : Colors.orange),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      _currentAuction!.isActive ? 'LIVE AUCTION' : 'ENDED',
+                      _currentAuction!.isUpcoming
+                          ? 'NOT STARTED'
+                          : (_currentAuction!.isActive ? 'LIVE AUCTION' : 'ENDED'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -714,14 +718,18 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _currentAuction!.isActive
-                        ? Colors.green[50]
-                        : Colors.orange[50],
+                    color: _currentAuction!.isUpcoming
+                        ? Colors.blue[50]
+                        : (_currentAuction!.isActive
+                            ? Colors.green[50]
+                            : Colors.orange[50]),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _currentAuction!.isActive
-                          ? Colors.green[200]!
-                          : Colors.orange[200]!,
+                      color: _currentAuction!.isUpcoming
+                          ? Colors.blue[200]!
+                          : (_currentAuction!.isActive
+                              ? Colors.green[200]!
+                              : Colors.orange[200]!),
                     ),
                   ),
                   child: Row(
@@ -729,41 +737,64 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     children: [
                       Icon(
                         Icons.access_time,
-                        color: _currentAuction!.isActive
-                            ? Colors.green[700]
-                            : Colors.orange[700],
+                        color: _currentAuction!.isUpcoming
+                            ? Colors.blue[700]
+                            : (_currentAuction!.isActive
+                                ? Colors.green[700]
+                                : Colors.orange[700]),
                       ),
                       const SizedBox(width: 8),
-                      _currentAuction!.isActive
+                      _currentAuction!.isUpcoming
                           ? Row(
                               children: [
                                 Text(
-                                  'Ends in ',
+                                  'Starts in ',
                                   style: TextStyle(
-                                    color: Colors.green[700],
+                                    color: Colors.blue[700],
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
                                   ),
                                 ),
-                                AuctionTimer(
-                                  auction: _currentAuction!,
-                                  textStyle: TextStyle(
-                                    color: Colors.green[700],
+                                Text(
+                                  _currentAuction!.timeRemaining,
+                                  style: TextStyle(
+                                    color: Colors.blue[700],
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
                                   ),
-                                  onAuctionEnded: _refreshAuctionData,
                                 ),
                               ],
                             )
-                          : Text(
-                              'Auction Ended',
-                              style: TextStyle(
-                                color: Colors.orange[700],
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
+                          : (_currentAuction!.isActive
+                              ? Row(
+                                  children: [
+                                    Text(
+                                      'Ends in ',
+                                      style: TextStyle(
+                                        color: Colors.green[700],
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    AuctionTimer(
+                                      auction: _currentAuction!,
+                                      textStyle: TextStyle(
+                                        color: Colors.green[700],
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                      onAuctionEnded: _refreshAuctionData,
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  'Auction Ended',
+                                  style: TextStyle(
+                                    color: Colors.orange[700],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                )),
                     ],
                   ),
                 ),

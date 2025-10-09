@@ -23,6 +23,7 @@ class Property {
   final String imageUrl;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final bool hasActiveAuction;
 
   Property({
     required this.propertyId,
@@ -43,6 +44,7 @@ class Property {
     required this.imageUrl,
     required this.createdAt,
     this.updatedAt,
+    this.hasActiveAuction = false,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -174,6 +176,8 @@ class Property {
       updatedAt: json['updatedAt'] != null || json['UpdatedAt'] != null
           ? DateTime.parse(json['updatedAt'] ?? json['UpdatedAt'])
           : null,
+      hasActiveAuction:
+          json['hasActiveAuction'] ?? json['HasActiveAuction'] ?? false,
     );
   }
 

@@ -26,4 +26,17 @@ namespace PropertyFlipperAPI.Models
 
         public long? ProjectId { get; set; }
     }
+
+    public class PropertyUpdateDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public string Description { get; set; } = string.Empty;
+
+        [Required]
+        public string Location { get; set; } = string.Empty;
+    }
 }

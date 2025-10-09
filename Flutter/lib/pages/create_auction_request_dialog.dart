@@ -23,6 +23,7 @@ class _CreateAuctionRequestDialogState
   final _durationController = TextEditingController(text: '24');
   final _buyNowPriceController = TextEditingController();
   DateTime _startDate = DateTime.now();
+  TimeOfDay _startTime = TimeOfDay.now();
   DateTime _endDate = DateTime.now().add(const Duration(hours: 24));
   bool _isLoading = false;
 
@@ -36,9 +37,26 @@ class _CreateAuctionRequestDialogState
 
   void _updateEndDate() {
     final duration = int.tryParse(_durationController.text) ?? 24;
+    final startDateTime = DateTime(
+      _startDate.year,
+      _startDate.month,
+      _startDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
     setState(() {
-      _endDate = _startDate.add(Duration(hours: duration));
+      _endDate = startDateTime.add(Duration(hours: duration));
     });
+  }
+
+  DateTime _getFullStartDateTime() {
+    return DateTime(
+      _startDate.year,
+      _startDate.month,
+      _startDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
   }
 
   Future<void> _submitRequest() async {
@@ -69,7 +87,7 @@ class _CreateAuctionRequestDialogState
       final request = AuctionRequest(
         propertyId: _selectedProperty!.propertyId,
         startPrice: double.parse(_startingPriceController.text),
-        startAt: _startDate,
+        startAt: _getFullStartDateTime(),
         duration: int.parse(_durationController.text),
         buyNowPrice: _buyNowPriceController.text.isNotEmpty
             ? double.parse(_buyNowPriceController.text)
@@ -322,29 +340,31 @@ class _CreateAuctionRequestDialogState
 
                         const SizedBox(height: 16),
 
-                        // Duration and Start Date
+                        // Duration
+                        TextFormField(
+                          controller: _durationController,
+                          decoration: const InputDecoration(
+                            labelText: 'Duration (hours)',
+                            prefixIcon: Icon(Icons.schedule),
+                            border: OutlineInputBorder(),
+                            hintText: 'e.g., 24, 48, 72',
+                          ),
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) => _updateEndDate(),
+                          validator: (value) {
+                            if (value?.isEmpty == true) return 'Required';
+                            final duration = int.tryParse(value!);
+                            if (duration == null || duration <= 0)
+                              return 'Invalid duration';
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Start Date and Time
                         Row(
                           children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _durationController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Duration (hours)',
-                                  prefixIcon: Icon(Icons.schedule),
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (_) => _updateEndDate(),
-                                validator: (value) {
-                                  if (value?.isEmpty == true) return 'Required';
-                                  final duration = int.tryParse(value!);
-                                  if (duration == null || duration <= 0)
-                                    return 'Invalid duration';
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(
                               child: InkWell(
                                 onTap: () async {
@@ -375,21 +395,52 @@ class _CreateAuctionRequestDialogState
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  final time = await showTimePicker(
+                                    context: context,
+                                    initialTime: _startTime,
+                                  );
+                                  if (time != null) {
+                                    setState(() {
+                                      _startTime = time;
+                                      _updateEndDate();
+                                    });
+                                  }
+                                },
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Start Time',
+                                    prefixIcon: Icon(Icons.access_time),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  child: Text(
+                                    '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
 
                         const SizedBox(height: 16),
 
-                        // End Date (read-only)
-                        TextFormField(
+                        // End Date (read-only, auto-calculated)
+                        InputDecorator(
                           decoration: const InputDecoration(
-                            labelText: 'End Date (calculated)',
+                            labelText: 'End Date & Time (calculated)',
                             prefixIcon: Icon(Icons.event),
                             border: OutlineInputBorder(),
                           ),
-                          readOnly: true,
-                          initialValue:
-                              '${_endDate.day}/${_endDate.month}/${_endDate.year} ${_endDate.hour}:${_endDate.minute.toString().padLeft(2, '0')}',
+                          child: Text(
+                            '${_endDate.day}/${_endDate.month}/${_endDate.year} at ${_endDate.hour.toString().padLeft(2, '0')}:${_endDate.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
 
                         const SizedBox(height: 16),

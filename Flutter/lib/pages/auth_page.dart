@@ -6,6 +6,10 @@ import '../services/auth_service.dart';
 import '../widgets/loading_button.dart';
 import 'kyc_verification_page.dart';
 import 'home_page.dart';
+import 'email_verification_page.dart';
+import 'phone_verification_page.dart';
+import 'forgot_password_dialog.dart';
+import 'force_change_password_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -167,25 +171,38 @@ class _AuthPageState extends State<AuthPage>
       );
 
       if (success && mounted) {
-        // Navigate to home page and remove all previous routes
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
-        );
+        // Check if user requires password change
+        if (appState.user?.requiresPasswordChange == true) {
+          // Navigate to force change password page
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const ForceChangePasswordPage(),
+            ),
+            (route) => false,
+          );
+        } else {
+          // Navigate to home page and remove all previous routes
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
+          );
 
-        // Show welcome message
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Welcome back, ${appState.user?.firstName}! 👋'),
-                backgroundColor: Colors.green[700],
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        });
+          // Show welcome message
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Welcome back, ${appState.user?.firstName}! 👋',
+                  ),
+                  backgroundColor: Colors.green[700],
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          });
+        }
       } else {
         setState(() {
           _errorMessage = 'Invalid email or password';
@@ -244,18 +261,42 @@ class _AuthPageState extends State<AuthPage>
       );
 
       if (success && mounted) {
-        // Account created! Now navigate to KYC page for optional document upload
+        // Account created! Now navigate to email verification first
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => KycVerificationPage(
-              firstName: _signupFirstNameController.text.trim(),
-              lastName: _signupLastNameController.text.trim(),
-              phoneNumber: _signupPhoneController.text.trim(),
+            builder: (context) => EmailVerificationPage(
               email: _signupEmailController.text.trim(),
-              password: _signupPasswordController.text,
-              gender: _selectedGender,
-              isNewSignup: true, // New user during signup
+              canSkip: false, // Cannot skip during signup
+              onVerified: () {
+                // After email verification, navigate to phone verification
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PhoneVerificationPage(
+                      phoneNumber: _signupPhoneController.text.trim(),
+                      canSkip: false, // Cannot skip during signup
+                      onVerified: () {
+                        // After phone verification, navigate to KYC page
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => KycVerificationPage(
+                              firstName: _signupFirstNameController.text.trim(),
+                              lastName: _signupLastNameController.text.trim(),
+                              phoneNumber: _signupPhoneController.text.trim(),
+                              email: _signupEmailController.text.trim(),
+                              password: _signupPasswordController.text,
+                              gender: _selectedGender,
+                              isNewSignup: true, // New user during signup
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         );
@@ -555,7 +596,12 @@ class _AuthPageState extends State<AuthPage>
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const ForgotPasswordDialog(),
+                );
+              },
               child: const Text(
                 'Forgot Password?',
                 style: TextStyle(

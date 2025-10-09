@@ -10,6 +10,7 @@ import 'add_property_page.dart';
 import 'valuate_page.dart';
 import 'my_properties_page.dart';
 import 'auction_details_page.dart';
+import 'auctions_page.dart';
 import 'create_auction_request_dialog.dart';
 import '../widgets/loading_button.dart';
 
@@ -335,8 +336,13 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Navigate to auctions page (index 1 in bottom nav)
-                      DefaultTabController.of(context).animateTo(1);
+                      // Navigate to auctions page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AuctionsPage(),
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.search, size: 20),
                     label: const Text(
@@ -682,7 +688,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                   child: ElevatedButton(
                     onPressed: () {
                       // Navigate to auth page
-                      DefaultTabController.of(context).animateTo(1);
+                      Navigator.pushNamed(context, '/auth');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange[700],

@@ -6,6 +6,8 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import '../models/user.dart';
 import 'kyc_verification_page.dart';
+import 'email_verification_page.dart';
+import 'phone_verification_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -21,10 +23,19 @@ class _ProfilePageState extends State<ProfilePage> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
 
+  // Password change controllers
+  final _passwordFormKey = GlobalKey<FormState>();
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
   bool _isEditing = false;
   bool _isLoading = false;
+  bool _isChangingPassword = false;
+  bool _showChangePassword = false;
   String? _errorMessage;
   String? _successMessage;
+  String? _passwordErrorMessage;
 
   @override
   void initState() {
@@ -134,11 +145,23 @@ class _ProfilePageState extends State<ProfilePage> {
     _lastNameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    final currentEmail = appState.user?.email ?? '';
+    final currentPhone = appState.user?.phoneNumber ?? '';
+    final newEmail = _emailController.text.trim();
+    final newPhone = _phoneController.text.trim();
+
+    final emailChanged = newEmail != currentEmail;
+    final phoneChanged = newPhone != currentPhone;
 
     setState(() {
       _isLoading = true;
@@ -151,29 +174,38 @@ class _ProfilePageState extends State<ProfilePage> {
       final response = await authService.updateProfile(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        phoneNumber: _phoneController.text.trim(),
-        email: _emailController.text.trim(),
+        phoneNumber: newPhone,
+        email: newEmail,
       );
 
       if (response.success) {
         // Reload user data from AppState to get updated verification status
+        await appState.refreshUserProfile();
         _loadUserData();
 
         setState(() {
-          _successMessage =
-              'Profile updated successfully! Your account is now pending admin review.';
           _isEditing = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Profile updated! An admin will review your changes shortly.',
+        // Show different messages based on what changed
+        if (emailChanged || phoneChanged) {
+          // Show dialog prompting to verify
+          _showVerificationRequiredDialog(
+            emailChanged: emailChanged,
+            phoneChanged: phoneChanged,
+          );
+        } else {
+          setState(() {
+            _successMessage = 'Profile updated successfully!';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Profile updated successfully!'),
+              backgroundColor: Colors.green[700],
+              duration: const Duration(seconds: 2),
             ),
-            backgroundColor: Colors.orange[700],
-            duration: const Duration(seconds: 4),
-          ),
-        );
+          );
+        }
       } else {
         setState(() {
           _errorMessage = response.error ?? 'Failed to update profile';
@@ -186,6 +218,184 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  void _showVerificationRequiredDialog({
+    required bool emailChanged,
+    required bool phoneChanged,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.security, color: Colors.orange[700], size: 28),
+            const SizedBox(width: 12),
+            const Text('Verification Required'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You\'ve updated your ${emailChanged && phoneChanged
+                  ? 'email and phone number'
+                  : emailChanged
+                  ? 'email'
+                  : 'phone number'}.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Please verify your ${emailChanged && phoneChanged
+                          ? 'email and phone'
+                          : emailChanged
+                          ? 'email'
+                          : 'phone'} to continue.',
+                      style: TextStyle(
+                        color: Colors.orange[700],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _successMessage =
+                    'Profile updated. Please verify your contact information.';
+              });
+            },
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to appropriate verification page
+              if (emailChanged) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EmailVerificationPage(
+                      email: _emailController.text.trim(),
+                      canSkip:
+                          phoneChanged, // Can skip if phone also needs verification
+                      onVerified: () {
+                        Navigator.pop(context);
+                        if (phoneChanged) {
+                          // After email, verify phone
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PhoneVerificationPage(
+                                phoneNumber: _phoneController.text.trim(),
+                                canSkip: true,
+                                onVerified: () {
+                                  Navigator.pop(context);
+                                  _loadUserData();
+                                },
+                              ),
+                            ),
+                          );
+                        } else {
+                          _loadUserData();
+                        }
+                      },
+                    ),
+                  ),
+                );
+              } else if (phoneChanged) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PhoneVerificationPage(
+                      phoneNumber: _phoneController.text.trim(),
+                      canSkip: true,
+                      onVerified: () {
+                        Navigator.pop(context);
+                        _loadUserData();
+                      },
+                    ),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[700],
+            ),
+            child: const Text('Verify Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _changePassword() async {
+    if (!_passwordFormKey.currentState!.validate()) return;
+
+    setState(() {
+      _isChangingPassword = true;
+      _passwordErrorMessage = null;
+    });
+
+    try {
+      final authService = AuthService();
+      final response = await authService.changePassword(
+        currentPassword: _currentPasswordController.text.trim(),
+        newPassword: _newPasswordController.text.trim(),
+      );
+
+      if (response.success) {
+        setState(() {
+          _showChangePassword = false;
+          _currentPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Password changed successfully!'),
+            backgroundColor: Colors.green[700],
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        setState(() {
+          _passwordErrorMessage = response.error ?? 'Failed to change password';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _passwordErrorMessage = 'An error occurred: $e';
+      });
+    } finally {
+      setState(() {
+        _isChangingPassword = false;
       });
     }
   }
@@ -203,7 +413,16 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        // Always show profile content, but add login prompt for unauthenticated users
+        // Redirect to auth page if not logged in
+        if (!appState.isLoggedIn) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(context).pushReplacementNamed('/auth');
+          });
+          // Return empty scaffold while redirecting
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
         return Scaffold(
           appBar: AppBar(
@@ -300,6 +519,91 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // Email & Phone Verification Status
+                    if (!_isEditing) ...[
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.purple[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.purple[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.verified_user,
+                                  color: Colors.purple[700],
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Account Verification',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple[900],
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Email Verification Status
+                            _buildVerificationItem(
+                              icon: Icons.email,
+                              title: 'Email Verification',
+                              subtitle: appState.user!.email,
+                              isVerified: appState.user!.emailVerified,
+                              onVerify: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EmailVerificationPage(
+                                      email: appState.user!.email,
+                                      canSkip: true,
+                                      onVerified: () {
+                                        Navigator.pop(context);
+                                        _loadUserData();
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            const Divider(height: 24),
+
+                            // Phone Verification Status
+                            _buildVerificationItem(
+                              icon: Icons.phone,
+                              title: 'Phone Verification',
+                              subtitle: appState.user!.phoneNumber,
+                              isVerified: appState.user!.phoneVerified,
+                              onVerify: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PhoneVerificationPage(
+                                      phoneNumber: appState.user!.phoneNumber,
+                                      canSkip: true,
+                                      onVerified: () {
+                                        Navigator.pop(context);
+                                        _loadUserData();
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Error message
                     if (_errorMessage != null)
@@ -404,6 +708,183 @@ class _ProfilePageState extends State<ProfilePage> {
                         border: OutlineInputBorder(),
                       ),
                       enabled: false,
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Change Password Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue[200]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.lock_outline,
+                                color: Colors.blue[700],
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Security',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue[900],
+                                    ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Changing your password does not affect your verification status',
+                            style: TextStyle(
+                              color: Colors.blue[700],
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          if (!_showChangePassword)
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _showChangePassword = true;
+                                    _passwordErrorMessage = null;
+                                  });
+                                },
+                                icon: const Icon(Icons.key),
+                                label: const Text('Change Password'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue[700],
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          if (_showChangePassword)
+                            Form(
+                              key: _passwordFormKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Password error message
+                                  if (_passwordErrorMessage != null)
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      margin: const EdgeInsets.only(bottom: 16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red[50],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.red[200]!,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        _passwordErrorMessage!,
+                                        style: TextStyle(
+                                          color: Colors.red[700],
+                                        ),
+                                      ),
+                                    ),
+
+                                  // Current password
+                                  CustomTextField(
+                                    controller: _currentPasswordController,
+                                    labelText: 'Current Password',
+                                    obscureText: true,
+                                    validator: (value) => value?.isEmpty == true
+                                        ? 'Current password is required'
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // New password
+                                  CustomTextField(
+                                    controller: _newPasswordController,
+                                    labelText: 'New Password',
+                                    obscureText: true,
+                                    validator: (value) {
+                                      if (value?.isEmpty == true) {
+                                        return 'New password is required';
+                                      }
+                                      if (value!.length < 6) {
+                                        return 'Password must be at least 6 characters';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Confirm password
+                                  CustomTextField(
+                                    controller: _confirmPasswordController,
+                                    labelText: 'Confirm New Password',
+                                    obscureText: true,
+                                    validator: (value) {
+                                      if (value?.isEmpty == true) {
+                                        return 'Please confirm your password';
+                                      }
+                                      if (value !=
+                                          _newPasswordController.text) {
+                                        return 'Passwords do not match';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Action buttons
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: LoadingButton(
+                                          onPressed: _isChangingPassword
+                                              ? null
+                                              : _changePassword,
+                                          isLoading: _isChangingPassword,
+                                          child: const Text('Update Password'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: _isChangingPassword
+                                              ? null
+                                              : () {
+                                                  setState(() {
+                                                    _showChangePassword = false;
+                                                    _passwordErrorMessage =
+                                                        null;
+                                                    _currentPasswordController
+                                                        .clear();
+                                                    _newPasswordController
+                                                        .clear();
+                                                    _confirmPasswordController
+                                                        .clear();
+                                                  });
+                                                },
+                                          child: const Text('Cancel'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 24),
@@ -633,55 +1114,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ],
-
-                  // Login prompt for unauthenticated users
-                  if (!appState.isLoggedIn) ...[
-                    const SizedBox(height: 32),
-
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange[200]!),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(Icons.lock, color: Colors.orange[700], size: 32),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Login to Access Profile',
-                            style: TextStyle(
-                              color: Colors.orange[700],
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'You need to be logged in to manage your profile and account settings',
-                            style: TextStyle(
-                              color: Colors.orange[600],
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () =>
-                                Navigator.of(context).pushNamed('/auth'),
-                            icon: const Icon(Icons.login),
-                            label: const Text('Login to Continue'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green[700],
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -734,5 +1166,90 @@ class _ProfilePageState extends State<ProfilePage> {
       case VerificationStatus.notVerified:
         return 'Not Verified';
     }
+  }
+
+  Widget _buildVerificationItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isVerified,
+    required VoidCallback onVerify,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isVerified ? Colors.green[100] : Colors.orange[100],
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            color: isVerified ? Colors.green[700] : Colors.orange[700],
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (isVerified)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.green[100],
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, size: 14, color: Colors.green[700]),
+                const SizedBox(width: 4),
+                Text(
+                  'Verified',
+                  style: TextStyle(
+                    color: Colors.green[700],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ElevatedButton(
+            onPressed: onVerify,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[700],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Verify',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+      ],
+    );
   }
 }

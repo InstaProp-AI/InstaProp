@@ -36,14 +36,15 @@ class PropertyService {
 
   static Future<ApiResponse<Property>> updateProperty({
     required int propertyId,
-    String? name,
-    String? description,
-    String? location,
+    required String name,
+    required String description,
+    required String location,
   }) async {
-    final body = <String, dynamic>{};
-    if (name != null) body['name'] = name;
-    if (description != null) body['description'] = description;
-    if (location != null) body['location'] = location;
+    final body = <String, dynamic>{
+      'name': name,
+      'description': description,
+      'location': location,
+    };
 
     return await ApiClient.put(
       '/api/property/$propertyId',

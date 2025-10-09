@@ -6,6 +6,8 @@ export interface Account {
   phoneNumber: string;
   type: 'User' | 'Developer';
   isVerified: boolean;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
   createdAt: string;
   updatedAt?: string;
 }

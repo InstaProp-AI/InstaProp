@@ -51,7 +51,7 @@ namespace PropertyFlipperAPI.Controllers
                     BidCount = _context.Bids.Count(x => x.AuctionId == auctionId && x.BidderId == b.BidderId),
                     LatestBidAmount = _context.Bids
                         .Where(x => x.AuctionId == auctionId && x.BidderId == b.BidderId)
-                        .Max(x => x.BidAmount)
+                        .Max(x => (double)x.BidAmount)
                 })
                 .Distinct()
                 .OrderByDescending(b => b.LatestBidAmount)
@@ -224,7 +224,7 @@ namespace PropertyFlipperAPI.Controllers
             var auction = bid.Auction;
             var remainingBids = await _context.Bids
                 .Where(b => b.AuctionId == auction.AuctionId)
-                .OrderByDescending(b => b.BidAmount)
+                .OrderByDescending(b => (double)b.BidAmount)
                 .ToListAsync();
                 
             if (remainingBids.Any())
@@ -247,7 +247,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             var highestBid = await _context.Bids
                 .Where(b => b.AuctionId == auctionId)
-                .OrderByDescending(b => b.BidAmount)
+                .OrderByDescending(b => (double)b.BidAmount)
                 .FirstOrDefaultAsync();
 
             if (highestBid != null)

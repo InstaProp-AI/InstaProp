@@ -6,6 +6,7 @@ import '../services/property_service.dart';
 import '../services/bid_service.dart';
 import '../services/websocket_service.dart';
 import '../services/dashboard_service.dart';
+import '../services/api_client.dart';
 import '../models/user.dart';
 import '../models/auction.dart';
 import '../models/property.dart';
@@ -24,6 +25,7 @@ class AppState extends ChangeNotifier {
   bool get isLoggedIn => _authService.isLoggedIn;
   bool get isLoading => _authService.isLoading;
   String? get token => _authService.token;
+  AuthService get authService => _authService;
 
   // Data caches
   List<Auction> _auctions = [];
@@ -366,6 +368,21 @@ class AppState extends ChangeNotifier {
     } finally {
       _loadingBids = false;
       notifyListeners();
+    }
+  }
+
+  Future<ApiResponse<void>> deleteProperty(int propertyId) async {
+    try {
+      final response = await PropertyService.deleteProperty(propertyId);
+      if (response.success) {
+        // Remove from local list
+        _properties.removeWhere((p) => p.propertyId == propertyId);
+        notifyListeners();
+      }
+      return response;
+    } catch (e) {
+      print('Error deleting property: $e');
+      return ApiResponse.error('Failed to delete property: $e');
     }
   }
 

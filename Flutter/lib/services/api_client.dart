@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiResponse<T> {
   final bool success;
@@ -26,7 +27,26 @@ class ApiResponse<T> {
 }
 
 class ApiClient {
-  static const String baseUrl = 'http://192.168.1.11:5284';
+  // Automatically detect the correct base URL based on platform
+  static String get baseUrl {
+    if (kIsWeb) {
+      // For web, use localhost or your deployed backend URL
+      return 'http://localhost:5284';
+    } else if (Platform.isAndroid) {
+      // Android emulator: 10.0.2.2 maps to host's localhost
+      // Physical Android device: use your computer's IP address
+      // To detect if running on emulator, we'll try to use the environment
+      // For now, defaulting to physical device IP
+      return 'http://192.168.33.214:5284';
+    } else if (Platform.isIOS) {
+      // iOS Simulator can use localhost directly
+      // Physical iOS device: use your computer's IP address
+      return 'http://192.168.33.214:5284';
+    } else {
+      return 'http://localhost:5284';
+    }
+  }
+
   static const Duration timeout = Duration(seconds: 30);
 
   static Future<String?> getToken() async {
@@ -170,17 +190,25 @@ class ApiClient {
       final uri = Uri.parse('$baseUrl$endpoint');
       final headers = await _getHeaders();
 
-      print('GET $uri');
+      print('🌐 GET $uri');
+      print('📡 Base URL: $baseUrl');
 
       final response = await http.get(uri, headers: headers).timeout(timeout);
+      print('✅ Response status: ${response.statusCode}');
       return _handleResponse(response, fromJson);
-    } on SocketException {
-      return ApiResponse.error('No internet connection');
-    } on HttpException {
-      return ApiResponse.error('HTTP error occurred');
-    } on FormatException {
-      return ApiResponse.error('Invalid response format');
+    } on SocketException catch (e) {
+      print('❌ SocketException: $e');
+      return ApiResponse.error(
+        'Cannot connect to server. Please check if backend is running at $baseUrl',
+      );
+    } on HttpException catch (e) {
+      print('❌ HttpException: $e');
+      return ApiResponse.error('HTTP error occurred: $e');
+    } on FormatException catch (e) {
+      print('❌ FormatException: $e');
+      return ApiResponse.error('Invalid response format: $e');
     } catch (e) {
+      print('❌ Unexpected error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
   }
@@ -223,23 +251,31 @@ class ApiClient {
       final uri = Uri.parse('$baseUrl$endpoint');
       final headers = await _getHeaders();
 
-      print('POST $uri with body: ${jsonEncode(body)}');
+      print('🌐 POST $uri');
+      print('📡 Base URL: $baseUrl');
+      print('📤 Body: ${jsonEncode(body)}');
 
       final response = await http
           .post(uri, headers: headers, body: jsonEncode(body))
           .timeout(timeout);
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      print('✅ Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
 
       return _handleResponse(response, fromJson);
-    } on SocketException {
-      return ApiResponse.error('No internet connection');
-    } on HttpException {
-      return ApiResponse.error('HTTP error occurred');
-    } on FormatException {
-      return ApiResponse.error('Invalid response format');
+    } on SocketException catch (e) {
+      print('❌ SocketException: $e');
+      return ApiResponse.error(
+        'Cannot connect to server. Please check if backend is running at $baseUrl',
+      );
+    } on HttpException catch (e) {
+      print('❌ HttpException: $e');
+      return ApiResponse.error('HTTP error occurred: $e');
+    } on FormatException catch (e) {
+      print('❌ FormatException: $e');
+      return ApiResponse.error('Invalid response format: $e');
     } catch (e) {
+      print('❌ Unexpected error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
   }

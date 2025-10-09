@@ -37,6 +37,8 @@ interface Client {
   lastName: string;
   email: string;
   phone: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
   company?: string;
   location: string;
   joinDate: string;

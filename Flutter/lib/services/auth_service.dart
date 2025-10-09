@@ -191,6 +191,87 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<ApiResponse<String>> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiClient.baseUrl}/api/account/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return ApiResponse(
+          success: true,
+          data: data['message'] ?? 'Password reset email sent',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          'Failed to send password reset email',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('Error: $e', statusCode: 500);
+    }
+  }
+
+  Future<ApiResponse<String>> forceChangePassword({
+    String? oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      final token = await ApiClient.getToken();
+      if (token == null) {
+        return ApiResponse.error('Not authenticated', statusCode: 401);
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiClient.baseUrl}/api/account/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          if (oldPassword != null) 'oldPassword': oldPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Update user to reflect password change
+        if (_user != null) {
+          final userResponse = await ApiClient.get(
+            '/api/account/me',
+            Account.fromJson,
+          );
+          if (userResponse.success && userResponse.data != null) {
+            _user = userResponse.data;
+            notifyListeners();
+          }
+        }
+
+        final data = jsonDecode(response.body);
+        return ApiResponse(
+          success: true,
+          data: data['message'] ?? 'Password changed successfully',
+          statusCode: response.statusCode,
+        );
+      } else {
+        final data = jsonDecode(response.body);
+        return ApiResponse.error(
+          data['message'] ?? 'Failed to change password',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('Error: $e', statusCode: 500);
+    }
+  }
+
   Future<ApiResponse<Account>> updateProfile({
     String? firstName,
     String? lastName,
@@ -224,6 +305,33 @@ class AuthService extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return ApiResponse.error('Profile update failed: $e');
+    }
+  }
+
+  Future<ApiResponse<bool>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (_user == null) {
+      return ApiResponse.error('User not logged in');
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await ApiClient.put('/api/account/change-password', {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      }, (data) => true);
+
+      _isLoading = false;
+      notifyListeners();
+      return response;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return ApiResponse.error('Password change failed: $e');
     }
   }
 }

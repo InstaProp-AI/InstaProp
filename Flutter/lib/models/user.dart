@@ -42,6 +42,9 @@ class Account {
   final String email;
   final AccountType type;
   final VerificationStatus status;
+  final bool emailVerified;
+  final bool phoneVerified;
+  final bool requiresPasswordChange;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final List<KycDocument> kycDocuments;
@@ -54,6 +57,9 @@ class Account {
     required this.email,
     required this.type,
     required this.status,
+    this.emailVerified = false,
+    this.phoneVerified = false,
+    this.requiresPasswordChange = false,
     required this.createdAt,
     this.updatedAt,
     this.kycDocuments = const [],
@@ -73,6 +79,12 @@ class Account {
         orElse: () => AccountType.user,
       ),
       status: _parseVerificationStatus(json['status'] ?? json['Status']),
+      emailVerified: json['emailVerified'] ?? json['EmailVerified'] ?? false,
+      phoneVerified: json['phoneVerified'] ?? json['PhoneVerified'] ?? false,
+      requiresPasswordChange:
+          json['requiresPasswordChange'] ??
+          json['RequiresPasswordChange'] ??
+          false,
       createdAt: DateTime.parse(
         json['createdAt'] ??
             json['CreatedAt'] ??
@@ -126,6 +138,8 @@ class Account {
       'email': email,
       'type': type.toString().split('.').last,
       'status': status.index,
+      'emailVerified': emailVerified,
+      'phoneVerified': phoneVerified,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'kycDocuments': kycDocuments.map((doc) => doc.toJson()).toList(),

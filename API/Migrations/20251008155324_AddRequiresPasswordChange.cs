@@ -5,15 +5,15 @@
 namespace PropertyFlipperAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class AddIsPublicFieldToEvents : Migration
+    public partial class AddRequiresPasswordChange : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "IsPublic",
-                table: "Events",
-                type: "boolean",
+                name: "RequiresPasswordChange",
+                table: "Accounts",
+                type: "INTEGER",
                 nullable: false,
                 defaultValue: false);
         }
@@ -22,8 +22,8 @@ namespace PropertyFlipperAPI.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsPublic",
-                table: "Events");
+                name: "RequiresPasswordChange",
+                table: "Accounts");
         }
     }
 }

@@ -60,5 +60,12 @@ namespace PropertyFlipperAPI.Models
         public ICollection<PropertyDoc> PropertyDocs { get; set; } = new List<PropertyDoc>();
         public ICollection<PropertyImage> PropertyImages { get; set; } = new List<PropertyImage>();
         public ICollection<Auction> Auctions { get; set; } = new List<Auction>();
+
+        // Helper property to check if property has an active auction
+        [NotMapped]
+        public bool HasActiveAuction => Auctions.Any(a => 
+            a.Status == "Active" || 
+            a.Status == "Requested" || 
+            a.Status == "Approved");
     }
 }

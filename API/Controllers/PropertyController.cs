@@ -173,13 +173,8 @@ namespace PropertyFlipperAPI.Controllers
         // PUT: api/Property/5
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> PutProperty(int id, Property property)
+        public async Task<IActionResult> PutProperty(int id, [FromBody] PropertyUpdateDto updateDto)
         {
-            if (id != property.PropertyId)
-            {
-                return BadRequest();
-            }
-
             // Check if property is editable (only before approval)
             var existingProperty = await _context.Properties.FindAsync(id);
             if (existingProperty == null)
@@ -202,8 +197,11 @@ namespace PropertyFlipperAPI.Controllers
                 return Forbid("You can only edit your own properties");
             }
 
-            property.UpdatedAt = DateTime.UtcNow;
-            _context.Entry(property).State = EntityState.Modified;
+            // Update only the allowed fields
+            existingProperty.Name = updateDto.Name;
+            existingProperty.Description = updateDto.Description;
+            existingProperty.Location = updateDto.Location;
+            existingProperty.UpdatedAt = DateTime.UtcNow;
 
             try
             {
@@ -221,19 +219,44 @@ namespace PropertyFlipperAPI.Controllers
                 }
             }
 
-            return NoContent();
+            return Ok(existingProperty);
         }
 
         // DELETE: api/Property/5
         [HttpDelete("{id}")]
         [Authorize]
-        [AdminAuthorize]
         public async Task<IActionResult> DeleteProperty(int id)
         {
-            var property = await _context.Properties.FindAsync(id);
+            var property = await _context.Properties
+                .Include(p => p.Auctions)
+                .FirstOrDefaultAsync(p => p.PropertyId == id);
+                
             if (property == null)
             {
                 return NotFound();
+            }
+
+            // Check if user owns the property (unless admin)
+            var accountId = GetCurrentAccountId();
+            var accountType = GetCurrentAccountType();
+            
+            if (accountId == null)
+                return Unauthorized();
+
+            if (accountType != "Admin" && property.OwnerId != accountId)
+            {
+                return Forbid("You can only delete your own properties");
+            }
+
+            // Check if property has any active or pending auctions
+            var hasActiveAuction = property.Auctions.Any(a => 
+                a.Status == "Active" || 
+                a.Status == "Requested" || 
+                a.Status == "Approved");
+            
+            if (hasActiveAuction)
+            {
+                return BadRequest(new { message = "Cannot delete property. It is currently in auction or has a pending auction request." });
             }
 
             _context.Properties.Remove(property);

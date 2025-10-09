@@ -31,6 +31,33 @@ namespace PropertyFlipperAPI.Models
         [Required]
         public VerificationStatus Status { get; set; } = VerificationStatus.NotVerified;
 
+        // Email & Phone Verification
+        public bool EmailVerified { get; set; } = false;
+        public bool PhoneVerified { get; set; } = false;
+        
+        [MaxLength(6)]
+        public string? EmailVerificationPin { get; set; }
+        
+        [MaxLength(6)]
+        public string? PhoneVerificationPin { get; set; }
+        
+        public DateTime? EmailVerificationPinExpiry { get; set; }
+        public DateTime? PhoneVerificationPinExpiry { get; set; }
+
+        // Password Reset
+        public bool RequiresPasswordChange { get; set; } = false;
+        
+        [EmailAddress]
+        public string? PasswordResetRequestedEmail { get; set; }
+        public DateTime? PasswordResetTokenExpiry { get; set; }
+
+        // Store previous values to detect changes
+        [MaxLength(100)]
+        public string? PreviousEmail { get; set; }
+        
+        [Phone]
+        public string? PreviousPhoneNumber { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
