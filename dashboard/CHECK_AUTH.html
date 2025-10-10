@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Checker</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2563eb; }
+        .status { 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .success { background: #dcfce7; color: #059669; }
+        .error { background: #fee2e2; color: #dc2626; }
+        .info { background: #dbeafe; color: #2563eb; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #1d4ed8; }
+        .token-info {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Authentication Diagnostic Tool</h1>
+        
+        <div id="tokenStatus"></div>
+        
+        <h2>Quick Actions</h2>
+        <button onclick="checkToken()">Check Token</button>
+        <button onclick="testAPI()">Test API</button>
+        <button onclick="clearToken()">Clear Token</button>
+        
+        <h2>Manual Login</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@admin.com">
+        <input type="password" id="password" placeholder="Password" value="11111111">
+        <button onclick="login()">Login</button>
+        
+        <div id="results" class="test-results" style="display:none;"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5284/api';
+        
+        function showResults(html) {
+            const results = document.getElementById('results');
+            results.innerHTML = html;
+            results.style.display = 'block';
+        }
+        
+        function checkToken() {
+            const token = localStorage.getItem('authToken');
+            const tokenStatus = document.getElementById('tokenStatus');
+            
+            if (token) {
+                try {
+                    // Decode JWT (simple base64 decode of payload)
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const exp = new Date(payload.exp * 1000);
+                    const now = new Date();
+                    const isExpired = exp < now;
+                    
+                    tokenStatus.innerHTML = `
+                        <div class="status ${isExpired ? 'error' : 'success'}">
+                            <strong>Token Found:</strong> ${isExpired ? 'EXPIRED' : 'VALID'}<br>
+                            <strong>User:</strong> ${payload.email}<br>
+                            <strong>Type:</strong> ${payload.type}<br>
+                            <strong>Expires:</strong> ${exp.toLocaleString()}<br>
+                            <strong>Status:</strong> ${isExpired ? '❌ Expired - Please login again' : '✅ Active'}
+                        </div>
+                        <div class="token-info">
+                            <strong>Token:</strong><br>${token}
+                        </div>
+                    `;
+                } catch (e) {
+                    tokenStatus.innerHTML = `
+                        <div class="status error">
+                            ❌ Invalid token format<br>
+                            Error: ${e.message}
+                        </div>
+                    `;
+                }
+            } else {
+                tokenStatus.innerHTML = `
+                    <div class="status error">
+                        ❌ No authentication token found<br>
+                        You need to login first!
+                    </div>
+                `;
+            }
+        }
+        
+        async function testAPI() {
+            showResults('<div class="info">Testing API...</div>');
+            
+            const token = localStorage.getItem('authToken');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/stats`, { headers });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResults(`
+                        <div class="status success">
+                            ✅ API Test Successful!<br>
+                            <strong>Stats Retrieved:</strong><br>
+                            Users: ${data.users?.total || data.Users?.Total || 0}<br>
+                            Properties: ${data.properties?.total || data.Properties?.Total || 0}<br>
+                            Auctions: ${data.auctions?.active || data.Auctions?.Active || 0}<br>
+                            Bids: ${data.bids?.total || data.Bids?.Total || 0}
+                        </div>
+                        <div class="token-info">
+                            <strong>Full Response:</strong><br>
+                            ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `);
+                } else {
+                    showResults(`
+                        <div class="status error">
+                            ❌ API Error: ${response.status} ${response.statusText}<br>
+                            ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `);
+                }
+            } catch (error) {
+                showResults(`
+                    <div class="status error">
+                        ❌ Network Error: ${error.message}<br>
+                        Make sure the API is running on ${API_URL}
+                    </div>
+                `);
+            }
+        }
+        
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            showResults('<div class="info">Logging in...</div>');
+            
+            try {
+                const response = await fetch(`${API_URL}/account/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    localStorage.setItem('authToken', data.token);
+                    showResults(`
+                        <div class="status success">
+                            ✅ Login Successful!<br>
+                            <strong>Account:</strong> ${data.account.email}<br>
+                            <strong>Type:</strong> ${data.account.type === 2 ? 'Admin' : data.account.type === 1 ? 'Developer' : 'User'}<br>
+                            <strong>Token saved to localStorage</strong>
+                        </div>
+                    `);
+                    checkToken();
+                } else {
+                    showResults(`
+                        <div class="status error">
+                            ❌ Login Failed<br>
+                            ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `);
+                }
+            } catch (error) {
+                showResults(`
+                    <div class="status error">
+                        ❌ Login Error: ${error.message}
+                    </div>
+                `);
+            }
+        }
+        
+        function clearToken() {
+            localStorage.removeItem('authToken');
+            showResults('<div class="status info">Token cleared from localStorage</div>');
+            checkToken();
+        }
+        
+        // Check on load
+        window.onload = checkToken;
+    </script>
+</body>
+</html>
+
+

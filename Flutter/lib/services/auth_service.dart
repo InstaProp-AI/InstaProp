@@ -39,24 +39,38 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiClient.post(
-        '/api/account/login',
-        {'email': email, 'password': password},
-        (data) {
-          _token = data['token'] ?? data['Token'];
-          _user = Account.fromJson(data['account'] ?? data['Account']);
-          return _user!;
-        },
+      final response = await http.post(
+        Uri.parse('${ApiClient.baseUrl}/api/account/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
-      if (response.success) {
-        await ApiClient.setToken(_token);
+      if (response.statusCode == 403) {
+        // Account is suspended
+        final errorData = jsonDecode(response.body);
+        _isLoading = false;
         notifyListeners();
+        return ApiResponse.error(
+          errorData['message'] ?? 'Account is suspended',
+          statusCode: 403,
+          data: errorData,
+        );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _token = data['token'] ?? data['Token'];
+        _user = Account.fromJson(data['account'] ?? data['Account']);
+        await ApiClient.setToken(_token);
+
+        _isLoading = false;
+        notifyListeners();
+        return ApiResponse.success(_user!);
       }
 
       _isLoading = false;
       notifyListeners();
-      return response;
+      return ApiResponse.error('Login failed: ${response.body}');
     } catch (e) {
       _isLoading = false;
       notifyListeners();

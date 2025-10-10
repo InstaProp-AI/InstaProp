@@ -394,9 +394,9 @@ class AppState extends ChangeNotifier {
   }
 
   // Auth methods
-  Future<bool> login(String email, String password) async {
+  Future<ApiResponse<Account>> login(String email, String password) async {
     final response = await _authService.login(email, password);
-    return response.success;
+    return response;
   }
 
   Future<bool> signup({

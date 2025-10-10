@@ -9,20 +9,31 @@ class ApiResponse<T> {
   final T? data;
   final String? error;
   final int statusCode;
+  final Map<String, dynamic>? errorData;
 
   ApiResponse({
     required this.success,
     this.data,
     this.error,
     required this.statusCode,
+    this.errorData,
   });
 
   factory ApiResponse.success(T data, {int statusCode = 200}) {
     return ApiResponse(success: true, data: data, statusCode: statusCode);
   }
 
-  factory ApiResponse.error(String error, {int statusCode = 400}) {
-    return ApiResponse(success: false, error: error, statusCode: statusCode);
+  factory ApiResponse.error(
+    String error, {
+    int statusCode = 400,
+    Map<String, dynamic>? data,
+  }) {
+    return ApiResponse(
+      success: false,
+      error: error,
+      statusCode: statusCode,
+      errorData: data,
+    );
   }
 }
 

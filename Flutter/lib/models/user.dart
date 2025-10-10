@@ -45,6 +45,9 @@ class Account {
   final bool emailVerified;
   final bool phoneVerified;
   final bool requiresPasswordChange;
+  final bool isSuspended;
+  final DateTime? suspendedUntil;
+  final String? suspensionReason;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final List<KycDocument> kycDocuments;
@@ -60,6 +63,9 @@ class Account {
     this.emailVerified = false,
     this.phoneVerified = false,
     this.requiresPasswordChange = false,
+    this.isSuspended = false,
+    this.suspendedUntil,
+    this.suspensionReason,
     required this.createdAt,
     this.updatedAt,
     this.kycDocuments = const [],
@@ -85,6 +91,12 @@ class Account {
           json['requiresPasswordChange'] ??
           json['RequiresPasswordChange'] ??
           false,
+      isSuspended: json['isSuspended'] ?? json['IsSuspended'] ?? false,
+      suspendedUntil:
+          json['suspendedUntil'] != null || json['SuspendedUntil'] != null
+          ? DateTime.parse(json['suspendedUntil'] ?? json['SuspendedUntil'])
+          : null,
+      suspensionReason: json['suspensionReason'] ?? json['SuspensionReason'],
       createdAt: DateTime.parse(
         json['createdAt'] ??
             json['CreatedAt'] ??

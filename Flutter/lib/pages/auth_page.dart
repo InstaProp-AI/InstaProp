@@ -165,12 +165,15 @@ class _AuthPageState extends State<AuthPage>
 
     try {
       final appState = context.read<AppState>();
-      final success = await appState.login(
+      final response = await appState.login(
         _loginEmailController.text.trim(),
         _loginPasswordController.text,
       );
 
-      if (success && mounted) {
+      // Note: We no longer block login for suspended users (403 status)
+      // They can login but won't be able to place bids
+
+      if (response.success && mounted) {
         // Check if user requires password change
         if (appState.user?.requiresPasswordChange == true) {
           // Navigate to force change password page
@@ -205,7 +208,7 @@ class _AuthPageState extends State<AuthPage>
         }
       } else {
         setState(() {
-          _errorMessage = 'Invalid email or password';
+          _errorMessage = response.error ?? 'Invalid email or password';
         });
       }
     } catch (e) {

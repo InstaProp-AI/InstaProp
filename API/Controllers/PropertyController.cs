@@ -62,10 +62,13 @@ namespace PropertyFlipperAPI.Controllers
 
         // GET: api/Property/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Property>> GetProperty(int id)
+        public async Task<ActionResult<object>> GetProperty(int id)
         {
             var property = await _context.Properties
                 .Include(p => p.Owner)
+                .Include(p => p.Auctions)
+                .Include(p => p.Project)
+                .Include(p => p.PropertyDocs)
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
 
             if (property == null)
@@ -73,7 +76,66 @@ namespace PropertyFlipperAPI.Controllers
                 return NotFound();
             }
 
-            return property;
+            // Return a DTO to avoid JsonIgnore issues and circular references
+            return Ok(new
+            {
+                property.PropertyId,
+                property.OwnerId,
+                property.ProjectId,
+                property.Name,
+                property.Description,
+                property.Location,
+                Type = property.Type.ToString(),
+                Status = property.Status.ToString(),
+                property.Bedrooms,
+                property.Bathrooms,
+                property.SquareFeet,
+                property.YearBuilt,
+                property.Category,
+                property.ImageUrl,
+                property.CreatedAt,
+                property.UpdatedAt,
+                Owner = property.Owner != null ? new
+                {
+                    property.Owner.AccountId,
+                    property.Owner.FirstName,
+                    property.Owner.LastName,
+                    property.Owner.Email,
+                    property.Owner.PhoneNumber,
+                    Type = property.Owner.Type.ToString(),
+                    Status = property.Owner.Status.ToString(),
+                    property.Owner.EmailVerified,
+                    property.Owner.PhoneVerified
+                } : null,
+                Auctions = property.Auctions.Select(a => new
+                {
+                    a.AuctionId,
+                    a.PropertyId,
+                    a.StartPrice,
+                    a.CurrentPrice,
+                    a.StartAt,
+                    a.Duration,
+                    a.BuyNowPrice,
+                    a.Status,
+                    a.BidCount,
+                    a.CreatedAt
+                }).ToList(),
+                Project = property.Project != null ? new
+                {
+                    property.Project.ProjectId,
+                    property.Project.Name,
+                    property.Project.Description,
+                    property.Project.Location
+                } : null,
+                PropertyDocs = property.PropertyDocs.Select(d => new
+                {
+                    d.DocId,
+                    d.PropertyId,
+                    d.DocType,
+                    d.ImgUrl,
+                    d.UploadedAt
+                }).ToList()
+            });
         }
 
         // POST: api/Property 
@@ -194,7 +256,7 @@ namespace PropertyFlipperAPI.Controllers
 
             if (accountType != "Admin" && existingProperty.OwnerId != accountId)
             {
-                return Forbid("You can only edit your own properties");
+                return StatusCode(403, new { message = "You can only edit your own properties" });
             }
 
             // Update only the allowed fields
@@ -245,7 +307,7 @@ namespace PropertyFlipperAPI.Controllers
 
             if (accountType != "Admin" && property.OwnerId != accountId)
             {
-                return Forbid("You can only delete your own properties");
+                return StatusCode(403, new { message = "You can only delete your own properties" });
             }
 
             // Check if property has any active or pending auctions
@@ -310,7 +372,7 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized();
 
             if (property.OwnerId != accountId)
-                return Forbid("You can only upload documents for your own properties");
+                return StatusCode(403, new { message = "You can only upload documents for your own properties" });
 
             // Change status to Pending when first document is uploaded
             if (property.Status == PropertyStatus.NotApproved)

@@ -31,15 +31,24 @@ namespace PropertyFlipperAPI.Controllers
             }
 
             var account = await _context.Accounts.FindAsync(accountId);
-            if (account == null || account.Type != Models.AccountType.Developer)
+            if (account == null)
             {
-                return Forbid("Only developers can access projects");
+                return Unauthorized("User not found");
             }
 
-            var projects = await _context.Projects
-                .Where(p => p.DeveloperId == accountId)
-                .Include(p => p.Properties)
-                .ToListAsync();
+            // Allow both Developers and Admins to access projects
+            if (account.Type != Models.AccountType.Developer && account.Type != Models.AccountType.Admin)
+            {
+                return StatusCode(403, new { message = "Only developers and admins can access projects" });
+            }
+
+            // Admins can see all projects, developers can only see their own
+            var projects = account.Type == Models.AccountType.Admin
+                ? await _context.Projects.Include(p => p.Properties).ToListAsync()
+                : await _context.Projects
+                    .Where(p => p.DeveloperId == accountId)
+                    .Include(p => p.Properties)
+                    .ToListAsync();
 
             return Ok(projects);
         }
@@ -55,9 +64,20 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized("User not authenticated");
             }
 
-            var project = await _context.Projects
-                .Include(p => p.Properties)
-                .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+            {
+                return Unauthorized("User not found");
+            }
+
+            // Admins can access any project, developers can only access their own
+            var project = account.Type == Models.AccountType.Admin
+                ? await _context.Projects
+                    .Include(p => p.Properties)
+                    .FirstOrDefaultAsync(p => p.ProjectId == id)
+                : await _context.Projects
+                    .Include(p => p.Properties)
+                    .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
 
             if (project == null)
             {
@@ -79,9 +99,15 @@ namespace PropertyFlipperAPI.Controllers
             }
 
             var account = await _context.Accounts.FindAsync(accountId);
-            if (account == null || account.Type != Models.AccountType.Developer)
+            if (account == null)
             {
-                return Forbid("Only developers can create projects");
+                return Unauthorized("User not found");
+            }
+
+            // Allow both Developers and Admins to create projects
+            if (account.Type != Models.AccountType.Developer && account.Type != Models.AccountType.Admin)
+            {
+                return StatusCode(403, new { message = "Only developers and admins can create projects" });
             }
 
             var project = new Project
@@ -111,8 +137,17 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized("User not authenticated");
             }
 
-            var project = await _context.Projects
-                .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+            {
+                return Unauthorized("User not found");
+            }
+
+            // Admins can update any project, developers can only update their own
+            var project = account.Type == Models.AccountType.Admin
+                ? await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == id)
+                : await _context.Projects
+                    .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
 
             if (project == null)
             {
@@ -140,8 +175,8 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized("User not authenticated");
             }
 
-            var project = await _context.Projects
-                .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
+            // Admins can delete any project
+            var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == id);
 
             if (project == null)
             {
@@ -165,8 +200,17 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized("User not authenticated");
             }
 
-            var project = await _context.Projects
-                .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null)
+            {
+                return Unauthorized("User not found");
+            }
+
+            // Admins can view properties of any project, developers can only view their own
+            var project = account.Type == Models.AccountType.Admin
+                ? await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == id)
+                : await _context.Projects
+                    .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
 
             if (project == null)
             {

@@ -211,6 +211,22 @@ namespace PropertyFlipperAPI.Controllers
             if (account == null || !BCrypt.Net.BCrypt.Verify(req.Password, account.HashedPassword))
                 return Unauthorized("Invalid credentials.");
 
+            // Check if account is suspended and auto-unsuspend if expired
+            if (account.IsSuspended)
+            {
+                // Check if suspension period has expired
+                if (account.SuspendedUntil.HasValue && account.SuspendedUntil.Value <= DateTime.UtcNow)
+                {
+                    // Auto-unsuspend if suspension period is over
+                    account.IsSuspended = false;
+                    account.SuspendedUntil = null;
+                    account.SuspensionReason = null;
+                    await _context.SaveChangesAsync();
+                }
+                // Note: We allow suspended users to login, but they can't place bids
+                // Suspension info is included in the account response
+            }
+
             // If password reset was requested, validate the email matches and token hasn't expired
             if (account.RequiresPasswordChange && account.PasswordResetRequestedEmail != null)
             {
@@ -400,6 +416,9 @@ namespace PropertyFlipperAPI.Controllers
                 account.Status,
                 account.EmailVerified,
                 account.PhoneVerified,
+                account.IsSuspended,
+                account.SuspendedUntil,
+                account.SuspensionReason,
                 account.CreatedAt,
                 account.UpdatedAt
             };

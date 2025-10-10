@@ -130,7 +130,6 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 // Info message - No need to enter temporary password again
                 Container(
                   padding: const EdgeInsets.all(12),

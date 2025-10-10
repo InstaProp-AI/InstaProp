@@ -51,6 +51,9 @@ namespace PropertyFlipperAPI.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsSuspended")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -89,6 +92,12 @@ namespace PropertyFlipperAPI.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SuspendedUntil")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");

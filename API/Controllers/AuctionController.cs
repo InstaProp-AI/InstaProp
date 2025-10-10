@@ -261,7 +261,45 @@ namespace PropertyFlipperAPI.Controllers
             return auctionDtos;
         }
 
+        // POST: api/Auction/{id}/relist
+        [HttpPost("{id}/relist")]
+        [Authorize]
+        [AdminAuthorize]
+        public async Task<ActionResult> RelistAuction(long id, [FromBody] RelistAuctionDto relistDto)
+        {
+            var auction = await _context.Auctions
+                .Include(a => a.Property)
+                .FirstOrDefaultAsync(a => a.AuctionId == id);
+            
+            if (auction == null)
+                return NotFound(new { message = "Auction not found" });
 
+            // Check if auction has ended
+            var endTime = auction.StartAt.AddHours(auction.Duration);
+            if (endTime >= DateTime.UtcNow && auction.Status == "Active")
+                return BadRequest(new { message = "Can only relist ended auctions" });
+
+            // Update auction to relist
+            auction.StartAt = relistDto.StartAt ?? DateTime.UtcNow;
+            auction.Duration = relistDto.Duration > 0 ? relistDto.Duration : auction.Duration;
+            auction.Status = "Active";
+            auction.CurrentPrice = relistDto.ResetPrice ? auction.StartPrice : auction.CurrentPrice;
+            auction.BidCount = relistDto.ResetBids ? 0 : auction.BidCount;
+
+            // Optionally reset bids
+            if (relistDto.ResetBids)
+            {
+                var bids = await _context.Bids.Where(b => b.AuctionId == id).ToListAsync();
+                _context.Bids.RemoveRange(bids);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                message = "Auction relisted successfully", 
+                auction = AuctionDto.FromAuction(auction)
+            });
+        }
 
 
 
@@ -299,5 +337,13 @@ namespace PropertyFlipperAPI.Controllers
         public DateTime StartAt { get; set; }
         public int Duration { get; set; } // hours
         public decimal? BuyNowPrice { get; set; }
+    }
+
+    public class RelistAuctionDto
+    {
+        public DateTime? StartAt { get; set; } // If null, starts immediately
+        public int Duration { get; set; } // New duration in hours (if 0, keeps existing duration)
+        public bool ResetPrice { get; set; } // If true, resets current price to start price
+        public bool ResetBids { get; set; } // If true, removes all existing bids
     }
 }

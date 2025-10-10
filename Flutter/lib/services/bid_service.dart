@@ -49,6 +49,29 @@ class BidService {
         );
       }
 
+      final user = appState.user!;
+
+      // Check if user is suspended
+      if (user.isSuspended) {
+        final suspensionMessage =
+            user.suspensionReason ??
+            'Your account is suspended. You cannot place bids at this time.';
+        return ApiResponse<bool>(
+          success: false,
+          error: suspensionMessage,
+          statusCode: 403,
+        );
+      }
+
+      // Check if user is verified (same as unverified accounts)
+      if (!user.isVerified) {
+        return ApiResponse<bool>(
+          success: false,
+          error: 'Your account must be verified before you can place bids.',
+          statusCode: 403,
+        );
+      }
+
       // Get bid history for this auction
       final bidsResponse = await getBidsPublic(auctionId);
       if (!bidsResponse.success ||

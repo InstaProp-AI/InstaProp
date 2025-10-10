@@ -58,6 +58,11 @@ namespace PropertyFlipperAPI.Models
         [Phone]
         public string? PreviousPhoneNumber { get; set; }
 
+        // Account Suspension
+        public bool IsSuspended { get; set; } = false;
+        public DateTime? SuspendedUntil { get; set; }
+        public string? SuspensionReason { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
