@@ -1,8 +1,10 @@
+import '../../theme/app_colors.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/auth_service.dart';
+import '../services/google_sign_in_service.dart';
 import '../widgets/loading_button.dart';
 import 'kyc_verification_page.dart';
 import 'home_page.dart';
@@ -10,6 +12,7 @@ import 'email_verification_page.dart';
 import 'phone_verification_page.dart';
 import 'forgot_password_dialog.dart';
 import 'force_change_password_page.dart';
+import 'profile_completion_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -41,10 +44,13 @@ class _AuthPageState extends State<AuthPage>
   String _selectedGender = 'Male';
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _obscureLoginPassword = true;
+
+  final GoogleSignInService _googleSignInService = GoogleSignInService();
 
   // Live validation states
   bool _passwordsMatch = true;
@@ -198,7 +204,7 @@ class _AuthPageState extends State<AuthPage>
                   content: Text(
                     'Welcome back, ${appState.user?.firstName}! 👋',
                   ),
-                  backgroundColor: Colors.green[700],
+                  backgroundColor: AppColors.primary,
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(seconds: 3),
                 ),
@@ -287,10 +293,7 @@ class _AuthPageState extends State<AuthPage>
                             builder: (context) => KycVerificationPage(
                               firstName: _signupFirstNameController.text.trim(),
                               lastName: _signupLastNameController.text.trim(),
-                              phoneNumber: _signupPhoneController.text.trim(),
                               email: _signupEmailController.text.trim(),
-                              password: _signupPasswordController.text,
-                              gender: _selectedGender,
                               isNewSignup: true, // New user during signup
                             ),
                           ),
@@ -319,10 +322,63 @@ class _AuthPageState extends State<AuthPage>
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _googleSignInService.signInWithGoogle();
+
+      if (!result.success) {
+        setState(() {
+          _errorMessage = result.error ?? 'Google Sign-In failed';
+          _isGoogleLoading = false;
+        });
+        return;
+      }
+
+      // Set user in app state - manually update authService since this is OAuth
+      final appState = Provider.of<AppState>(context, listen: false);
+      // Force refresh user data to update app state
+      await appState.authService.getCurrentUser();
+
+      setState(() {
+        _isGoogleLoading = false;
+      });
+
+      // Navigate based on profile completion needs
+      if (!mounted) return;
+
+      final phoneNumber = result.account?.phoneNumber;
+      if (result.requiresProfileCompletion ||
+          phoneNumber == null ||
+          phoneNumber.isEmpty) {
+        // Navigate to profile completion
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const ProfileCompletionPage(),
+          ),
+        );
+      } else {
+        // Navigate to home
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Google Sign-In failed: $e';
+        _isGoogleLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: Stack(
         children: [
           // Background Design
@@ -336,8 +392,8 @@ class _AuthPageState extends State<AuthPage>
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF4CAF50).withOpacity(0.3),
-                    Color(0xFF2E7D32).withOpacity(0.1),
+                    AppColors.secondary.withOpacity(0.3),
+                    AppColors.background.withOpacity(0.1),
                   ],
                 ),
               ),
@@ -353,8 +409,8 @@ class _AuthPageState extends State<AuthPage>
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF1B5E20).withOpacity(0.2),
-                    Color(0xFF2E7D32).withOpacity(0.05),
+                    AppColors.primary.withOpacity(0.2),
+                    AppColors.secondary.withOpacity(0.05),
                   ],
                 ),
               ),
@@ -384,19 +440,20 @@ class _AuthPageState extends State<AuthPage>
                         icon: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.surface,
                             shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.secondary),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: AppColors.primary.withOpacity(0.05),
                                 blurRadius: 10,
-                                spreadRadius: 2,
+                                spreadRadius: 0,
                               ),
                             ],
                           ),
                           child: const Icon(
                             Icons.close,
-                            color: Color(0xFF2E7D32),
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
@@ -415,27 +472,25 @@ class _AuthPageState extends State<AuthPage>
                               width: 100,
                               height: 100,
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
+                                gradient: const LinearGradient(
+                                  colors: AppColors.accentGradient,
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFF2E7D32),
-                                    Color(0xFF4CAF50),
-                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(30),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Color(0xFF4CAF50).withOpacity(0.3),
+                                    color: AppColors.shadowPrimary,
                                     blurRadius: 20,
-                                    spreadRadius: 5,
+                                    spreadRadius: 0,
+                                    offset: const Offset(0, 10),
                                   ),
                                 ],
                               ),
                               child: const Icon(
                                 Icons.home_work_rounded,
                                 size: 50,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                               ),
                             ),
 
@@ -446,9 +501,9 @@ class _AuthPageState extends State<AuthPage>
                               'Property Flipper',
                               style: TextStyle(
                                 fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1B5E20),
-                                letterSpacing: -0.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -1,
                               ),
                             ),
 
@@ -460,7 +515,7 @@ class _AuthPageState extends State<AuthPage>
                                   : 'Create your account',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey[600],
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -473,25 +528,26 @@ class _AuthPageState extends State<AuthPage>
                                 padding: const EdgeInsets.all(16),
                                 margin: const EdgeInsets.only(bottom: 24),
                                 decoration: BoxDecoration(
-                                  color: Colors.red[50],
+                                  color: AppColors.background,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.red[200]!),
+                                  border: Border.all(color: AppColors.primary),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.error_outline,
-                                      color: Colors.red[700],
+                                      color: AppColors.primary,
                                       size: 24,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         _errorMessage!,
-                                        style: TextStyle(
-                                          color: Colors.red[700],
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
+                                          letterSpacing: -0.3,
                                         ),
                                       ),
                                     ),
@@ -518,7 +574,7 @@ class _AuthPageState extends State<AuthPage>
                                       ? "Don't have an account? "
                                       : "Already have an account? ",
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: AppColors.primary,
                                     fontSize: 14,
                                   ),
                                 ),
@@ -532,9 +588,10 @@ class _AuthPageState extends State<AuthPage>
                                   child: Text(
                                     _isLogin ? 'Sign Up' : 'Login',
                                     style: const TextStyle(
-                                      color: Color(0xFF2E7D32),
+                                      color: AppColors.primary,
                                       fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.3,
                                     ),
                                   ),
                                 ),
@@ -584,7 +641,7 @@ class _AuthPageState extends State<AuthPage>
                 _obscureLoginPassword
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: Colors.grey[400],
+                color: AppColors.secondary,
               ),
               onPressed: () {
                 setState(() => _obscureLoginPassword = !_obscureLoginPassword);
@@ -608,8 +665,9 @@ class _AuthPageState extends State<AuthPage>
               child: const Text(
                 'Forgot Password?',
                 style: TextStyle(
-                  color: Color(0xFF2E7D32),
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: -0.3,
                 ),
               ),
             ),
@@ -618,21 +676,8 @@ class _AuthPageState extends State<AuthPage>
           Container(
             height: 56,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _isLoading
-                    ? [Colors.grey[300]!, Colors.grey[400]!]
-                    : [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-              ),
+              color: _isLoading ? AppColors.secondary : AppColors.primary,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: !_isLoading
-                  ? [
-                      BoxShadow(
-                        color: Color(0xFF4CAF50).withOpacity(0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ]
-                  : null,
             ),
             child: LoadingButton(
               onPressed: _isLoading ? null : _handleLogin,
@@ -641,11 +686,80 @@ class _AuthPageState extends State<AuthPage>
                 'Login',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.surface,
+                  letterSpacing: -0.3,
                 ),
               ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Divider with OR
+          Row(
+            children: [
+              const Expanded(child: Divider(color: AppColors.border)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'OR',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider(color: AppColors.border)),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Google Sign-In Button (Login)
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: OutlinedButton(
+              onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                backgroundColor: AppColors.surface,
+                side: const BorderSide(color: AppColors.border, width: 1.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isGoogleLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.email_outlined,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ],
@@ -725,14 +839,19 @@ class _AuthPageState extends State<AuthPage>
               padding: const EdgeInsets.only(top: 8, left: 4),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
-                  Text(
+                  const Text(
                     'Please enter a valid email address',
                     style: TextStyle(
-                      color: Colors.red[600],
+                      color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
@@ -743,14 +862,19 @@ class _AuthPageState extends State<AuthPage>
               padding: const EdgeInsets.only(top: 8, left: 4),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
-                  Text(
+                  const Text(
                     'This email is already registered',
                     style: TextStyle(
-                      color: Colors.red[600],
+                      color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
@@ -794,14 +918,19 @@ class _AuthPageState extends State<AuthPage>
               padding: const EdgeInsets.only(top: 8, left: 4),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
-                  Text(
+                  const Text(
                     'Phone number must have at least 10 digits',
                     style: TextStyle(
-                      color: Colors.red[600],
+                      color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
@@ -812,14 +941,19 @@ class _AuthPageState extends State<AuthPage>
               padding: const EdgeInsets.only(top: 8, left: 4),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
-                  Text(
+                  const Text(
                     'This phone number is already registered',
                     style: TextStyle(
-                      color: Colors.red[600],
+                      color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
@@ -828,23 +962,23 @@ class _AuthPageState extends State<AuthPage>
           const SizedBox(height: 20),
           Container(
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[200]!),
+              border: Border.all(color: AppColors.secondary),
             ),
             child: DropdownButtonFormField<String>(
               value: _selectedGender,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Gender',
-                labelStyle: TextStyle(color: Colors.grey[700]),
-                prefixIcon: Icon(Icons.wc_outlined, color: Color(0xFF2E7D32)),
+                labelStyle: TextStyle(color: AppColors.primary, fontSize: 14),
+                prefixIcon: Icon(Icons.wc_outlined, color: AppColors.primary),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
+                contentPadding: EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 16,
                 ),
               ),
-              dropdownColor: Colors.white,
+              dropdownColor: AppColors.surface,
               items: ['Male', 'Female'].map((gender) {
                 return DropdownMenuItem(value: gender, child: Text(gender));
               }).toList(),
@@ -876,7 +1010,7 @@ class _AuthPageState extends State<AuthPage>
                 _obscurePassword
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: Colors.grey[400],
+                color: AppColors.secondary,
               ),
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
@@ -927,7 +1061,7 @@ class _AuthPageState extends State<AuthPage>
                 _obscureConfirmPassword
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: Colors.grey[400],
+                color: AppColors.secondary,
               ),
               onPressed: () => setState(
                 () => _obscureConfirmPassword = !_obscureConfirmPassword,
@@ -942,14 +1076,19 @@ class _AuthPageState extends State<AuthPage>
               padding: const EdgeInsets.only(top: 8, left: 4),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 16),
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
-                  Text(
+                  const Text(
                     'Passwords do not match',
                     style: TextStyle(
-                      color: Colors.red[600],
+                      color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
@@ -962,14 +1101,19 @@ class _AuthPageState extends State<AuthPage>
               padding: const EdgeInsets.only(top: 8, left: 4),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green[600], size: 16),
+                  const Icon(
+                    Icons.check_circle,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
-                  Text(
+                  const Text(
                     'Passwords match',
                     style: TextStyle(
-                      color: Colors.green[600],
+                      color: AppColors.primary,
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ],
@@ -979,21 +1123,8 @@ class _AuthPageState extends State<AuthPage>
           Container(
             height: 56,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _isLoading
-                    ? [Colors.grey[300]!, Colors.grey[400]!]
-                    : [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-              ),
+              color: _isLoading ? AppColors.secondary : AppColors.primary,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: !_isLoading
-                  ? [
-                      BoxShadow(
-                        color: Color(0xFF4CAF50).withOpacity(0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ]
-                  : null,
             ),
             child: LoadingButton(
               onPressed: _isLoading ? null : _handleSignup,
@@ -1002,13 +1133,83 @@ class _AuthPageState extends State<AuthPage>
                 'Sign up',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.surface,
+                  letterSpacing: -0.3,
                 ),
               ),
             ),
           ),
+
+          const SizedBox(height: 24),
+
+          // Divider with OR
+          Row(
+            children: [
+              const Expanded(child: Divider(color: AppColors.border)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'OR',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider(color: AppColors.border)),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Google Sign-In Button (Signup)
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: OutlinedButton(
+              onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                backgroundColor: AppColors.surface,
+                side: const BorderSide(color: AppColors.border, width: 1.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isGoogleLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.email_outlined,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+
           const SizedBox(height: 12),
         ],
       ),
@@ -1028,9 +1229,9 @@ class _AuthPageState extends State<AuthPage>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: AppColors.secondary),
       ),
       child: TextFormField(
         controller: controller,
@@ -1038,13 +1239,13 @@ class _AuthPageState extends State<AuthPage>
         keyboardType: keyboardType,
         validator: validator,
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 16),
+        style: const TextStyle(fontSize: 16, letterSpacing: -0.3),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          labelStyle: TextStyle(color: Colors.grey[700]),
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          prefixIcon: Icon(icon, color: Color(0xFF2E7D32)),
+          labelStyle: const TextStyle(color: AppColors.primary, fontSize: 14),
+          hintStyle: const TextStyle(color: AppColors.secondary, fontSize: 14),
+          prefixIcon: Icon(icon, color: AppColors.primary),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -1062,15 +1263,16 @@ class _AuthPageState extends State<AuthPage>
         Icon(
           isMet ? Icons.check_circle : Icons.circle_outlined,
           size: 16,
-          color: isMet ? Colors.green[600] : Colors.grey[400],
+          color: isMet ? AppColors.primary : AppColors.secondary,
         ),
         const SizedBox(width: 8),
         Text(
           text,
           style: TextStyle(
             fontSize: 12,
-            color: isMet ? Colors.green[600] : Colors.grey[600],
+            color: isMet ? AppColors.primary : AppColors.secondary,
             fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+            letterSpacing: -0.2,
           ),
         ),
       ],

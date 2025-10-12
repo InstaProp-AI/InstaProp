@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -47,7 +48,7 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
           ),
           title: Row(
             children: [
-              Icon(Icons.gavel, color: Colors.orange[700]),
+              Icon(Icons.gavel, color: AppColors.primary),
               const SizedBox(width: 8),
               const Text('Already in Auction'),
             ],
@@ -77,8 +78,8 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Properties'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
         elevation: 0,
       ),
       body: Consumer<AppState>(
@@ -94,12 +95,16 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.home_outlined, size: 80, color: Colors.grey[400]),
+                  Icon(
+                    Icons.home_outlined,
+                    size: 80,
+                    color: AppColors.secondary,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No Properties Yet',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.grey[600],
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -122,8 +127,8 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
                     icon: const Icon(Icons.add),
                     label: const Text('Add Property'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
@@ -160,8 +165,8 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
             MaterialPageRoute(builder: (context) => const AddPropertyPage()),
           );
         },
-        backgroundColor: Colors.green[700],
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add, color: AppColors.surface),
       ),
     );
   }
@@ -188,7 +193,7 @@ class PropertyCard extends StatelessWidget {
           ),
           title: Row(
             children: [
-              Icon(Icons.lock, color: Colors.orange[700]),
+              Icon(Icons.lock, color: AppColors.primary),
               const SizedBox(width: 8),
               const Text('Cannot Edit'),
             ],
@@ -226,7 +231,7 @@ class PropertyCard extends StatelessWidget {
           ),
           title: Row(
             children: [
-              Icon(Icons.gavel, color: Colors.red[700]),
+              Icon(Icons.gavel, color: AppColors.primary),
               const SizedBox(width: 8),
               const Text('Cannot Delete'),
             ],
@@ -252,7 +257,7 @@ class PropertyCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(Icons.warning, color: Colors.orange[700]),
+            Icon(Icons.warning, color: AppColors.primary),
             const SizedBox(width: 8),
             const Text('Delete Property'),
           ],
@@ -271,8 +276,8 @@ class PropertyCard extends StatelessWidget {
               await _deleteProperty(context, property);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[700],
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
             ),
             child: const Text('Delete'),
           ),
@@ -311,7 +316,7 @@ class PropertyCard extends StatelessWidget {
                 children: [
                   Icon(
                     isAuctionError ? Icons.gavel : Icons.error,
-                    color: Colors.red[700],
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 8),
                   const Text('Cannot Delete'),
@@ -360,7 +365,7 @@ class PropertyCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: Colors.grey[200],
+                    color: AppColors.background,
                     child: const Icon(Icons.home, size: 50, color: Colors.grey),
                   );
                 },
@@ -396,13 +401,13 @@ class PropertyCard extends StatelessWidget {
                 // Location
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                    Icon(Icons.location_on, size: 16, color: AppColors.primary),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         property.location,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
+                          color: AppColors.primary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -442,8 +447,8 @@ class PropertyCard extends StatelessWidget {
                           style: TextStyle(fontSize: 12),
                         ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue[700],
-                          side: BorderSide(color: Colors.blue[700]!),
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary!),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
@@ -461,8 +466,8 @@ class PropertyCard extends StatelessWidget {
                           style: TextStyle(fontSize: 12),
                         ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red[700],
-                          side: BorderSide(color: Colors.red[700]!),
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary!),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
@@ -480,8 +485,8 @@ class PropertyCard extends StatelessWidget {
                             style: TextStyle(fontSize: 12),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[700],
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.surface,
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
                         ),
@@ -495,19 +500,19 @@ class PropertyCard extends StatelessWidget {
                     margin: const EdgeInsets.only(top: 8),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.orange[50],
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[200]!),
+                      border: Border.all(color: AppColors.secondary!),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info, color: Colors.orange[700], size: 16),
+                        Icon(Icons.info, color: AppColors.primary, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Property pending admin verification',
                             style: TextStyle(
-                              color: Colors.orange[700],
+                              color: AppColors.primary,
                               fontSize: 12,
                             ),
                           ),
@@ -521,19 +526,23 @@ class PropertyCard extends StatelessWidget {
                     margin: const EdgeInsets.only(top: 8),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue[50],
+                      color: AppColors.primary,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue[200]!),
+                      border: Border.all(color: AppColors.primary!),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.verified, color: Colors.blue[700], size: 16),
+                        Icon(
+                          Icons.verified,
+                          color: AppColors.primary,
+                          size: 16,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Property verified and locked',
                             style: TextStyle(
-                              color: Colors.blue[700],
+                              color: AppColors.primary,
                               fontSize: 12,
                             ),
                           ),
@@ -555,7 +564,7 @@ class PropertyCard extends StatelessWidget {
     String text;
 
     if (property.isApproved) {
-      backgroundColor = Colors.green[100]!;
+      backgroundColor = AppColors.background!;
       textColor = Colors.green[800]!;
       text = 'Verified';
     } else {
@@ -585,15 +594,15 @@ class PropertyCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.grey[600]),
+          Icon(icon, size: 14, color: AppColors.primary),
           const SizedBox(width: 4),
-          Text(text, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+          Text(text, style: TextStyle(color: AppColors.primary, fontSize: 12)),
         ],
       ),
     );
@@ -703,7 +712,7 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.gavel, color: Colors.green[700]),
+                  Icon(Icons.gavel, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -733,7 +742,7 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
                 widget.property.location,
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
               ),
 
               const SizedBox(height: 24),

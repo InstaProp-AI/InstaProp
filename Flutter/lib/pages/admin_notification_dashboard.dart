@@ -1,9 +1,10 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../services/admin_notification_service.dart';
 
 const Color kPrimary = Colors.green;
-const Color kAccent = Colors.deepPurple;
-const Color kCard = Colors.white;
+const Color kAccent = AppColors.primary;
+const Color kCard = AppColors.surface;
 
 class AdminNotificationDashboard extends StatefulWidget {
   const AdminNotificationDashboard({super.key});
@@ -166,11 +167,11 @@ class _AdminNotificationDashboardState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Notification Dashboard'),
         backgroundColor: kPrimary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.surface,
         elevation: 0,
       ),
       body: _isLoading && _stats == null
@@ -243,7 +244,7 @@ class _AdminNotificationDashboardState
               'Verified',
               _stats!.verifiedCount.toString(),
               Icons.verified,
-              Colors.teal,
+              AppColors.primary,
             ),
             _buildStatCard(
               'Unverified',
@@ -265,7 +266,7 @@ class _AdminNotificationDashboardState
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -292,7 +293,7 @@ class _AdminNotificationDashboardState
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: AppColors.primary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -303,7 +304,7 @@ class _AdminNotificationDashboardState
   Widget _buildComposerSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -340,7 +341,7 @@ class _AdminNotificationDashboardState
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: Colors.grey[50],
+              fillColor: AppColors.background,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
@@ -413,7 +414,7 @@ class _AdminNotificationDashboardState
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: Colors.grey[50],
+              fillColor: AppColors.background,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
@@ -437,7 +438,7 @@ class _AdminNotificationDashboardState
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: Colors.grey[50],
+              fillColor: AppColors.background,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
@@ -453,7 +454,7 @@ class _AdminNotificationDashboardState
             onPressed: _isLoading ? null : _sendNotification,
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimary,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.surface,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -466,7 +467,9 @@ class _AdminNotificationDashboardState
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.surface,
+                      ),
                     ),
                   )
                 : const Text(

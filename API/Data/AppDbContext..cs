@@ -32,7 +32,7 @@ namespace PropertyFlipperAPI.Data
                 entity.Property(e => e.PhoneNumber).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
                 entity.Property(e => e.Type).HasConversion<int>();
-                entity.Property(e => e.HashedPassword).HasMaxLength(255).IsRequired();
+                entity.Property(e => e.HashedPassword).HasMaxLength(255); // Nullable for OAuth users
             });
 
             // Configure Property

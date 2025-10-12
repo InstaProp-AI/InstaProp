@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -148,8 +149,8 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Add Property'),
-            backgroundColor: Colors.green[700],
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.surface,
           ),
           body: Stack(
             children: [
@@ -177,7 +178,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           Text(
                             'Fill in the details below to add your property to the platform',
                             style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: Colors.grey[600]),
+                                ?.copyWith(color: AppColors.primary),
                           ),
 
                           const SizedBox(height: 32),
@@ -188,13 +189,13 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                               padding: const EdgeInsets.all(12),
                               margin: const EdgeInsets.only(bottom: 16),
                               decoration: BoxDecoration(
-                                color: Colors.red[50],
+                                color: AppColors.background,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red[200]!),
+                                border: Border.all(color: AppColors.secondary!),
                               ),
                               child: Text(
                                 _errorMessage!,
-                                style: TextStyle(color: Colors.red[700]),
+                                style: TextStyle(color: AppColors.primary),
                               ),
                             ),
 
@@ -204,13 +205,13 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                               padding: const EdgeInsets.all(12),
                               margin: const EdgeInsets.only(bottom: 16),
                               decoration: BoxDecoration(
-                                color: Colors.green[50],
+                                color: AppColors.background,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: Colors.green[200]!),
                               ),
                               child: Text(
                                 _successMessage!,
-                                style: TextStyle(color: Colors.green[700]),
+                                style: TextStyle(color: AppColors.primary),
                               ),
                             ),
 
@@ -416,18 +417,18 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
               // Login overlay (shown when not logged in)
               if (!isLoggedIn)
                 Container(
-                  color: Colors.black.withOpacity(0.6),
+                  color: AppColors.primary.withOpacity(0.6),
                   child: Center(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       child: Container(
                         constraints: const BoxConstraints(maxWidth: 400),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
+                              color: AppColors.primary.withOpacity(0.3),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -446,7 +447,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.green[400]!,
-                                      Colors.green[700]!,
+                                      AppColors.primary!,
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -455,7 +456,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                 ),
                                 child: const Icon(
                                   Icons.lock_outline,
-                                  color: Colors.white,
+                                  color: AppColors.surface,
                                   size: 40,
                                 ),
                               ),
@@ -467,7 +468,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                 style: Theme.of(context).textTheme.headlineSmall
                                     ?.copyWith(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.grey[800],
+                                      color: AppColors.textPrimary,
                                     ),
                                 textAlign: TextAlign.center,
                               ),
@@ -478,7 +479,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                 'Please sign in to add your property to our auction platform',
                                 style: Theme.of(context).textTheme.bodyLarge
                                     ?.copyWith(
-                                      color: Colors.grey[600],
+                                      color: AppColors.primary,
                                       height: 1.5,
                                     ),
                                 textAlign: TextAlign.center,
@@ -500,8 +501,8 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                     ),
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green[700],
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.surface,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
                                       horizontal: 24,
@@ -519,7 +520,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[50],
+                                  color: AppColors.background,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
@@ -529,7 +530,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                       'What you can do after signing in:',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.grey[800],
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                     const SizedBox(height: 12),
@@ -567,9 +568,12 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
   Widget _buildFeatureItem(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.green[700]),
+        Icon(icon, size: 20, color: AppColors.primary),
         const SizedBox(width: 8),
-        Text(text, style: TextStyle(color: Colors.grey[700], fontSize: 14)),
+        Text(
+          text,
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+        ),
       ],
     );
   }

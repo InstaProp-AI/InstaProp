@@ -130,3 +130,29 @@ export interface CreatePropertyDto {
   imageUrl: string;
   projectId?: number;
 }
+
+export interface UserDocument {
+  docId: number;
+  userId: number;
+  docType: string;
+  imgUrl: string;
+  uploadedAt: string;
+}
+
+export interface PropertyDocument {
+  docId: number;
+  propertyId: number;
+  docType: string;
+  imgUrl: string;
+  uploadedAt: string;
+}
+
+export interface PropertyImage {
+  propertyImageId: number;
+  propertyId: number;
+  imageUrl: string;
+  imageType: string;
+  isMainImage: boolean;
+  displayOrder: number;
+  createdAt: string;
+}

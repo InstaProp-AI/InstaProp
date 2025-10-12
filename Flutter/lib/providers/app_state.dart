@@ -433,31 +433,8 @@ class AppState extends ChangeNotifier {
     return response.success;
   }
 
-  Future<String?> uploadKycFile({
-    required String filePath,
-    required String docType,
-  }) async {
-    final response = await _authService.uploadKycFile(
-      filePath: filePath,
-      docType: docType,
-    );
-    return response.success ? response.data : null;
-  }
-
-  Future<bool> uploadKycDocuments({
-    required List<Map<String, String>> kycDocuments,
-  }) async {
-    final response = await _authService.uploadKycDocuments(
-      kycDocuments: kycDocuments,
-    );
-
-    // Refresh user profile to get updated verification status
-    if (response.success) {
-      await refreshUserProfile();
-    }
-
-    return response.success;
-  }
+  // KYC document upload is now handled by KycService
+  // This keeps app_state focused on app-wide state management only
 
   Future<void> refreshUserProfile() async {
     if (!isLoggedIn) return;

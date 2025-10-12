@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -120,7 +121,7 @@ class _CalendarPageState extends State<CalendarPage> {
         appBar: AppBar(
           title: const Text('Public Calendar'),
           backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.surface,
         ),
         body: _buildCalendarContent(),
       );
@@ -131,7 +132,7 @@ class _CalendarPageState extends State<CalendarPage> {
       appBar: AppBar(
         title: const Text('My Calendar'),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.surface,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -169,7 +170,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 _errorMessage!,
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -229,15 +230,15 @@ class _CalendarPageState extends State<CalendarPage> {
           if (!context.read<AppState>().isLoggedIn)
             Container(
               padding: const EdgeInsets.all(16),
-              color: Colors.blue[50],
+              color: AppColors.primary,
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                  Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Viewing public events only. Log in to see your personal calendar.',
-                      style: TextStyle(color: Colors.blue[700], fontSize: 12),
+                      style: TextStyle(color: AppColors.primary, fontSize: 12),
                     ),
                   ),
                 ],
@@ -350,7 +351,7 @@ class _CalendarPageState extends State<CalendarPage> {
                                   '$dayNumber',
                                   style: TextStyle(
                                     color: isSelected
-                                        ? Colors.white
+                                        ? AppColors.surface
                                         : isToday
                                         ? Theme.of(context).colorScheme.primary
                                         : null,
@@ -369,7 +370,7 @@ class _CalendarPageState extends State<CalendarPage> {
                                     height: 6,
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? Colors.white
+                                          ? AppColors.surface
                                           : Theme.of(
                                               context,
                                             ).colorScheme.primary,
@@ -413,7 +414,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 ? Center(
                     child: Text(
                       'No events for this date',
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: TextStyle(color: AppColors.primary),
                     ),
                   )
                 : ListView.builder(
@@ -505,7 +506,7 @@ class _CalendarPageState extends State<CalendarPage> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.green[50],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.green[200]!),
       ),
@@ -514,13 +515,13 @@ class _CalendarPageState extends State<CalendarPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.schedule, color: Colors.green[700], size: 20),
+              Icon(Icons.schedule, color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Upcoming Events',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -537,9 +538,9 @@ class _CalendarPageState extends State<CalendarPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green[100]!),
+        border: Border.all(color: AppColors.background!),
       ),
       child: Row(
         children: [
@@ -567,13 +568,13 @@ class _CalendarPageState extends State<CalendarPage> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                    Icon(Icons.access_time, size: 14, color: AppColors.primary),
                     const SizedBox(width: 4),
                     Text(
                       '${_formatDate(event.startTime!)} at ${_formatTime(event.startTime!)}',
                       style: Theme.of(
                         context,
-                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
                     ),
                   ],
                 ),
@@ -582,7 +583,7 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           IconButton(
             onPressed: () => _showEventDetails(event),
-            icon: Icon(Icons.info_outline, size: 18, color: Colors.green[600]),
+            icon: Icon(Icons.info_outline, size: 18, color: AppColors.primary),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),

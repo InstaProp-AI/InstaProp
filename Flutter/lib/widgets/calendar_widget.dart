@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class CalendarWidget extends StatefulWidget {
@@ -127,12 +128,12 @@ class _CalendarWidgetState extends State<CalendarWidget> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.secondary!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: AppColors.primary.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -144,7 +145,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
+              color: AppColors.primary,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(16),
               ),
@@ -154,19 +155,25 @@ class _CalendarWidgetState extends State<CalendarWidget> {
               children: [
                 IconButton(
                   onPressed: _previousMonth,
-                  icon: const Icon(Icons.chevron_left, color: Colors.white),
+                  icon: const Icon(
+                    Icons.chevron_left,
+                    color: AppColors.surface,
+                  ),
                 ),
                 Text(
                   '${monthNames[_currentMonth.month - 1]} ${_currentMonth.year}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppColors.surface,
                   ),
                 ),
                 IconButton(
                   onPressed: _nextMonth,
-                  icon: const Icon(Icons.chevron_right, color: Colors.white),
+                  icon: const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.surface,
+                  ),
                 ),
               ],
             ),
@@ -176,8 +183,8 @@ class _CalendarWidgetState extends State<CalendarWidget> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+              color: AppColors.background,
+              border: Border(bottom: BorderSide(color: AppColors.secondary!)),
             ),
             child: Row(
               children: weekdayNames
@@ -188,7 +195,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                           day,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
+                            color: AppColors.textPrimary,
                             fontSize: 12,
                           ),
                         ),
@@ -228,16 +235,13 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                     margin: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? Theme.of(context).primaryColor
+                          ? AppColors.primary
                           : isToday
-                          ? Theme.of(context).primaryColor.withOpacity(0.2)
+                          ? AppColors.primary.withOpacity(0.2)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border: isToday && !isSelected
-                          ? Border.all(
-                              color: Theme.of(context).primaryColor,
-                              width: 2,
-                            )
+                          ? Border.all(color: AppColors.primary, width: 2)
                           : null,
                     ),
                     child: Stack(
@@ -251,12 +255,12 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                                   ? FontWeight.bold
                                   : FontWeight.normal,
                               color: isSelected
-                                  ? Colors.white
+                                  ? AppColors.surface
                                   : isToday
-                                  ? Theme.of(context).primaryColor
+                                  ? AppColors.primary
                                   : isCurrentMonth
-                                  ? Colors.black87
-                                  : Colors.grey[400],
+                                  ? AppColors.textPrimary
+                                  : AppColors.secondary,
                             ),
                           ),
                         ),
@@ -269,8 +273,8 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                               height: 6,
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? Colors.white
-                                    : Theme.of(context).primaryColor,
+                                    ? AppColors.surface
+                                    : AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
                             ),

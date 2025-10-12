@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -88,7 +89,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
       appBar: AppBar(
         title: const Text('Properties'),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.surface,
       ),
       body: Consumer<AppState>(
         builder: (context, appState, child) {
@@ -127,7 +128,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 Text(
                   'Welcome back, ${appState.user?.firstName}! 👋',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -138,7 +139,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 Text(
                   'Manage properties & valuations',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: AppColors.surface.withOpacity(0.9),
                     fontSize: 16,
                   ),
                   maxLines: 1,
@@ -256,13 +257,13 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
       children: [
         Row(
           children: [
-            Icon(Icons.gavel, color: Colors.blue[700]),
+            Icon(Icons.gavel, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               'My Bids',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.blue[700],
+                color: AppColors.primary,
               ),
             ),
             if (_loadingBids) ...[
@@ -282,12 +283,12 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.blue[50]!, Colors.blue[100]!],
+                colors: [AppColors.primary!, AppColors.primary!],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.blue[200]!, width: 2),
+              border: Border.all(color: AppColors.primary!, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.blue.withOpacity(0.1),
@@ -302,7 +303,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.surface,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -315,14 +316,14 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                     child: Icon(
                       Icons.gavel_rounded,
                       size: 48,
-                      color: Colors.blue[700],
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     'No Bids Yet',
                     style: TextStyle(
-                      color: Colors.blue[900],
+                      color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
                     ),
@@ -330,7 +331,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                   const SizedBox(height: 8),
                   Text(
                     'Start bidding on properties you love!',
-                    style: TextStyle(color: Colors.blue[700], fontSize: 14),
+                    style: TextStyle(color: AppColors.primary, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -353,8 +354,8 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
                         vertical: 16,
@@ -414,7 +415,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-            color: isWinning ? Colors.green : Colors.grey[300]!,
+            color: isWinning ? Colors.green : AppColors.secondary!,
             width: isWinning ? 2 : 1,
           ),
         ),
@@ -446,7 +447,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
-                              color: Colors.grey[200],
+                              color: AppColors.background,
                               child: const Icon(
                                 Icons.home,
                                 size: 40,
@@ -456,7 +457,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           },
                         )
                       : Container(
-                          color: Colors.grey[200],
+                          color: AppColors.background,
                           child: const Icon(
                             Icons.home,
                             size: 40,
@@ -491,7 +492,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                             Text(
                               'Your Bid',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: AppColors.primary,
                                 fontSize: 11,
                               ),
                             ),
@@ -511,7 +512,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                             Text(
                               'Current',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: AppColors.primary,
                                 fontSize: 11,
                               ),
                             ),
@@ -521,8 +522,8 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                                 color: isWinning
-                                    ? Colors.green[700]
-                                    : Colors.orange[700],
+                                    ? AppColors.primary
+                                    : AppColors.primary,
                               ),
                             ),
                           ],
@@ -536,12 +537,14 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: isWinning ? Colors.green[50] : Colors.orange[50],
+                        color: isWinning
+                            ? AppColors.background
+                            : AppColors.background,
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
                           color: isWinning
                               ? Colors.green[200]!
-                              : Colors.orange[200]!,
+                              : AppColors.secondary!,
                         ),
                       ),
                       child: Row(
@@ -551,16 +554,16 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                             isWinning ? Icons.emoji_events : Icons.pending,
                             size: 14,
                             color: isWinning
-                                ? Colors.green[700]
-                                : Colors.orange[700],
+                                ? AppColors.primary
+                                : AppColors.primary,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             isWinning ? 'Winning!' : 'Outbid',
                             style: TextStyle(
                               color: isWinning
-                                  ? Colors.green[700]
-                                  : Colors.orange[700],
+                                  ? AppColors.primary
+                                  : AppColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                             ),
@@ -603,7 +606,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 const Text(
                   'Explore Property Management',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -612,7 +615,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 Text(
                   'Get property valuations and manage your listings',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: AppColors.surface.withOpacity(0.9),
                     fontSize: 16,
                   ),
                 ),
@@ -634,7 +637,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             'Get an instant estimate of your property value',
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
           ),
           const SizedBox(height: 16),
 
@@ -656,21 +659,21 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.orange[50],
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange[200]!),
+              border: Border.all(color: AppColors.secondary!),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.orange[700]),
+                    Icon(Icons.info_outline, color: AppColors.primary),
                     const SizedBox(width: 8),
                     Text(
                       'Want More Features?',
                       style: TextStyle(
-                        color: Colors.orange[700],
+                        color: AppColors.primary,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -680,7 +683,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 const SizedBox(height: 12),
                 Text(
                   'Sign up to add your own properties, get detailed valuations, and manage your listings.',
-                  style: TextStyle(color: Colors.orange[700], fontSize: 14),
+                  style: TextStyle(color: AppColors.primary, fontSize: 14),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -691,8 +694,8 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                       Navigator.pushNamed(context, '/auth');
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange[700],
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: const Text('Sign Up Now'),
@@ -743,7 +746,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12, color: AppColors.primary),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -757,19 +760,19 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.secondary!),
       ),
       child: Column(
         children: [
-          Icon(Icons.home_outlined, size: 64, color: Colors.grey[400]),
+          Icon(Icons.home_outlined, size: 64, color: AppColors.secondary),
           const SizedBox(height: 16),
           Text(
             'No Properties Yet',
             style: Theme.of(
               context,
-            ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
+            ).textTheme.titleLarge?.copyWith(color: AppColors.primary),
           ),
           const SizedBox(height: 8),
           Text(
@@ -793,7 +796,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             label: const Text('Add Property'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.surface,
             ),
           ),
         ],
@@ -820,7 +823,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                   return Container(
                     width: 60,
                     height: 60,
-                    color: Colors.grey[200],
+                    color: AppColors.background,
                     child: const Icon(Icons.home, color: Colors.grey),
                   );
                 },
@@ -835,7 +838,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: property.isApproved
-                    ? Colors.green[100]
+                    ? AppColors.background
                     : Colors.orange[100],
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -843,8 +846,8 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 property.isApproved ? 'Approved' : 'Pending',
                 style: TextStyle(
                   color: property.isApproved
-                      ? Colors.green[700]
-                      : Colors.orange[700],
+                      ? AppColors.primary
+                      : AppColors.primary,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -895,8 +898,8 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Create Auction'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.surface,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
@@ -1034,7 +1037,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: auction.property?.imageUrl.isNotEmpty == true
@@ -1045,12 +1048,12 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Icon(
                             Icons.home,
-                            color: Colors.grey[400],
+                            color: AppColors.secondary,
                             size: 20,
                           ),
                         ),
                       )
-                    : Icon(Icons.home, color: Colors.grey[400], size: 20),
+                    : Icon(Icons.home, color: AppColors.secondary, size: 20),
               ),
               const SizedBox(width: 12),
 
@@ -1071,7 +1074,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                     const SizedBox(height: 2),
                     Text(
                       auction.property?.location ?? 'Unknown Location',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: TextStyle(color: AppColors.primary, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1132,19 +1135,19 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: AppColors.secondary!),
       ),
       child: Column(
         children: [
-          Icon(Icons.gavel_outlined, size: 64, color: Colors.grey[400]),
+          Icon(Icons.gavel_outlined, size: 64, color: AppColors.secondary),
           const SizedBox(height: 16),
           Text(
             'No Auctions Yet',
             style: Theme.of(
               context,
-            ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
+            ).textTheme.titleLarge?.copyWith(color: AppColors.primary),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1166,7 +1169,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             label: const Text('Create Auction Request'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.surface,
             ),
           ),
         ],
@@ -1279,11 +1282,11 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
               'Quick Property Estimate',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppColors.surface,
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
+              icon: const Icon(Icons.close, color: AppColors.surface),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -1408,18 +1411,18 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.green[200]!),
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.assessment, size: 48, color: Colors.green[700]),
+                    Icon(Icons.assessment, size: 48, color: AppColors.primary),
                     const SizedBox(height: 16),
                     Text(
                       'Estimated Value',
                       style: TextStyle(
-                        color: Colors.green[700],
+                        color: AppColors.primary,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1428,7 +1431,7 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
                     Text(
                       '\$${_estimateResult!['estimatedValue'].toStringAsFixed(0)}',
                       style: TextStyle(
-                        color: Colors.green[700],
+                        color: AppColors.primary,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1437,7 +1440,7 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
                     Text(
                       _estimateResult!['confidence'],
                       style: TextStyle(
-                        color: Colors.orange[700],
+                        color: AppColors.primary,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1445,7 +1448,7 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
                     const SizedBox(height: 8),
                     Text(
                       _estimateResult!['message'],
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: TextStyle(color: AppColors.primary, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -1461,8 +1464,8 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[600],
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.surface,
                   ),
                   child: const Text('Get Another Estimate'),
                 ),

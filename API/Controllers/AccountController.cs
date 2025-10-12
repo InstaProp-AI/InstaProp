@@ -27,19 +27,22 @@ namespace PropertyFlipperAPI.Controllers
         private readonly EmailVerificationService _emailVerificationService;
         private readonly PhoneVerificationService _phoneVerificationService;
         private readonly FirestoreService _firestoreService;
+        private readonly FileValidationService _fileValidationService;
 
         public AccountController(
             AppDbContext context, 
             IConfiguration config,
             EmailVerificationService emailVerificationService,
             PhoneVerificationService phoneVerificationService,
-            FirestoreService firestoreService)
+            FirestoreService firestoreService,
+            FileValidationService fileValidationService)
         {
             _context = context;
             _config = config;
             _emailVerificationService = emailVerificationService;
             _phoneVerificationService = phoneVerificationService;
             _firestoreService = firestoreService;
+            _fileValidationService = fileValidationService;
         }
 
         // Check if email exists
@@ -69,14 +72,9 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Phone number already exists.");
 
             // Validate password
-            if (signupRequest.Password.Length < 8)
-                return BadRequest("Password must be at least 8 characters long.");
-            
-            if (!System.Text.RegularExpressions.Regex.IsMatch(signupRequest.Password, @"[a-zA-Z]"))
-                return BadRequest("Password must contain letters.");
-            
-            if (!System.Text.RegularExpressions.Regex.IsMatch(signupRequest.Password, @"[0-9]"))
-                return BadRequest("Password must contain numbers.");
+            var passwordError = ValidatePassword(signupRequest.Password);
+            if (passwordError != null)
+                return BadRequest(passwordError);
 
             var account = new Account
             {
@@ -100,6 +98,85 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(new AuthResponse { Token = token, Account = account });
         }
 
+        // Google OAuth Sign-In/Sign-Up
+        [HttpPost("google-auth")]
+        public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthRequest request)
+        {
+            // Check if account exists with this Google ID
+            var existingAccount = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.GoogleId == request.GoogleId || a.Email == request.Email);
+
+            if (existingAccount != null)
+            {
+                // User exists - login
+                
+                // Check if account is locked due to failed login attempts
+                if (existingAccount.LockedUntil.HasValue && existingAccount.LockedUntil.Value > DateTime.UtcNow)
+                {
+                    var remainingMinutes = Math.Ceiling((existingAccount.LockedUntil.Value - DateTime.UtcNow).TotalMinutes);
+                    return StatusCode(423, new {
+                        message = $"Account is locked due to too many failed login attempts. Please try again in {remainingMinutes} minute(s).",
+                        lockedUntil = existingAccount.LockedUntil,
+                        remainingMinutes = remainingMinutes
+                    });
+                }
+                
+                // Check if account is suspended
+                if (existingAccount.IsSuspended && existingAccount.SuspendedUntil > DateTime.UtcNow)
+                {
+                    return StatusCode(403, new {
+                        message = "Your account has been suspended.",
+                        suspendedUntil = existingAccount.SuspendedUntil,
+                        reason = existingAccount.SuspensionReason
+                    });
+                }
+
+                // Successful OAuth login - reset failed attempts and lockout
+                existingAccount.FailedLoginAttempts = 0;
+                existingAccount.LockedUntil = null;
+
+                // Update GoogleId if not set
+                if (string.IsNullOrEmpty(existingAccount.GoogleId))
+                {
+                    existingAccount.GoogleId = request.GoogleId;
+                    existingAccount.AuthProvider = "google";
+                }
+                
+                await _context.SaveChangesAsync();
+
+                var token = GenerateJwtToken(existingAccount);
+                return Ok(new AuthResponse { Token = token, Account = existingAccount });
+            }
+
+            // Create new account - minimal info from Google
+            var newAccount = new Account
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                PhoneNumber = "", // Will be filled later
+                Type = AccountType.User,
+                GoogleId = request.GoogleId,
+                AuthProvider = "google",
+                EmailVerified = true, // Google emails are verified
+                Status = VerificationStatus.NotVerified, // Still needs KYC
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Accounts.Add(newAccount);
+            await _context.SaveChangesAsync();
+
+            // Sync new user to Firestore
+            await _firestoreService.SyncUserAsync(newAccount.AccountId, newAccount);
+
+            var newToken = GenerateJwtToken(newAccount);
+            return Ok(new AuthResponse { 
+                Token = newToken, 
+                Account = newAccount,
+                RequiresProfileCompletion = true // Indicate that profile needs completion
+            });
+        }
+
         // Upload single file (for KYC documents, property images, etc.)
         [HttpPost("upload-file")]
         [Authorize]
@@ -112,14 +189,25 @@ namespace PropertyFlipperAPI.Controllers
             if (userId == null)
                 return Unauthorized();
 
+            // Validate file type and content
+            var validationResult = await _fileValidationService.ValidateFileAsync(file);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new { 
+                    success = false, 
+                    message = validationResult.ErrorMessage,
+                    error = "FILE_VALIDATION_FAILED"
+                });
+            }
+
             try
             {
                 // Create uploads directory if it doesn't exist
                 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "kyc");
                 Directory.CreateDirectory(uploadsPath);
 
-                // Generate unique filename
-                var fileName = $"{userId}_{docType}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                // Generate unique, safe filename
+                var fileName = _fileValidationService.GenerateUniqueFileName(file.FileName, userId.Value, docType);
                 var filePath = Path.Combine(uploadsPath, fileName);
 
                 // Save file
@@ -134,7 +222,10 @@ namespace PropertyFlipperAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Error uploading file: {ex.Message}");
+                return StatusCode(500, new { 
+                    success = false, 
+                    message = $"Error uploading file: {ex.Message}" 
+                });
             }
         }
 
@@ -214,8 +305,80 @@ namespace PropertyFlipperAPI.Controllers
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
             var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Email == req.Email);
-            if (account == null || !BCrypt.Net.BCrypt.Verify(req.Password, account.HashedPassword))
+            
+            // Check if account exists
+            if (account == null)
+            {
                 return Unauthorized("Invalid credentials.");
+            }
+
+            // Check if account is locked due to failed login attempts
+            if (account.LockedUntil.HasValue)
+            {
+                if (account.LockedUntil.Value > DateTime.UtcNow)
+                {
+                    // Account is still locked
+                    var remainingMinutes = Math.Ceiling((account.LockedUntil.Value - DateTime.UtcNow).TotalMinutes);
+                    return StatusCode(423, new {
+                        message = $"Account is locked due to too many failed login attempts. Please try again in {remainingMinutes} minute(s).",
+                        lockedUntil = account.LockedUntil,
+                        remainingMinutes = remainingMinutes
+                    });
+                }
+                else
+                {
+                    // Lockout period has expired, unlock the account
+                    account.LockedUntil = null;
+                    account.FailedLoginAttempts = 0;
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            // Verify password
+            if (!BCrypt.Net.BCrypt.Verify(req.Password, account.HashedPassword))
+            {
+                // Increment failed login attempts
+                account.FailedLoginAttempts++;
+                
+                // Check if we've reached the lockout threshold (5 attempts)
+                if (account.FailedLoginAttempts >= 5)
+                {
+                    // Lock the account for 30 minutes
+                    account.LockedUntil = DateTime.UtcNow.AddMinutes(30);
+                    await _context.SaveChangesAsync();
+
+                    // Send lockout notification email
+                    try
+                    {
+                        await _emailVerificationService.SendAccountLockoutEmail(
+                            account.Email, 
+                            account.FirstName, 
+                            account.LockedUntil.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't expose it to user
+                        Console.WriteLine($"Error sending lockout email: {ex.Message}");
+                    }
+
+                    return StatusCode(423, new {
+                        message = "Account has been locked due to too many failed login attempts. An email has been sent with details.",
+                        lockedUntil = account.LockedUntil
+                    });
+                }
+                
+                await _context.SaveChangesAsync();
+                
+                var attemptsRemaining = 5 - account.FailedLoginAttempts;
+                return Unauthorized(new {
+                    message = "Invalid credentials.",
+                    attemptsRemaining = attemptsRemaining
+                });
+            }
+
+            // Successful login - reset failed attempts
+            account.FailedLoginAttempts = 0;
+            account.LockedUntil = null;
 
             // Check if account is suspended and auto-unsuspend if expired
             if (account.IsSuspended)
@@ -227,7 +390,6 @@ namespace PropertyFlipperAPI.Controllers
                     account.IsSuspended = false;
                     account.SuspendedUntil = null;
                     account.SuspensionReason = null;
-                    await _context.SaveChangesAsync();
                 }
                 // Note: We allow suspended users to login, but they can't place bids
                 // Suspension info is included in the account response
@@ -249,11 +411,10 @@ namespace PropertyFlipperAPI.Controllers
                     account.PasswordResetRequestedEmail = null;
                     account.PasswordResetTokenExpiry = null;
                     account.RequiresPasswordChange = false;
-                    await _context.SaveChangesAsync();
-                    
-                    return Unauthorized("Password reset token has expired. Please request a new password reset.");
                 }
             }
+
+            await _context.SaveChangesAsync();
 
             var token = GenerateJwtToken(account);
             return Ok(new AuthResponse { Token = token, Account = account });
@@ -326,14 +487,9 @@ namespace PropertyFlipperAPI.Controllers
             if (req.NewPassword != req.ConfirmPassword)
                 return BadRequest("New password and confirmation do not match.");
 
-            if (req.NewPassword.Length < 8)
-                return BadRequest("Password must be at least 8 characters long.");
-            
-            if (!System.Text.RegularExpressions.Regex.IsMatch(req.NewPassword, @"[a-zA-Z]"))
-                return BadRequest("Password must contain letters.");
-            
-            if (!System.Text.RegularExpressions.Regex.IsMatch(req.NewPassword, @"[0-9]"))
-                return BadRequest("Password must contain numbers.");
+            var passwordError = ValidatePassword(req.NewPassword);
+            if (passwordError != null)
+                return BadRequest(passwordError);
 
             // Update password
             account.HashedPassword = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
@@ -378,19 +534,22 @@ namespace PropertyFlipperAPI.Controllers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? ""));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim("uid", account.AccountId.ToString()),
-                new Claim("email", account.Email),
+                new Claim(ClaimTypes.NameIdentifier, account.AccountId.ToString()),
+                new Claim("uid", account.AccountId.ToString()), // Keep for backward compatibility
+                new Claim(ClaimTypes.Email, account.Email),
+                new Claim("email", account.Email), // Keep for backward compatibility
                 new Claim("type", account.Type.ToString()),
-                new Claim(ClaimTypes.Name, account.Email)
+                new Claim(ClaimTypes.Name, account.Email),
+                new Claim(ClaimTypes.Role, account.Type.ToString()) // Add proper Role claim: "User", "Developer", or "Admin"
             };
 
             var token = new JwtSecurityToken(
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddDays(7),
+                expires: DateTime.Now.AddHours(24),
                 signingCredentials: creds
             );
 
@@ -425,6 +584,8 @@ namespace PropertyFlipperAPI.Controllers
                 account.IsSuspended,
                 account.SuspendedUntil,
                 account.SuspensionReason,
+                account.FailedLoginAttempts,
+                account.LockedUntil,
                 account.CreatedAt,
                 account.UpdatedAt
             };
@@ -500,6 +661,11 @@ namespace PropertyFlipperAPI.Controllers
                 account.Status,
                 account.EmailVerified,
                 account.PhoneVerified,
+                account.IsSuspended,
+                account.SuspendedUntil,
+                account.SuspensionReason,
+                account.FailedLoginAttempts,
+                account.LockedUntil,
                 account.CreatedAt,
                 account.UpdatedAt
             };
@@ -534,14 +700,9 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Current password is incorrect.");
 
             // Validate new password
-            if (changePasswordDto.NewPassword.Length < 8)
-                return BadRequest("Password must be at least 8 characters long.");
-            
-            if (!System.Text.RegularExpressions.Regex.IsMatch(changePasswordDto.NewPassword, @"[a-zA-Z]"))
-                return BadRequest("Password must contain letters.");
-            
-            if (!System.Text.RegularExpressions.Regex.IsMatch(changePasswordDto.NewPassword, @"[0-9]"))
-                return BadRequest("Password must contain numbers.");
+            var passwordError = ValidatePassword(changePasswordDto.NewPassword);
+            if (passwordError != null)
+                return BadRequest(passwordError);
 
             // Update password (does NOT affect verification status)
             account.HashedPassword = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
@@ -846,10 +1007,180 @@ namespace PropertyFlipperAPI.Controllers
             });
         }
 
+        // GET: api/Account/export-data (GDPR Compliance)
+        [HttpGet("export-data")]
+        [Authorize]
+        public async Task<ActionResult> ExportData()
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts
+                .Include(a => a.Properties)
+                .Include(a => a.Bids)
+                .FirstOrDefaultAsync(a => a.AccountId == accountId);
+
+            if (account == null)
+                return NotFound("Account not found");
+
+            // Compile all user data for export
+            var exportData = new
+            {
+                PersonalInformation = new
+                {
+                    account.FirstName,
+                    account.LastName,
+                    account.Email,
+                    account.PhoneNumber,
+                    account.Type,
+                    account.CreatedAt,
+                    account.UpdatedAt
+                },
+                Verification = new
+                {
+                    account.EmailVerified,
+                    account.PhoneVerified,
+                    account.Status
+                },
+                Properties = account.Properties?.Select(p => new
+                {
+                    p.PropertyId,
+                    p.Name,
+                    p.Description,
+                    p.Location,
+                    p.Type,
+                    p.Status,
+                    p.CreatedAt
+                }).ToList(),
+                Bids = account.Bids?.Select(b => new
+                {
+                    b.BidId,
+                    b.AuctionId,
+                    b.BidAmount,
+                    b.CreatedAt
+                }).ToList(),
+                AccountStatus = new
+                {
+                    account.IsSuspended,
+                    account.SuspensionReason,
+                    IsLocked = account.LockedUntil.HasValue && account.LockedUntil.Value > DateTime.UtcNow,
+                    account.LockedUntil,
+                    account.FailedLoginAttempts
+                }
+            };
+
+            return Ok(new
+            {
+                message = "User data export completed",
+                exportDate = DateTime.UtcNow,
+                data = exportData
+            });
+        }
+
+        // DELETE: api/Account/delete-account (GDPR Compliance)
+        [HttpDelete("delete-account")]
+        [Authorize]
+        public async Task<ActionResult> DeleteAccount([FromBody] DeleteAccountDto dto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts
+                .Include(a => a.Properties)
+                .Include(a => a.Bids)
+                .FirstOrDefaultAsync(a => a.AccountId == accountId);
+
+            if (account == null)
+                return NotFound("Account not found");
+
+            // Verify password before deletion (skip for OAuth users)
+            if (account.HashedPassword != null && !BCrypt.Net.BCrypt.Verify(dto.Password, account.HashedPassword))
+                return BadRequest("Invalid password. Account deletion failed.");
+
+            // Check for active auctions or pending transactions
+            var activeProperties = account.Properties?.Where(p => 
+                p.Status == PropertyStatus.Pending || p.Status == PropertyStatus.Approved).ToList();
+            
+            if (activeProperties != null && activeProperties.Any())
+            {
+                return BadRequest(new
+                {
+                    message = "Cannot delete account with active properties. Please complete or cancel all active listings first.",
+                    activePropertyCount = activeProperties.Count()
+                });
+            }
+
+            // Soft delete: Mark account as deleted but keep for legal retention
+            account.Email = $"deleted_{account.AccountId}@deleted.local";
+            account.PhoneNumber = $"deleted_{account.AccountId}";
+            account.HashedPassword = null;
+            account.FirstName = "Deleted";
+            account.LastName = "User";
+            account.GoogleId = null;
+            account.IsSuspended = true;
+            account.SuspensionReason = "Account deleted by user request";
+            account.UpdatedAt = DateTime.UtcNow;
+            account.EmailVerified = false;
+            account.PhoneVerified = false;
+            account.Status = VerificationStatus.NotVerified;
+            
+            // Clear sensitive data
+            account.EmailVerificationPin = null;
+            account.PhoneVerificationPin = null;
+            account.PasswordResetRequestedEmail = null;
+            account.PasswordResetTokenExpiry = null;
+
+            await _context.SaveChangesAsync();
+
+            // Update Firestore
+            try
+            {
+                // Firestore sync removed for now - can be re-added if needed
+                // await _firestoreService.SyncAccountAsync(account);
+            }
+            catch (Exception)
+            {
+                // Log error but don't fail the deletion
+            }
+
+            return Ok(new
+            {
+                message = "Account deleted successfully. Your data has been anonymized.",
+                deletedAt = DateTime.UtcNow
+            });
+        }
+
         private long? GetCurrentAccountId()
         {
             var uidClaim = User.FindFirst("uid");
             return uidClaim != null ? long.Parse(uidClaim.Value) : null;
+        }
+
+        /// <summary>
+        /// Validates password strength and security requirements
+        /// </summary>
+        private string? ValidatePassword(string password)
+        {
+            // Check minimum length
+            if (password.Length < 8)
+                return "Password must be at least 8 characters long.";
+
+            // Check maximum length (prevent DoS via excessive hashing time)
+            if (password.Length > 128)
+                return "Password must not exceed 128 characters.";
+
+            // Check for letters
+            if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[a-zA-Z]"))
+                return "Password must contain at least one letter.";
+
+            // Check for numbers
+            if (!System.Text.RegularExpressions.Regex.IsMatch(password, @"[0-9]"))
+                return "Password must contain at least one number.";
+
+            // Password is valid
+            return null;
         }
     }
 
@@ -861,6 +1192,14 @@ namespace PropertyFlipperAPI.Controllers
         public string PhoneNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public AccountType Type { get; set; } = AccountType.User;
+    }
+
+    public class GoogleAuthRequest
+    {
+        public string GoogleId { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
     }
 
     public class KycUploadRequest
@@ -896,6 +1235,7 @@ namespace PropertyFlipperAPI.Controllers
     {
         public string Token { get; set; } = string.Empty;
         public Account? Account { get; set; }
+        public bool RequiresProfileCompletion { get; set; } = false;
     }
 
     public class AccountUpdateDto
@@ -921,6 +1261,12 @@ namespace PropertyFlipperAPI.Controllers
     public class VerifyPinDto
     {
         public string Pin { get; set; } = string.Empty;
+    }
+
+    public class DeleteAccountDto
+    {
+        public string Password { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
     }
 }
 

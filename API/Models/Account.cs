@@ -25,8 +25,15 @@ namespace PropertyFlipperAPI.Models
         [Required]
         public AccountType Type { get; set; } = AccountType.User;
 
-        [Required]
-        public string HashedPassword { get; set; } = string.Empty;
+        // Nullable for OAuth users who don't have a password
+        public string? HashedPassword { get; set; }
+
+        // OAuth Support
+        [MaxLength(255)]
+        public string? GoogleId { get; set; }
+        
+        [MaxLength(50)]
+        public string? AuthProvider { get; set; } // "google", "email", etc.
 
         [Required]
         public VerificationStatus Status { get; set; } = VerificationStatus.NotVerified;
@@ -62,6 +69,10 @@ namespace PropertyFlipperAPI.Models
         public bool IsSuspended { get; set; } = false;
         public DateTime? SuspendedUntil { get; set; }
         public string? SuspensionReason { get; set; }
+
+        // Account Lockout (for failed login attempts)
+        public int FailedLoginAttempts { get; set; } = 0;
+        public DateTime? LockedUntil { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

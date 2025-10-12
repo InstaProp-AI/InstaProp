@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -12,8 +13,8 @@ class FeaturedAuctionsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Featured Auctions'),
-        backgroundColor: const Color(0xFF2E7D32),
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
       ),
       body: Consumer<AppState>(
         builder: (context, appState, child) {
@@ -78,7 +79,7 @@ class FeaturedAuctionsPage extends StatelessWidget {
                           fit: BoxFit.cover,
                         )
                       : null,
-                  color: Colors.grey[200],
+                  color: AppColors.background,
                 ),
                 child: auction.property?.imageUrl.isEmpty != false
                     ? const Icon(Icons.home, size: 40, color: Colors.grey)
@@ -112,7 +113,7 @@ class FeaturedAuctionsPage extends StatelessWidget {
                         Text(
                           auction.property?.location ?? '',
                           style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey[600]),
+                              ?.copyWith(color: AppColors.primary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -125,7 +126,7 @@ class FeaturedAuctionsPage extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF2E7D32),
+                                color: AppColors.primary,
                               ),
                         ),
                       ],
@@ -140,13 +141,13 @@ class FeaturedAuctionsPage extends StatelessWidget {
                             Icon(
                               Icons.gavel,
                               size: 16,
-                              color: Colors.grey[600],
+                              color: AppColors.primary,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${auction.bidCount} bids',
                               style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Colors.grey[600]),
+                                  ?.copyWith(color: AppColors.primary),
                             ),
                           ],
                         ),
@@ -159,7 +160,7 @@ class FeaturedAuctionsPage extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: auction.isActive
-                                ? Colors.green[100]
+                                ? AppColors.background
                                 : Colors.orange[100],
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -167,8 +168,8 @@ class FeaturedAuctionsPage extends StatelessWidget {
                             auction.isActive ? 'Active' : 'Ended',
                             style: TextStyle(
                               color: auction.isActive
-                                  ? Colors.green[700]
-                                  : Colors.orange[700],
+                                  ? AppColors.primary
+                                  : AppColors.primary,
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
                             ),
@@ -196,13 +197,13 @@ class FeaturedAuctionsPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: Colors.grey[400]),
+          Icon(icon, size: 64, color: AppColors.secondary),
           const SizedBox(height: 16),
           Text(
             title,
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+            ).textTheme.titleMedium?.copyWith(color: AppColors.primary),
           ),
           const SizedBox(height: 8),
           Text(

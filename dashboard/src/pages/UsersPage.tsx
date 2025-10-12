@@ -39,10 +39,11 @@ import {
   Square
 } from 'lucide-react';
 import { Account } from '../types';
-import { usersApi, propertiesApi, bidsApi } from '../services/api';
+import { usersApi, propertiesApi, bidsApi, auctionsApi } from '../services/api';
 import { exportUsersToCSV } from '../utils/export';
 import { useToast } from '../contexts/ToastContext';
 import Pagination from '../components/Pagination';
+import UserDocumentsManager from '../components/UserDocumentsManager';
 
 const UsersPage: React.FC = () => {
   const toast = useToast();
@@ -59,7 +60,7 @@ const UsersPage: React.FC = () => {
   const [suspensionReason, setSuspensionReason] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [detailsTab, setDetailsTab] = useState<'info' | 'properties' | 'bids' | 'auctions'>('info');
+  const [detailsTab, setDetailsTab] = useState<'info' | 'properties' | 'bids' | 'auctions' | 'documents'>('info');
   const [userProperties, setUserProperties] = useState<any[]>([]);
   const [userBids, setUserBids] = useState<any[]>([]);
   const [userAuctions, setUserAuctions] = useState<any[]>([]);
@@ -1167,6 +1168,26 @@ const UsersPage: React.FC = () => {
                       Auctions ({userAuctions.length})
                     </div>
                   </button>
+                  <button
+                    onClick={() => setDetailsTab('documents')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: detailsTab === 'documents' ? '#f8fafc' : 'transparent',
+                      color: detailsTab === 'documents' ? '#667eea' : '#6b7280',
+                      border: 'none',
+                      borderBottom: detailsTab === 'documents' ? '2px solid #667eea' : '2px solid transparent',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      fontSize: '0.875rem',
+                      transition: 'all 0.2s',
+                      marginBottom: '-2px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <FileText style={{ height: '1rem', width: '1rem' }} />
+                      📄 KYC Documents
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -1980,6 +2001,62 @@ const UsersPage: React.FC = () => {
                             <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>This user hasn't created any auctions for their properties</p>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Documents Tab */}
+                    {detailsTab === 'documents' && selectedUser && (
+                      <div>
+                        <div style={{
+                          backgroundColor: '#fef3c7',
+                          borderRadius: '0.75rem',
+                          border: '2px solid #fbbf24',
+                          padding: '1.5rem',
+                          marginBottom: '1.5rem'
+                        }}>
+                          <h4 style={{ 
+                            fontSize: '1.125rem', 
+                            fontWeight: '600', 
+                            color: '#111827', 
+                            marginBottom: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}>
+                            <FileText style={{ height: '1.25rem', width: '1.25rem', color: '#d97706' }} />
+                            📄 KYC Documents
+                          </h4>
+                          <p style={{
+                            fontSize: '0.875rem',
+                            color: '#92400e',
+                            margin: '0 0 1rem 0'
+                          }}>
+                            Review and verify user's identity documents, passport, and proof of address to approve or reject this user.
+                          </p>
+                          
+                          <UserDocumentsManager 
+                            userId={selectedUser.accountId}
+                            userName={`${selectedUser.firstName} ${selectedUser.lastName}`}
+                            isAdmin={true}
+                          />
+                        </div>
+
+                        <div style={{
+                          backgroundColor: '#dcfce7',
+                          borderRadius: '0.75rem',
+                          border: '1px solid #86efac',
+                          padding: '1rem',
+                          marginTop: '1.5rem'
+                        }}>
+                          <p style={{
+                            fontSize: '0.875rem',
+                            color: '#166534',
+                            margin: 0,
+                            fontWeight: '500'
+                          }}>
+                            💡 <strong>Tip:</strong> Ensure all required documents are uploaded and verified before approving the user account. Check ID authenticity, photo quality, and document expiration dates.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </>

@@ -26,6 +26,8 @@ namespace PropertyFlipperAPI.Models
 
         public int DisplayOrder { get; set; } = 0;
 
+        public string? DeleteUrl { get; set; } // ImgBB delete URL for image removal
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

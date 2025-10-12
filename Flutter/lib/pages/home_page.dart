@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -67,7 +68,7 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: _buildSelectedPage(),
@@ -100,7 +101,7 @@ class _HomePageState extends State<HomePage>
   Widget _buildHomeContent(AppState appState) {
     return RefreshIndicator(
       onRefresh: () => _refreshData(appState),
-      color: Theme.of(context).primaryColor,
+      color: AppColors.primary,
       child: CustomScrollView(
         slivers: [
           // Sticky Header with Logo and App Name
@@ -108,10 +109,10 @@ class _HomePageState extends State<HomePage>
             expandedHeight: 180,
             floating: false,
             pinned: true,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.surface,
             elevation: 0,
-            shadowColor: Colors.black.withOpacity(0.1),
-            surfaceTintColor: Colors.white,
+            shadowColor: AppColors.primary.withOpacity(0.1),
+            surfaceTintColor: AppColors.surface,
             flexibleSpace: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 // Calculate collapse ratio
@@ -134,17 +135,12 @@ class _HomePageState extends State<HomePage>
                     // Main gradient header (visible when expanded)
                     FlexibleSpaceBar(
                       background: Container(
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFF1B5E20),
-                              const Color(0xFF2E7D32),
-                              const Color(0xFF4CAF50),
-                              const Color(0xFF66BB6A),
-                            ],
-                            stops: const [0.0, 0.3, 0.7, 1.0],
+                            colors: AppColors.primaryGradient,
+                            stops: [0.0, 0.3, 0.7, 1.0],
                           ),
                         ),
                         child: SafeArea(
@@ -159,16 +155,20 @@ class _HomePageState extends State<HomePage>
                                     Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
+                                        color: AppColors.surface.withOpacity(
+                                          0.15,
+                                        ),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: Colors.white.withOpacity(0.3),
-                                          width: 2,
+                                          color: AppColors.surface.withOpacity(
+                                            0.25,
+                                          ),
+                                          width: 1.5,
                                         ),
                                       ),
                                       child: const Icon(
                                         Icons.home_work,
-                                        color: Colors.white,
+                                        color: AppColors.surface,
                                         size: 28,
                                       ),
                                     ),
@@ -184,7 +184,7 @@ class _HomePageState extends State<HomePage>
                                                 .textTheme
                                                 .headlineMedium
                                                 ?.copyWith(
-                                                  color: Colors.white,
+                                                  color: AppColors.surface,
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 26,
                                                 ),
@@ -196,7 +196,7 @@ class _HomePageState extends State<HomePage>
                                                 .textTheme
                                                 .bodyLarge
                                                 ?.copyWith(
-                                                  color: Colors.white
+                                                  color: AppColors.surface
                                                       .withOpacity(0.9),
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -223,7 +223,7 @@ class _HomePageState extends State<HomePage>
                         opacity: collapseRatio,
                         child: Container(
                           height: kToolbarHeight + statusBarHeight,
-                          color: Colors.white,
+                          color: AppColors.surface,
                           child: SafeArea(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -234,17 +234,12 @@ class _HomePageState extends State<HomePage>
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF2E7D32),
-                                          Color(0xFF4CAF50),
-                                        ],
-                                      ),
+                                      color: AppColors.primary,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Icon(
                                       Icons.home_work,
-                                      color: Colors.white,
+                                      color: AppColors.surface,
                                       size: 20,
                                     ),
                                   ),
@@ -252,9 +247,10 @@ class _HomePageState extends State<HomePage>
                                   const Text(
                                     'Property Flipper',
                                     style: TextStyle(
-                                      color: Color(0xFF1B5E20),
-                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700,
                                       fontSize: 18,
+                                      letterSpacing: -0.5,
                                     ),
                                   ),
                                   const Spacer(),
@@ -270,7 +266,7 @@ class _HomePageState extends State<HomePage>
                                               IconButton(
                                                 icon: const Icon(
                                                   Icons.notifications_outlined,
-                                                  color: Color(0xFF1B5E20),
+                                                  color: AppColors.primary,
                                                   size: 28,
                                                 ),
                                                 onPressed: () {
@@ -291,10 +287,11 @@ class _HomePageState extends State<HomePage>
                                                     width: 12,
                                                     height: 12,
                                                     decoration: BoxDecoration(
-                                                      color: Colors.red,
+                                                      color: AppColors.primary,
                                                       shape: BoxShape.circle,
                                                       border: Border.all(
-                                                        color: Colors.white,
+                                                        color:
+                                                            AppColors.surface,
                                                         width: 2,
                                                       ),
                                                     ),
@@ -325,7 +322,7 @@ class _HomePageState extends State<HomePage>
                       IconButton(
                         icon: const Icon(
                           Icons.notifications_outlined,
-                          color: Colors.white,
+                          color: AppColors.surface,
                           size: 28,
                         ),
                         onPressed: () {
@@ -345,9 +342,12 @@ class _HomePageState extends State<HomePage>
                             width: 12,
                             height: 12,
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: AppColors.primary,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(
+                                color: AppColors.surface,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -453,7 +453,7 @@ class _HomePageState extends State<HomePage>
           'Platform Statistics',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
@@ -465,7 +465,7 @@ class _HomePageState extends State<HomePage>
               '${appState.dashboardStats?.activeAuctions ?? appState.auctions.length}',
               'Active Auctions',
               Icons.gavel,
-              Colors.blue,
+              AppColors.primary,
             ),
             const SizedBox(width: 12),
             _buildStatCard(
@@ -473,7 +473,7 @@ class _HomePageState extends State<HomePage>
               '${appState.dashboardStats?.totalBids ?? 0}',
               'Total Bids',
               Icons.trending_up,
-              Colors.green,
+              AppColors.secondary,
             ),
             const SizedBox(width: 12),
             _buildStatCard(
@@ -502,7 +502,7 @@ class _HomePageState extends State<HomePage>
               '\$${_formatVolume(appState.dashboardStats?.totalVolume ?? 0)}',
               'Total Volume',
               Icons.attach_money,
-              Colors.teal,
+              AppColors.primary,
             ),
             const SizedBox(width: 12),
             _buildStatCard(
@@ -510,7 +510,7 @@ class _HomePageState extends State<HomePage>
               '${appState.dashboardStats?.averageBidsPerAuction.toStringAsFixed(1) ?? "0"}',
               'Avg Bids/Auction',
               Icons.bar_chart,
-              Colors.indigo,
+              AppColors.primary,
             ),
           ],
         ),
@@ -529,36 +529,37 @@ class _HomePageState extends State<HomePage>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: AppColors.secondary, width: 1),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(height: 12),
             Text(
               value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[700],
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
+                color: AppColors.secondary,
+                fontWeight: FontWeight.w500,
+                fontSize: 10,
               ),
               textAlign: TextAlign.center,
             ),
@@ -576,7 +577,7 @@ class _HomePageState extends State<HomePage>
           'Quick Actions',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
@@ -588,7 +589,7 @@ class _HomePageState extends State<HomePage>
                 Icons.add_home,
                 'Add Property',
                 'List your property',
-                Colors.blue,
+                AppColors.primary,
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const AddPropertyPage(),
@@ -603,7 +604,7 @@ class _HomePageState extends State<HomePage>
                 Icons.gavel,
                 'Browse Auctions',
                 'Explore all auctions',
-                Colors.green,
+                AppColors.secondary,
                 () => setState(() => _selectedIndex = 0),
               ),
             ),
@@ -626,33 +627,34 @@ class _HomePageState extends State<HomePage>
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 2),
+          border: Border.all(color: AppColors.secondary, width: 1),
         ),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: AppColors.surface, size: 24),
             ),
             const SizedBox(height: 12),
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+                letterSpacing: -0.3,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+                color: AppColors.secondary,
                 fontSize: 12,
               ),
             ),
@@ -674,21 +676,22 @@ class _HomePageState extends State<HomePage>
           title,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+            color: AppColors.textPrimary,
           ),
         ),
         Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(20),
           ),
           child: TextButton(
             onPressed: onViewAll,
-            child: Text(
+            child: const Text(
               'View All',
               style: TextStyle(
-                color: Theme.of(context).primaryColor,
+                color: AppColors.surface,
                 fontWeight: FontWeight.w600,
+                letterSpacing: -0.3,
               ),
             ),
           ),
@@ -710,16 +713,9 @@ class _HomePageState extends State<HomePage>
         width: 280,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-              spreadRadius: 0,
-            ),
-          ],
+          border: Border.all(color: AppColors.secondary, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -732,7 +728,7 @@ class _HomePageState extends State<HomePage>
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
-                color: Colors.grey[200],
+                color: AppColors.background,
               ),
               child: Stack(
                 children: [
@@ -748,12 +744,12 @@ class _HomePageState extends State<HomePage>
                             height: double.infinity,
                             errorBuilder: (context, error, stackTrace) => Icon(
                               Icons.home,
-                              color: Colors.grey[400],
+                              color: AppColors.secondary,
                               size: 40,
                             ),
                           ),
                         )
-                      : Icon(Icons.home, color: Colors.grey[400], size: 40),
+                      : Icon(Icons.home, color: AppColors.secondary, size: 40),
                   // Status badge
                   Positioned(
                     top: 8,
@@ -765,8 +761,10 @@ class _HomePageState extends State<HomePage>
                       ),
                       decoration: BoxDecoration(
                         color: auction.isUpcoming
-                            ? Colors.blue
-                            : (auction.isActive ? Colors.green : Colors.red),
+                            ? AppColors.primary
+                            : (auction.isActive
+                                  ? AppColors.primary
+                                  : AppColors.secondary),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -774,9 +772,10 @@ class _HomePageState extends State<HomePage>
                             ? 'UPCOMING'
                             : (auction.isActive ? 'LIVE' : 'ENDED'),
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                          color: AppColors.surface,
+                          fontWeight: FontWeight.w700,
                           fontSize: 9,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -794,7 +793,7 @@ class _HomePageState extends State<HomePage>
                     auction.property?.location ?? 'Unknown Location',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
+                      color: AppColors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -806,15 +805,16 @@ class _HomePageState extends State<HomePage>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       auction.property?.category ?? 'Unknown Category',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).primaryColor,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                         fontSize: 10,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
@@ -830,7 +830,7 @@ class _HomePageState extends State<HomePage>
                               'Price',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    color: Colors.grey[600],
+                                    color: AppColors.primary,
                                     fontSize: 10,
                                   ),
                             ),
@@ -839,9 +839,10 @@ class _HomePageState extends State<HomePage>
                               '\$${auction.currentPrice.toStringAsFixed(0)}',
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).primaryColor,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
                                     fontSize: 16,
+                                    letterSpacing: -0.5,
                                   ),
                             ),
                           ],
@@ -855,7 +856,7 @@ class _HomePageState extends State<HomePage>
                               'Bids',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    color: Colors.grey[600],
+                                    color: AppColors.primary,
                                     fontSize: 10,
                                   ),
                             ),
@@ -866,16 +867,17 @@ class _HomePageState extends State<HomePage>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
+                                color: AppColors.background,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 '${auction.bidCount}',
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange[600],
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
                                       fontSize: 12,
+                                      letterSpacing: -0.3,
                                     ),
                               ),
                             ),
@@ -890,7 +892,7 @@ class _HomePageState extends State<HomePage>
                               'Time',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    color: Colors.grey[600],
+                                    color: AppColors.primary,
                                     fontSize: 10,
                                   ),
                             ),
@@ -902,19 +904,20 @@ class _HomePageState extends State<HomePage>
                               ),
                               decoration: BoxDecoration(
                                 color: auction.isActive
-                                    ? Colors.red.withOpacity(0.1)
-                                    : Colors.grey.withOpacity(0.1),
+                                    ? AppColors.background
+                                    : AppColors.background,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 auction.timeRemaining,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w700,
                                       color: auction.isActive
-                                          ? Colors.red[600]
-                                          : Colors.grey[600],
+                                          ? AppColors.primary
+                                          : AppColors.secondary,
                                       fontSize: 9,
+                                      letterSpacing: -0.2,
                                     ),
                               ),
                             ),
@@ -945,16 +948,9 @@ class _HomePageState extends State<HomePage>
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: AppColors.secondary),
         ),
         child: Row(
           children: [
@@ -962,7 +958,7 @@ class _HomePageState extends State<HomePage>
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: auction.property?.imageUrl.isNotEmpty == true
@@ -971,11 +967,14 @@ class _HomePageState extends State<HomePage>
                       child: Image.network(
                         auction.property!.imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Icon(Icons.home, color: Colors.grey[400], size: 24),
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.home,
+                          color: AppColors.secondary,
+                          size: 24,
+                        ),
                       ),
                     )
-                  : Icon(Icons.home, color: Colors.grey[400], size: 24),
+                  : Icon(Icons.home, color: AppColors.secondary, size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -986,7 +985,7 @@ class _HomePageState extends State<HomePage>
                     auction.property?.location ?? 'Unknown Location',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
+                      color: AppColors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -998,15 +997,16 @@ class _HomePageState extends State<HomePage>
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       auction.property?.category ?? 'Unknown Category',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).primaryColor,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                         fontSize: 9,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
@@ -1016,28 +1016,29 @@ class _HomePageState extends State<HomePage>
                       Icon(
                         Icons.people_outline,
                         size: 12,
-                        color: Colors.grey[600],
+                        color: AppColors.primary,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${auction.bidCount} bids',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w500,
                           fontSize: 11,
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Icon(Icons.schedule, size: 12, color: Colors.grey[600]),
+                      Icon(Icons.schedule, size: 12, color: AppColors.primary),
                       const SizedBox(width: 4),
                       Text(
                         auction.timeRemaining,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: auction.isActive
-                              ? Colors.red[600]
-                              : Colors.grey[600],
-                          fontWeight: FontWeight.w500,
+                              ? AppColors.primary
+                              : AppColors.secondary,
+                          fontWeight: FontWeight.w600,
                           fontSize: 11,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ],
@@ -1051,9 +1052,10 @@ class _HomePageState extends State<HomePage>
                 Text(
                   '\$${auction.currentPrice.toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
                     fontSize: 16,
+                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1064,10 +1066,10 @@ class _HomePageState extends State<HomePage>
                   ),
                   decoration: BoxDecoration(
                     color: auction.isUpcoming
-                        ? Colors.blue.withOpacity(0.1)
+                        ? AppColors.primary
                         : (auction.isActive
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.grey.withOpacity(0.1)),
+                              ? AppColors.primary
+                              : AppColors.background),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1076,12 +1078,13 @@ class _HomePageState extends State<HomePage>
                         : (auction.isActive ? 'LIVE' : 'ENDED'),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: auction.isUpcoming
-                          ? Colors.blue[600]
+                          ? AppColors.surface
                           : (auction.isActive
-                                ? Colors.green[600]
-                                : Colors.grey[600]),
-                      fontWeight: FontWeight.bold,
+                                ? AppColors.surface
+                                : AppColors.secondary),
+                      fontWeight: FontWeight.w700,
                       fontSize: 9,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
@@ -1102,17 +1105,19 @@ class _HomePageState extends State<HomePage>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.secondary),
               ),
-              child: Icon(icon, size: 48, color: Colors.grey[400]),
+              child: Icon(icon, size: 48, color: AppColors.secondary),
             ),
             const SizedBox(height: 16),
             Text(
               message,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.primary,
+                letterSpacing: -0.3,
+              ),
             ),
           ],
         ),
@@ -1121,35 +1126,55 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildBottomNavigation() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: _selectedIndex,
-      onTap: (index) {
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
-      selectedItemColor: Theme.of(context).primaryColor,
-      unselectedItemColor: Colors.grey[600],
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.gavel_rounded),
-          label: 'Auctions',
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.secondary, width: 1)),
+      ),
+      child: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.secondary,
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.analytics_rounded),
-          label: 'Properties',
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.2,
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_today_rounded),
-          label: 'Calendar',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_rounded),
-          label: 'Profile',
-        ),
-      ],
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.gavel_rounded),
+            label: 'Auctions',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics_rounded),
+            label: 'Portfolio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_rounded),
+            label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
+        ],
+      ),
     );
   }
 

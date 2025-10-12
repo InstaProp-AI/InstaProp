@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/auction.dart';
@@ -85,11 +86,12 @@ class _AuctionTimerState extends State<AuctionTimer> {
       _timeRemaining,
       style:
           widget.textStyle?.copyWith(
-            color: isActive ? Colors.redAccent : Colors.grey,
+            color: isActive ? AppColors.primary : AppColors.secondary,
           ) ??
           TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isActive ? Colors.redAccent : Colors.grey,
+            fontWeight: FontWeight.w700,
+            color: isActive ? AppColors.primary : AppColors.secondary,
+            letterSpacing: -0.3,
           ),
     );
   }

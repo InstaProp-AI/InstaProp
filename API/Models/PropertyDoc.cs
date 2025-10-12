@@ -21,6 +21,8 @@ namespace PropertyFlipperAPI.Models
         [Required]
         public string ImgUrl { get; set; }
 
+        public string? DeleteUrl { get; set; } // ImgBB delete URL for document removal
+
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     }
 }

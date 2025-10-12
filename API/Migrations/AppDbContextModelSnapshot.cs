@@ -23,6 +23,10 @@ namespace PropertyFlipperAPI.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AuthProvider")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -41,13 +45,19 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<bool>("EmailVerified")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("GoogleId")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("HashedPassword")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("TEXT");
 
@@ -57,6 +67,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PasswordResetRequestedEmail")
@@ -414,6 +427,9 @@ namespace PropertyFlipperAPI.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("DeleteUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DocType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -444,6 +460,9 @@ namespace PropertyFlipperAPI.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeleteUrl")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("DisplayOrder")
@@ -477,6 +496,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<long>("DocId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("DeleteUrl")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("DocType")
                         .IsRequired()

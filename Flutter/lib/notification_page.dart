@@ -1,3 +1,4 @@
+import '../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/notification_service.dart';
@@ -8,13 +9,13 @@ import 'models/property.dart';
 import 'pages/auction_details_page.dart';
 
 // Use the same color constants as main.dart for consistency
-const Color kBg = Colors.white;
-const Color kCard = Colors.white;
-const Color kPrimary = Colors.green;
-const Color kAccent = Colors.deepPurple;
-const Color kText = Colors.black87;
-const Color kGray = Color(0xFFF5F5F5);
-const Color kWhite = Colors.white;
+const Color kBg = AppColors.background;
+const Color kCard = AppColors.surface;
+const Color kPrimary = AppColors.primary;
+const Color kAccent = AppColors.secondary;
+const Color kText = AppColors.textPrimary;
+const Color kGray = AppColors.background;
+const Color kWhite = AppColors.surface;
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -122,7 +123,7 @@ class _NotificationPageState extends State<NotificationPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(response.error ?? 'Auction not found'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.primary,
             ),
           );
         }
@@ -133,7 +134,7 @@ class _NotificationPageState extends State<NotificationPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading auction: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.primary,
           ),
         );
       }
@@ -163,7 +164,7 @@ class _NotificationPageState extends State<NotificationPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(response.error ?? 'Property not found'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.primary,
             ),
           );
         }
@@ -174,7 +175,7 @@ class _NotificationPageState extends State<NotificationPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading property: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.primary,
           ),
         );
       }
@@ -205,7 +206,7 @@ class _NotificationPageState extends State<NotificationPage> {
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 200,
-                      color: Colors.grey[200],
+                      color: AppColors.background,
                       child: const Icon(
                         Icons.home,
                         size: 64,
@@ -279,7 +280,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: kPrimary,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.surface,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -351,15 +352,15 @@ class _NotificationPageState extends State<NotificationPage> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
+          color: AppColors.background,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: const [
-            Icon(Icons.home, color: Colors.blue, size: 16),
+            Icon(Icons.home, color: AppColors.primary, size: 16),
             SizedBox(width: 4),
-            Icon(Icons.arrow_forward_ios, color: Colors.blue, size: 12),
+            Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 12),
           ],
         ),
       );
@@ -380,19 +381,19 @@ class _NotificationPageState extends State<NotificationPage> {
       margin: const EdgeInsets.only(top: 20, bottom: 40),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
+        border: Border.all(color: AppColors.secondary!, width: 1),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+          Icon(Icons.info_outline, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Notifications are automatically deleted after 14 days',
               style: TextStyle(
-                color: Colors.grey[600],
+                color: AppColors.primary,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -435,10 +436,10 @@ class _NotificationPageState extends State<NotificationPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: AppColors.surface.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(icon, color: Colors.white, size: 32),
+                      child: Icon(icon, color: AppColors.surface, size: 32),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -448,7 +449,7 @@ class _NotificationPageState extends State<NotificationPage> {
                           Text(
                             notification.type.displayName,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.surface,
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -457,7 +458,7 @@ class _NotificationPageState extends State<NotificationPage> {
                           Text(
                             notification.getTimeAgo(),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: AppColors.surface.withOpacity(0.9),
                               fontSize: 12,
                             ),
                           ),
@@ -498,7 +499,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: color,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.surface,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -624,13 +625,13 @@ class _NotificationPageState extends State<NotificationPage> {
                   Icon(
                     Icons.notifications_off_outlined,
                     size: 80,
-                    color: Colors.grey[300],
+                    color: AppColors.secondary,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No notifications yet.',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: AppColors.primary,
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
@@ -666,14 +667,14 @@ class _NotificationPageState extends State<NotificationPage> {
                       _deleteNotification(notification.notificationId),
                   background: Container(
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: AppColors.primary,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),
                     child: const Icon(
                       Icons.delete,
-                      color: Colors.white,
+                      color: AppColors.surface,
                       size: 28,
                     ),
                   ),

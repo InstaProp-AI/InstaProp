@@ -233,4 +233,3 @@ class _AddEventDialogState extends State<AddEventDialog> {
     );
   }
 }
-

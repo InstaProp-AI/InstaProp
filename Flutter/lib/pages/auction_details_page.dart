@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -302,7 +303,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           ),
           title: Row(
             children: [
-              Icon(Icons.shopping_cart, color: Colors.orange[700]),
+              Icon(Icons.shopping_cart, color: AppColors.primary),
               const SizedBox(width: 12),
               const Text('Buy Now Confirmation'),
             ],
@@ -319,9 +320,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange[50],
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange[200]!),
+                  border: Border.all(color: AppColors.secondary!),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,7 +337,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange[700],
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
@@ -347,7 +348,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 '⚠️ This will end the auction immediately and you will be committed to purchasing this property.',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.red[700],
+                  color: AppColors.primary,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -358,13 +359,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               onPressed: () => Navigator.of(context).pop(false),
               child: Text(
                 'Cancel',
-                style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                style: TextStyle(color: AppColors.primary, fontSize: 16),
               ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[700],
+                backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 12,
@@ -378,7 +379,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppColors.surface,
                 ),
               ),
             ),
@@ -415,7 +416,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 ),
                 title: Row(
                   children: [
-                    Icon(Icons.celebration, color: Colors.green[700]),
+                    Icon(Icons.celebration, color: AppColors.primary),
                     const SizedBox(width: 12),
                     const Text('Purchase Successful!'),
                   ],
@@ -446,7 +447,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       Navigator.of(context).pop(); // Return to previous page
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
+                      backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
@@ -460,7 +461,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppColors.surface,
                       ),
                     ),
                   ),
@@ -501,7 +502,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 children: [
                   Icon(
                     Icons.warning_amber_rounded,
-                    color: Colors.orange[700],
+                    color: AppColors.primary,
                     size: 28,
                   ),
                   const SizedBox(width: 12),
@@ -540,15 +541,15 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue[50],
+                      color: AppColors.primary,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue[200]!),
+                      border: Border.all(color: AppColors.primary!),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.info_outline,
-                          color: Colors.blue[700],
+                          color: AppColors.primary,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -556,7 +557,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                           child: Text(
                             'Bid responsibly and only if you\'re committed to completing the purchase.',
                             style: TextStyle(
-                              color: Colors.blue[900],
+                              color: AppColors.primary,
                               fontSize: 12,
                             ),
                           ),
@@ -571,13 +572,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   onPressed: () => Navigator.of(context).pop(false),
                   child: Text(
                     'Cancel',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                    style: TextStyle(color: AppColors.primary, fontSize: 16),
                   ),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
+                    backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
                       vertical: 12,
@@ -591,7 +592,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppColors.surface,
                     ),
                   ),
                 ),
@@ -610,7 +611,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           child: Text(
             text,
             style: TextStyle(
-              color: Colors.grey[700],
+              color: AppColors.textPrimary,
               fontSize: 13,
               height: 1.4,
             ),
@@ -653,7 +654,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       expandedHeight: 300,
       floating: false,
       pinned: true,
-      backgroundColor: const Color(0xFF2E7D32),
+      backgroundColor: AppColors.primary,
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -666,7 +667,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               )
             else
               Container(
-                color: Colors.grey[300],
+                color: AppColors.secondary,
                 child: const Icon(Icons.home, size: 100, color: Colors.grey),
               ),
 
@@ -676,7 +677,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black54],
+                  colors: [Colors.transparent, AppColors.textPrimary],
                 ),
               ),
             ),
@@ -692,7 +693,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   Text(
                     _currentAuction!.property?.name ?? 'Property',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.surface,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -700,7 +701,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   const SizedBox(height: 4),
                   Text(
                     _currentAuction!.property?.location ?? '',
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                    style: TextStyle(color: AppColors.secondary, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -723,7 +724,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                 ? 'LIVE AUCTION'
                                 : 'ENDED'),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surface,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -820,7 +821,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.grey[600],
+            color: AppColors.primary,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -864,13 +865,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2E7D32).withOpacity(0.1),
+                        color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         '${_currentAuction!.bidCount} bids',
                         style: const TextStyle(
-                          color: Color(0xFF2E7D32),
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -884,7 +885,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     '\$${_currentAuction!.currentPrice.toStringAsFixed(0)}',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2E7D32),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -895,7 +896,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     'Starting Price: \$${_currentAuction!.startPrice.toStringAsFixed(0)}',
                     style: Theme.of(
                       context,
-                    ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                    ).textTheme.bodyLarge?.copyWith(color: AppColors.primary),
                   ),
                 ),
 
@@ -905,7 +906,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     child: Text(
                       'Buy Now: \$${_currentAuction!.buyNowPrice!.toStringAsFixed(0)}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.orange[700],
+                        color: AppColors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -942,8 +943,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange[700],
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.surface,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 32,
                               vertical: 16,
@@ -966,17 +967,17 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: _currentAuction!.isUpcoming
-                        ? Colors.blue[50]
+                        ? AppColors.background
                         : (_currentAuction!.isActive
-                              ? Colors.green[50]
-                              : Colors.orange[50]),
+                              ? AppColors.background
+                              : AppColors.background),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _currentAuction!.isUpcoming
-                          ? Colors.blue[200]!
+                          ? AppColors.secondary
                           : (_currentAuction!.isActive
-                                ? Colors.green[200]!
-                                : Colors.orange[200]!),
+                                ? AppColors.secondary
+                                : AppColors.secondary),
                     ),
                   ),
                   child: Row(
@@ -985,10 +986,10 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       Icon(
                         Icons.access_time,
                         color: _currentAuction!.isUpcoming
-                            ? Colors.blue[700]
+                            ? AppColors.primary
                             : (_currentAuction!.isActive
-                                  ? Colors.green[700]
-                                  : Colors.orange[700]),
+                                  ? AppColors.primary
+                                  : AppColors.primary),
                       ),
                       const SizedBox(width: 8),
                       _currentAuction!.isUpcoming
@@ -997,7 +998,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                 Text(
                                   'Starts in ',
                                   style: TextStyle(
-                                    color: Colors.blue[700],
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
                                   ),
@@ -1005,7 +1006,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                 Text(
                                   _currentAuction!.timeRemaining,
                                   style: TextStyle(
-                                    color: Colors.blue[700],
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
                                   ),
@@ -1018,7 +1019,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                       Text(
                                         'Ends in ',
                                         style: TextStyle(
-                                          color: Colors.green[700],
+                                          color: AppColors.primary,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 16,
                                         ),
@@ -1026,7 +1027,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                       AuctionTimer(
                                         auction: _currentAuction!,
                                         textStyle: TextStyle(
-                                          color: Colors.green[700],
+                                          color: AppColors.primary,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 16,
                                         ),
@@ -1037,7 +1038,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                 : Text(
                                     'Auction Ended',
                                     style: TextStyle(
-                                      color: Colors.orange[700],
+                                      color: AppColors.primary,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 16,
                                     ),
@@ -1064,13 +1065,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.red[50],
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red[200]!),
+                        border: Border.all(color: AppColors.secondary!),
                       ),
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: Colors.red[700]),
+                        style: TextStyle(color: AppColors.primary),
                       ),
                     ),
 
@@ -1080,13 +1081,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.green[50],
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.green[200]!),
                       ),
                       child: Text(
                         _successMessage!,
-                        style: TextStyle(color: Colors.green[700]),
+                        style: TextStyle(color: AppColors.primary),
                       ),
                     ),
 
@@ -1097,22 +1098,22 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         return Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.orange[50],
+                            color: AppColors.background,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.orange[200]!),
+                            border: Border.all(color: AppColors.secondary!),
                           ),
                           child: Column(
                             children: [
                               Icon(
                                 Icons.lock,
-                                color: Colors.orange[700],
+                                color: AppColors.primary,
                                 size: 32,
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 'Login to place a bid',
                                 style: TextStyle(
-                                  color: Colors.orange[700],
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -1122,7 +1123,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                               Text(
                                 'You need to be logged in to participate in this auction',
                                 style: TextStyle(
-                                  color: Colors.orange[600],
+                                  color: AppColors.primary,
                                   fontSize: 14,
                                 ),
                                 textAlign: TextAlign.center,
@@ -1144,22 +1145,22 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         return Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.orange[50],
+                            color: AppColors.background,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.orange[200]!),
+                            border: Border.all(color: AppColors.secondary!),
                           ),
                           child: Column(
                             children: [
                               Icon(
                                 Icons.verified_user,
-                                color: Colors.orange[700],
+                                color: AppColors.primary,
                                 size: 32,
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 'Account Not Verified',
                                 style: TextStyle(
-                                  color: Colors.orange[700],
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -1169,7 +1170,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                               Text(
                                 'You need to verify your account to place bids. Please upload your verification documents from your profile.',
                                 style: TextStyle(
-                                  color: Colors.orange[600],
+                                  color: AppColors.primary,
                                   fontSize: 14,
                                 ),
                                 textAlign: TextAlign.center,
@@ -1181,8 +1182,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                 icon: const Icon(Icons.upload_file),
                                 label: const Text('Go to Profile'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange[700],
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.surface,
                                 ),
                               ),
                             ],
@@ -1200,22 +1201,22 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         return Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.red[50],
+                            color: AppColors.background,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red[200]!),
+                            border: Border.all(color: AppColors.secondary!),
                           ),
                           child: Column(
                             children: [
                               Icon(
                                 Icons.block,
-                                color: Colors.red[700],
+                                color: AppColors.primary,
                                 size: 32,
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 'Cannot bid on your own property',
                                 style: TextStyle(
-                                  color: Colors.red[700],
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -1225,7 +1226,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                               Text(
                                 'You cannot place bids on properties you own',
                                 style: TextStyle(
-                                  color: Colors.red[600],
+                                  color: AppColors.primary,
                                   fontSize: 14,
                                 ),
                                 textAlign: TextAlign.center,
@@ -1337,7 +1338,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           drawVerticalLine: false,
           horizontalInterval: maxY / 5,
           getDrawingHorizontalLine: (value) {
-            return FlLine(color: Colors.grey[300]!, strokeWidth: 1);
+            return FlLine(color: AppColors.secondary!, strokeWidth: 1);
           },
         ),
         titlesData: FlTitlesData(
@@ -1356,7 +1357,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 return Text(
                   '\$${value.toInt()}',
                   style: TextStyle(
-                    color: Colors.grey[600],
+                    color: AppColors.primary,
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1390,7 +1391,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   child: Text(
                     timeLabel,
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: AppColors.primary,
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1403,20 +1404,20 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         borderData: FlBorderData(
           show: true,
           border: Border(
-            bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-            left: BorderSide(color: Colors.grey[300]!, width: 1),
+            bottom: BorderSide(color: AppColors.secondary!, width: 1),
+            left: BorderSide(color: AppColors.secondary!, width: 1),
           ),
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            tooltipBgColor: const Color(0xFF2E7D32),
+            tooltipBgColor: AppColors.primary,
             tooltipRoundedRadius: 8,
             getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
               return touchedBarSpots.map((barSpot) {
                 return LineTooltipItem(
                   '\$${barSpot.y.toStringAsFixed(2)}',
                   const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -1431,13 +1432,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               return FlSpot(entry.key.toDouble(), entry.value.bidAmount);
             }).toList(),
             isCurved: true,
-            color: const Color(0xFF2E7D32),
+            color: AppColors.primary,
             barWidth: 3,
             isStrokeCapRound: true,
             dotData: FlDotData(show: true),
             belowBarData: BarAreaData(
               show: true,
-              color: const Color(0xFF2E7D32).withOpacity(0.1),
+              color: AppColors.primary.withOpacity(0.1),
             ),
           ),
         ],
@@ -1510,11 +1511,11 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         case 1:
           return Colors.amber;
         case 2:
-          return Colors.grey[400]!;
+          return AppColors.secondary!;
         case 3:
-          return Colors.orange[600]!;
+          return AppColors.primary!;
         default:
-          return Colors.grey[300]!;
+          return AppColors.secondary!;
       }
     }
 
@@ -1524,10 +1525,12 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       decoration: BoxDecoration(
         color: position <= 3
             ? getPositionColor(position).withOpacity(0.1)
-            : Colors.grey[50],
+            : AppColors.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: position <= 3 ? getPositionColor(position) : Colors.grey[200]!,
+          color: position <= 3
+              ? getPositionColor(position)
+              : AppColors.background!,
           width: position <= 3 ? 2 : 1,
         ),
       ),
@@ -1544,7 +1547,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               child: Text(
                 position.toString(),
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -1565,7 +1568,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 ),
                 Text(
                   _formatDateTime(bid.createdAt),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: AppColors.primary, fontSize: 12),
                 ),
               ],
             ),
@@ -1575,7 +1578,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
-              color: Color(0xFF2E7D32),
+              color: AppColors.primary,
             ),
           ),
         ],
@@ -1588,13 +1591,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       padding: const EdgeInsets.all(40),
       child: Column(
         children: [
-          Icon(icon, size: 64, color: Colors.grey[400]),
+          Icon(icon, size: 64, color: AppColors.secondary),
           const SizedBox(height: 16),
           Text(
             title,
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+            ).textTheme.titleMedium?.copyWith(color: AppColors.primary),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1649,17 +1652,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.description,
-                      color: const Color(0xFF2E7D32),
-                      size: 24,
-                    ),
+                    Icon(Icons.description, color: AppColors.primary, size: 24),
                     const SizedBox(width: 12),
                     Text(
                       'Property Description',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF2E7D32),
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
@@ -1702,13 +1701,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       children: [
         Row(
           children: [
-            Icon(icon, size: 20, color: const Color(0xFF2E7D32)),
+            Icon(icon, size: 20, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF2E7D32),
+                color: AppColors.primary,
               ),
             ),
           ],
@@ -1718,7 +1717,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           content,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             height: 1.6,
-            color: Colors.grey[700],
+            color: AppColors.textPrimary,
           ),
         ),
       ],
@@ -1734,13 +1733,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       children: [
         Row(
           children: [
-            Icon(Icons.home, size: 20, color: const Color(0xFF2E7D32)),
+            Icon(Icons.home, size: 20, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               'Property Details',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF2E7D32),
+                color: AppColors.primary,
               ),
             ),
           ],
@@ -1785,19 +1784,19 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: AppColors.background!),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF2E7D32)),
+          Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+                color: AppColors.primary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1806,7 +1805,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             value,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF2E7D32),
+              color: AppColors.primary,
             ),
           ),
         ],
@@ -1823,13 +1822,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       children: [
         Row(
           children: [
-            Icon(Icons.location_on, size: 20, color: const Color(0xFF2E7D32)),
+            Icon(Icons.location_on, size: 20, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               'Location & Accessibility',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF2E7D32),
+                color: AppColors.primary,
               ),
             ),
           ],
@@ -1839,9 +1838,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: AppColors.background,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: AppColors.background!),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1849,7 +1848,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               Text(
                 'Address',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1858,14 +1857,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 property.location,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2E7D32),
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'This property is strategically located in a prime area with excellent connectivity to major business districts, shopping centers, and educational institutions. The location offers great potential for both residential and investment purposes.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[700],
+                  color: AppColors.textPrimary,
                   height: 1.5,
                 ),
               ),
@@ -1882,13 +1881,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       children: [
         Row(
           children: [
-            Icon(Icons.trending_up, size: 20, color: const Color(0xFF2E7D32)),
+            Icon(Icons.trending_up, size: 20, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               'Investment Highlights',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF2E7D32),
+                color: AppColors.primary,
               ),
             ),
           ],
@@ -1899,7 +1898,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.green[50]!, Colors.green[100]!],
+              colors: [AppColors.background!, AppColors.background!],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -1913,7 +1912,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 'Why This Property?',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2E7D32),
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1926,14 +1925,17 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       Icon(
                         Icons.check_circle,
                         size: 16,
-                        color: Colors.green[600],
+                        color: AppColors.primary,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           highlight,
                           style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey[700], height: 1.4),
+                              ?.copyWith(
+                                color: AppColors.textPrimary,
+                                height: 1.4,
+                              ),
                         ),
                       ),
                     ],

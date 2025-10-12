@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -47,7 +48,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
       appBar: AppBar(
         title: const Text('Upload Property Documents'),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.surface,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -73,7 +74,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                   const Text(
                     'Property Documents',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.surface,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -82,7 +83,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                   Text(
                     widget.propertyName,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: AppColors.surface.withOpacity(0.9),
                       fontSize: 16,
                     ),
                   ),
@@ -90,7 +91,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                   Text(
                     'Upload supporting documents for your property listing',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: AppColors.surface.withOpacity(0.8),
                       fontSize: 14,
                     ),
                   ),
@@ -112,7 +113,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
               'Maximum file size: 50MB per file. Supported formats: PDF, DOC, DOCX, JPG, PNG',
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
             ),
             const SizedBox(height: 16),
 
@@ -122,7 +123,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
               height: 120,
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: Colors.grey[300]!,
+                  color: AppColors.secondary!,
                   width: 2,
                   style: BorderStyle.solid,
                 ),
@@ -137,7 +138,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                     Icon(
                       Icons.cloud_upload_outlined,
                       size: 48,
-                      color: Colors.grey[600],
+                      color: AppColors.primary,
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -145,7 +146,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey[600],
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -184,18 +185,18 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red[200]!),
+                  border: Border.all(color: AppColors.secondary!),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red[700]),
+                    Icon(Icons.error_outline, color: AppColors.primary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: Colors.red[700]),
+                        style: TextStyle(color: AppColors.primary),
                       ),
                     ),
                   ],
@@ -209,18 +210,18 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.green[200]!),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline, color: Colors.green[700]),
+                    Icon(Icons.check_circle_outline, color: AppColors.primary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _successMessage!,
-                        style: TextStyle(color: Colors.green[700]),
+                        style: TextStyle(color: AppColors.primary),
                       ),
                     ),
                   ],
@@ -295,7 +296,10 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                       ),
                       Text(
                         '${(file.size / 1024 / 1024).toStringAsFixed(2)} MB',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -303,7 +307,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                 IconButton(
                   onPressed: () => _removeFile(index),
                   icon: const Icon(Icons.close),
-                  color: Colors.red[600],
+                  color: AppColors.primary,
                 ),
               ],
             ),
@@ -561,8 +565,8 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                 });
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[700],
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.surface,
               ),
               child: const Text('Skip Documents'),
             ),

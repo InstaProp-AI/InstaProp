@@ -16,19 +16,27 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Add Services
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddSingleton<FirestoreService>(); // Replaces WebSocketManager
+builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
+builder.Services.AddScoped<EmailTemplateService>(); // HTML email templates
 builder.Services.AddScoped<EmailVerificationService>();
+builder.Services.AddScoped<AuctionNotificationService>(); // Auction email notifications
 builder.Services.AddScoped<PhoneVerificationService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<NotificationHelperService>();
 builder.Services.AddSingleton<ErrorTrackingService>();
 builder.Services.AddScoped<FcmPushNotificationService>();
+builder.Services.AddScoped<FileValidationService>();
+builder.Services.AddScoped<ImgBBService>(); // ImgBB image upload service
 
-// Add HttpClient for FCM
+// Add HttpClient for FCM and ImgBB
 builder.Services.AddHttpClient();
 
 // Add Background Services
 builder.Services.AddHostedService<AuctionExpirationService>();
 builder.Services.AddHostedService<NotificationCleanupService>();
+
+// Add Health Checks
+builder.Services.AddHealthChecks();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -53,14 +61,33 @@ builder.Services.AddSwaggerGen(c =>
     // Don't apply security globally - only to specific endpoints
 });
 
-// CORS
+// CORS - Allow all origins in development, restricted in production
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AppCors", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        var isDevelopment = builder.Environment.IsDevelopment();
+        
+        if (isDevelopment)
+        {
+            // Development: Allow all origins for easier testing
+            Console.WriteLine("🌍 CORS: Allowing ALL origins (Development Mode)");
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            // Production: Use configured allowed origins
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+                ?? new[] { "https://yourdomain.com" };
+            
+            Console.WriteLine($"🔒 CORS: Allowing specific origins (Production Mode): {string.Join(", ", allowedOrigins)}");
+            policy.WithOrigins(allowedOrigins)
+                  .AllowCredentials()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
     });
 });
 
@@ -73,7 +100,7 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = true;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -97,13 +124,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AppCors");
 
-// Middleware temporarily disabled for development
-// Uncomment when needed:
-
+// Production middleware enabled
 // Global error handling middleware (catches all unhandled exceptions)
-// app.UseErrorHandling();
+app.UseErrorHandling();
 
 // Rate limiting middleware (protects against DDoS and abuse)
+// Uncomment when needed:
 // app.UseRateLimiting(maxRequestsPerWindow: 1000, timeWindowSeconds: 60);
 
 app.UseStaticFiles(); // Enable serving static files from wwwroot
@@ -119,6 +145,9 @@ app.UseAuthorization();
 // }
 
 app.MapControllers();
+
+// Health check endpoint for monitoring
+app.MapHealthChecks("/health");
 
 // Note: WebSocket endpoint removed - now using Firebase Firestore for real-time updates
 // Real-time data synchronization is handled by Firestore on the client side

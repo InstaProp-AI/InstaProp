@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -107,18 +108,25 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.red[300]!),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                    Icon(
+                      Icons.error_outline,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: Colors.red[700], fontSize: 14),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -137,7 +145,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
           onPressed: _isLoading ? null : _handleSubmit,
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
+            foregroundColor: AppColors.surface,
           ),
           child: _isLoading
               ? const SizedBox(
@@ -145,7 +153,9 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.surface,
+                    ),
                   ),
                 )
               : const Text('Send Reset Email'),
@@ -154,10 +164,3 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
     );
   }
 }
-
-
-
-
-
-
-

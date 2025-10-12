@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class BottomNavigation extends StatelessWidget {
@@ -14,10 +15,10 @@ class BottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: AppColors.primary.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -27,15 +28,15 @@ class BottomNavigation extends StatelessWidget {
         currentIndex: selectedIndex,
         onTap: onTap,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green[700],
-        unselectedItemColor: Colors.grey[600],
-        backgroundColor: Colors.white,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.primary,
+        backgroundColor: AppColors.surface,
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_work_outlined),
             activeIcon: Icon(Icons.home_work),
-            label: 'Properties',
+            label: 'Portfolio',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.gavel_outlined),

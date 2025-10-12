@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -73,7 +74,7 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             Icon(
               Icons.warning_amber_rounded,
-              color: Colors.orange[700],
+              color: AppColors.primary,
               size: 28,
             ),
             const SizedBox(width: 12),
@@ -92,19 +93,19 @@ class _ProfilePageState extends State<ProfilePage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: AppColors.secondary!),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                  Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Pending Verification',
                       style: TextStyle(
-                        color: Colors.orange[700],
+                        color: AppColors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -115,7 +116,7 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 12),
             Text(
               'Your account will need to be re-verified by an admin after you save changes.',
-              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+              style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -129,9 +130,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.pop(context);
               setState(() => _isEditing = true);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[700],
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Continue Editing'),
           ),
         ],
@@ -201,7 +200,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Profile updated successfully!'),
-              backgroundColor: Colors.green[700],
+              backgroundColor: AppColors.primary,
               duration: const Duration(seconds: 2),
             ),
           );
@@ -233,7 +232,7 @@ class _ProfilePageState extends State<ProfilePage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.security, color: Colors.orange[700], size: 28),
+            Icon(Icons.security, color: AppColors.primary, size: 28),
             const SizedBox(width: 12),
             const Text('Verification Required'),
           ],
@@ -254,13 +253,13 @@ class _ProfilePageState extends State<ProfilePage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: AppColors.secondary!),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                  Icon(Icons.info_outline, color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -270,7 +269,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ? 'email'
                           : 'phone'} to continue.',
                       style: TextStyle(
-                        color: Colors.orange[700],
+                        color: AppColors.primary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -344,9 +343,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[700],
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Verify Now'),
           ),
         ],
@@ -380,7 +377,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Password changed successfully!'),
-            backgroundColor: Colors.green[700],
+            backgroundColor: AppColors.primary,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -427,8 +424,8 @@ class _ProfilePageState extends State<ProfilePage> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Profile'),
-            backgroundColor: Colors.green[700],
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.surface,
             actions: [
               if (!_isEditing && appState.isLoggedIn)
                 IconButton(
@@ -449,7 +446,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.green[50],
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.green[200]!),
                       ),
@@ -457,14 +454,14 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           CircleAvatar(
                             radius: 40,
-                            backgroundColor: Colors.green[700],
+                            backgroundColor: AppColors.primary,
                             child: Text(
                               (appState.user?.firstName ?? 'U')[0]
                                   .toUpperCase(),
                               style: const TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: AppColors.surface,
                               ),
                             ),
                           ),
@@ -478,7 +475,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           Text(
                             appState.user?.email ?? 'No email',
                             style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: Colors.grey[600]),
+                                ?.copyWith(color: AppColors.primary),
                           ),
                           const SizedBox(height: 8),
                           Container(
@@ -611,13 +608,13 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.red[50],
+                          color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red[200]!),
+                          border: Border.all(color: AppColors.secondary!),
                         ),
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.red[700]),
+                          style: TextStyle(color: AppColors.primary),
                         ),
                       ),
 
@@ -627,13 +624,13 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.green[50],
+                          color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.green[200]!),
                         ),
                         child: Text(
                           _successMessage!,
-                          style: TextStyle(color: Colors.green[700]),
+                          style: TextStyle(color: AppColors.primary),
                         ),
                       ),
 
@@ -716,9 +713,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue[200]!),
+                        border: Border.all(color: AppColors.primary!),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -727,7 +724,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             children: [
                               Icon(
                                 Icons.lock_outline,
-                                color: Colors.blue[700],
+                                color: AppColors.primary,
                                 size: 24,
                               ),
                               const SizedBox(width: 12),
@@ -736,7 +733,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.blue[900],
+                                      color: AppColors.primary,
                                     ),
                               ),
                             ],
@@ -745,7 +742,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           Text(
                             'Changing your password does not affect your verification status',
                             style: TextStyle(
-                              color: Colors.blue[700],
+                              color: AppColors.primary,
                               fontSize: 13,
                             ),
                           ),
@@ -764,8 +761,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 icon: const Icon(Icons.key),
                                 label: const Text('Change Password'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue[700],
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.surface,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 12,
                                   ),
@@ -785,16 +782,16 @@ class _ProfilePageState extends State<ProfilePage> {
                                       padding: const EdgeInsets.all(12),
                                       margin: const EdgeInsets.only(bottom: 16),
                                       decoration: BoxDecoration(
-                                        color: Colors.red[50],
+                                        color: AppColors.background,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: Colors.red[200]!,
+                                          color: AppColors.secondary!,
                                         ),
                                       ),
                                       child: Text(
                                         _passwordErrorMessage!,
                                         style: TextStyle(
-                                          color: Colors.red[700],
+                                          color: AppColors.primary,
                                         ),
                                       ),
                                     ),
@@ -901,11 +898,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                 appState.user!.status ==
                                     VerificationStatus.pending
                                 ? [
-                                    Colors.blue[50]!,
-                                    Colors.blue[100]!.withOpacity(0.3),
+                                    AppColors.primary!,
+                                    AppColors.primary!.withOpacity(0.3),
                                   ]
                                 : [
-                                    Colors.orange[50]!,
+                                    AppColors.background!,
                                     Colors.orange[100]!.withOpacity(0.3),
                                   ],
                           ),
@@ -914,7 +911,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             color:
                                 appState.user!.status ==
                                     VerificationStatus.pending
-                                ? Colors.blue[300]!
+                                ? AppColors.primary!
                                 : Colors.orange[300]!,
                             width: 2,
                           ),
@@ -930,7 +927,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     color:
                                         appState.user!.status ==
                                             VerificationStatus.pending
-                                        ? Colors.blue[100]
+                                        ? AppColors.primary
                                         : Colors.orange[100],
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -942,8 +939,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     color:
                                         appState.user!.status ==
                                             VerificationStatus.pending
-                                        ? Colors.blue[700]
-                                        : Colors.orange[700],
+                                        ? AppColors.primary
+                                        : AppColors.primary,
                                     size: 28,
                                   ),
                                 ),
@@ -962,7 +959,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           color:
                                               appState.user!.status ==
                                                   VerificationStatus.pending
-                                              ? Colors.blue[900]
+                                              ? AppColors.primary
                                               : Colors.orange[900],
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
@@ -978,8 +975,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                           color:
                                               appState.user!.status ==
                                                   VerificationStatus.pending
-                                              ? Colors.blue[700]
-                                              : Colors.orange[700],
+                                              ? AppColors.primary
+                                              : AppColors.primary,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -999,18 +996,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => KycVerificationPage(
-                                          firstName: appState.user!.firstName,
-                                          lastName: appState.user!.lastName,
-                                          phoneNumber:
-                                              appState.user!.phoneNumber,
-                                          email: appState.user!.email,
-                                          password:
-                                              '', // Not needed for KYC upload only
-                                          gender:
-                                              'Male', // Not needed for KYC upload only
-                                          isNewSignup: false, // Existing user
-                                        ),
+                                        builder: (context) =>
+                                            KycVerificationPage(
+                                              firstName:
+                                                  appState.user!.firstName,
+                                              lastName: appState.user!.lastName,
+                                              email: appState.user!.email,
+                                              isNewSignup:
+                                                  false, // Existing user
+                                            ),
                                       ),
                                     );
                                   },
@@ -1022,8 +1016,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orange[700],
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.surface,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 14,
                                     ),
@@ -1045,15 +1039,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.orange[50],
+                          color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange[200]!),
+                          border: Border.all(color: AppColors.secondary!),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: Colors.orange[700],
+                              color: AppColors.primary,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
@@ -1061,7 +1055,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Text(
                                 'Saving changes will set your account to pending. An admin will review your updates.',
                                 style: TextStyle(
-                                  color: Colors.orange[700],
+                                  color: AppColors.primary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1107,7 +1101,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: OutlinedButton(
                         onPressed: _logout,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red[700],
+                          foregroundColor: AppColors.primary,
                           side: BorderSide(color: Colors.red[300]!),
                         ),
                         child: const Text('Logout'),
@@ -1127,9 +1121,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Color _getStatusColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return Colors.green[100]!;
+        return AppColors.background!;
       case VerificationStatus.pending:
-        return Colors.blue[100]!;
+        return AppColors.primary!;
       case VerificationStatus.notVerified:
         return Colors.orange[100]!;
     }
@@ -1138,11 +1132,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Color _getStatusTextColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return Colors.green[700]!;
+        return AppColors.primary!;
       case VerificationStatus.pending:
-        return Colors.blue[700]!;
+        return AppColors.primary!;
       case VerificationStatus.notVerified:
-        return Colors.orange[700]!;
+        return AppColors.primary!;
     }
   }
 
@@ -1180,12 +1174,12 @@ class _ProfilePageState extends State<ProfilePage> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isVerified ? Colors.green[100] : Colors.orange[100],
+            color: isVerified ? AppColors.background : Colors.orange[100],
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             icon,
-            color: isVerified ? Colors.green[700] : Colors.orange[700],
+            color: isVerified ? AppColors.primary : AppColors.primary,
             size: 20,
           ),
         ),
@@ -1204,7 +1198,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(color: AppColors.primary, fontSize: 12),
               ),
             ],
           ),
@@ -1214,18 +1208,18 @@ class _ProfilePageState extends State<ProfilePage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.green[100],
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_circle, size: 14, color: Colors.green[700]),
+                Icon(Icons.check_circle, size: 14, color: AppColors.primary),
                 const SizedBox(width: 4),
                 Text(
                   'Verified',
                   style: TextStyle(
-                    color: Colors.green[700],
+                    color: AppColors.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -1237,8 +1231,8 @@ class _ProfilePageState extends State<ProfilePage> {
           ElevatedButton(
             onPressed: onVerify,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[700],
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),

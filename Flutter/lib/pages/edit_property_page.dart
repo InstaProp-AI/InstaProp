@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -144,8 +145,8 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Property'),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -168,7 +169,7 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
                 'Update your property information below',
                 style: Theme.of(
                   context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                ).textTheme.bodyLarge?.copyWith(color: AppColors.primary),
               ),
 
               const SizedBox(height: 24),
@@ -178,13 +179,13 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: widget.property.isApproved
-                      ? Colors.green[50]
-                      : Colors.orange[50],
+                      ? AppColors.background
+                      : AppColors.background,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: widget.property.isApproved
                         ? Colors.green[200]!
-                        : Colors.orange[200]!,
+                        : AppColors.secondary!,
                   ),
                 ),
                 child: Row(
@@ -194,8 +195,8 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
                           ? Icons.check_circle
                           : Icons.pending,
                       color: widget.property.isApproved
-                          ? Colors.green[700]
-                          : Colors.orange[700],
+                          ? AppColors.primary
+                          : AppColors.primary,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -205,8 +206,8 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
                           : 'Property Status: Pending Verification',
                       style: TextStyle(
                         color: widget.property.isApproved
-                            ? Colors.green[700]
-                            : Colors.orange[700],
+                            ? AppColors.primary
+                            : AppColors.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -222,13 +223,13 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Colors.red[50],
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red[200]!),
+                    border: Border.all(color: AppColors.secondary!),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(color: Colors.red[700]),
+                    style: TextStyle(color: AppColors.primary),
                   ),
                 ),
 
@@ -238,13 +239,13 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.green[200]!),
                   ),
                   child: Text(
                     _successMessage!,
-                    style: TextStyle(color: Colors.green[700]),
+                    style: TextStyle(color: AppColors.primary),
                   ),
                 ),
 
@@ -424,18 +425,25 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
+                  border: Border.all(color: AppColors.primary!),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Only name, description, and location can be edited. Other fields are locked to maintain property integrity.',
-                        style: TextStyle(color: Colors.blue[700], fontSize: 13),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],

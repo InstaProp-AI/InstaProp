@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../models/auction.dart';
 
@@ -11,8 +12,11 @@ class AuctionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.secondary),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -42,18 +46,19 @@ class AuctionCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: auction.isActive
-                          ? Colors.green[100]
-                          : Colors.grey[200],
+                          ? AppColors.primary
+                          : AppColors.background,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       auction.status,
                       style: TextStyle(
                         color: auction.isActive
-                            ? Colors.green[700]
-                            : Colors.grey[600],
+                            ? AppColors.surface
+                            : AppColors.secondary,
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
@@ -68,7 +73,7 @@ class AuctionCard extends StatelessWidget {
                   auction.property!.description,
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -84,14 +89,15 @@ class AuctionCard extends StatelessWidget {
                       Text(
                         'Current Price',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
+                          color: AppColors.primary,
                         ),
                       ),
                       Text(
                         '\$${auction.currentPrice.toStringAsFixed(0)}',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.green[700],
-                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
                         ),
                       ),
                     ],
@@ -105,7 +111,7 @@ class AuctionCard extends StatelessWidget {
                       Text(
                         'Bids',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
+                          color: AppColors.primary,
                         ),
                       ),
                       Text(
@@ -123,13 +129,13 @@ class AuctionCard extends StatelessWidget {
               // Time remaining
               Row(
                 children: [
-                  Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.access_time, size: 16, color: AppColors.primary),
                   const SizedBox(width: 4),
                   Text(
                     auction.timeRemaining,
                     style: Theme.of(
                       context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                    ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
                   ),
                 ],
               ),

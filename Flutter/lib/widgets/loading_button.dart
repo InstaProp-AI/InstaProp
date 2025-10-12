@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class LoadingButton extends StatelessWidget {
@@ -25,9 +26,13 @@ class LoadingButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? const Color(0xFF2E7D32),
-          foregroundColor: foregroundColor ?? Colors.white,
+          backgroundColor: backgroundColor ?? AppColors.primary,
+          foregroundColor: foregroundColor ?? AppColors.surface,
+          disabledBackgroundColor: AppColors.secondary,
+          disabledForegroundColor: AppColors.secondary,
           padding: padding ?? const EdgeInsets.symmetric(vertical: 16),
+          elevation: 0,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -37,8 +42,10 @@ class LoadingButton extends StatelessWidget {
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.secondary,
+                  ),
                 ),
               )
             : child,

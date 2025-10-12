@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -10,16 +11,19 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: const Text(
         'Property Flipper',
-        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.surface),
       ),
-      backgroundColor: Colors.green[700],
+      backgroundColor: AppColors.primary,
       elevation: 0,
       actions: [
         Consumer<AppState>(
           builder: (context, appState, child) {
             if (appState.isLoggedIn) {
               return PopupMenuButton<String>(
-                icon: const Icon(Icons.account_circle, color: Colors.white),
+                icon: const Icon(
+                  Icons.account_circle,
+                  color: AppColors.surface,
+                ),
                 onSelected: (value) async {
                   if (value == 'logout') {
                     await appState.logout();
@@ -58,7 +62,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
                 },
                 child: const Text(
                   'Login',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppColors.surface),
                 ),
               );
             }

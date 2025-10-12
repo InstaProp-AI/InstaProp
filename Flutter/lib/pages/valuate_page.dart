@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
@@ -132,8 +133,8 @@ class _ValuatePageState extends State<ValuatePage> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Property Valuation'),
-            backgroundColor: const Color(0xFF2E7D32),
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.surface,
           ),
           body: _showManualForm
               ? _buildManualForm(context, appState)
@@ -155,22 +156,22 @@ class _ValuatePageState extends State<ValuatePage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFE3F2FD), Color(0xFFE8F5E8)],
+                colors: AppColors.accentGradient,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.blue[200]!),
+              border: Border.all(color: AppColors.primary!),
             ),
             child: Column(
               children: [
-                Icon(Icons.analytics, size: 48, color: Colors.blue[700]),
+                Icon(Icons.analytics, size: 48, color: AppColors.primary),
                 const SizedBox(height: 12),
                 Text(
                   'AI Property Valuation',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue[700],
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -178,7 +179,7 @@ class _ValuatePageState extends State<ValuatePage> {
                   'Choose from your properties or enter new property details',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyLarge?.copyWith(color: Colors.grey[700]),
+                  ).textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -215,7 +216,7 @@ class _ValuatePageState extends State<ValuatePage> {
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.white, Colors.green[50]!],
+                        colors: [AppColors.surface, AppColors.background!],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -235,7 +236,7 @@ class _ValuatePageState extends State<ValuatePage> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.green[600]!, Colors.green[400]!],
+                            colors: [AppColors.primary!, Colors.green[400]!],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -248,7 +249,7 @@ class _ValuatePageState extends State<ValuatePage> {
                         ),
                         child: const Icon(
                           Icons.home,
-                          color: Colors.white,
+                          color: AppColors.surface,
                           size: 24,
                         ),
                       ),
@@ -268,13 +269,15 @@ class _ValuatePageState extends State<ValuatePage> {
                               Icon(
                                 Icons.location_on,
                                 size: 14,
-                              color: Colors.grey[600],
+                                color: AppColors.primary,
                               ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   property.location,
-                                  style: TextStyle(color: Colors.grey[700]),
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -305,7 +308,7 @@ class _ValuatePageState extends State<ValuatePage> {
                       trailing: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.blue[600]!, Colors.blue[400]!],
+                            colors: [AppColors.primary!, AppColors.primary!],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -317,13 +320,13 @@ class _ValuatePageState extends State<ValuatePage> {
                           ],
                         ),
                         child: ElevatedButton.icon(
-                        onPressed: () => _valuateProperty(property),
+                          onPressed: () => _valuateProperty(property),
                           icon: const Icon(Icons.analytics, size: 18),
                           label: const Text('Valuate'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
-                            foregroundColor: Colors.white,
+                            foregroundColor: AppColors.surface,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 12,
@@ -365,9 +368,9 @@ class _ValuatePageState extends State<ValuatePage> {
                 ),
               ],
             ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -386,26 +389,26 @@ class _ValuatePageState extends State<ValuatePage> {
                   child: const Icon(
                     Icons.add_home,
                     size: 32,
-                    color: Colors.white,
+                    color: AppColors.surface,
                   ),
                 ),
                 const SizedBox(height: 16),
-                  Text(
-                    'Don\'t see your property?',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                Text(
+                  'Don\'t see your property?',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                     color: Colors.purple[900],
                   ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Enter property details manually for instant valuation',
-                    style: Theme.of(
-                      context,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter property details manually for instant valuation',
+                  style: Theme.of(
+                    context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.purple[700]),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -427,15 +430,15 @@ class _ValuatePageState extends State<ValuatePage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.surface,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 14,
                       ),
                     ),
-                    ),
                   ),
-                ],
+                ),
+              ],
             ),
           ),
 
@@ -446,18 +449,18 @@ class _ValuatePageState extends State<ValuatePage> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: AppColors.secondary!),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.lock, color: Colors.orange[700], size: 32),
+                  Icon(Icons.lock, color: AppColors.primary, size: 32),
                   const SizedBox(height: 12),
                   Text(
                     'Login to Save Valuations',
                     style: TextStyle(
-                      color: Colors.orange[700],
+                      color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -466,7 +469,7 @@ class _ValuatePageState extends State<ValuatePage> {
                   const SizedBox(height: 8),
                   Text(
                     'You need to be logged in to save your property valuations and access advanced features',
-                    style: TextStyle(color: Colors.orange[600], fontSize: 14),
+                    style: TextStyle(color: AppColors.primary, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -475,8 +478,8 @@ class _ValuatePageState extends State<ValuatePage> {
                     icon: const Icon(Icons.login),
                     label: const Text('Login to Save'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
                     ),
                   ),
                 ],
@@ -500,22 +503,22 @@ class _ValuatePageState extends State<ValuatePage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFE3F2FD), Color(0xFFE8F5E8)],
+                colors: AppColors.accentGradient,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.blue[200]!),
+              border: Border.all(color: AppColors.primary!),
             ),
             child: Column(
               children: [
-                Icon(Icons.edit, size: 48, color: Colors.blue[700]),
+                Icon(Icons.edit, size: 48, color: AppColors.primary),
                 const SizedBox(height: 12),
                 Text(
                   'Property Details',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue[700],
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -523,7 +526,7 @@ class _ValuatePageState extends State<ValuatePage> {
                   'Enter property details for valuation',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyLarge?.copyWith(color: Colors.grey[700]),
+                  ).textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -675,7 +678,7 @@ class _ValuatePageState extends State<ValuatePage> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
+                                      AppColors.surface,
                                     ),
                                   ),
                                 )
@@ -712,7 +715,7 @@ class _ValuatePageState extends State<ValuatePage> {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.green[50]!, Colors.blue[50]!],
+                          colors: [AppColors.background!, AppColors.primary!],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -724,13 +727,13 @@ class _ValuatePageState extends State<ValuatePage> {
                           Icon(
                             Icons.analytics,
                             size: 48,
-                            color: Colors.green[700],
+                            color: AppColors.primary,
                           ),
                           const SizedBox(height: 12),
                           Text(
                             'Estimated Value',
                             style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(color: Colors.grey[700]),
+                                ?.copyWith(color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -738,14 +741,14 @@ class _ValuatePageState extends State<ValuatePage> {
                             style: Theme.of(context).textTheme.headlineLarge
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green[700],
+                                  color: AppColors.primary,
                                 ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Range: \$${_valuationRange}',
                             style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: Colors.grey[600]),
+                                ?.copyWith(color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -772,8 +775,8 @@ class _ValuatePageState extends State<ValuatePage> {
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.blue[100],
-                        child: Icon(Icons.home, color: Colors.blue[700]),
+                        backgroundColor: AppColors.primary,
+                        child: Icon(Icons.home, color: AppColors.primary),
                       ),
                       title: Text(property['address']),
                       subtitle: Text(
@@ -793,7 +796,7 @@ class _ValuatePageState extends State<ValuatePage> {
                           Text(
                             property['soldDate'],
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: AppColors.primary,
                               fontSize: 12,
                             ),
                           ),
@@ -812,18 +815,18 @@ class _ValuatePageState extends State<ValuatePage> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: AppColors.secondary!),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.lock, color: Colors.orange[700], size: 32),
+                  Icon(Icons.lock, color: AppColors.primary, size: 32),
                   const SizedBox(height: 12),
                   Text(
                     'Login to Save Valuation',
                     style: TextStyle(
-                      color: Colors.orange[700],
+                      color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -832,7 +835,7 @@ class _ValuatePageState extends State<ValuatePage> {
                   const SizedBox(height: 8),
                   Text(
                     'You need to be logged in to save your property valuations and access advanced features',
-                    style: TextStyle(color: Colors.orange[600], fontSize: 14),
+                    style: TextStyle(color: AppColors.primary, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -841,8 +844,8 @@ class _ValuatePageState extends State<ValuatePage> {
                     icon: const Icon(Icons.login),
                     label: const Text('Login to Save'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
                     ),
                   ),
                 ],

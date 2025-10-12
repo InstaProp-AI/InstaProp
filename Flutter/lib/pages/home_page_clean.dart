@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -80,7 +81,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: AppColors.primary.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -129,7 +130,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              ? AppColors.primary.withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -138,18 +139,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           children: [
             Icon(
               isSelected ? iconFilled : iconOutline,
-              color: isSelected
-                  ? Theme.of(context).primaryColor
-                  : Colors.grey[600],
+              color: isSelected ? AppColors.primary : AppColors.primary,
               size: 24,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[600],
+                color: isSelected ? AppColors.primary : AppColors.primary,
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -163,7 +160,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildHomeContent(BuildContext context, AppState appState) {
     return RefreshIndicator(
       onRefresh: () => _refreshData(appState),
-      color: Theme.of(context).primaryColor,
+      color: AppColors.primary,
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: SingleChildScrollView(
@@ -177,11 +174,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF2E7D32),
-                      const Color(0xFF4CAF50),
-                      const Color(0xFF66BB6A),
-                    ],
+                    colors: AppColors.primaryGradient,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     stops: const [0.0, 0.6, 1.0],
@@ -191,7 +184,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2E7D32).withOpacity(0.3),
+                      color: AppColors.primary.withOpacity(0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                       spreadRadius: 2,
@@ -209,7 +202,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         height: 200,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
+                          color: AppColors.surface.withOpacity(0.1),
                         ),
                       ),
                     ),
@@ -221,7 +214,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         height: 150,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.08),
+                          color: AppColors.surface.withOpacity(0.08),
                         ),
                       ),
                     ),
@@ -239,16 +232,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: AppColors.surface.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: AppColors.surface.withOpacity(0.3),
                                     width: 1,
                                   ),
                                 ),
                                 child: const Icon(
                                   Icons.home_work_rounded,
-                                  color: Colors.white,
+                                  color: AppColors.surface,
                                   size: 32,
                                 ),
                               ),
@@ -261,8 +254,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       shaderCallback: (bounds) =>
                                           LinearGradient(
                                             colors: [
-                                              Colors.white,
-                                              Colors.white.withOpacity(0.8),
+                                              AppColors.surface,
+                                              AppColors.surface.withOpacity(
+                                                0.8,
+                                              ),
                                             ],
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
@@ -273,7 +268,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                             .textTheme
                                             .headlineMedium
                                             ?.copyWith(
-                                              color: Colors.white,
+                                              color: AppColors.surface,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 28,
                                             ),
@@ -286,9 +281,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           .textTheme
                                           .bodyLarge
                                           ?.copyWith(
-                                            color: Colors.white.withOpacity(
-                                              0.9,
-                                            ),
+                                            color: AppColors.surface
+                                                .withOpacity(0.9),
                                             fontWeight: FontWeight.w500,
                                           ),
                                     ),
@@ -379,7 +373,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         children: [
                           Icon(
                             Icons.lock_outline,
-                            color: Theme.of(context).primaryColor,
+                            color: AppColors.primary,
                             size: 40,
                           ),
                           const SizedBox(height: 12),
@@ -435,14 +429,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           'Active Auctions',
                           appState.activeAuctions.length.toString(),
                           Icons.gavel,
-                          Colors.blue,
+                          AppColors.primary,
                         ),
                         _buildStatCard(
                           context,
                           'Total Properties',
                           appState.properties.length.toString(),
                           Icons.home,
-                          Colors.orange,
+                          AppColors.primary,
                         ),
                         _buildStatCard(
                           context,
@@ -451,14 +445,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               .fold<int>(0, (sum, a) => sum + a.bidCount)
                               .toString(),
                           Icons.attach_money,
-                          Colors.purple,
+                          AppColors.secondary,
                         ),
                         _buildStatCard(
                           context,
                           'Users',
                           '3+', // Placeholder for demo
                           Icons.people,
-                          Colors.teal,
+                          AppColors.primary,
                         ),
                       ],
                     ),
@@ -577,7 +571,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.white.withOpacity(0.8),
+            color: AppColors.surface.withOpacity(0.8),
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
@@ -586,7 +580,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         Text(
           value,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Colors.white,
+            color: AppColors.surface,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -594,7 +588,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         Text(
           title,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.white.withOpacity(0.7),
+            color: AppColors.surface.withOpacity(0.7),
             fontSize: 10,
           ),
         ),
@@ -611,9 +605,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: AppColors.surface.withOpacity(0.15),
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        border: Border.all(color: AppColors.surface.withOpacity(0.3), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -624,12 +618,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: 18),
+                Icon(icon, color: AppColors.surface, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   label,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -668,9 +662,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               children: [
                 Text(
                   title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 Text(
                   value,
@@ -715,8 +709,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 150,
-                    color: Colors.grey[200],
-                    child: Icon(Icons.broken_image, color: Colors.grey[400]),
+                    color: AppColors.background,
+                    child: Icon(Icons.broken_image, color: AppColors.secondary),
                   ),
                 ),
               ),
@@ -744,16 +738,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).primaryColor.withOpacity(0.1),
+                              color: AppColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '${auction.bidCount}',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    color: Theme.of(context).primaryColor,
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 10,
                                   ),
@@ -765,7 +757,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Text(
                         auction.property?.location ?? 'Unknown Location',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
+                          color: AppColors.primary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -789,7 +781,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   style: Theme.of(context).textTheme.titleSmall
                                       ?.copyWith(
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.grey[600],
+                                        color: AppColors.primary,
                                         fontSize: 12,
                                       ),
                                 ),
@@ -811,7 +803,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   style: Theme.of(context).textTheme.titleSmall
                                       ?.copyWith(
                                         fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).primaryColor,
+                                        color: AppColors.primary,
                                         fontSize: 12,
                                       ),
                                 ),
@@ -879,8 +871,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 80,
                     width: 80,
-                    color: Colors.grey[200],
-                    child: Icon(Icons.broken_image, color: Colors.grey[400]),
+                    color: AppColors.background,
+                    child: Icon(Icons.broken_image, color: AppColors.secondary),
                   ),
                 ),
               ),
@@ -907,8 +899,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                           decoration: BoxDecoration(
                             color: auction.isActive
-                                ? Colors.green[100]
-                                : Colors.orange[100],
+                                ? AppColors.background
+                                : AppColors.secondary,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -917,8 +909,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: auction.isActive
-                                  ? Colors.green[700]
-                                  : Colors.orange[700],
+                                  ? AppColors.primary
+                                  : AppColors.primary,
                             ),
                           ),
                         ),
@@ -927,9 +919,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     const SizedBox(height: 4),
                     Text(
                       auction.property?.location ?? 'Unknown Location',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.primary,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -941,21 +933,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context).primaryColor,
+                                color: AppColors.primary,
                               ),
                         ),
                         const SizedBox(width: 16),
                         Text(
                           '${auction.bidCount} bids',
                           style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey[600]),
+                              ?.copyWith(color: AppColors.primary),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 18),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: AppColors.secondary,
+                size: 18,
+              ),
             ],
           ),
         ),
@@ -975,13 +971,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 60, color: Colors.grey[400]),
+            Icon(icon, size: 60, color: AppColors.secondary),
             const SizedBox(height: 16),
             Text(
               title,
               style: Theme.of(
                 context,
-              ).textTheme.headlineSmall?.copyWith(color: Colors.grey[700]),
+              ).textTheme.headlineSmall?.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -989,7 +985,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               message,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.textTertiary),
               textAlign: TextAlign.center,
             ),
           ],

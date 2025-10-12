@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
 
@@ -27,7 +28,7 @@ class EventDetailsDialog extends StatelessWidget {
           ],
           Row(
             children: [
-              Icon(Icons.event, size: 16, color: Colors.grey[600]),
+              Icon(Icons.event, size: 16, color: AppColors.primary),
               const SizedBox(width: 8),
               Text(
                 '${event.eventDate.day}/${event.eventDate.month}/${event.eventDate.year}',
@@ -37,7 +38,7 @@ class EventDetailsDialog extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.label, size: 16, color: Colors.grey[600]),
+              Icon(Icons.label, size: 16, color: AppColors.primary),
               const SizedBox(width: 8),
               Text(event.type.displayName),
             ],
@@ -46,7 +47,7 @@ class EventDetailsDialog extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                Icon(Icons.location_on, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Expanded(child: Text(event.location!)),
               ],
@@ -56,7 +57,7 @@ class EventDetailsDialog extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                Icon(Icons.access_time, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(_formatTime(event.startTime!)),
               ],
@@ -66,7 +67,7 @@ class EventDetailsDialog extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.check_circle, size: 16, color: Colors.green[600]),
+                Icon(Icons.check_circle, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 const Text('Completed'),
               ],
@@ -76,7 +77,7 @@ class EventDetailsDialog extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.public, size: 16, color: Colors.blue[600]),
+                Icon(Icons.public, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 const Text('Public Event'),
               ],

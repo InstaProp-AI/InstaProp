@@ -32,6 +32,7 @@ import { propertiesApi, projectsApi, auctionsApi, bidsApi } from '../services/ap
 import { exportPropertiesToCSV } from '../utils/export';
 import { useToast } from '../contexts/ToastContext';
 import Pagination from '../components/Pagination';
+import PropertyDocumentsManager from '../components/PropertyDocumentsManager';
 
 const PropertiesPage: React.FC = () => {
   const toast = useToast();
@@ -2153,6 +2154,38 @@ const PropertiesPage: React.FC = () => {
                     </p>
                   </div>
                 )}
+
+                {/* Property Documents & Images Section */}
+                <div style={{
+                  padding: '1.5rem',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '0.75rem',
+                  border: '2px solid #fbbf24',
+                  marginBottom: '2rem'
+                }}>
+                  <h3 style={{
+                    fontSize: '1.25rem',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    📄 Property Documents & Images
+                  </h3>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#92400e',
+                    marginBottom: '1rem'
+                  }}>
+                    Review uploaded property documents, title deeds, legal papers, and property images
+                  </p>
+                  <PropertyDocumentsManager 
+                    propertyId={selectedProperty.propertyId}
+                    propertyName={selectedProperty.name}
+                  />
+                </div>
 
                 {/* Action Buttons Footer */}
                 <div style={{

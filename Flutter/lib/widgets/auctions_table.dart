@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -25,20 +26,20 @@ class AuctionsTable extends StatelessWidget {
           return Container(
             height: 200,
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.gavel, size: 48, color: Colors.grey[400]),
+                  Icon(Icons.gavel, size: 48, color: AppColors.secondary),
                   const SizedBox(height: 8),
                   Text(
                     'No auctions available',
                     style: Theme.of(
                       context,
-                    ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                    ).textTheme.bodyLarge?.copyWith(color: AppColors.primary),
                   ),
                 ],
               ),
@@ -52,7 +53,7 @@ class AuctionsTable extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: AppColors.background,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
@@ -100,9 +101,9 @@ class AuctionsTable extends StatelessWidget {
                 .map(
                   (auction) => Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.surface,
                       border: Border(
-                        bottom: BorderSide(color: Colors.grey[200]!),
+                        bottom: BorderSide(color: AppColors.background!),
                       ),
                     ),
                     child: InkWell(
@@ -135,7 +136,7 @@ class AuctionsTable extends StatelessWidget {
                                     Text(
                                       auction.property!.location,
                                       style: TextStyle(
-                                        color: Colors.grey[600],
+                                        color: AppColors.primary,
                                         fontSize: 12,
                                       ),
                                       maxLines: 1,
@@ -148,7 +149,7 @@ class AuctionsTable extends StatelessWidget {
                               child: Text(
                                 '\$${auction.currentPrice.toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  color: Colors.green[700],
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -162,16 +163,16 @@ class AuctionsTable extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: auction.isActive
-                                      ? Colors.green[100]
-                                      : Colors.grey[200],
+                                      ? AppColors.background
+                                      : AppColors.background,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   auction.status,
                                   style: TextStyle(
                                     color: auction.isActive
-                                        ? Colors.green[700]
-                                        : Colors.grey[600],
+                                        ? AppColors.primary
+                                        : AppColors.primary,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -183,7 +184,7 @@ class AuctionsTable extends StatelessWidget {
                               child: Text(
                                 auction.timeRemaining,
                                 style: TextStyle(
-                                  color: Colors.grey[600],
+                                  color: AppColors.primary,
                                   fontSize: 12,
                                 ),
                               ),

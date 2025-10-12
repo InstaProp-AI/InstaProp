@@ -4,6 +4,7 @@ using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using PropertyFlipperAPI.Attributes;
+using PropertyFlipperAPI.Services;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -12,10 +13,14 @@ namespace PropertyFlipperAPI.Controllers
     public class PropertyController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ImgBBService _imgBBService;
+        private readonly FileValidationService _fileValidationService;
 
-        public PropertyController(AppDbContext context)
+        public PropertyController(AppDbContext context, ImgBBService imgBBService, FileValidationService fileValidationService)
         {
             _context = context;
+            _imgBBService = imgBBService;
+            _fileValidationService = fileValidationService;
         }
 
         // GET: api/Property (Public - only properties with auctions)
@@ -360,52 +365,85 @@ namespace PropertyFlipperAPI.Controllers
         // POST: api/Property/{id}/documents
         [HttpPost("{id}/documents")]
         [Authorize]
-        public async Task<ActionResult> UploadPropertyDocument(long id, [FromBody] PropertyDocUploadDto docDto)
+        public async Task<ActionResult> UploadPropertyDocument(long id, [FromForm] IFormFile file, [FromForm] string docType)
         {
-            var property = await _context.Properties.FindAsync(id);
-            if (property == null)
-                return NotFound();
-
-            // Check if user owns the property
-            var accountId = GetCurrentAccountId();
-            if (accountId == null)
-                return Unauthorized();
-
-            if (property.OwnerId != accountId)
-                return StatusCode(403, new { message = "You can only upload documents for your own properties" });
-
-            // Change status to Pending when first document is uploaded
-            if (property.Status == PropertyStatus.NotApproved)
+            try
             {
-                property.Status = PropertyStatus.Pending;
-                property.UpdatedAt = DateTime.UtcNow;
-            }
+                var property = await _context.Properties.FindAsync(id);
+                if (property == null)
+                    return NotFound(new { message = "Property not found" });
 
-            // Check if document type already exists for this property
-            var existingDoc = await _context.PropertyDocs
-                .FirstOrDefaultAsync(d => d.PropertyId == id && d.DocType == docDto.DocType);
+                // Check if user owns the property
+                var accountId = GetCurrentAccountId();
+                if (accountId == null)
+                    return Unauthorized();
 
-            if (existingDoc != null)
-            {
-                // Update existing document
-                existingDoc.ImgUrl = docDto.ImageUrl;
-                existingDoc.UploadedAt = DateTime.UtcNow;
-            }
-            else
-            {
-                // Create new document
-                var propertyDoc = new PropertyDoc
+                if (property.OwnerId != accountId)
+                    return StatusCode(403, new { message = "You can only upload documents for your own properties" });
+
+                // Validate file
+                var validationResult = await _fileValidationService.ValidateFileAsync(file);
+                if (!validationResult.IsValid)
+                    return BadRequest(new { message = validationResult.ErrorMessage });
+
+                // Convert file to byte array
+                byte[] fileBytes;
+                using (var memoryStream = new MemoryStream())
                 {
-                    PropertyId = id,
-                    DocType = docDto.DocType,
-                    ImgUrl = docDto.ImageUrl,
-                    UploadedAt = DateTime.UtcNow
-                };
-                _context.PropertyDocs.Add(propertyDoc);
-            }
+                    await file.CopyToAsync(memoryStream);
+                    fileBytes = memoryStream.ToArray();
+                }
 
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Property document uploaded successfully" });
+                // Upload to ImgBB
+                var uploadResult = await _imgBBService.UploadImageAsync(
+                    fileBytes,
+                    $"property_{id}_{docType}_{DateTime.UtcNow.Ticks}",
+                    0
+                );
+
+                // Change status to Pending when first document is uploaded
+                if (property.Status == PropertyStatus.NotApproved)
+                {
+                    property.Status = PropertyStatus.Pending;
+                    property.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Check if document type already exists for this property
+                var existingDoc = await _context.PropertyDocs
+                    .FirstOrDefaultAsync(d => d.PropertyId == id && d.DocType == docType);
+
+                if (existingDoc != null)
+                {
+                    // Update existing document
+                    existingDoc.ImgUrl = uploadResult.DisplayUrl;
+                    existingDoc.DeleteUrl = uploadResult.DeleteUrl;
+                    existingDoc.UploadedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    // Create new document
+                    var propertyDoc = new PropertyDoc
+                    {
+                        PropertyId = id,
+                        DocType = docType,
+                        ImgUrl = uploadResult.DisplayUrl,
+                        DeleteUrl = uploadResult.DeleteUrl,
+                        UploadedAt = DateTime.UtcNow
+                    };
+                    _context.PropertyDocs.Add(propertyDoc);
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { 
+                    message = "Property document uploaded successfully",
+                    url = uploadResult.DisplayUrl,
+                    docId = existingDoc?.DocId ?? (await _context.PropertyDocs.FirstOrDefaultAsync(d => d.PropertyId == id && d.DocType == docType))?.DocId
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error uploading document", error = ex.Message });
+            }
         }
 
         // GET: api/Property/{id}/documents

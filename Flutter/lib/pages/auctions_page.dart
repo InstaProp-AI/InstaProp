@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -315,7 +316,9 @@ class _AuctionsPageState extends State<AuctionsPage> {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.surface,
+                      ),
                     ),
                   );
                 }
@@ -324,8 +327,8 @@ class _AuctionsPageState extends State<AuctionsPage> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF2E7D32),
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
         actions: [
           PopupMenuButton<String>(
             onSelected: _setSort,
@@ -337,7 +340,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                   child: Row(
                     children: [
                       if (_currentSort == entry.key)
-                        Icon(Icons.check, color: Colors.green[700], size: 20)
+                        Icon(Icons.check, color: AppColors.primary, size: 20)
                       else
                         const SizedBox(width: 20),
                       const SizedBox(width: 8),
@@ -396,8 +399,8 @@ class _AuctionsPageState extends State<AuctionsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: AppColors.background!)),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -497,22 +500,22 @@ class _AuctionsPageState extends State<AuctionsPage> {
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.blue[50]!, Colors.blue[100]!],
+                  colors: [AppColors.primary!, AppColors.primary!],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
+                border: Border.all(color: AppColors.primary!),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.schedule, color: Colors.blue[700], size: 24),
+                  Icon(Icons.schedule, color: AppColors.primary, size: 24),
                   const SizedBox(width: 12),
                   Text(
                     'Upcoming Auctions (${upcomingAuctions.length})',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue[700],
+                      color: AppColors.primary,
                     ),
                   ),
                 ],
@@ -540,7 +543,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
               ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.green[50]!, Colors.green[100]!],
+                  colors: [AppColors.background!, AppColors.background!],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -551,7 +554,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                 children: [
                   Icon(
                     Icons.play_circle_fill,
-                    color: Colors.green[700],
+                    color: AppColors.primary,
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -559,7 +562,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                     'Live Auctions (${liveAuctions.length})',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.green[700],
+                      color: AppColors.primary,
                     ),
                   ),
                 ],
@@ -581,22 +584,22 @@ class _AuctionsPageState extends State<AuctionsPage> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.orange[50]!, Colors.orange[100]!],
+                colors: [AppColors.background!, Colors.orange[100]!],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange[200]!),
+              border: Border.all(color: AppColors.secondary!),
             ),
             child: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.orange[700], size: 24),
+                Icon(Icons.check_circle, color: AppColors.primary, size: 24),
                 const SizedBox(width: 12),
                 Text(
                   'Ended Auctions (${endedAuctions.length})',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.orange[700],
+                    color: AppColors.primary,
                   ),
                 ),
               ],
@@ -611,22 +614,22 @@ class _AuctionsPageState extends State<AuctionsPage> {
               padding: const EdgeInsets.all(32),
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
+                border: Border.all(color: AppColors.background!),
               ),
               child: Column(
                 children: [
                   Icon(
                     Icons.hourglass_empty,
                     size: 48,
-                    color: Colors.grey[400],
+                    color: AppColors.secondary,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No Ended Auctions',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey[600],
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -667,14 +670,14 @@ class _AuctionsPageState extends State<AuctionsPage> {
     Color headerColor;
 
     if (isUpcoming) {
-      borderColor = Colors.blue[200]!;
-      headerColor = Colors.blue[50]!;
+      borderColor = AppColors.primary!;
+      headerColor = AppColors.primary!;
     } else if (isLive) {
       borderColor = Colors.green[200]!;
-      headerColor = Colors.green[50]!;
+      headerColor = AppColors.background!;
     } else {
-      borderColor = Colors.orange[200]!;
-      headerColor = Colors.orange[50]!;
+      borderColor = AppColors.secondary!;
+      headerColor = AppColors.background!;
     }
 
     // Calculate dynamic height based on actual auction count (max 5)
@@ -689,7 +692,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppColors.primary.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -836,8 +839,8 @@ class _AuctionsPageState extends State<AuctionsPage> {
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isHighlighted ? Colors.green[50] : Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        color: isHighlighted ? AppColors.background : AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.background!)),
         boxShadow: isHighlighted
             ? [
                 BoxShadow(
@@ -864,7 +867,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                 height: 50,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(color: AppColors.secondary!),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -874,20 +877,20 @@ class _AuctionsPageState extends State<AuctionsPage> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
-                              color: Colors.grey[200],
+                              color: AppColors.background,
                               child: Icon(
                                 Icons.home,
-                                color: Colors.grey[400],
+                                color: AppColors.secondary,
                                 size: 24,
                               ),
                             );
                           },
                         )
                       : Container(
-                          color: Colors.grey[200],
+                          color: AppColors.background,
                           child: Icon(
                             Icons.home,
-                            color: Colors.grey[400],
+                            color: AppColors.secondary,
                             size: 24,
                           ),
                         ),
@@ -908,7 +911,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                   ),
                   Text(
                     auction.property?.location ?? '',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(color: AppColors.primary, fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -933,14 +936,14 @@ class _AuctionsPageState extends State<AuctionsPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: isHighlighted
-                          ? Colors.green[700]
-                          : const Color(0xFF2E7D32),
+                          ? AppColors.primary
+                          : AppColors.primary,
                       fontSize: isHighlighted ? 16 : 14,
                     ),
                   ),
                   if (isHighlighted) ...[
                     const SizedBox(width: 4),
-                    Icon(Icons.trending_up, color: Colors.green[700], size: 16),
+                    Icon(Icons.trending_up, color: AppColors.primary, size: 16),
                   ],
                 ],
               ),
@@ -954,7 +957,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                     : EdgeInsets.zero,
                 decoration: isHighlighted
                     ? BoxDecoration(
-                        color: Colors.green[100],
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: Colors.green[300]!,
@@ -968,7 +971,9 @@ class _AuctionsPageState extends State<AuctionsPage> {
                     fontWeight: isHighlighted
                         ? FontWeight.bold
                         : FontWeight.w500,
-                    color: isHighlighted ? Colors.green[700] : Colors.black,
+                    color: isHighlighted
+                        ? AppColors.primary
+                        : AppColors.primary,
                   ),
                 ),
               ),
@@ -983,7 +988,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                             auction: auction,
                             textStyle: TextStyle(
                               fontWeight: FontWeight.w500,
-                              color: Colors.red[600],
+                              color: AppColors.primary,
                               fontSize: 12,
                             ),
                             onAuctionEnded: onAuctionEnded,
@@ -992,7 +997,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                             'Ended',
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey[600],
+                              color: AppColors.primary,
                               fontSize: 12,
                             ),
                           )),
@@ -1002,7 +1007,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
               width: 120, // Fixed width for project
               child: Text(
                 auction.property?.project ?? 'N/A',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(color: AppColors.primary, fontSize: 12),
               ),
             ),
             const SizedBox(width: 16),
@@ -1010,7 +1015,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
               width: 120, // Fixed width for category
               child: Text(
                 auction.property?.category ?? 'N/A',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(color: AppColors.primary, fontSize: 12),
               ),
             ),
           ],
@@ -1038,7 +1043,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
       timeText,
       style: TextStyle(
         fontWeight: FontWeight.w500,
-        color: Colors.blue[700],
+        color: AppColors.primary,
         fontSize: 12,
       ),
     );
@@ -1056,13 +1061,13 @@ class _AuctionsPageState extends State<AuctionsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 60, color: Colors.grey[400]),
+            Icon(icon, size: 60, color: AppColors.secondary),
             const SizedBox(height: 16),
             Text(
               title,
               style: Theme.of(
                 context,
-              ).textTheme.headlineSmall?.copyWith(color: Colors.grey[700]),
+              ).textTheme.headlineSmall?.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -1099,7 +1104,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Colors.red[700],
+              color: AppColors.primary,
             ),
           ),
         ),
@@ -1115,10 +1120,10 @@ class _AuctionsPageState extends State<AuctionsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: hasFilter ? Colors.blue[100] : Colors.white,
+          color: hasFilter ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasFilter ? Colors.blue[300]! : Colors.grey[300]!,
+            color: hasFilter ? AppColors.primary! : AppColors.secondary!,
           ),
         ),
         child: Text(
@@ -1126,7 +1131,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: hasFilter ? FontWeight.w600 : FontWeight.normal,
-            color: hasFilter ? Colors.blue[700] : Colors.grey[700],
+            color: hasFilter ? AppColors.primary : AppColors.textPrimary,
           ),
         ),
       ),
@@ -1146,7 +1151,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
             return ListTile(
               title: Text(entry.value),
               leading: isSelected
-                  ? Icon(Icons.check, color: Colors.blue[700])
+                  ? Icon(Icons.check, color: AppColors.primary)
                   : null,
               onTap: () {
                 Navigator.pop(context);

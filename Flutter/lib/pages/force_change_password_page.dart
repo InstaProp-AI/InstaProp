@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -120,7 +121,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
         appBar: AppBar(
           title: const Text('Change Password Required'),
           backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.surface,
           automaticallyImplyLeading: false,
         ),
         body: SingleChildScrollView(
@@ -134,15 +135,15 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue[200]!),
+                    border: Border.all(color: AppColors.primary!),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: Colors.blue[700],
+                        color: AppColors.primary,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -150,7 +151,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                         child: Text(
                           'Please set a new password',
                           style: TextStyle(
-                            color: Colors.blue[700],
+                            color: AppColors.primary,
                             fontSize: 13,
                           ),
                         ),
@@ -237,9 +238,9 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(color: AppColors.secondary!),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +266,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.red[300]!),
                     ),
@@ -273,7 +274,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                       children: [
                         Icon(
                           Icons.error_outline,
-                          color: Colors.red[700],
+                          color: AppColors.primary,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -281,7 +282,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                           child: Text(
                             _errorMessage!,
                             style: TextStyle(
-                              color: Colors.red[700],
+                              color: AppColors.primary,
                               fontSize: 14,
                             ),
                           ),
@@ -300,7 +301,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                     onPressed: _isLoading ? null : _handleChangePassword,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.surface,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: _isLoading
@@ -310,7 +311,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                                AppColors.surface,
                               ),
                             ),
                           )
@@ -345,7 +346,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
           Text(
             text,
             style: TextStyle(
-              color: isMet ? Colors.green[700] : Colors.grey[700],
+              color: isMet ? AppColors.primary : AppColors.textPrimary,
               fontSize: 13,
             ),
           ),

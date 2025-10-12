@@ -121,45 +121,8 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<ApiResponse<String>> uploadKycFile({
-    required String filePath,
-    required String docType,
-  }) async {
-    try {
-      final uri = Uri.parse('${ApiClient.baseUrl}/api/account/upload-file');
-      final token = await ApiClient.getToken();
-
-      var request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['docType'] = docType;
-      request.files.add(await http.MultipartFile.fromPath('file', filePath));
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return ApiResponse.success(data['url'] as String);
-      } else {
-        return ApiResponse.error('Upload failed: ${response.body}');
-      }
-    } catch (e) {
-      return ApiResponse.error('Failed to upload file: $e');
-    }
-  }
-
-  Future<ApiResponse<bool>> uploadKycDocuments({
-    required List<Map<String, String>> kycDocuments,
-  }) async {
-    try {
-      final response = await ApiClient.post('/api/account/upload-kyc', {
-        'kycDocuments': kycDocuments,
-      }, (data) => true);
-      return response;
-    } catch (e) {
-      return ApiResponse.error('Failed to upload KYC documents: $e');
-    }
-  }
+  // KYC document upload is now handled by KycService
+  // This keeps auth_service focused on authentication only
 
   Future<ApiResponse<Account>> getCurrentUser() async {
     try {

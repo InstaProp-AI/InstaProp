@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Account, Project, Property, DashboardStats, CreateProjectDto, UpdateProjectDto, CreatePropertyDto } from '../types';
+import { Account, Project, Property, DashboardStats, CreateProjectDto, UpdateProjectDto, CreatePropertyDto, UserDocument, PropertyDocument, PropertyImage } from '../types';
 import { convertAccount, convertProperty } from '../utils/converters';
 
 const API_BASE_URL = 'http://localhost:5284/api';
@@ -527,6 +527,95 @@ export const notificationsApi = {
   
   getNotificationHistory: async (page: number = 1, pageSize: number = 50) => {
     const response = await api.get(`/notification/admin/history?page=${page}&pageSize=${pageSize}`);
+    return response.data;
+  },
+};
+
+// Documents API
+export const documentsApi = {
+  // User Documents (KYC)
+  uploadUserDocument: async (file: File, docType: string): Promise<{ message: string; docId: number; url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('docType', docType);
+    
+    const response = await api.post('/document/user/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  
+  getMyDocuments: async (): Promise<UserDocument[]> => {
+    const response = await api.get('/document/user/my-documents');
+    return response.data;
+  },
+  
+  getUserDocuments: async (userId: number): Promise<UserDocument[]> => {
+    console.log(`🔵 documentsApi.getUserDocuments called with userId: ${userId}`);
+    const response = await api.get(`/document/user/${userId}`);
+    console.log(`🔵 documentsApi.getUserDocuments response:`, response.data);
+    console.log(`🔵 Response type:`, Array.isArray(response.data) ? 'Array' : typeof response.data);
+    console.log(`🔵 Response length:`, response.data?.length);
+    return response.data;
+  },
+  
+  deleteUserDocument: async (docId: number): Promise<void> => {
+    await api.delete(`/document/user/${docId}`);
+  },
+  
+  // Property Documents
+  uploadPropertyDocument: async (propertyId: number, file: File, docType: string): Promise<{ message: string; docId: number; url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('docType', docType);
+    
+    const response = await api.post(`/document/property/${propertyId}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  
+  getPropertyDocuments: async (propertyId: number): Promise<PropertyDocument[]> => {
+    const response = await api.get(`/document/property/${propertyId}`);
+    return response.data;
+  },
+  
+  deletePropertyDocument: async (docId: number): Promise<void> => {
+    await api.delete(`/document/property/document/${docId}`);
+  },
+  
+  // Property Images
+  uploadPropertyImage: async (
+    propertyId: number, 
+    file: File, 
+    imageType: string,
+    isMainImage: boolean = false,
+    displayOrder: number = 0
+  ): Promise<{ message: string; imageId: number; url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('imageType', imageType);
+    formData.append('isMainImage', isMainImage.toString());
+    formData.append('displayOrder', displayOrder.toString());
+    
+    const response = await api.post(`/document/property/${propertyId}/upload-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  
+  getPropertyImages: async (propertyId: number): Promise<PropertyImage[]> => {
+    const response = await api.get(`/document/property/${propertyId}/images`);
+    return response.data;
+  },
+  
+  deletePropertyImage: async (imageId: number): Promise<void> => {
+    await api.delete(`/document/property/image/${imageId}`);
+  },
+  
+  // Statistics (Admin only)
+  getDocumentStatistics: async () => {
+    const response = await api.get('/document/statistics');
     return response.data;
   },
 };

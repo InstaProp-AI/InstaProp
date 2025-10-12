@@ -1,3 +1,4 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/auction_request.dart';
@@ -156,26 +157,26 @@ class _CreateAuctionRequestDialogState
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+                color: AppColors.primary,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.gavel, color: Colors.white, size: 24),
+                  const Icon(Icons.gavel, color: AppColors.surface, size: 24),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Create Auction Request',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
+                        color: AppColors.surface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: const Icon(Icons.close, color: AppColors.surface),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -192,22 +193,22 @@ class _CreateAuctionRequestDialogState
                     return Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.orange[50],
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange[200]!),
+                        border: Border.all(color: AppColors.secondary!),
                       ),
                       child: Column(
                         children: [
                           Icon(
                             Icons.verified_user,
-                            color: Colors.orange[700],
+                            color: AppColors.primary,
                             size: 48,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'Account Not Verified',
                             style: TextStyle(
-                              color: Colors.orange[700],
+                              color: AppColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                             ),
@@ -217,7 +218,7 @@ class _CreateAuctionRequestDialogState
                           Text(
                             'You need to verify your account to create auction requests. Please upload your verification documents from your profile.',
                             style: TextStyle(
-                              color: Colors.orange[600],
+                              color: AppColors.primary,
                               fontSize: 14,
                             ),
                             textAlign: TextAlign.center,
@@ -231,8 +232,8 @@ class _CreateAuctionRequestDialogState
                             icon: const Icon(Icons.upload_file),
                             label: const Text('Go to Profile'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange[700],
-                              foregroundColor: Colors.white,
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: AppColors.surface,
                             ),
                           ),
                         ],
@@ -263,24 +264,24 @@ class _CreateAuctionRequestDialogState
                               return Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange[50],
+                                  color: AppColors.background,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: Colors.orange[200]!,
+                                    color: AppColors.secondary!,
                                   ),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.warning,
-                                      color: Colors.orange[700],
+                                      color: AppColors.primary,
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         'No verified properties available. Please verify your properties first.',
                                         style: TextStyle(
-                                          color: Colors.orange[700],
+                                          color: AppColors.primary,
                                         ),
                                       ),
                                     ),
@@ -437,7 +438,7 @@ class _CreateAuctionRequestDialogState
                           child: Text(
                             '${_endDate.day}/${_endDate.month}/${_endDate.year} at ${_endDate.hour.toString().padLeft(2, '0')}:${_endDate.minute.toString().padLeft(2, '0')}',
                             style: TextStyle(
-                              color: Colors.grey[700],
+                              color: AppColors.textPrimary,
                               fontSize: 16,
                             ),
                           ),
@@ -473,8 +474,8 @@ class _CreateAuctionRequestDialogState
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _submitRequest,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).primaryColor,
-                              foregroundColor: Colors.white,
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: AppColors.surface,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -487,7 +488,7 @@ class _CreateAuctionRequestDialogState
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                                        AppColors.surface,
                                       ),
                                     ),
                                   )
