@@ -36,6 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
     { name: 'Properties', href: '/properties', icon: Home, color: 'bg-purple-500' },
     { name: 'Auctions', href: '/auctions', icon: Hammer, color: 'bg-orange-500' },
     { name: 'Projects', href: '/projects', icon: FolderOpen, color: 'bg-teal-500' },
+    { name: 'Notifications', href: '/notifications', icon: Bell, color: 'bg-pink-500' },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, color: 'bg-indigo-500' },
     { name: 'Settings', href: '/settings', icon: Settings, color: 'bg-gray-500' },
   ];

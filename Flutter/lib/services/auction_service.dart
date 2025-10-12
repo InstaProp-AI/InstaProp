@@ -70,4 +70,13 @@ class AuctionService {
       (data) => AuctionRequestResponse.fromJson(data),
     );
   }
+
+  // Buy now - Purchase property immediately at buy now price
+  static Future<ApiResponse<Map<String, dynamic>>> buyNow(int auctionId) async {
+    return await ApiClient.post(
+      '/api/auction/$auctionId/buynow',
+      {},
+      (data) => data,
+    );
+  }
 }

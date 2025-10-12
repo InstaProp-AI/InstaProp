@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auctionsApi, bidsApi } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { useFirestoreAuctions } from '../hooks/useFirestoreAuctions';
 import Pagination from '../components/Pagination';
 import { 
   Hammer, 
@@ -89,29 +89,17 @@ const AuctionsPage: React.FC = () => {
     resetBids: false
   });
 
-  // WebSocket for real-time auction updates
-  const { isConnected, lastMessage } = useWebSocket({
-    url: 'ws://localhost:5284/ws/auction',
-    onMessage: (data) => {
-      console.log('Received WebSocket update:', data);
-      // Refresh auctions when update received
-      fetchAuctions();
-    },
-    onError: (error) => {
-      console.warn('WebSocket error (non-critical):', error);
-    }
-  });
+  // Disable Firestore for now - just use API
+  // When you want to enable Firestore:
+  // 1. Configure Firebase in src/services/firebase.ts
+  // 2. Uncomment the useFirestoreAuctions hook below
+  // 3. Comment out the useEffect that calls fetchAuctions
 
+  // Load auctions from API on mount (ONCE)
   useEffect(() => {
+    console.log('🔄 Loading auctions from API...');
     fetchAuctions();
-  }, []);
-
-  useEffect(() => {
-    if (lastMessage) {
-      // Handle real-time updates
-      toast.info('Auction updated in real-time');
-    }
-  }, [lastMessage]);
+  }, []); // Empty dependency array = runs only once on mount
 
   const getAuctionStatus = (auction: any) => {
     const now = new Date().getTime();

@@ -26,17 +26,20 @@ namespace PropertyFlipperAPI.Controllers
         private readonly IConfiguration _config;
         private readonly EmailVerificationService _emailVerificationService;
         private readonly PhoneVerificationService _phoneVerificationService;
+        private readonly FirestoreService _firestoreService;
 
         public AccountController(
             AppDbContext context, 
             IConfiguration config,
             EmailVerificationService emailVerificationService,
-            PhoneVerificationService phoneVerificationService)
+            PhoneVerificationService phoneVerificationService,
+            FirestoreService firestoreService)
         {
             _context = context;
             _config = config;
             _emailVerificationService = emailVerificationService;
             _phoneVerificationService = phoneVerificationService;
+            _firestoreService = firestoreService;
         }
 
         // Check if email exists
@@ -89,6 +92,9 @@ namespace PropertyFlipperAPI.Controllers
 
             _context.Accounts.Add(account);
             await _context.SaveChangesAsync();
+
+            // Sync new user to Firestore for real-time dashboard updates
+            await _firestoreService.SyncUserAsync(account.AccountId, account);
 
             var token = GenerateJwtToken(account);
             return Ok(new AuthResponse { Token = token, Account = account });

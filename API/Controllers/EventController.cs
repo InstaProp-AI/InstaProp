@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using PropertyFlipperAPI.Attributes;
+using PropertyFlipperAPI.Services;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -12,10 +13,12 @@ namespace PropertyFlipperAPI.Controllers
     public class EventController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly NotificationService _notificationService;
 
-        public EventController(AppDbContext context)
+        public EventController(AppDbContext context, NotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
 
         // Helper method to get current user ID
@@ -296,6 +299,12 @@ namespace PropertyFlipperAPI.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // Notify all users about the new public event
+            if (createdEvents.Any())
+            {
+                await _notificationService.NotifyNewPublicEvent(createdEvents.First().EventId);
+            }
 
             // Return the first created event as representative
             return CreatedAtAction("GetEvent", new { id = createdEvents.First().EventId }, 

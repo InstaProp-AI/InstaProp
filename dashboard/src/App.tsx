@@ -11,6 +11,7 @@ import PropertiesPage from './pages/PropertiesPage';
 import AuctionsPage from './pages/AuctionsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import NotificationDashboardPage from './pages/NotificationDashboardPage';
 import Layout from './components/Layout';
 
 function App() {
@@ -83,6 +84,7 @@ function App() {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/properties" element={<PropertiesPage />} />
             <Route path="/auctions" element={<AuctionsPage />} />
+            <Route path="/notifications" element={<NotificationDashboardPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>

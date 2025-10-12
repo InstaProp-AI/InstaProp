@@ -1,17 +1,26 @@
+// ⚠️ DEPRECATED: This file is deprecated and will be removed
+// Use FirestoreService instead for real-time updates
+// See WEBSOCKET_TO_FIRESTORE_MIGRATION.md for migration guide
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import '../models/auction.dart';
 import '../models/bid.dart';
+import '../models/notification.dart';
 import 'api_client.dart';
 
+@Deprecated('Use FirestoreService instead')
 class WebSocketService {
   static WebSocketService? _instance;
   WebSocketChannel? _channel;
   StreamController<AuctionUpdate>? _auctionUpdateController;
   StreamController<BidUpdate>? _bidUpdateController;
+  StreamController<AppNotification>? _notificationController;
   String? _currentAuctionId;
+  // ignore: unused_field
+  String? _currentUserId;
   bool _isConnected = false;
 
   WebSocketService._();
@@ -31,7 +40,82 @@ class WebSocketService {
     return _bidUpdateController!.stream;
   }
 
+  Stream<AppNotification> get notificationStream {
+    _notificationController ??= StreamController<AppNotification>.broadcast();
+    return _notificationController!.stream;
+  }
+
   bool get isConnected => _isConnected;
+
+  // Subscribe to user notifications
+  void subscribeToUserNotifications(String userId) {
+    _currentUserId = userId; // Store for reference
+
+    if (_channel == null || !_isConnected) {
+      _connectForNotifications(userId);
+    } else {
+      // Already connected, just subscribe
+      try {
+        _channel!.sink.add(
+          jsonEncode({'type': 'subscribe_user', 'userId': userId}),
+        );
+        print('✅ Subscribed to notifications for user: $userId');
+      } catch (e) {
+        print('❌ Error subscribing to notifications: $e');
+      }
+    }
+  }
+
+  // Unsubscribe from user notifications
+  void unsubscribeFromUserNotifications(String userId) {
+    if (_channel != null && _isConnected) {
+      try {
+        _channel!.sink.add(
+          jsonEncode({'type': 'unsubscribe_user', 'userId': userId}),
+        );
+        print('✅ Unsubscribed from notifications for user: $userId');
+      } catch (e) {
+        print('❌ Error unsubscribing from notifications: $e');
+      }
+    }
+    _currentUserId = null;
+  }
+
+  Future<void> _connectForNotifications(String userId) async {
+    // Get WebSocket URL from API base URL
+    final wsBaseUrl = ApiClient.baseUrl
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final wsUrl = '$wsBaseUrl/ws/auction';
+
+    print('🔌 Connecting to WebSocket for notifications: $wsUrl');
+
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _currentUserId = userId;
+
+      // Wait for connection
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Send subscription message
+      _channel!.sink.add(
+        jsonEncode({'type': 'subscribe_user', 'userId': userId}),
+      );
+
+      // Listen for messages
+      _channel!.stream.listen(
+        _handleMessage,
+        onError: _handleError,
+        onDone: _handleDisconnect,
+      );
+
+      _isConnected = true;
+      print('✅ WebSocket connected for user notifications: $userId');
+    } catch (e) {
+      print('❌ WebSocket connection error: $e');
+      _isConnected = false;
+    }
+  }
 
   Future<void> connect(String auctionId) async {
     if (_isConnected && _currentAuctionId == auctionId) {
@@ -148,6 +232,13 @@ class WebSocketService {
           _auctionUpdateController?.add(AuctionUpdate(auction));
           print('✅ Auction update processed');
           break;
+        case 'auction_ended':
+          print('🏁 Processing auction ended event');
+          final auctionData = data['data'];
+          final auction = Auction.fromJson(auctionData);
+          _auctionUpdateController?.add(AuctionUpdate(auction, isEnded: true));
+          print('✅ Auction ended event processed');
+          break;
         case 'bid_update':
           print('💰 Processing bid update');
           final bidData = data['data'];
@@ -161,6 +252,13 @@ class WebSocketService {
           final bid = Bid.fromJson(bidData);
           _bidUpdateController?.add(BidUpdate(bid, isNewBid: true));
           print('✅ New bid processed');
+          break;
+        case 'notification':
+          print('🔔 Processing notification');
+          final notificationData = data['data'];
+          final notification = AppNotification.fromJson(notificationData);
+          _notificationController?.add(notification);
+          print('✅ Notification processed: ${notification.title}');
           break;
         default:
           print('❓ Unknown WebSocket message type: $type');
@@ -195,16 +293,20 @@ class WebSocketService {
     disconnect();
     _auctionUpdateController?.close();
     _bidUpdateController?.close();
+    _notificationController?.close();
     _auctionUpdateController = null;
     _bidUpdateController = null;
+    _notificationController = null;
   }
 }
 
 class AuctionUpdate {
   final Auction auction;
+  final bool isEnded;
   final DateTime timestamp;
 
-  AuctionUpdate(this.auction) : timestamp = DateTime.now();
+  AuctionUpdate(this.auction, {this.isEnded = false})
+    : timestamp = DateTime.now();
 }
 
 class BidUpdate {

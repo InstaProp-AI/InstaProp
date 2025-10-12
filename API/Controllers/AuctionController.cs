@@ -4,6 +4,7 @@ using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using PropertyFlipperAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
+using PropertyFlipperAPI.Services;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -12,10 +13,14 @@ namespace PropertyFlipperAPI.Controllers
     public class AuctionController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly NotificationService _notificationService;
+        private readonly FirestoreService _firestoreService;
 
-        public AuctionController(AppDbContext context)
+        public AuctionController(AppDbContext context, NotificationService notificationService, FirestoreService firestoreService)
         {
             _context = context;
+            _notificationService = notificationService;
+            _firestoreService = firestoreService;
         }
 
         // GET: api/Auction
@@ -164,6 +169,12 @@ namespace PropertyFlipperAPI.Controllers
             // Load the property for the response
             await _context.Entry(auction).Reference(a => a.Property).LoadAsync();
 
+            // Notify all users about the new auction
+            await _notificationService.NotifyNewAuction(auction.AuctionId);
+
+            // Update Firestore for real-time sync
+            await _firestoreService.UpdateAuctionAsync(auction.AuctionId, auction);
+
             return CreatedAtAction(nameof(GetAuction), new { id = auction.AuctionId }, auction);
         }
 
@@ -236,12 +247,26 @@ namespace PropertyFlipperAPI.Controllers
             {
                 auction.Status = "Active";
                 await _context.SaveChangesAsync();
+                
+                // Notify auction owner
+                await _notificationService.NotifyAuctionApproved(id);
+                
+            // Notify all users about the new auction
+            await _notificationService.NotifyNewAuction(id);
+            
+            // Update Firestore for real-time sync
+            await _firestoreService.UpdateAuctionAsync(id, auction);
+                
                 return Ok(new { message = "Auction approved and activated successfully" });
             }
             else
             {
                 auction.Status = "Cancelled";
                 await _context.SaveChangesAsync();
+                
+                // Notify auction owner
+                await _notificationService.NotifyAuctionRejected(id);
+                
                 return Ok(new { message = "Auction request rejected" });
             }
         }
@@ -303,6 +328,100 @@ namespace PropertyFlipperAPI.Controllers
 
 
 
+
+        // POST: api/Auction/{id}/buynow
+        [HttpPost("{id}/buynow")]
+        [Authorize]
+        public async Task<ActionResult> BuyNow(long id)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var auction = await _context.Auctions
+                .Include(a => a.Property)
+                .ThenInclude(p => p.Owner)
+                .FirstOrDefaultAsync(a => a.AuctionId == id);
+
+            if (auction == null)
+                return NotFound(new { message = "Auction not found" });
+
+            // Verify auction is active
+            var now = DateTime.UtcNow;
+            if (auction.Status != "Active" || auction.StartAt > now || auction.StartAt.AddHours(auction.Duration) < now)
+                return BadRequest(new { message = "Auction is not active" });
+
+            // Verify buy now price exists
+            if (auction.BuyNowPrice == null)
+                return BadRequest(new { message = "This auction does not have a buy now option" });
+
+            // Prevent owner from buying their own auction
+            if (auction.Property.OwnerId == accountId)
+                return BadRequest(new { message = "You cannot buy your own auction" });
+
+            // Get buyer account
+            var buyer = await _context.Accounts.FindAsync(accountId.Value);
+            if (buyer == null)
+                return NotFound(new { message = "Buyer account not found" });
+
+            // End the auction immediately
+            auction.Status = "Sold";
+            auction.CurrentPrice = auction.BuyNowPrice.Value;
+
+            // Create a final bid record for the buy now purchase
+            var buyNowBid = new Bid
+            {
+                AuctionId = auction.AuctionId,
+                BidderId = accountId.Value,
+                BidAmount = auction.BuyNowPrice.Value,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Bids.Add(buyNowBid);
+            auction.BidCount += 1;
+
+            await _context.SaveChangesAsync();
+
+            // Notify the auction owner (seller)
+            var sellerNotification = new Notification
+            {
+                UserId = auction.Property.OwnerId,
+                Title = "Property Sold - Buy Now!",
+                Message = $"🎉 Great news! {buyer.FirstName} {buyer.LastName} purchased your property '{auction.Property.Name}' using Buy Now for ${auction.BuyNowPrice:N2}. We will call you soon to schedule a meeting to finalize the sale.",
+                Type = NotificationType.AuctionEnded,
+                AuctionId = auction.AuctionId,
+                PropertyId = auction.PropertyId,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Notifications.Add(sellerNotification);
+
+            // Notify the buyer
+            var buyerNotification = new Notification
+            {
+                UserId = accountId.Value,
+                Title = "Purchase Successful!",
+                Message = $"🎉 Congratulations! You successfully purchased '{auction.Property.Name}' for ${auction.BuyNowPrice:N2}. We will call you soon to schedule a meeting to finalize the purchase and arrange payment.",
+                Type = NotificationType.AuctionWon,
+                AuctionId = auction.AuctionId,
+                PropertyId = auction.PropertyId,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Notifications.Add(buyerNotification);
+
+            await _context.SaveChangesAsync();
+
+            // Update Firestore for real-time sync
+            await _firestoreService.UpdateAuctionAsync(auction.AuctionId, auction);
+            await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId, sellerNotification);
+            await _firestoreService.UpdateUserNotificationAsync(accountId.Value, buyerNotification);
+
+            return Ok(new { 
+                message = "Purchase successful! We will contact you soon to schedule a meeting.",
+                auctionId = auction.AuctionId,
+                purchasePrice = auction.BuyNowPrice,
+                propertyName = auction.Property.Name
+            });
+        }
 
         private bool AuctionExists(int id)
         {

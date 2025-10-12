@@ -692,6 +692,283 @@ namespace PropertyFlipperAPI.Services
 
             _context.Bids.AddRange(bids);
             await _context.SaveChangesAsync();
+
+            // Create demo notifications
+            await SeedNotificationsAsync(accounts, auctions, properties);
+        }
+
+        private async Task SeedNotificationsAsync(List<Account> accounts, List<Auction> auctions, List<Property> properties)
+        {
+            var notifications = new List<Notification>();
+
+            // ========== INDIVIDUAL NOTIFICATIONS (UserId set) ==========
+            
+            // BidPlaced notifications (for property owners)
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "john@example.com").AccountId,
+                Title = "New Bid Placed",
+                Message = "Jane Smith placed a bid of $310,000 on your property 'Cozy Family Home'.",
+                Type = NotificationType.BidPlaced,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Cozy Family Home").PropertyId).AuctionId,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-10)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "jane@example.com").AccountId,
+                Title = "New Bid Placed",
+                Message = "David Brown placed a bid of $470,000 on your property 'Modern Downtown Apartment'.",
+                Type = NotificationType.BidPlaced,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Modern Downtown Apartment").PropertyId).AuctionId,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-6)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "lisa@example.com").AccountId,
+                Title = "New Bid Placed",
+                Message = "David Brown placed a bid of $820,000 on your property 'Beach House Paradise'.",
+                Type = NotificationType.BidPlaced,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Beach House Paradise").PropertyId).AuctionId,
+                ReadByUsers = accounts.First(a => a.Email == "lisa@example.com").AccountId.ToString(),
+                ReadAt = DateTime.UtcNow.AddHours(-3),
+                CreatedAt = DateTime.UtcNow.AddHours(-4)
+            });
+
+            // Outbid notifications
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "jane@example.com").AccountId,
+                Title = "You've Been Outbid",
+                Message = "Someone placed a higher bid of $315,000 on 'Cozy Family Home'. Place a new bid to stay in the race!",
+                Type = NotificationType.Outbid,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Cozy Family Home").PropertyId).AuctionId,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-8)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "mike@example.com").AccountId,
+                Title = "You've Been Outbid",
+                Message = "Someone placed a higher bid of $320,000 on 'Cozy Family Home'. Place a new bid to stay in the race!",
+                Type = NotificationType.Outbid,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Cozy Family Home").PropertyId).AuctionId,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-5)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "john@example.com").AccountId,
+                Title = "You've Been Outbid",
+                Message = "Someone placed a higher bid of $470,000 on 'Modern Downtown Apartment'. Place a new bid to stay in the race!",
+                Type = NotificationType.Outbid,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Modern Downtown Apartment").PropertyId).AuctionId,
+                ReadByUsers = accounts.First(a => a.Email == "john@example.com").AccountId.ToString(),
+                ReadAt = DateTime.UtcNow.AddHours(-5),
+                CreatedAt = DateTime.UtcNow.AddHours(-6)
+            });
+
+            // AuctionStarted individual notifications
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "sarah@example.com").AccountId,
+                Title = "New Auction Started",
+                Message = "A new auction for 'Luxury Penthouse' has started with a starting price of $1,200,000.",
+                Type = NotificationType.AuctionStarted,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Luxury Penthouse").PropertyId).AuctionId,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "david@example.com").AccountId,
+                Title = "New Auction Started",
+                Message = "A new auction for 'Modern Studio Apartment' has started with a starting price of $200,000.",
+                Type = NotificationType.AuctionStarted,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Modern Studio Apartment").PropertyId).AuctionId,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-3)
+            });
+
+            // AuctionApproved notifications
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "john@example.com").AccountId,
+                Title = "Auction Approved",
+                Message = "Your auction request for 'Cozy Family Home' has been approved and is now active!",
+                Type = NotificationType.AuctionApproved,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Cozy Family Home").PropertyId).AuctionId,
+                ReadByUsers = accounts.First(a => a.Email == "john@example.com").AccountId.ToString(),
+                ReadAt = DateTime.UtcNow.AddDays(-1),
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "jane@example.com").AccountId,
+                Title = "Auction Approved",
+                Message = "Your auction request for 'Modern Downtown Apartment' has been approved and is now active!",
+                Type = NotificationType.AuctionApproved,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Modern Downtown Apartment").PropertyId).AuctionId,
+                ReadByUsers = accounts.First(a => a.Email == "jane@example.com").AccountId.ToString(),
+                ReadAt = DateTime.UtcNow.AddHours(-20),
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+
+            // EventReminder notifications
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "emma@example.com").AccountId,
+                Title = "Event Reminder",
+                Message = "Reminder: 'Property Inspection' is scheduled for tomorrow at 10:00 AM.",
+                Type = NotificationType.EventReminder,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-2)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "tom@example.com").AccountId,
+                Title = "Event Reminder",
+                Message = "Reminder: 'Auction Viewing Day' is scheduled for today at 2:00 PM.",
+                Type = NotificationType.EventReminder,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-5)
+            });
+
+            // PublicEvent notifications
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "sarah@example.com").AccountId,
+                Title = "New Public Event",
+                Message = "A new public event 'Property Investment Seminar' has been added to the calendar on November 15, 2025.",
+                Type = NotificationType.PublicEvent,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-12)
+            });
+
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "david@example.com").AccountId,
+                Title = "New Public Event",
+                Message = "A new public event 'Open House Weekend' has been added to the calendar on October 20, 2025.",
+                Type = NotificationType.PublicEvent,
+                ReadByUsers = accounts.First(a => a.Email == "david@example.com").AccountId.ToString(),
+                ReadAt = DateTime.UtcNow.AddHours(-8),
+                CreatedAt = DateTime.UtcNow.AddHours(-10)
+            });
+
+            // ========== BULK NOTIFICATIONS (Recipients field set) ==========
+            // More efficient! One notification shown to many users based on criteria
+
+            // For ALL users including visitors (guests)
+            notifications.Add(new Notification
+            {
+                UserId = null, // Bulk notification
+                Recipients = "all_users_including_guests",
+                Title = "🎉 Welcome to Property Flipper!",
+                Message = "Discover premium properties, participate in live auctions, and manage your real estate portfolio. Sign up now to get started!",
+                Type = NotificationType.General,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-1)
+            });
+
+            // For logged-in users only
+            notifications.Add(new Notification
+            {
+                UserId = null, // Bulk notification
+                Recipients = "logged_in_users",
+                Title = "Platform Update - New Features",
+                Message = "We've added improved property search filters, auction alerts, and a new notification system. Check them out!",
+                Type = NotificationType.General,
+                ReadByUsers = accounts.First(a => a.Email == "jane@example.com").AccountId.ToString(), // Jane already read it
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+
+            // For visitors only (not logged in)
+            notifications.Add(new Notification
+            {
+                UserId = null, // Bulk notification
+                Recipients = "guests_only",
+                Title = "Sign Up to Unlock Premium Features",
+                Message = "Create an account to bid on auctions, save favorite properties, and get instant notifications on new listings!",
+                Type = NotificationType.General,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-6)
+            });
+
+            // For property owners only
+            notifications.Add(new Notification
+            {
+                UserId = null, // Bulk notification
+                Recipients = "property_owners",
+                Title = "Tips for Successful Auctions",
+                Message = "Maximize your auction success! Set competitive starting prices, provide detailed descriptions, and upload high-quality photos.",
+                Type = NotificationType.General,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            });
+
+            // For bidders only
+            notifications.Add(new Notification
+            {
+                UserId = null, // Bulk notification
+                Recipients = "bidders",
+                Title = "Hot Auctions This Week",
+                Message = "Don't miss out! 5 premium properties are closing this week. Place your bids before it's too late!",
+                Type = NotificationType.General,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-12)
+            });
+
+            // For unverified users
+            notifications.Add(new Notification
+            {
+                UserId = null, // Bulk notification
+                Recipients = "unverified_users",
+                Title = "Complete Your Account Verification",
+                Message = "Verify your account to unlock full access to auctions, bidding, and premium features!",
+                Type = NotificationType.General,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddDays(-3)
+            });
+
+            // Scheduled maintenance for everyone
+            notifications.Add(new Notification
+            {
+                UserId = null, // Bulk notification
+                Recipients = "all_users_including_guests",
+                Title = "Scheduled Maintenance Notice",
+                Message = "The platform will be offline tonight from 12:00 AM to 2:00 AM for system upgrades. Thank you for your patience!",
+                Type = NotificationType.General,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddHours(-8)
+            });
+
+            // AuctionEnding notifications
+            notifications.Add(new Notification
+            {
+                UserId = accounts.First(a => a.Email == "sarah@example.com").AccountId,
+                Title = "Auction Ending Soon",
+                Message = "Your bid on 'Cozy Family Home' - auction ends in 2 hours!",
+                Type = NotificationType.AuctionEnding,
+                AuctionId = auctions.First(a => a.PropertyId == properties.First(p => p.Name == "Cozy Family Home").PropertyId).AuctionId,
+                ReadByUsers = "",
+                CreatedAt = DateTime.UtcNow.AddMinutes(-30)
+            });
+
+            _context.Notifications.AddRange(notifications);
+            await _context.SaveChangesAsync();
+
+            Console.WriteLine($"✅ Seeded {notifications.Count} notifications:");
+            Console.WriteLine($"   - Individual notifications: {notifications.Count(n => n.UserId.HasValue)}");
+            Console.WriteLine($"   - Bulk notifications: {notifications.Count(n => !n.UserId.HasValue)}");
         }
     }
 }

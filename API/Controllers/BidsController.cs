@@ -16,12 +16,14 @@ namespace PropertyFlipperAPI.Controllers
     public class BidsController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly AuctionWebSocketManager _webSocketManager;
+        private readonly FirestoreService _firestoreService;
+        private readonly NotificationService _notificationService;
         
-        public BidsController(AppDbContext context, AuctionWebSocketManager webSocketManager)
+        public BidsController(AppDbContext context, FirestoreService firestoreService, NotificationService notificationService)
         {
             _context = context;
-            _webSocketManager = webSocketManager;
+            _firestoreService = firestoreService;
+            _notificationService = notificationService;
         }
 
         // GET: api/bids/by-auction/{auctionId} (Public - No auth required)
@@ -125,18 +127,21 @@ namespace PropertyFlipperAPI.Controllers
                     .Include(b => b.Bidder)
                     .FirstAsync(b => b.BidId == bid.BidId);
 
-                // Broadcast the bid update to all connected clients
-                await _webSocketManager.BroadcastBidUpdateAsync(bidDto.AuctionId.ToString(), createdBid);
+                // Update Firestore for real-time sync
+                await _firestoreService.AddBidAsync(bidDto.AuctionId, createdBid);
                 
-                // Broadcast the auction update (new price and bid count)
+                // Update auction in Firestore (new price and bid count)
                 var updatedAuction = await _context.Auctions
                     .Include(a => a.Property)
                     .FirstAsync(a => a.AuctionId == bidDto.AuctionId);
-                await _webSocketManager.BroadcastAuctionUpdateAsync(bidDto.AuctionId.ToString(), updatedAuction);
+                await _firestoreService.UpdateAuctionAsync(bidDto.AuctionId, updatedAuction);
+
+                // Create notifications
+                // 1. Notify auction owner
+                await _notificationService.NotifyAuctionOwnerOfBid(bidDto.AuctionId, userId, (decimal)bidDto.BidAmount);
                 
-                // Also broadcast to general feed for auction list pages
-                await _webSocketManager.BroadcastToGeneralFeedAsync(createdBid, "new_bid");
-                await _webSocketManager.BroadcastToGeneralFeedAsync(updatedAuction, "auction_update");
+                // 2. Notify outbid bidders
+                await _notificationService.NotifyOutbidBidders(bidDto.AuctionId, userId, (decimal)bidDto.BidAmount);
 
                 return Ok(createdBid);
             }

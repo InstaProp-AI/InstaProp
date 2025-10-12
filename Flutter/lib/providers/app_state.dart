@@ -5,6 +5,7 @@ import '../services/auction_service.dart';
 import '../services/property_service.dart';
 import '../services/bid_service.dart';
 import '../services/websocket_service.dart';
+import '../services/notification_service.dart';
 import '../services/dashboard_service.dart';
 import '../services/api_client.dart';
 import '../models/user.dart';
@@ -14,11 +15,15 @@ import '../models/bid.dart';
 
 class AppState extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final NotificationService _notificationService = NotificationService();
   Timer? _fallbackTimer;
 
   // WebSocket subscriptions
   StreamSubscription<AuctionUpdate>? _auctionUpdateSubscription;
   StreamSubscription<BidUpdate>? _bidUpdateSubscription;
+
+  // Expose notification service
+  NotificationService get notificationService => _notificationService;
 
   // Auth state
   Account? get user => _authService.user;
@@ -115,6 +120,9 @@ class AppState extends ChangeNotifier {
     _auctionUpdateSubscription = WebSocketService.instance.auctionUpdateStream
         .listen(
           (AuctionUpdate update) {
+            if (update.isEnded) {
+              print('🏁 Auction #${update.auction.auctionId} has ended!');
+            }
             _updateAuction(update.auction);
           },
           onError: (error) {
@@ -243,6 +251,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     // Always load initial data for freemium experience
     loadInitialData();
+
+    // Initialize notification WebSocket if logged in
+    if (isLoggedIn && user != null) {
+      _notificationService.initializeWebSocket(user!.accountId.toString());
+      _notificationService.getNotifications(); // Load initial notifications
+    } else {
+      _notificationService.disconnectWebSocket();
+      _notificationService.clear();
+    }
   }
 
   Future<void> loadInitialData() async {
@@ -458,6 +475,7 @@ class AppState extends ChangeNotifier {
   Future<void> logout() async {
     await _authService.logout();
     clearData();
+    _notificationService.clear();
   }
 
   @override
@@ -466,6 +484,7 @@ class AppState extends ChangeNotifier {
     _auctionUpdateSubscription?.cancel();
     _bidUpdateSubscription?.cancel();
     _authService.removeListener(_onAuthChanged);
+    _notificationService.dispose();
     super.dispose();
   }
 }

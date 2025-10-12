@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
+import '../services/notification_service.dart';
+import '../notification_page.dart';
 import 'calendar_page.dart';
 import 'add_property_page.dart';
 import 'profile_page.dart';
@@ -35,6 +37,17 @@ class _HomePageState extends State<HomePage>
     );
     _animationController.forward();
     WidgetsBinding.instance.addObserver(this);
+
+    // Load notifications when home page opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      if (appState.isLoggedIn && appState.user != null) {
+        appState.notificationService.initializeWebSocket(
+          appState.user!.accountId.toString(),
+        );
+        appState.notificationService.getNotifications();
+      }
+    });
   }
 
   @override
@@ -244,6 +257,53 @@ class _HomePageState extends State<HomePage>
                                       fontSize: 18,
                                     ),
                                   ),
+                                  const Spacer(),
+                                  // Notification Bell Icon
+                                  Consumer<NotificationService>(
+                                    builder:
+                                        (context, notificationService, child) {
+                                          final hasUnread =
+                                              notificationService.unreadCount >
+                                              0;
+                                          return Stack(
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(
+                                                  Icons.notifications_outlined,
+                                                  color: Color(0xFF1B5E20),
+                                                  size: 28,
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          const NotificationPage(),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                              if (hasUnread)
+                                                Positioned(
+                                                  right: 8,
+                                                  top: 8,
+                                                  child: Container(
+                                                    width: 12,
+                                                    height: 12,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.red,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                        color: Colors.white,
+                                                        width: 2,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          );
+                                        },
+                                  ),
                                 ],
                               ),
                             ),
@@ -255,6 +315,47 @@ class _HomePageState extends State<HomePage>
                 );
               },
             ),
+            // Add notification bell to expanded header too
+            actions: [
+              Consumer<NotificationService>(
+                builder: (context, notificationService, child) {
+                  final hasUnread = notificationService.unreadCount > 0;
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const NotificationPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      if (hasUnread)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
 
           // Content
@@ -965,8 +1066,8 @@ class _HomePageState extends State<HomePage>
                     color: auction.isUpcoming
                         ? Colors.blue.withOpacity(0.1)
                         : (auction.isActive
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.grey.withOpacity(0.1)),
+                              ? Colors.green.withOpacity(0.1)
+                              : Colors.grey.withOpacity(0.1)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -977,8 +1078,8 @@ class _HomePageState extends State<HomePage>
                       color: auction.isUpcoming
                           ? Colors.blue[600]
                           : (auction.isActive
-                              ? Colors.green[600]
-                              : Colors.grey[600]),
+                                ? Colors.green[600]
+                                : Colors.grey[600]),
                       fontWeight: FontWeight.bold,
                       fontSize: 9,
                     ),
@@ -1039,10 +1140,7 @@ class _HomePageState extends State<HomePage>
           icon: Icon(Icons.analytics_rounded),
           label: 'Properties',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_rounded),
-           label: 'Home'
-           ),
+        BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
         BottomNavigationBarItem(
           icon: Icon(Icons.calendar_today_rounded),
           label: 'Calendar',

@@ -1,0 +1,199 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/auction.dart';
+import '../models/bid.dart';
+import '../models/notification.dart';
+
+/// Firestore Service for real-time data synchronization
+/// Replaces WebSocket for real-time updates
+class FirestoreService {
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // ============================================
+  // AUCTION LISTENERS
+  // ============================================
+
+  /// Listen to a specific auction in real-time
+  /// Returns a stream that emits auction updates
+  static Stream<Auction?> listenToAuction(int auctionId) {
+    return _firestore
+        .collection('auctions')
+        .doc(auctionId.toString())
+        .snapshots()
+        .map((snapshot) {
+          if (!snapshot.exists || snapshot.data() == null) {
+            return null;
+          }
+
+          try {
+            return Auction.fromJson(snapshot.data()!);
+          } catch (e) {
+            print('Error parsing auction from Firestore: $e');
+            return null;
+          }
+        });
+  }
+
+  /// Listen to all auctions (for home page)
+  /// Returns a stream that emits list of auctions
+  static Stream<List<Auction>> listenToAllAuctions() {
+    return _firestore.collection('auctions').snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            try {
+              return Auction.fromJson(doc.data());
+            } catch (e) {
+              print('Error parsing auction ${doc.id}: $e');
+              return null;
+            }
+          })
+          .whereType<Auction>()
+          .toList();
+    });
+  }
+
+  /// Listen to active auctions only
+  static Stream<List<Auction>> listenToActiveAuctions() {
+    return _firestore
+        .collection('auctions')
+        .where('status', isEqualTo: 'Active')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) {
+                try {
+                  return Auction.fromJson(doc.data());
+                } catch (e) {
+                  print('Error parsing auction ${doc.id}: $e');
+                  return null;
+                }
+              })
+              .whereType<Auction>()
+              .toList();
+        });
+  }
+
+  // ============================================
+  // BID LISTENERS
+  // ============================================
+
+  /// Listen to bids for a specific auction
+  /// Returns a stream that emits list of bids
+  static Stream<List<Bid>> listenToAuctionBids(int auctionId) {
+    return _firestore
+        .collection('auctions')
+        .doc(auctionId.toString())
+        .collection('bids')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) {
+                try {
+                  return Bid.fromJson(doc.data());
+                } catch (e) {
+                  print('Error parsing bid ${doc.id}: $e');
+                  return null;
+                }
+              })
+              .whereType<Bid>()
+              .toList();
+        });
+  }
+
+  // ============================================
+  // NOTIFICATION LISTENERS
+  // ============================================
+
+  /// Listen to notifications for a specific user
+  /// Returns a stream that emits list of notifications
+  static Stream<List<AppNotification>> listenToUserNotifications(int userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId.toString())
+        .collection('notifications')
+        .orderBy('createdAt', descending: true)
+        .limit(50) // Limit to last 50 notifications
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) {
+                try {
+                  return AppNotification.fromJson(doc.data());
+                } catch (e) {
+                  print('Error parsing notification ${doc.id}: $e');
+                  return null;
+                }
+              })
+              .whereType<AppNotification>()
+              .toList();
+        });
+  }
+
+  /// Listen to unread notifications count
+  static Stream<int> listenToUnreadNotificationCount(int userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId.toString())
+        .collection('notifications')
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // ============================================
+  // WRITE OPERATIONS (Optional - if needed on client side)
+  // ============================================
+
+  /// Mark notification as read (client-side update)
+  /// Note: Backend should handle this, but can be done client-side for immediate UI feedback
+  static Future<void> markNotificationAsRead(
+    int userId,
+    int notificationId,
+  ) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId.toString())
+          .collection('notifications')
+          .doc(notificationId.toString())
+          .update({'isRead': true, 'readAt': FieldValue.serverTimestamp()});
+      print('✅ Marked notification $notificationId as read');
+    } catch (e) {
+      print('❌ Error marking notification as read: $e');
+    }
+  }
+
+  // ============================================
+  // UTILITY METHODS
+  // ============================================
+
+  /// Get a single auction (one-time read, not real-time)
+  static Future<Auction?> getAuction(int auctionId) async {
+    try {
+      final doc = await _firestore
+          .collection('auctions')
+          .doc(auctionId.toString())
+          .get();
+
+      if (!doc.exists || doc.data() == null) {
+        return null;
+      }
+
+      return Auction.fromJson(doc.data()!);
+    } catch (e) {
+      print('Error fetching auction: $e');
+      return null;
+    }
+  }
+
+  /// Check if Firestore is available
+  static Future<bool> isAvailable() async {
+    try {
+      await _firestore.collection('_test').limit(1).get();
+      return true;
+    } catch (e) {
+      print('Firestore is not available: $e');
+      return false;
+    }
+  }
+}

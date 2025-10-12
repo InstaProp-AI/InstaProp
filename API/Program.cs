@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Services;
+using PropertyFlipperAPI.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -14,9 +15,20 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // "DefaultConnection": "Host=metro.proxy.rlwy.net;Port=20873;Database=railway;Username=postgres;Password=wXQPZyZfdnrcYMrZCpXEcPJnJXQUUPmv;SslMode=Require"
 // Add Services
 builder.Services.AddScoped<SeedDataService>();
-builder.Services.AddSingleton<AuctionWebSocketManager>();
+builder.Services.AddSingleton<FirestoreService>(); // Replaces WebSocketManager
 builder.Services.AddScoped<EmailVerificationService>();
 builder.Services.AddScoped<PhoneVerificationService>();
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<NotificationHelperService>();
+builder.Services.AddSingleton<ErrorTrackingService>();
+builder.Services.AddScoped<FcmPushNotificationService>();
+
+// Add HttpClient for FCM
+builder.Services.AddHttpClient();
+
+// Add Background Services
+builder.Services.AddHostedService<AuctionExpirationService>();
+builder.Services.AddHostedService<NotificationCleanupService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -84,11 +96,21 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AppCors");
+
+// Middleware temporarily disabled for development
+// Uncomment when needed:
+
+// Global error handling middleware (catches all unhandled exceptions)
+// app.UseErrorHandling();
+
+// Rate limiting middleware (protects against DDoS and abuse)
+// app.UseRateLimiting(maxRequestsPerWindow: 1000, timeWindowSeconds: 60);
+
 app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed data - DISABLED (already seeded)
+// Seed data - DISABLED (notifications successfully seeded!)
 // Uncomment below to re-seed the database
 // using (var scope = app.Services.CreateScope())
 // {
@@ -98,19 +120,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// WebSocket endpoint for real-time auction updates
-app.Map("/ws/auction", async (HttpContext context) =>
-{
-    if (context.WebSockets.IsWebSocketRequest)
-    {
-        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-        var webSocketManager = context.RequestServices.GetRequiredService<AuctionWebSocketManager>();
-        await webSocketManager.HandleWebSocketAsync(webSocket, context);
-    }
-    else
-    {
-        context.Response.StatusCode = 400;
-    }
-});
+// Note: WebSocket endpoint removed - now using Firebase Firestore for real-time updates
+// Real-time data synchronization is handled by Firestore on the client side
 
 await app.RunAsync();

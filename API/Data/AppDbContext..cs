@@ -16,6 +16,7 @@ namespace PropertyFlipperAPI.Data
         public DbSet<Bid> Bids { get; set; }
         public DbSet<Project> Projects { get; set; }
         public DbSet<Event> Events { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -146,6 +147,23 @@ namespace PropertyFlipperAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Notification
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(e => e.NotificationId);
+                entity.Property(e => e.NotificationId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Title).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Message).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.Type).HasConversion<int>();
+                entity.Property(e => e.Recipients).HasMaxLength(500);
+                entity.Property(e => e.ReadByUsers).HasMaxLength(5000); // Can store many user IDs
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired(false); // UserId is now optional for bulk notifications
             });
         }
     }

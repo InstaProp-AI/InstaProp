@@ -290,6 +290,204 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     }
   }
 
+  Future<void> _handleBuyNow() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.shopping_cart, color: Colors.orange[700]),
+              const SizedBox(width: 12),
+              const Text('Buy Now Confirmation'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to purchase this property immediately?',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Property: ${_currentAuction!.property?.name ?? 'N/A'}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Purchase Price: \$${_currentAuction!.buyNowPrice!.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '⚠️ This will end the auction immediately and you will be committed to purchasing this property.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.red[700],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[700],
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Confirm Purchase',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
+
+    try {
+      print('Initiating buy now for auction: ${_currentAuction!.auctionId}');
+
+      final response = await AuctionService.buyNow(_currentAuction!.auctionId);
+
+      print('Buy now response: ${response.success}, error: ${response.error}');
+
+      if (response.success) {
+        if (mounted) {
+          // Show success dialog
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Row(
+                  children: [
+                    Icon(Icons.celebration, color: Colors.green[700]),
+                    const SizedBox(width: 12),
+                    const Text('Purchase Successful!'),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '🎉 Congratulations!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      response.data?['message'] ??
+                          'You have successfully purchased this property! We will contact you soon to schedule a meeting.',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pop(); // Return to previous page
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      } else {
+        setState(() {
+          _errorMessage = response.error ?? 'Failed to complete purchase';
+        });
+      }
+    } catch (e) {
+      print('Error during buy now: $e');
+      setState(() {
+        _errorMessage = 'Error: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<bool> _showBidConfirmationDialog() async {
     return await showDialog<bool>(
           context: context,
@@ -514,14 +712,16 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       color: _currentAuction!.isUpcoming
                           ? Colors.blue
                           : (_currentAuction!.isActive
-                              ? Colors.green
-                              : Colors.orange),
+                                ? Colors.green
+                                : Colors.orange),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       _currentAuction!.isUpcoming
                           ? 'NOT STARTED'
-                          : (_currentAuction!.isActive ? 'LIVE AUCTION' : 'ENDED'),
+                          : (_currentAuction!.isActive
+                                ? 'LIVE AUCTION'
+                                : 'ENDED'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -710,6 +910,53 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Consumer<AppState>(
+                    builder: (context, appState, child) {
+                      // Only show buy now button if user is logged in, verified, active auction
+                      if (!appState.isLoggedIn ||
+                          !appState.user!.isVerified ||
+                          !_currentAuction!.isActive) {
+                        return const SizedBox.shrink();
+                      }
+
+                      // Check if user owns this property
+                      final userOwnsProperty = appState.userProperties.any(
+                        (property) =>
+                            property.propertyId == _currentAuction!.propertyId,
+                      );
+
+                      if (userOwnsProperty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Center(
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _handleBuyNow,
+                          icon: const Icon(Icons.shopping_cart),
+                          label: Text(
+                            'Buy Now for \$${_currentAuction!.buyNowPrice!.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange[700],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 4,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ],
 
                 const SizedBox(height: 24),
@@ -721,15 +968,15 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     color: _currentAuction!.isUpcoming
                         ? Colors.blue[50]
                         : (_currentAuction!.isActive
-                            ? Colors.green[50]
-                            : Colors.orange[50]),
+                              ? Colors.green[50]
+                              : Colors.orange[50]),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _currentAuction!.isUpcoming
                           ? Colors.blue[200]!
                           : (_currentAuction!.isActive
-                              ? Colors.green[200]!
-                              : Colors.orange[200]!),
+                                ? Colors.green[200]!
+                                : Colors.orange[200]!),
                     ),
                   ),
                   child: Row(
@@ -740,8 +987,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         color: _currentAuction!.isUpcoming
                             ? Colors.blue[700]
                             : (_currentAuction!.isActive
-                                ? Colors.green[700]
-                                : Colors.orange[700]),
+                                  ? Colors.green[700]
+                                  : Colors.orange[700]),
                       ),
                       const SizedBox(width: 8),
                       _currentAuction!.isUpcoming
@@ -766,35 +1013,35 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                               ],
                             )
                           : (_currentAuction!.isActive
-                              ? Row(
-                                  children: [
-                                    Text(
-                                      'Ends in ',
-                                      style: TextStyle(
-                                        color: Colors.green[700],
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
+                                ? Row(
+                                    children: [
+                                      Text(
+                                        'Ends in ',
+                                        style: TextStyle(
+                                          color: Colors.green[700],
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
                                       ),
-                                    ),
-                                    AuctionTimer(
-                                      auction: _currentAuction!,
-                                      textStyle: TextStyle(
-                                        color: Colors.green[700],
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
+                                      AuctionTimer(
+                                        auction: _currentAuction!,
+                                        textStyle: TextStyle(
+                                          color: Colors.green[700],
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                        onAuctionEnded: _refreshAuctionData,
                                       ),
-                                      onAuctionEnded: _refreshAuctionData,
+                                    ],
+                                  )
+                                : Text(
+                                    'Auction Ended',
+                                    style: TextStyle(
+                                      color: Colors.orange[700],
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
                                     ),
-                                  ],
-                                )
-                              : Text(
-                                  'Auction Ended',
-                                  style: TextStyle(
-                                    color: Colors.orange[700],
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                  ),
-                                )),
+                                  )),
                     ],
                   ),
                 ),

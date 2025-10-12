@@ -502,4 +502,33 @@ export const settingsApi = {
   },
 };
 
+// Notifications API
+export const notificationsApi = {
+  getUserStats: async () => {
+    const response = await api.get('/notification/admin/stats');
+    return response.data;
+  },
+  
+  getUsers: async (filter?: string) => {
+    const url = filter ? `/notification/admin/users?filter=${filter}` : '/notification/admin/users';
+    const response = await api.get(url);
+    return response.data;
+  },
+  
+  sendNotification: async (data: {
+    targetType: string;
+    title: string;
+    message: string;
+    userIds?: number[];
+  }) => {
+    const response = await api.post('/notification/admin/send', data);
+    return response.data;
+  },
+  
+  getNotificationHistory: async (page: number = 1, pageSize: number = 50) => {
+    const response = await api.get(`/notification/admin/history?page=${page}&pageSize=${pageSize}`);
+    return response.data;
+  },
+};
+
 export default api;
