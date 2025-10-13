@@ -1,6 +1,8 @@
 import '../../theme/app_colors.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/app_state.dart';
 import '../services/property_service.dart';
 import '../widgets/custom_text_field.dart';
@@ -23,12 +25,14 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
   final _bathroomsController = TextEditingController();
   final _squareFeetController = TextEditingController();
   final _yearBuiltController = TextEditingController();
-  final _imageUrlController = TextEditingController();
 
   String _selectedCategory = 'Single Family';
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
+
+  // Image picker
+  final List<PlatformFile> _selectedImages = [];
 
   final List<String> _categories = [
     'Single Family',
@@ -49,12 +53,60 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     _bathroomsController.dispose();
     _squareFeetController.dispose();
     _yearBuiltController.dispose();
-    _imageUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.image,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          // Filter valid image files
+          final validFiles = result.files.where((file) {
+            return file.size <= 50 * 1024 * 1024; // 50MB limit
+          }).toList();
+
+          final invalidFiles = result.files.where((file) {
+            return file.size > 50 * 1024 * 1024;
+          }).toList();
+
+          if (invalidFiles.isNotEmpty) {
+            _errorMessage = 'Some files exceed 50MB and were not added.';
+          }
+
+          _selectedImages.addAll(validFiles);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking images: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
   }
 
   Future<void> _submitProperty() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validate that at least one image is selected
+    if (_selectedImages.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please select at least one property image';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -63,6 +115,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     });
 
     try {
+      // First create the property (imageUrl will be set after uploading images)
       final response = await PropertyService.createProperty(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -72,16 +125,33 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         squareFeet: int.parse(_squareFeetController.text),
         yearBuilt: int.parse(_yearBuiltController.text),
         category: _selectedCategory,
-        imageUrl: _imageUrlController.text.trim(),
       );
 
-      if (response.success) {
+      if (response.success && response.data != null) {
+        final propertyId = response.data!.propertyId;
+        final propertyName = _nameController.text.trim();
+
+        // Upload images directly (works on both web and mobile)
+        if (_selectedImages.isNotEmpty) {
+          final uploadResponse =
+              await PropertyService.uploadPropertyImagesPlatform(
+                propertyId,
+                _selectedImages,
+                imageType: 'Gallery',
+              );
+
+          if (!uploadResponse.success) {
+            setState(() {
+              _errorMessage =
+                  'Property created but failed to upload images: ${uploadResponse.error}';
+            });
+            return;
+          }
+        }
+
         setState(() {
           _successMessage = 'Property added successfully!';
         });
-
-        // Save property name before clearing
-        final propertyName = _nameController.text.trim();
 
         // Clear form
         _nameController.clear();
@@ -91,7 +161,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         _bathroomsController.clear();
         _squareFeetController.clear();
         _yearBuiltController.clear();
-        _imageUrlController.clear();
+        _selectedImages.clear();
         setState(() {
           _selectedCategory = 'Single Family';
         });
@@ -105,7 +175,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
             context,
             MaterialPageRoute(
               builder: (context) => PropertyDocsUploadPage(
-                propertyId: response.data!.propertyId,
+                propertyId: propertyId,
                 propertyName: propertyName,
               ),
             ),
@@ -380,24 +450,156 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
                           const SizedBox(height: 16),
 
-                          // Image URL
-                          CustomTextField(
-                            controller: _imageUrlController,
-                            labelText: 'Image URL (Optional)',
-                            hintText: 'https://example.com/image.jpg',
-                            keyboardType: TextInputType.url,
-                            validator: (value) {
-                              if (value?.isNotEmpty == true) {
-                                final uri = Uri.tryParse(value!);
-                                if (uri == null ||
-                                    !uri.hasScheme ||
-                                    !uri.hasAuthority) {
-                                  return 'Please enter a valid URL';
-                                }
-                              }
-                              return null;
-                            },
+                          // Property Images Section
+                          Text(
+                            'Property Images',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
+
+                          const SizedBox(height: 8),
+
+                          Text(
+                            'Add photos of your property (required)',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppColors.primary),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Image picker button
+                          OutlinedButton.icon(
+                            onPressed: _pickImages,
+                            icon: const Icon(Icons.add_photo_alternate),
+                            label: const Text('Select Images'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
+                              side: BorderSide(color: AppColors.primary!),
+                              foregroundColor: AppColors.primary,
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Selected images preview
+                          if (_selectedImages.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.secondary!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${_selectedImages.length} image(s) selected',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 100,
+                                    child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: _selectedImages.length,
+                                      itemBuilder: (context, index) {
+                                        return Container(
+                                          margin: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child:
+                                                    _selectedImages[index]
+                                                            .bytes !=
+                                                        null
+                                                    ? Image.memory(
+                                                        _selectedImages[index]
+                                                            .bytes!,
+                                                        width: 100,
+                                                        height: 100,
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : Image.file(
+                                                        File(
+                                                          _selectedImages[index]
+                                                              .path!,
+                                                        ),
+                                                        width: 100,
+                                                        height: 100,
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                              ),
+                                              Positioned(
+                                                top: 4,
+                                                right: 4,
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _removeImage(index),
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.all(4),
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                          color: Colors.red,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                    child: const Icon(
+                                                      Icons.close,
+                                                      color: Colors.white,
+                                                      size: 16,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              if (index == 0)
+                                                Positioned(
+                                                  bottom: 4,
+                                                  left: 4,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.blue,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            4,
+                                                          ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Main',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
 
                           const SizedBox(height: 32),
 

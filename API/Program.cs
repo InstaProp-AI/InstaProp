@@ -15,7 +15,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // "DefaultConnection": "Host=metro.proxy.rlwy.net;Port=20873;Database=railway;Username=postgres;Password=wXQPZyZfdnrcYMrZCpXEcPJnJXQUUPmv;SslMode=Require"
 // Add Services
 builder.Services.AddScoped<SeedDataService>();
-builder.Services.AddSingleton<FirestoreService>(); // Replaces WebSocketManager
+builder.Services.AddSingleton<FirestoreService>();
 builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
 builder.Services.AddScoped<EmailTemplateService>(); // HTML email templates
 builder.Services.AddScoped<EmailVerificationService>();
@@ -148,8 +148,5 @@ app.MapControllers();
 
 // Health check endpoint for monitoring
 app.MapHealthChecks("/health");
-
-// Note: WebSocket endpoint removed - now using Firebase Firestore for real-time updates
-// Real-time data synchronization is handled by Firestore on the client side
 
 await app.RunAsync();

@@ -4,7 +4,6 @@ import '../models/bid.dart';
 import '../models/notification.dart';
 
 /// Firestore Service for real-time data synchronization
-/// Replaces WebSocket for real-time updates
 class FirestoreService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 

@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
 import '../widgets/auction_timer.dart';
+import '../widgets/property_image_carousel.dart';
 import 'auction_details_page.dart';
-import '../services/websocket_service.dart';
 
 class AuctionsPage extends StatefulWidget {
   const AuctionsPage({super.key});
@@ -18,13 +18,6 @@ class AuctionsPage extends StatefulWidget {
 class _AuctionsPageState extends State<AuctionsPage> {
   List<Auction> _filteredAuctions = [];
   Map<String, dynamic> _activeFilters = {};
-
-  // WebSocket subscriptions
-  StreamSubscription<AuctionUpdate>? _auctionUpdateSubscription;
-  StreamSubscription<BidUpdate>? _bidUpdateSubscription;
-
-  // Track recently updated auctions for highlighting
-  final Set<int> _recentlyUpdatedAuctions = {};
 
   // Filter options
   final Map<String, String> _categoryOptions = {
@@ -93,69 +86,12 @@ class _AuctionsPageState extends State<AuctionsPage> {
       } else {
         _applyFilters();
       }
-
-      // Start listening to WebSocket updates
-      _startRealTimeUpdates();
     });
   }
 
   @override
   void dispose() {
-    _auctionUpdateSubscription?.cancel();
-    _bidUpdateSubscription?.cancel();
     super.dispose();
-  }
-
-  void _startRealTimeUpdates() {
-    print('🔌 Starting WebSocket listeners on Auctions Page');
-
-    // Listen for auction updates (price, bid count, status changes)
-    _auctionUpdateSubscription = WebSocketService.instance.auctionUpdateStream
-        .listen(
-          (AuctionUpdate update) {
-            if (mounted) {
-              print(
-                '🔄 Auction update received on list: ID=${update.auction.auctionId}, Price=\$${update.auction.currentPrice}, Bids=${update.auction.bidCount}',
-              );
-              _highlightAuction(update.auction.auctionId);
-              _applyFilters();
-            }
-          },
-          onError: (error) {
-            print('Auction update error on list page: $error');
-          },
-        );
-
-    // Listen for bid updates (new bids)
-    _bidUpdateSubscription = WebSocketService.instance.bidUpdateStream.listen(
-      (BidUpdate update) {
-        if (mounted) {
-          print(
-            '💰 New bid received on list: Auction ID=${update.bid.auctionId}',
-          );
-          _highlightAuction(update.bid.auctionId);
-          _applyFilters();
-        }
-      },
-      onError: (error) {
-        print('Bid update error on list page: $error');
-      },
-    );
-  }
-
-  void _highlightAuction(int auctionId) {
-    setState(() {
-      _recentlyUpdatedAuctions.add(auctionId);
-    });
-
-    // Remove highlight after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _recentlyUpdatedAuctions.remove(auctionId);
-        });
-      }
-    });
   }
 
   void _applyFilters() {
@@ -833,24 +769,11 @@ class _AuctionsPageState extends State<AuctionsPage> {
     bool isUpcoming = false,
     VoidCallback? onAuctionEnded,
   }) {
-    final isHighlighted = _recentlyUpdatedAuctions.contains(auction.auctionId);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isHighlighted ? AppColors.background : AppColors.surface,
+        color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.background!)),
-        boxShadow: isHighlighted
-            ? [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.3),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
       ),
       child: InkWell(
         onTap: () => Navigator.of(context).push(
@@ -860,7 +783,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
         ),
         child: Row(
           children: [
-            // Property Image
+            // Property Image/Carousel
             SizedBox(
               width: 80, // Fixed width for property image
               child: Container(
@@ -869,31 +792,14 @@ class _AuctionsPageState extends State<AuctionsPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.secondary!),
                 ),
-                child: ClipRRect(
+                child: PropertyImageCarousel(
+                  images: auction.property?.propertyImages ?? [],
+                  fallbackImageUrl: auction.property?.imageUrl,
+                  height: 50,
+                  showIndicators: false,
+                  showNavigationButtons: false,
+                  showImageCounter: false,
                   borderRadius: BorderRadius.circular(8),
-                  child: auction.property?.imageUrl.isNotEmpty == true
-                      ? Image.network(
-                          auction.property!.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: AppColors.background,
-                              child: Icon(
-                                Icons.home,
-                                color: AppColors.secondary,
-                                size: 24,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          color: AppColors.background,
-                          child: Icon(
-                            Icons.home,
-                            color: AppColors.secondary,
-                            size: 24,
-                          ),
-                        ),
                 ),
               ),
             ),
@@ -929,52 +835,23 @@ class _AuctionsPageState extends State<AuctionsPage> {
             const SizedBox(width: 16),
             SizedBox(
               width: 120, // Fixed width for current price
-              child: Row(
-                children: [
-                  Text(
-                    '\$${auction.currentPrice.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isHighlighted
-                          ? AppColors.primary
-                          : AppColors.primary,
-                      fontSize: isHighlighted ? 16 : 14,
-                    ),
-                  ),
-                  if (isHighlighted) ...[
-                    const SizedBox(width: 4),
-                    Icon(Icons.trending_up, color: AppColors.primary, size: 16),
-                  ],
-                ],
+              child: Text(
+                '\$${auction.currentPrice.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(width: 16),
             SizedBox(
               width: 80, // Fixed width for bids
-              child: Container(
-                padding: isHighlighted
-                    ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                    : EdgeInsets.zero,
-                decoration: isHighlighted
-                    ? BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.green[300]!,
-                          width: 1.5,
-                        ),
-                      )
-                    : null,
-                child: Text(
-                  '${auction.bidCount}',
-                  style: TextStyle(
-                    fontWeight: isHighlighted
-                        ? FontWeight.bold
-                        : FontWeight.w500,
-                    color: isHighlighted
-                        ? AppColors.primary
-                        : AppColors.primary,
-                  ),
+              child: Text(
+                '${auction.bidCount}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.primary,
                 ),
               ),
             ),

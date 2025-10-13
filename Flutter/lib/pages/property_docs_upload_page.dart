@@ -256,7 +256,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Skip Documents'),
+                child: const Text('Skip for Now'),
               ),
             ),
           ],
@@ -530,7 +530,7 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
         return AlertDialog(
           title: const Text('Skip Document Upload'),
           content: const Text(
-            'Are you sure you want to skip uploading documents? Your property will be saved but will need to be verified by an admin before it can be listed for auction.',
+            'You can upload documents later from the property details page. Documents are required for property verification and auction listing.',
           ),
           actions: [
             TextButton(
@@ -541,34 +541,56 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
 
-                // Navigate to properties page
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => const PropertiesManagementPage(),
-                  ),
-                  (route) => false,
-                );
+                // Check if this is the first screen in the navigation stack
+                // If not, just go back. If yes, navigate to properties page
+                if (Navigator.of(context).canPop()) {
+                  // Just go back to the previous screen
+                  Navigator.of(context).pop();
 
-                // Show success message
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Property saved! Upload documents later to submit for review 📄',
+                  // Show info message
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'You can upload documents anytime from the property details 📄',
+                          ),
+                          backgroundColor: Colors.blue,
+                          duration: Duration(seconds: 3),
                         ),
-                        backgroundColor: Colors.orange,
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                });
+                      );
+                    }
+                  });
+                } else {
+                  // Navigate to properties page (for newly created properties)
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const PropertiesManagementPage(),
+                    ),
+                    (route) => false,
+                  );
+
+                  // Show success message
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Property saved! Upload documents later to submit for review 📄',
+                          ),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  });
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.surface,
               ),
-              child: const Text('Skip Documents'),
+              child: const Text('Skip for Now'),
             ),
           ],
         );

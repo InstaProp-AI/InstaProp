@@ -109,19 +109,6 @@ const exportToCSV = (data: any[], filename: string) => {
 };
 ```
 
-#### 5. WebSocket (For Real-Time Updates)
-**Already exists in backend!** 
-- Endpoint: `ws://localhost:5284/ws/auction`
-- Just needs frontend connection
-
-```typescript
-const ws = new WebSocket('ws://localhost:5284/ws/auction');
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  // Update auctions/bids in real-time
-};
-```
-
 ### 🎯 MINIMUM VIABLE PRODUCTION (MVP) Checklist
 
 **Can go to production with:**
@@ -135,7 +122,6 @@ ws.onmessage = (event) => {
 
 **Nice to have (can add post-launch):**
 - [ ] Charts (Recharts)
-- [ ] Real-time WebSocket
 - [ ] Export functionality
 - [ ] Advanced analytics
 
@@ -239,7 +225,6 @@ npm run build
 
 Add these AFTER launch:
 - [ ] Recharts integration
-- [ ] WebSocket real-time updates
 - [ ] CSV/Excel export
 - [ ] Advanced filtering
 - [ ] Pagination

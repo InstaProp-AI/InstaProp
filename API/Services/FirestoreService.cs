@@ -6,7 +6,6 @@ namespace PropertyFlipperAPI.Services
 {
     /// <summary>
     /// Firestore service for real-time data synchronization.
-    /// Replaces WebSocket for real-time updates.
     /// </summary>
     public class FirestoreService
     {
@@ -53,7 +52,7 @@ namespace PropertyFlipperAPI.Services
         #region Auction Updates
 
         /// <summary>
-        /// Updates auction in Firestore (replaces WebSocket broadcast)
+        /// Updates auction in Firestore
         /// </summary>
         public async Task UpdateAuctionAsync(long auctionId, Auction auction)
         {
@@ -129,7 +128,7 @@ namespace PropertyFlipperAPI.Services
         #region Bid Updates
 
         /// <summary>
-        /// Adds a new bid to Firestore (replaces WebSocket broadcast)
+        /// Adds a new bid to Firestore
         /// </summary>
         public async Task AddBidAsync(long auctionId, Bid bid)
         {
@@ -245,7 +244,7 @@ namespace PropertyFlipperAPI.Services
         #region General Updates
 
         /// <summary>
-        /// Broadcasts general update to all users (replaces WebSocket broadcast to all)
+        /// Broadcasts general update to all users
         /// </summary>
         public async Task BroadcastGeneralUpdateAsync(string type, object data)
         {

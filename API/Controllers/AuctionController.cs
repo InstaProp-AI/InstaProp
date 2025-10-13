@@ -29,6 +29,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             var auctions = await _context.Auctions
                 .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyImages)
                 .ToListAsync();
 
             // Convert to DTOs with calculated values
@@ -43,6 +44,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyImages)
                 .FirstOrDefaultAsync(a => a.AuctionId == id);
 
             if (auction == null)
@@ -114,6 +116,7 @@ namespace PropertyFlipperAPI.Controllers
             var now = DateTime.UtcNow;
             var auctions = await _context.Auctions
                 .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyImages)
                 .ToListAsync();
 
             // Filter active auctions (must have started and not ended)
@@ -280,6 +283,7 @@ namespace PropertyFlipperAPI.Controllers
             var auctions = await _context.Auctions
                 .Where(a => a.Status == "Requested")
                 .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyImages)
                 .ToListAsync();
 
             var auctionDtos = auctions.Select(AuctionDto.FromAuction).ToList();
@@ -294,6 +298,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyImages)
                 .FirstOrDefaultAsync(a => a.AuctionId == id);
             
             if (auction == null)
@@ -340,7 +345,9 @@ namespace PropertyFlipperAPI.Controllers
 
             var auction = await _context.Auctions
                 .Include(a => a.Property)
-                .ThenInclude(p => p.Owner)
+                    .ThenInclude(p => p.Owner)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyImages)
                 .FirstOrDefaultAsync(a => a.AuctionId == id);
 
             if (auction == null)

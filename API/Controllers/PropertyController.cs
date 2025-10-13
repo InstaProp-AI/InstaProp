@@ -31,6 +31,7 @@ namespace PropertyFlipperAPI.Controllers
                 .Where(p => p.Auctions.Any()) // Only properties that have auctions
                 .Include(p => p.Owner)
                 .Include(p => p.Auctions.Where(a => a.Status == "Active")) // Only active auctions
+                .Include(p => p.PropertyImages)
                 .ToListAsync();
         }
 
@@ -44,6 +45,7 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(p => p.Owner)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
+                .Include(p => p.PropertyImages)
                 .ToListAsync();
         }
 
@@ -62,6 +64,7 @@ namespace PropertyFlipperAPI.Controllers
                 .Where(p => p.OwnerId == userId)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
+                .Include(p => p.PropertyImages)
                 .ToListAsync();
         }
 
@@ -74,6 +77,7 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(p => p.Auctions)
                 .Include(p => p.Project)
                 .Include(p => p.PropertyDocs)
+                .Include(p => p.PropertyImages)
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
 
             if (property == null)
@@ -139,6 +143,17 @@ namespace PropertyFlipperAPI.Controllers
                     d.DocType,
                     d.ImgUrl,
                     d.UploadedAt
+                }).ToList(),
+                PropertyImages = property.PropertyImages.OrderBy(img => img.DisplayOrder).Select(img => new
+                {
+                    img.PropertyImageId,
+                    img.PropertyId,
+                    img.ImageUrl,
+                    img.ImageType,
+                    img.IsMainImage,
+                    img.DisplayOrder,
+                    img.DeleteUrl,
+                    img.CreatedAt
                 }).ToList()
             });
         }
@@ -460,6 +475,234 @@ namespace PropertyFlipperAPI.Controllers
                 .ToListAsync();
 
             return Ok(documents);
+        }
+
+        // POST: api/Property/{id}/images
+        [HttpPost("{id}/images")]
+        [Authorize]
+        public async Task<ActionResult> UploadPropertyImages(long id, [FromForm] List<IFormFile> images, [FromForm] string? imageType = "Gallery")
+        {
+            try
+            {
+                var property = await _context.Properties.FindAsync(id);
+                if (property == null)
+                    return NotFound(new { message = "Property not found" });
+
+                // Check if user owns the property
+                var accountId = GetCurrentAccountId();
+                if (accountId == null)
+                    return Unauthorized();
+
+                if (property.OwnerId != accountId)
+                    return StatusCode(403, new { message = "You can only upload images for your own properties" });
+
+                if (images == null || images.Count == 0)
+                    return BadRequest(new { message = "No images provided" });
+
+                var uploadedImages = new List<object>();
+                var currentOrder = await _context.PropertyImages
+                    .Where(img => img.PropertyId == id)
+                    .MaxAsync(img => (int?)img.DisplayOrder) ?? -1;
+
+                foreach (var image in images)
+                {
+                    // Validate file
+                    var validationResult = await _fileValidationService.ValidateFileAsync(image);
+                    if (!validationResult.IsValid)
+                        return BadRequest(new { message = validationResult.ErrorMessage });
+
+                    // Convert file to byte array
+                    byte[] fileBytes;
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        await image.CopyToAsync(memoryStream);
+                        fileBytes = memoryStream.ToArray();
+                    }
+
+                    // Upload to ImgBB
+                    var uploadResult = await _imgBBService.UploadImageAsync(
+                        fileBytes,
+                        $"property_{id}_image_{DateTime.UtcNow.Ticks}",
+                        0
+                    );
+
+                    currentOrder++;
+
+                    // Determine if this is the main image (first image or if no images exist)
+                    var isMainImage = !await _context.PropertyImages.AnyAsync(img => img.PropertyId == id);
+
+                    // Create new property image
+                    var propertyImage = new PropertyImage
+                    {
+                        PropertyId = id,
+                        ImageUrl = uploadResult.DisplayUrl,
+                        ImageType = imageType ?? "Gallery",
+                        IsMainImage = isMainImage,
+                        DisplayOrder = currentOrder,
+                        DeleteUrl = uploadResult.DeleteUrl,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.PropertyImages.Add(propertyImage);
+                    await _context.SaveChangesAsync();
+
+                    // Update property's ImageUrl if this is the main image
+                    if (isMainImage)
+                    {
+                        property.ImageUrl = uploadResult.DisplayUrl;
+                        property.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                    }
+
+                    uploadedImages.Add(new
+                    {
+                        propertyImageId = propertyImage.PropertyImageId,
+                        imageUrl = propertyImage.ImageUrl,
+                        isMainImage = propertyImage.IsMainImage,
+                        displayOrder = propertyImage.DisplayOrder
+                    });
+                }
+
+                return Ok(new
+                {
+                    message = $"{uploadedImages.Count} image(s) uploaded successfully",
+                    images = uploadedImages
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error uploading images", error = ex.Message });
+            }
+        }
+
+        // GET: api/Property/{id}/images
+        [HttpGet("{id}/images")]
+        public async Task<ActionResult<IEnumerable<PropertyImage>>> GetPropertyImages(long id)
+        {
+            var property = await _context.Properties.FindAsync(id);
+            if (property == null)
+                return NotFound();
+
+            var images = await _context.PropertyImages
+                .Where(img => img.PropertyId == id)
+                .OrderBy(img => img.DisplayOrder)
+                .ToListAsync();
+
+            return Ok(images);
+        }
+
+        // DELETE: api/Property/{propertyId}/images/{imageId}
+        [HttpDelete("{propertyId}/images/{imageId}")]
+        [Authorize]
+        public async Task<ActionResult> DeletePropertyImage(long propertyId, long imageId)
+        {
+            try
+            {
+                var property = await _context.Properties.FindAsync(propertyId);
+                if (property == null)
+                    return NotFound(new { message = "Property not found" });
+
+                // Check if user owns the property
+                var accountId = GetCurrentAccountId();
+                if (accountId == null)
+                    return Unauthorized();
+
+                if (property.OwnerId != accountId)
+                    return StatusCode(403, new { message = "You can only delete images from your own properties" });
+
+                var image = await _context.PropertyImages.FindAsync(imageId);
+                if (image == null)
+                    return NotFound(new { message = "Image not found" });
+
+                if (image.PropertyId != propertyId)
+                    return BadRequest(new { message = "Image does not belong to this property" });
+
+                var wasMainImage = image.IsMainImage;
+
+                // Delete from database
+                _context.PropertyImages.Remove(image);
+                await _context.SaveChangesAsync();
+
+                // If this was the main image, set another image as main
+                if (wasMainImage)
+                {
+                    var newMainImage = await _context.PropertyImages
+                        .Where(img => img.PropertyId == propertyId)
+                        .OrderBy(img => img.DisplayOrder)
+                        .FirstOrDefaultAsync();
+
+                    if (newMainImage != null)
+                    {
+                        newMainImage.IsMainImage = true;
+                        property.ImageUrl = newMainImage.ImageUrl;
+                        property.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        // No more images, clear property ImageUrl
+                        property.ImageUrl = string.Empty;
+                        property.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
+                return Ok(new { message = "Image deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error deleting image", error = ex.Message });
+            }
+        }
+
+        // PUT: api/Property/{propertyId}/images/{imageId}/set-main
+        [HttpPut("{propertyId}/images/{imageId}/set-main")]
+        [Authorize]
+        public async Task<ActionResult> SetMainImage(long propertyId, long imageId)
+        {
+            try
+            {
+                var property = await _context.Properties.FindAsync(propertyId);
+                if (property == null)
+                    return NotFound(new { message = "Property not found" });
+
+                // Check if user owns the property
+                var accountId = GetCurrentAccountId();
+                if (accountId == null)
+                    return Unauthorized();
+
+                if (property.OwnerId != accountId)
+                    return StatusCode(403, new { message = "You can only modify your own properties" });
+
+                var image = await _context.PropertyImages.FindAsync(imageId);
+                if (image == null)
+                    return NotFound(new { message = "Image not found" });
+
+                if (image.PropertyId != propertyId)
+                    return BadRequest(new { message = "Image does not belong to this property" });
+
+                // Unset all other images as main
+                var allImages = await _context.PropertyImages
+                    .Where(img => img.PropertyId == propertyId)
+                    .ToListAsync();
+
+                foreach (var img in allImages)
+                {
+                    img.IsMainImage = img.PropertyImageId == imageId;
+                }
+
+                // Update property's ImageUrl
+                property.ImageUrl = image.ImageUrl;
+                property.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Main image updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error setting main image", error = ex.Message });
+            }
         }
 
         // PUT: api/Property/{id}/verify (DEPRECATED - use /approve instead)

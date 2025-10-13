@@ -243,7 +243,6 @@ The dashboard connects to the backend API at `http://localhost:5284/api` with th
 
 ## 🚧 Future Enhancements
 
-- Real-time WebSocket updates
 - Advanced analytics with charts (Recharts integration)
 - Bulk actions for multiple items
 - Email template management

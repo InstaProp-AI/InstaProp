@@ -4,7 +4,6 @@ import '../services/auth_service.dart';
 import '../services/auction_service.dart';
 import '../services/property_service.dart';
 import '../services/bid_service.dart';
-import '../services/websocket_service.dart';
 import '../services/notification_service.dart';
 import '../services/dashboard_service.dart';
 import '../services/api_client.dart';
@@ -17,10 +16,6 @@ class AppState extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final NotificationService _notificationService = NotificationService();
   Timer? _fallbackTimer;
-
-  // WebSocket subscriptions
-  StreamSubscription<AuctionUpdate>? _auctionUpdateSubscription;
-  StreamSubscription<BidUpdate>? _bidUpdateSubscription;
 
   // Expose notification service
   NotificationService get notificationService => _notificationService;
@@ -108,47 +103,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     // Load initial data for freemium experience
     loadInitialData();
-    // Start real-time updates
-    _startRealTimeUpdates();
-  }
-
-  void _startRealTimeUpdates() {
-    // Connect to general auction feed
-    WebSocketService.instance.connectToGeneralFeed();
-
-    // Listen for auction updates (price, bid count, status changes)
-    _auctionUpdateSubscription = WebSocketService.instance.auctionUpdateStream
-        .listen(
-          (AuctionUpdate update) {
-            if (update.isEnded) {
-              print('🏁 Auction #${update.auction.auctionId} has ended!');
-            }
-            _updateAuction(update.auction);
-          },
-          onError: (error) {
-            print('Auction update error: $error');
-            _startFallbackPolling();
-          },
-        );
-
-    // Listen for bid updates (new bids)
-    _bidUpdateSubscription = WebSocketService.instance.bidUpdateStream.listen(
-      (BidUpdate update) {
-        _updateBidCount(update.bid.auctionId);
-      },
-      onError: (error) {
-        print('Bid update error: $error');
-        _startFallbackPolling();
-      },
-    );
-
-    // Check if WebSocket connected after a short delay
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!WebSocketService.instance.isConnected) {
-        print('WebSocket failed to connect, starting fallback polling');
-        _startFallbackPolling();
-      }
-    });
+    // Start polling for updates
+    _startFallbackPolling();
   }
 
   void _startFallbackPolling() {
@@ -252,12 +208,10 @@ class AppState extends ChangeNotifier {
     // Always load initial data for freemium experience
     loadInitialData();
 
-    // Initialize notification WebSocket if logged in
+    // Load notifications if logged in
     if (isLoggedIn && user != null) {
-      _notificationService.initializeWebSocket(user!.accountId.toString());
       _notificationService.getNotifications(); // Load initial notifications
     } else {
-      _notificationService.disconnectWebSocket();
       _notificationService.clear();
     }
   }
@@ -458,8 +412,6 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _fallbackTimer?.cancel();
-    _auctionUpdateSubscription?.cancel();
-    _bidUpdateSubscription?.cancel();
     _authService.removeListener(_onAuthChanged);
     _notificationService.dispose();
     super.dispose();

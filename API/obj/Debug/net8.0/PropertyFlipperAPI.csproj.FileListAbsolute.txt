@@ -1,7 +1,6 @@
 /Users/s/Desktop/Business/Real estate/Proerty Flipper/API/bin/Debug/net8.0/appsettings.Development.json
 /Users/s/Desktop/Business/Real estate/Proerty Flipper/API/bin/Debug/net8.0/appsettings.json
 /Users/s/Desktop/Business/Real estate/Proerty Flipper/API/bin/Debug/net8.0/appsettings.Production.json
-/Users/s/Desktop/Business/Real estate/Proerty Flipper/API/bin/Debug/net8.0/firebase-credentials.example.json
 /Users/s/Desktop/Business/Real estate/Proerty Flipper/API/bin/Debug/net8.0/PropertyFlipperAPI.staticwebassets.runtime.json
 /Users/s/Desktop/Business/Real estate/Proerty Flipper/API/bin/Debug/net8.0/PropertyFlipperAPI
 /Users/s/Desktop/Business/Real estate/Proerty Flipper/API/bin/Debug/net8.0/PropertyFlipperAPI.deps.json

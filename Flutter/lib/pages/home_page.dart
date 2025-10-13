@@ -43,9 +43,6 @@ class _HomePageState extends State<HomePage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appState = Provider.of<AppState>(context, listen: false);
       if (appState.isLoggedIn && appState.user != null) {
-        appState.notificationService.initializeWebSocket(
-          appState.user!.accountId.toString(),
-        );
         appState.notificationService.getNotifications();
       }
     });

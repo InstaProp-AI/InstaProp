@@ -8,10 +8,10 @@ import '../models/auction.dart';
 import '../models/bid.dart';
 import '../services/bid_service.dart';
 import '../services/auction_service.dart';
-import '../services/websocket_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
+import '../widgets/property_image_carousel.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
   final Auction auction;
@@ -32,12 +32,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   String? _successMessage;
   List<Bid> _bids = [];
 
-  // Real-time updates
-  StreamSubscription<AuctionUpdate>? _auctionUpdateSubscription;
-  StreamSubscription<BidUpdate>? _bidUpdateSubscription;
   Auction? _currentAuction;
 
-  // Fallback polling (only if WebSocket fails)
+  // Fallback polling
   Timer? _fallbackTimer;
 
   late AnimationController _animationController;
@@ -67,17 +64,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
     _animationController.forward();
     _loadBids();
-    _startRealTimeUpdates();
+    _startFallbackPolling();
   }
 
   @override
   void dispose() {
     _bidController.dispose();
     _animationController.dispose();
-    _auctionUpdateSubscription?.cancel();
-    _bidUpdateSubscription?.cancel();
     _fallbackTimer?.cancel();
-    WebSocketService.instance.disconnect();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -111,56 +105,6 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         _bids = [];
       });
     }
-  }
-
-  void _startRealTimeUpdates() {
-    // Connect to WebSocket for real-time updates
-    WebSocketService.instance.connect(_currentAuction!.auctionId.toString());
-
-    // Listen for auction updates (price, bid count, status changes)
-    _auctionUpdateSubscription = WebSocketService.instance.auctionUpdateStream
-        .listen(
-          (AuctionUpdate update) {
-            if (mounted &&
-                update.auction.auctionId == _currentAuction!.auctionId) {
-              print(
-                '🔄 Auction update received: Price=\$${update.auction.currentPrice}, Bids=${update.auction.bidCount}',
-              );
-              setState(() {
-                _currentAuction = update.auction;
-              });
-            }
-          },
-          onError: (error) {
-            print('Auction update error: $error');
-          },
-        );
-
-    // Listen for bid updates (new bids)
-    _bidUpdateSubscription = WebSocketService.instance.bidUpdateStream.listen(
-      (BidUpdate update) {
-        if (mounted && update.bid.auctionId == _currentAuction!.auctionId) {
-          print('🆕 New bid received: \$${update.bid.bidAmount}');
-          // Add new bid to the list and reload to get fresh data
-          setState(() {
-            _bids.insert(0, update.bid); // Add to beginning for newest first
-          });
-          // Also reload full bid list to ensure consistency
-          _loadBids();
-        }
-      },
-      onError: (error) {
-        print('Bid update error: $error');
-      },
-    );
-
-    // Check if WebSocket connected after a short delay
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!WebSocketService.instance.isConnected) {
-        print('WebSocket failed to connect, starting fallback polling');
-        _startFallbackPolling();
-      }
-    });
   }
 
   void _refreshAuctionData() {
@@ -273,7 +217,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           _successMessage = 'Bid placed successfully!';
           _bidController.clear();
         });
-        // WebSocket will automatically update the UI with new data
+        // Reload data to show new bid
+        _loadBids();
       } else {
         setState(() {
           _errorMessage = response.error ?? 'Failed to place bid';
@@ -659,78 +604,84 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Property Image
-            if (_currentAuction!.property?.imageUrl.isNotEmpty == true)
-              Image.network(
-                _currentAuction!.property!.imageUrl,
-                fit: BoxFit.cover,
-              )
-            else
-              Container(
-                color: AppColors.secondary,
-                child: const Icon(Icons.home, size: 100, color: Colors.grey),
-              ),
+            // Property Image Carousel
+            PropertyImageCarousel(
+              images: _currentAuction!.property?.propertyImages ?? [],
+              fallbackImageUrl: _currentAuction!.property?.imageUrl,
+              height: 300,
+              showIndicators: true,
+              showNavigationButtons: true,
+              showImageCounter: true,
+              borderRadius: BorderRadius.zero,
+            ),
 
-            // Gradient Overlay
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, AppColors.textPrimary],
+            // Gradient Overlay (IgnorePointer allows touch to pass through)
+            IgnorePointer(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, AppColors.textPrimary],
+                  ),
                 ),
               ),
             ),
 
-            // Property Info
+            // Property Info (IgnorePointer allows swipes to pass through)
             Positioned(
               bottom: 20,
               left: 20,
               right: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _currentAuction!.property?.name ?? 'Property',
-                    style: const TextStyle(
-                      color: AppColors.surface,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _currentAuction!.property?.location ?? '',
-                    style: TextStyle(color: AppColors.secondary, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _currentAuction!.isUpcoming
-                          ? Colors.blue
-                          : (_currentAuction!.isActive
-                                ? Colors.green
-                                : Colors.orange),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _currentAuction!.isUpcoming
-                          ? 'NOT STARTED'
-                          : (_currentAuction!.isActive
-                                ? 'LIVE AUCTION'
-                                : 'ENDED'),
+              child: IgnorePointer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _currentAuction!.property?.name ?? 'Property',
                       style: const TextStyle(
                         color: AppColors.surface,
-                        fontSize: 12,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      _currentAuction!.property?.location ?? '',
+                      style: TextStyle(
+                        color: AppColors.secondary,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _currentAuction!.isUpcoming
+                            ? Colors.blue
+                            : (_currentAuction!.isActive
+                                  ? Colors.green
+                                  : Colors.orange),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _currentAuction!.isUpcoming
+                            ? 'NOT STARTED'
+                            : (_currentAuction!.isActive
+                                  ? 'LIVE AUCTION'
+                                  : 'ENDED'),
+                        style: const TextStyle(
+                          color: AppColors.surface,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

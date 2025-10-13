@@ -1,15 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'api_client.dart';
-import 'websocket_service.dart';
 import '../models/notification.dart';
 
 class NotificationService extends ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _isLoading = false;
   int _unreadCount = 0;
-  StreamSubscription? _notificationSubscription;
-  String? _currentUserId;
   bool _isLoggedIn = false;
 
   List<AppNotification> get notifications => _notifications;
@@ -17,52 +14,6 @@ class NotificationService extends ChangeNotifier {
       _notifications.where((n) => !n.isRead).toList();
   bool get isLoading => _isLoading;
   int get unreadCount => _unreadCount;
-
-  // Initialize WebSocket connection for real-time notifications
-  void initializeWebSocket(String userId) {
-    _currentUserId = userId;
-    _isLoggedIn = true;
-
-    // Subscribe to user-specific notifications via WebSocket
-    WebSocketService.instance.subscribeToUserNotifications(userId);
-
-    // Listen for incoming notification messages
-    _notificationSubscription = WebSocketService.instance.notificationStream
-        .listen(
-          (notification) {
-            print(
-              '📬 Received notification via WebSocket: ${notification.title}',
-            );
-            _addNotification(notification);
-          },
-          onError: (error) {
-            print('❌ WebSocket notification error: $error');
-          },
-        );
-  }
-
-  // Add notification received from WebSocket
-  void _addNotification(AppNotification notification) {
-    // Add to the beginning of the list
-    _notifications.insert(0, notification);
-    if (!notification.isRead) {
-      _unreadCount++;
-    }
-    notifyListeners();
-  }
-
-  // Disconnect WebSocket
-  void disconnectWebSocket() {
-    _notificationSubscription?.cancel();
-    _notificationSubscription = null;
-    if (_currentUserId != null) {
-      WebSocketService.instance.unsubscribeFromUserNotifications(
-        _currentUserId!,
-      );
-      _currentUserId = null;
-    }
-    _isLoggedIn = false;
-  }
 
   // Fetch all notifications (public for non-logged-in, user-specific for logged-in)
   Future<ApiResponse<List<AppNotification>>> getNotifications({
@@ -233,7 +184,6 @@ class NotificationService extends ChangeNotifier {
   void clear() {
     _notifications = [];
     _unreadCount = 0;
-    disconnectWebSocket();
     notifyListeners();
   }
 
@@ -244,7 +194,6 @@ class NotificationService extends ChangeNotifier {
 
   @override
   void dispose() {
-    disconnectWebSocket();
     super.dispose();
   }
 }

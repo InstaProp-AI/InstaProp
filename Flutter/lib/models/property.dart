@@ -1,4 +1,5 @@
 import 'user.dart';
+import 'property_image.dart';
 
 enum PropertyType { resale, primary }
 
@@ -24,6 +25,7 @@ class Property {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final bool hasActiveAuction;
+  final List<PropertyImage> propertyImages;
 
   Property({
     required this.propertyId,
@@ -45,6 +47,7 @@ class Property {
     required this.createdAt,
     this.updatedAt,
     this.hasActiveAuction = false,
+    this.propertyImages = const [],
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -178,6 +181,9 @@ class Property {
           : null,
       hasActiveAuction:
           json['hasActiveAuction'] ?? json['HasActiveAuction'] ?? false,
+      propertyImages: (json['propertyImages'] ?? json['PropertyImages'] ?? [])
+          .map<PropertyImage>((img) => PropertyImage.fromJson(img))
+          .toList(),
     );
   }
 
@@ -201,6 +207,7 @@ class Property {
       'imageUrl': imageUrl,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
+      'propertyImages': propertyImages.map((img) => img.toJson()).toList(),
     };
   }
 

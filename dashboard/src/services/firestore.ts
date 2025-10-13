@@ -62,7 +62,6 @@ export interface FirestoreNotification {
 
 /**
  * Firestore Service for real-time data synchronization
- * Replaces WebSocket for admin dashboard
  */
 export class FirestoreService {
   

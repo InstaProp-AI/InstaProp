@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:file_picker/file_picker.dart';
 
 class ApiResponse<T> {
   final bool success;
@@ -345,6 +346,182 @@ class ApiClient {
     } on FormatException {
       return ApiResponse.error('Invalid response format');
     } catch (e) {
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
+  // Upload files with multipart/form-data
+  static Future<ApiResponse<T>> postMultipart<T>(
+    String endpoint,
+    List<File> files, {
+    Map<String, String>? fields,
+    String fileFieldName = 'images',
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl$endpoint');
+      final token = await getToken();
+
+      print('🌐 POST (Multipart) $uri');
+      print('📡 Base URL: $baseUrl');
+      print('📤 Files count: ${files.length}');
+
+      var request = http.MultipartRequest('POST', uri);
+
+      // Add authorization header
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Add files
+      for (var file in files) {
+        var stream = http.ByteStream(file.openRead());
+        var length = await file.length();
+        var multipartFile = http.MultipartFile(
+          fileFieldName,
+          stream,
+          length,
+          filename: file.path.split('/').last,
+        );
+        request.files.add(multipartFile);
+      }
+
+      // Add additional fields
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+
+      var streamedResponse = await request.send().timeout(timeout);
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('✅ Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (fromJson != null) {
+          final data = jsonDecode(response.body);
+          if (data is Map<String, dynamic>) {
+            return ApiResponse.success(
+              fromJson(data),
+              statusCode: response.statusCode,
+            );
+          }
+        }
+        return ApiResponse.success(null as T, statusCode: response.statusCode);
+      } else {
+        final data = jsonDecode(response.body);
+        final errorMessage = data is Map<String, dynamic>
+            ? (data['message'] ?? data['error'] ?? 'Unknown error')
+            : 'Request failed with status ${response.statusCode}';
+        return ApiResponse.error(errorMessage, statusCode: response.statusCode);
+      }
+    } on SocketException catch (e) {
+      print('❌ SocketException: $e');
+      return ApiResponse.error(
+        'Cannot connect to server. Please check if backend is running at $baseUrl',
+      );
+    } on HttpException catch (e) {
+      print('❌ HttpException: $e');
+      return ApiResponse.error('HTTP error occurred: $e');
+    } on FormatException catch (e) {
+      print('❌ FormatException: $e');
+      return ApiResponse.error('Invalid response format: $e');
+    } catch (e) {
+      print('❌ Unexpected error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
+  // Upload PlatformFiles with multipart/form-data (works on both web and mobile)
+  static Future<ApiResponse<T>> postMultipartPlatformFiles<T>(
+    String endpoint,
+    List<PlatformFile> files, {
+    Map<String, String>? fields,
+    String fileFieldName = 'images',
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl$endpoint');
+      final token = await getToken();
+
+      print('🌐 POST (Multipart) $uri');
+      print('📡 Base URL: $baseUrl');
+      print('📤 Files count: ${files.length}');
+
+      var request = http.MultipartRequest('POST', uri);
+
+      // Add authorization header
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Add files - handle both web and mobile
+      for (var file in files) {
+        if (kIsWeb) {
+          // For web, use bytes
+          if (file.bytes != null) {
+            var multipartFile = http.MultipartFile.fromBytes(
+              fileFieldName,
+              file.bytes!,
+              filename: file.name,
+            );
+            request.files.add(multipartFile);
+          }
+        } else {
+          // For mobile, use path
+          if (file.path != null) {
+            var multipartFile = await http.MultipartFile.fromPath(
+              fileFieldName,
+              file.path!,
+              filename: file.name,
+            );
+            request.files.add(multipartFile);
+          }
+        }
+      }
+
+      // Add additional fields
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+
+      var streamedResponse = await request.send().timeout(timeout);
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('✅ Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (fromJson != null) {
+          final data = jsonDecode(response.body);
+          if (data is Map<String, dynamic>) {
+            return ApiResponse.success(
+              fromJson(data),
+              statusCode: response.statusCode,
+            );
+          }
+        }
+        return ApiResponse.success(null as T, statusCode: response.statusCode);
+      } else {
+        final data = jsonDecode(response.body);
+        final errorMessage = data is Map<String, dynamic>
+            ? (data['message'] ?? data['error'] ?? 'Unknown error')
+            : 'Request failed with status ${response.statusCode}';
+        return ApiResponse.error(errorMessage, statusCode: response.statusCode);
+      }
+    } on SocketException catch (e) {
+      print('❌ SocketException: $e');
+      return ApiResponse.error(
+        'Cannot connect to server. Please check if backend is running at $baseUrl',
+      );
+    } on HttpException catch (e) {
+      print('❌ HttpException: $e');
+      return ApiResponse.error('HTTP error occurred: $e');
+    } on FormatException catch (e) {
+      print('❌ FormatException: $e');
+      return ApiResponse.error('Invalid response format: $e');
+    } catch (e) {
+      print('❌ Unexpected error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
   }

@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'api_client.dart';
 import '../models/property.dart';
+import '../models/property_image.dart';
 
 class PropertyService {
   static Future<ApiResponse<List<Property>>> getProperties() async {
@@ -19,7 +22,7 @@ class PropertyService {
     required int squareFeet,
     required int yearBuilt,
     required String category,
-    required String imageUrl,
+    String? imageUrl,
   }) async {
     return await ApiClient.post('/api/property', {
       'name': name,
@@ -30,7 +33,7 @@ class PropertyService {
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
       'category': category,
-      'imageUrl': imageUrl,
+      'imageUrl': imageUrl ?? '',
     }, Property.fromJson);
   }
 
@@ -74,7 +77,7 @@ class PropertyService {
     required int squareFeet,
     required int yearBuilt,
     required String category,
-    required String imageUrl,
+    String? imageUrl,
   }) async {
     return await ApiClient.post('/api/property/skip-documents', {
       'name': name,
@@ -85,7 +88,7 @@ class PropertyService {
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
       'category': category,
-      'imageUrl': imageUrl,
+      'imageUrl': imageUrl ?? '',
     }, Property.fromJson);
   }
 
@@ -93,6 +96,66 @@ class PropertyService {
     return await ApiClient.getList(
       '/api/property/my-properties',
       Property.fromJson,
+    );
+  }
+
+  // Upload property images (File - for mobile only)
+  static Future<ApiResponse<dynamic>> uploadPropertyImages(
+    int propertyId,
+    List<File> images, {
+    String imageType = 'Gallery',
+  }) async {
+    return await ApiClient.postMultipart(
+      '/api/property/$propertyId/images',
+      images,
+      fields: {'imageType': imageType},
+      fileFieldName: 'images',
+      fromJson: (json) => json, // Return raw response
+    );
+  }
+
+  // Upload property images (PlatformFile - works on both web and mobile)
+  static Future<ApiResponse<dynamic>> uploadPropertyImagesPlatform(
+    int propertyId,
+    List<PlatformFile> images, {
+    String imageType = 'Gallery',
+  }) async {
+    return await ApiClient.postMultipartPlatformFiles(
+      '/api/property/$propertyId/images',
+      images,
+      fields: {'imageType': imageType},
+      fileFieldName: 'images',
+      fromJson: (json) => json, // Return raw response
+    );
+  }
+
+  // Get property images
+  static Future<ApiResponse<List<PropertyImage>>> getPropertyImages(
+    int propertyId,
+  ) async {
+    return await ApiClient.getList(
+      '/api/property/$propertyId/images',
+      PropertyImage.fromJson,
+    );
+  }
+
+  // Delete property image
+  static Future<ApiResponse<void>> deletePropertyImage(
+    int propertyId,
+    int imageId,
+  ) async {
+    return await ApiClient.delete('/api/property/$propertyId/images/$imageId');
+  }
+
+  // Set main image
+  static Future<ApiResponse<void>> setMainImage(
+    int propertyId,
+    int imageId,
+  ) async {
+    return await ApiClient.put(
+      '/api/property/$propertyId/images/$imageId/set-main',
+      {},
+      (json) => null,
     );
   }
 }

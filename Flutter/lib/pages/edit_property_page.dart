@@ -6,6 +6,7 @@ import '../models/property.dart';
 import '../services/property_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
+import 'property_docs_upload_page.dart';
 
 class EditPropertyPage extends StatefulWidget {
   final Property property;
@@ -451,6 +452,69 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
               ),
 
               const SizedBox(height: 32),
+
+              // Manage Documents button - Only for non-approved properties
+              if (!widget.property.isApproved) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PropertyDocsUploadPage(
+                            propertyId: widget.property.propertyId,
+                            propertyName: widget.property.name,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.upload_file, size: 18),
+                    label: const Text(
+                      'Manage Property Documents',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      side: const BorderSide(color: Colors.blue, width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ] else ...[
+                // Info message for verified properties
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Documents are locked for verified properties. Contact support if changes are needed.',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Update button
               LoadingButton(

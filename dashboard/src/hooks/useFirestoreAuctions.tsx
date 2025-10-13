@@ -8,7 +8,6 @@ interface UseFirestoreAuctionsOptions {
 
 /**
  * React hook for listening to Firestore auctions in real-time
- * Replaces useWebSocket for auction updates
  */
 export const useFirestoreAuctions = (options: UseFirestoreAuctionsOptions = {}) => {
   const { activeOnly = false, onError } = options;

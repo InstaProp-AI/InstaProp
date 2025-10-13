@@ -218,7 +218,6 @@ POST http://localhost:5284/api/account/signup
 ### Recommended:
 - [ ] Test with real data
 - [ ] Add error notifications
-- [ ] Implement WebSocket for real-time updates
 - [ ] Add data export functionality
 - [ ] Create user documentation
 
