@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
 import '../models/bid.dart';
 import '../services/bid_service.dart';
 import '../services/auction_service.dart';
+import '../services/firestore_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
@@ -33,8 +35,16 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   List<Bid> _bids = [];
 
   Auction? _currentAuction;
+  double? _previousPrice; // Track previous price to detect changes
 
-  // Fallback polling
+  // Audio player for bid notification sound
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  // Firestore real-time listeners
+  StreamSubscription<Auction?>? _auctionSubscription;
+  StreamSubscription<List<Bid>>? _bidsSubscription;
+
+  // Fallback polling (backup only)
   Timer? _fallbackTimer;
 
   late AnimationController _animationController;
@@ -45,6 +55,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   void initState() {
     super.initState();
     _currentAuction = widget.auction;
+    _previousPrice =
+        widget.auction.currentPrice; // Initialize with current price
     WidgetsBinding.instance.addObserver(this);
 
     _animationController = AnimationController(
@@ -64,14 +76,87 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
     _animationController.forward();
     _loadBids();
+    // Start Firebase real-time listeners
+    _startFirestoreListeners();
+    // Start fallback polling as backup (less frequent)
     _startFallbackPolling();
+  }
+
+  /// Start Firestore real-time listeners for instant updates
+  void _startFirestoreListeners() {
+    print(
+      '🔥 Starting Firestore listeners for auction ${_currentAuction!.auctionId}',
+    );
+
+    // Listen to auction updates in real-time
+    _auctionSubscription =
+        FirestoreService.listenToAuction(_currentAuction!.auctionId).listen(
+          (auction) {
+            if (auction != null && mounted) {
+              print(
+                '🔥 Firestore: Auction updated - Price: \$${auction.currentPrice}, Bids: ${auction.bidCount}',
+              );
+              print('🔥 Firestore: Updating _currentAuction in setState...');
+
+              // Check if price changed and play sound
+              if (_previousPrice != null &&
+                  auction.currentPrice != _previousPrice) {
+                print('🔔 New bid detected! Playing notification sound...');
+                _playBidNotificationSound();
+              }
+
+              setState(() {
+                _currentAuction = auction;
+                _previousPrice = auction.currentPrice; // Update previous price
+              });
+              print(
+                '✅ Firestore: _currentAuction updated successfully! New price: \$${_currentAuction!.currentPrice}',
+              );
+            } else if (auction == null) {
+              print('⚠️ Firestore: Received null auction update');
+            }
+          },
+          onError: (error) {
+            print('❌ Firestore auction listener error: $error');
+          },
+        );
+
+    // Listen to bids in real-time
+    _bidsSubscription =
+        FirestoreService.listenToAuctionBids(_currentAuction!.auctionId).listen(
+          (bids) {
+            if (mounted) {
+              print('🔥 Firestore: Received ${bids.length} bids');
+              setState(() {
+                _bids = bids;
+              });
+            }
+          },
+          onError: (error) {
+            print('❌ Firestore bids listener error: $error');
+          },
+        );
+  }
+
+  /// Play notification sound when a new bid is placed
+  Future<void> _playBidNotificationSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/bid_notification.mp3'));
+      print('✅ Notification sound played');
+    } catch (e) {
+      print('⚠️ Error playing notification sound: $e');
+      // Don't throw error, just log it - sound is not critical
+    }
   }
 
   @override
   void dispose() {
     _bidController.dispose();
     _animationController.dispose();
+    _audioPlayer.dispose();
     _fallbackTimer?.cancel();
+    _auctionSubscription?.cancel();
+    _bidsSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -132,8 +217,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     // Only start fallback if not already running
     if (_fallbackTimer != null) return;
 
-    print('Starting fallback polling every 30 seconds');
-    _fallbackTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    // Reduced frequency since we have real-time Firestore updates
+    print('Starting fallback polling every 5 minutes (backup)');
+    _fallbackTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       if (mounted) {
         _refreshAuctionDataFallback();
       }

@@ -1,5 +1,4 @@
 import '../../theme/app_colors.dart';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -18,6 +17,12 @@ class AuctionsPage extends StatefulWidget {
 class _AuctionsPageState extends State<AuctionsPage> {
   List<Auction> _filteredAuctions = [];
   Map<String, dynamic> _activeFilters = {};
+
+  // Track recently updated auctions for highlighting
+  final Map<int, DateTime> _recentlyUpdatedAuctions = {};
+  final Set<int> _highlightedAuctions = {};
+  final Map<int, double> _previousPrices = {}; // Track previous prices
+  final Map<int, int> _previousBidCounts = {}; // Track previous bid counts
 
   // Filter options
   final Map<String, String> _categoryOptions = {
@@ -182,6 +187,78 @@ class _AuctionsPageState extends State<AuctionsPage> {
     }
   }
 
+  /// Track auction updates to highlight changed rows
+  void _trackAuctionUpdates(List<Auction> auctions) {
+    if (auctions.isEmpty) return;
+
+    // Schedule after frame to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      for (final auction in auctions) {
+        try {
+          final auctionId = auction.auctionId;
+          final currentPrice = auction.currentPrice;
+          final currentBidCount = auction.bidCount;
+
+          final previousPrice = _previousPrices[auctionId];
+          final previousBidCount = _previousBidCounts[auctionId];
+
+          // Detect if price or bid count changed
+          bool hasChanged = false;
+
+          if (previousPrice != null && currentPrice != previousPrice) {
+            print(
+              '🔔 Auction $auctionId price changed: \$${previousPrice} → \$${currentPrice}',
+            );
+            hasChanged = true;
+          }
+
+          if (previousBidCount != null && currentBidCount != previousBidCount) {
+            print(
+              '🔔 Auction $auctionId bid count changed: $previousBidCount → ${currentBidCount}',
+            );
+            hasChanged = true;
+          }
+
+          // Update tracked values (no setState here)
+          _previousPrices[auctionId] = currentPrice;
+          _previousBidCounts[auctionId] = currentBidCount;
+
+          // If changed, mark for highlighting (this will call setState)
+          if (hasChanged) {
+            _markAuctionUpdated(auctionId);
+          }
+        } catch (e) {
+          print('⚠️ Error tracking auction update: $e');
+          // Continue with other auctions even if one fails
+        }
+      }
+    });
+  }
+
+  /// Mark an auction as updated (called when we detect price/bid changes)
+  void _markAuctionUpdated(int auctionId) {
+    setState(() {
+      _recentlyUpdatedAuctions[auctionId] = DateTime.now();
+      _highlightedAuctions.add(auctionId);
+    });
+
+    // Remove highlight after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _highlightedAuctions.remove(auctionId);
+        });
+      }
+    });
+  }
+
+  /// Check if auction should be highlighted
+  bool _isAuctionHighlighted(int auctionId) {
+    return _highlightedAuctions.contains(auctionId);
+  }
+
   void _setFilter(String key, String value) {
     print('Setting filter: $key = $value');
     setState(() {
@@ -294,6 +371,9 @@ class _AuctionsPageState extends State<AuctionsPage> {
           print(
             'AuctionsPage builder - loadingAuctions: ${appState.loadingAuctions}, auctions length: ${appState.auctions.length}',
           );
+
+          // Track auction updates for highlighting
+          _trackAuctionUpdates(appState.auctions);
 
           if (appState.loadingAuctions) {
             return const Center(child: CircularProgressIndicator());
@@ -769,11 +849,24 @@ class _AuctionsPageState extends State<AuctionsPage> {
     bool isUpcoming = false,
     VoidCallback? onAuctionEnded,
   }) {
-    return Container(
+    final isHighlighted = _isAuctionHighlighted(auction.auctionId);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.background!)),
+        color: isHighlighted
+            ? Colors.yellow.withOpacity(0.15) // Light yellow highlight
+            : AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.background!),
+          left: isHighlighted
+              ? BorderSide(
+                  color: Colors.amber,
+                  width: 4,
+                ) // Amber left border when highlighted
+              : BorderSide.none,
+        ),
       ),
       child: InkWell(
         onTap: () => Navigator.of(context).push(
@@ -835,13 +928,41 @@ class _AuctionsPageState extends State<AuctionsPage> {
             const SizedBox(width: 16),
             SizedBox(
               width: 120, // Fixed width for current price
-              child: Text(
-                '\$${auction.currentPrice.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                  fontSize: 14,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '\$${auction.currentPrice.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isHighlighted
+                          ? Colors.green[700]
+                          : AppColors.primary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (isHighlighted)
+                    Container(
+                      margin: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'NEW BID',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(width: 16),

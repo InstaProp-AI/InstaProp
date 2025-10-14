@@ -28,7 +28,18 @@ class _NotificationPageState extends State<NotificationPage> {
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    // The Firestore listeners are already active via NotificationService
+    // No need to call getNotifications() as real-time updates handle it
+    print('📬 Notification page opened - Firestore listeners active');
+
+    // Check if user is logged in and listeners are started
+    final notificationService = Provider.of<NotificationService>(
+      context,
+      listen: false,
+    );
+    print(
+      '📬 Current notifications count: ${notificationService.notifications.length}',
+    );
   }
 
   Future<void> _loadNotifications() async {

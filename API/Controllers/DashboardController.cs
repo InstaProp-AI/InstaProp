@@ -35,9 +35,11 @@ namespace PropertyFlipperAPI.Controllers
                 var bidsToday = await _context.Bids.Where(b => b.CreatedAt >= today).CountAsync();
                 
                 // Total auction volume (sum of all current prices)
-                var totalVolume = await _context.Auctions
+                // Load into memory to avoid SQLite decimal aggregate issues
+                var allActiveAuctions = await _context.Auctions
                     .Where(a => a.Status == "Active")
-                    .SumAsync(a => (decimal?)a.CurrentPrice) ?? 0;
+                    .ToListAsync();
+                var totalVolume = allActiveAuctions.Sum(a => a.CurrentPrice);
 
                 // Average bid per auction
                 var avgBidsPerAuction = activeAuctions > 0 
@@ -46,9 +48,6 @@ namespace PropertyFlipperAPI.Controllers
 
                 // Auctions ending today
                 var endOfDay = today.AddDays(1);
-                var allActiveAuctions = await _context.Auctions
-                    .Where(a => a.Status == "Active")
-                    .ToListAsync();
                 
                 // Calculate auctions ending today (EndAt = StartAt + Duration)
                 var auctionsEndingToday = allActiveAuctions

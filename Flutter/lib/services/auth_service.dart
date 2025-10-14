@@ -57,6 +57,19 @@ class AuthService extends ChangeNotifier {
         );
       }
 
+      if (response.statusCode == 423) {
+        // Account is locked
+        final errorData = jsonDecode(response.body);
+        _isLoading = false;
+        notifyListeners();
+        return ApiResponse.error(
+          errorData['message'] ??
+              'Account is locked. Please try again later or reset your password.',
+          statusCode: 423,
+          data: errorData,
+        );
+      }
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _token = data['token'] ?? data['Token'];
@@ -68,13 +81,40 @@ class AuthService extends ChangeNotifier {
         return ApiResponse.success(_user!);
       }
 
+      // Handle other error responses by parsing JSON
       _isLoading = false;
       notifyListeners();
-      return ApiResponse.error('Login failed: ${response.body}');
+
+      try {
+        final errorData = jsonDecode(response.body);
+        String errorMessage =
+            errorData['message'] ?? 'Invalid email or password';
+
+        // Check for attempts remaining
+        if (errorData['attemptsRemaining'] != null ||
+            errorData['AttemptsRemaining'] != null) {
+          final attempts =
+              errorData['attemptsRemaining'] ?? errorData['AttemptsRemaining'];
+          if (attempts is int && attempts > 0) {
+            errorMessage =
+                '$errorMessage. $attempts attempt${attempts > 1 ? 's' : ''} remaining.';
+          }
+        }
+
+        return ApiResponse.error(errorMessage, statusCode: response.statusCode);
+      } catch (e) {
+        // If JSON parsing fails, return generic error
+        return ApiResponse.error(
+          'Invalid email or password',
+          statusCode: response.statusCode,
+        );
+      }
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      return ApiResponse.error('Login failed: $e');
+      return ApiResponse.error(
+        'Login failed. Please check your connection and try again.',
+      );
     }
   }
 

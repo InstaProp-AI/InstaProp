@@ -43,7 +43,8 @@ class ApiClient {
   static String get baseUrl {
     if (kIsWeb) {
       // For web, use localhost or your deployed backend URL
-      return 'http://localhost:5284';
+      // Use Mac's IP so it works from phone too
+      return 'http://192.168.1.16:5284';
     } else if (Platform.isAndroid) {
       // Android emulator: 10.0.2.2 maps to host's localhost
       // Physical Android device: use your computer's IP address

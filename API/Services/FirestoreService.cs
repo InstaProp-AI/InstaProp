@@ -1,6 +1,7 @@
 using Google.Cloud.Firestore;
 using PropertyFlipperAPI.Models;
 using System.Text.Json;
+using System.Linq;
 
 namespace PropertyFlipperAPI.Services
 {
@@ -70,15 +71,15 @@ namespace PropertyFlipperAPI.Services
                 {
                     ["auctionId"] = auction.AuctionId,
                     ["propertyId"] = auction.PropertyId,
-                    ["startPrice"] = auction.StartPrice,
-                    ["currentPrice"] = auction.CurrentPrice,
-                    ["startAt"] = auction.StartAt,
+                    ["startPrice"] = (double)auction.StartPrice,
+                    ["currentPrice"] = (double)auction.CurrentPrice,
+                    ["startAt"] = auction.StartAt.ToString("o"), // ISO 8601 format
                     ["duration"] = auction.Duration,
-                    ["buyNowPrice"] = auction.BuyNowPrice ?? 0,
+                    ["buyNowPrice"] = auction.BuyNowPrice != null ? (double)auction.BuyNowPrice : 0,
                     ["bidCount"] = auction.BidCount,
                     ["status"] = auction.Status,
-                    ["createdAt"] = auction.CreatedAt,
-                    ["updatedAt"] = DateTime.UtcNow,
+                    ["createdAt"] = auction.CreatedAt.ToString("o"), // ISO 8601 format
+                    ["updatedAt"] = DateTime.UtcNow.ToString("o"), // ISO 8601 format
                     ["property"] = auction.Property != null ? new Dictionary<string, object>
                     {
                         ["propertyId"] = auction.Property.PropertyId,
@@ -91,7 +92,18 @@ namespace PropertyFlipperAPI.Services
                         ["bedrooms"] = auction.Property.Bedrooms,
                         ["bathrooms"] = auction.Property.Bathrooms,
                         ["squareFeet"] = auction.Property.SquareFeet,
-                        ["yearBuilt"] = auction.Property.YearBuilt
+                        ["yearBuilt"] = auction.Property.YearBuilt,
+                        ["category"] = auction.Property.Category ?? "",
+                        ["project"] = auction.Property.Project?.Name ?? "",
+                        ["propertyImages"] = auction.Property.PropertyImages?.Select(img => new Dictionary<string, object>
+                        {
+                            ["propertyImageId"] = img.PropertyImageId,
+                            ["propertyId"] = img.PropertyId,
+                            ["imageUrl"] = img.ImageUrl ?? "",
+                            ["imageType"] = img.ImageType ?? "",
+                            ["isMainImage"] = img.IsMainImage,
+                            ["displayOrder"] = img.DisplayOrder
+                        }).ToList() ?? new List<Dictionary<string, object>>()
                     } : null
                 };
 
@@ -150,11 +162,15 @@ namespace PropertyFlipperAPI.Services
                     ["bidId"] = bid.BidId,
                     ["auctionId"] = bid.AuctionId,
                     ["bidderId"] = bid.BidderId,
-                    ["bidAmount"] = bid.BidAmount,
-                    ["createdAt"] = bid.CreatedAt,
-                    ["bidderName"] = bid.Bidder != null 
-                        ? $"{bid.Bidder.FirstName} {bid.Bidder.LastName}" 
-                        : "Unknown"
+                    ["bidAmount"] = (double)bid.BidAmount,
+                    ["createdAt"] = bid.CreatedAt.ToString("o"), // ISO 8601 format
+                    ["bidder"] = bid.Bidder != null ? new Dictionary<string, object>
+                    {
+                        ["accountId"] = bid.Bidder.AccountId,
+                        ["firstName"] = bid.Bidder.FirstName ?? "",
+                        ["lastName"] = bid.Bidder.LastName ?? "",
+                        ["email"] = bid.Bidder.Email ?? ""
+                    } : null
                 };
 
                 await bidRef.SetAsync(bidData);
@@ -191,15 +207,17 @@ namespace PropertyFlipperAPI.Services
                 var notifData = new Dictionary<string, object>
                 {
                     ["notificationId"] = notification.NotificationId,
-                    ["userId"] = notification.UserId ?? 0,
+                    ["userId"] = userId,
                     ["title"] = notification.Title,
                     ["message"] = notification.Message,
                     ["type"] = notification.Type.ToString(),
                     ["isRead"] = notification.IsRead,
                     ["auctionId"] = notification.AuctionId ?? 0,
                     ["propertyId"] = notification.PropertyId ?? 0,
-                    ["createdAt"] = notification.CreatedAt,
-                    ["readAt"] = notification.ReadAt
+                    ["eventId"] = notification.EventId ?? 0,
+                    ["bidId"] = notification.BidId ?? 0,
+                    ["createdAt"] = notification.CreatedAt.ToString("o"), // ISO 8601 format
+                    ["readAt"] = notification.ReadAt?.ToString("o") // ISO 8601 format, nullable
                 };
 
                 await notifRef.SetAsync(notifData);
@@ -228,7 +246,7 @@ namespace PropertyFlipperAPI.Services
                 await notifRef.UpdateAsync(new Dictionary<string, object>
                 {
                     ["isRead"] = true,
-                    ["readAt"] = DateTime.UtcNow
+                    ["readAt"] = DateTime.UtcNow.ToString("o") // ISO 8601 format
                 });
 
                 _logger.LogInformation($"✅ Marked notification {notificationId} as read in Firestore");
@@ -262,7 +280,7 @@ namespace PropertyFlipperAPI.Services
                 {
                     ["type"] = type,
                     ["data"] = JsonSerializer.Serialize(data),
-                    ["timestamp"] = DateTime.UtcNow
+                    ["timestamp"] = DateTime.UtcNow.ToString("o") // ISO 8601 format
                 };
 
                 await updateRef.SetAsync(updateData);
@@ -308,8 +326,8 @@ namespace PropertyFlipperAPI.Services
                     ["emailVerified"] = account.EmailVerified,
                     ["phoneVerified"] = account.PhoneVerified,
                     ["isSuspended"] = account.IsSuspended,
-                    ["createdAt"] = account.CreatedAt,
-                    ["updatedAt"] = DateTime.UtcNow
+                    ["createdAt"] = account.CreatedAt.ToString("o"), // ISO 8601 format
+                    ["updatedAt"] = DateTime.UtcNow.ToString("o") // ISO 8601 format
                 };
 
                 await userRef.SetAsync(userData, SetOptions.MergeAll);
@@ -373,9 +391,10 @@ namespace PropertyFlipperAPI.Services
                     ["squareFeet"] = property.SquareFeet,
                     ["yearBuilt"] = property.YearBuilt,
                     ["category"] = property.Category ?? "",
+                    ["project"] = property.Project?.Name ?? "",
                     ["imageUrl"] = property.ImageUrl ?? "",
-                    ["createdAt"] = property.CreatedAt,
-                    ["updatedAt"] = DateTime.UtcNow
+                    ["createdAt"] = property.CreatedAt.ToString("o"), // ISO 8601 format
+                    ["updatedAt"] = DateTime.UtcNow.ToString("o") // ISO 8601 format
                 };
 
                 await propertyRef.SetAsync(propertyData, SetOptions.MergeAll);

@@ -42,22 +42,30 @@ namespace PropertyFlipperAPI.Controllers
         [HttpGet("bidders/{auctionId}")]
         public async Task<IActionResult> GetBiddersForAuction(long auctionId)
         {
-            var bidders = await _context.Bids
+            // Get all bids for the auction - load into memory first
+            var bidsForAuction = await _context.Bids
                 .Where(b => b.AuctionId == auctionId)
                 .Include(b => b.Bidder)
-                .Select(b => new
+                .ToListAsync();
+
+            // Group by bidder and calculate stats in-memory to avoid SQLite decimal aggregate issues
+            var bidders = bidsForAuction
+                .GroupBy(b => new
                 {
                     b.Bidder.AccountId,
                     b.Bidder.FirstName,
-                    b.Bidder.LastName,
-                    BidCount = _context.Bids.Count(x => x.AuctionId == auctionId && x.BidderId == b.BidderId),
-                    LatestBidAmount = _context.Bids
-                        .Where(x => x.AuctionId == auctionId && x.BidderId == b.BidderId)
-                        .Max(x => (double)x.BidAmount)
+                    b.Bidder.LastName
                 })
-                .Distinct()
+                .Select(g => new
+                {
+                    g.Key.AccountId,
+                    g.Key.FirstName,
+                    g.Key.LastName,
+                    BidCount = g.Count(),
+                    LatestBidAmount = (double)g.Select(x => x.BidAmount).Max() // In-memory aggregation
+                })
                 .OrderByDescending(b => b.LatestBidAmount)
-                .ToListAsync();
+                .ToList();
 
             return Ok(bidders);
         }
@@ -227,10 +235,13 @@ namespace PropertyFlipperAPI.Controllers
             
             // Recalculate auction current price and bid count
             var auction = bid.Auction;
-            var remainingBids = await _context.Bids
+            var allBidsForAuction = await _context.Bids
                 .Where(b => b.AuctionId == auction.AuctionId)
-                .OrderByDescending(b => (double)b.BidAmount)
                 .ToListAsync();
+            
+            var remainingBids = allBidsForAuction
+                .OrderByDescending(b => b.BidAmount)
+                .ToList();
                 
             if (remainingBids.Any())
             {
@@ -250,10 +261,13 @@ namespace PropertyFlipperAPI.Controllers
 
         private async Task<decimal> GetCurrentPrice(long auctionId)
         {
-            var highestBid = await _context.Bids
+            var bidsForAuction = await _context.Bids
                 .Where(b => b.AuctionId == auctionId)
-                .OrderByDescending(b => (double)b.BidAmount)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
+
+            var highestBid = bidsForAuction
+                .OrderByDescending(b => b.BidAmount)
+                .FirstOrDefault();
 
             if (highestBid != null)
             {

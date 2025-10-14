@@ -753,25 +753,29 @@ namespace PropertyFlipperAPI.Controllers
                 // Auction statistics
                 var totalAuctions = await _context.Auctions.CountAsync();
                 var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
-                var endedAuctions = await _context.Auctions.Where(a => a.Status == "Ended").CountAsync();
+                var endedAuctionsCount = await _context.Auctions.Where(a => a.Status == "Ended").CountAsync();
                 
                 // Bid statistics
                 var totalBids = await _context.Bids.CountAsync();
                 
                 // Revenue calculation (sum of all ended auction current prices)
-                var totalRevenue = await _context.Auctions
+                // Load into memory to avoid SQLite decimal aggregate issues
+                var endedAuctionsList = await _context.Auctions
                     .Where(a => a.Status == "Ended")
-                    .SumAsync(a => (decimal?)a.CurrentPrice) ?? 0;
+                    .ToListAsync();
+                var totalRevenue = endedAuctionsList.Sum(a => a.CurrentPrice);
                 
                 // Monthly revenue (last 30 days) - based on auction end date
                 var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
-                var monthlyRevenue = await _context.Auctions
-                    .Where(a => a.Status == "Ended" && a.CreatedAt >= thirtyDaysAgo)
-                    .SumAsync(a => (decimal?)a.CurrentPrice) ?? 0;
+                var recentEndedAuctions = endedAuctionsList
+                    .Where(a => a.CreatedAt >= thirtyDaysAgo)
+                    .ToList();
+                var monthlyRevenue = recentEndedAuctions.Sum(a => a.CurrentPrice);
 
                 // Calculate average bid value
+                // Load into memory to avoid SQLite decimal aggregate issues
                 var averageBidValue = totalBids > 0 
-                    ? await _context.Bids.AverageAsync(b => (decimal?)b.BidAmount) ?? 0
+                    ? (await _context.Bids.ToListAsync()).Average(b => b.BidAmount)
                     : 0;
 
                 var stats = new
@@ -796,7 +800,7 @@ namespace PropertyFlipperAPI.Controllers
                     {
                         total = totalAuctions,
                         active = activeAuctions,
-                        ended = endedAuctions
+                        ended = endedAuctionsCount
                     },
                     bids = new
                     {
@@ -829,30 +833,36 @@ namespace PropertyFlipperAPI.Controllers
                 var last7Days = now.AddDays(-7);
 
                 // Daily bid trends (last 30 days)
-                var dailyBids = await _context.Bids
+                var allBids = await _context.Bids
                     .Where(b => b.CreatedAt >= last30Days)
+                    .ToListAsync();
+                
+                var dailyBids = allBids
                     .GroupBy(b => b.CreatedAt.Date)
                     .Select(g => new
                     {
                         date = g.Key,
                         count = g.Count(),
-                        totalValue = g.Sum(b => b.BidAmount)
+                        totalValue = g.Sum(b => b.BidAmount) // In-memory aggregation
                     })
                     .OrderBy(x => x.date)
-                    .ToListAsync();
+                    .ToList();
 
                 // Daily revenue from ended auctions (last 30 days)
-                var dailyRevenue = await _context.Auctions
+                var allEndedAuctions = await _context.Auctions
                     .Where(a => a.Status == "Ended" && a.CreatedAt >= last30Days)
+                    .ToListAsync();
+                
+                var dailyRevenue = allEndedAuctions
                     .GroupBy(a => a.CreatedAt.Date)
                     .Select(g => new
                     {
                         date = g.Key,
                         count = g.Count(),
-                        revenue = g.Sum(a => a.CurrentPrice)
+                        revenue = g.Sum(a => a.CurrentPrice) // In-memory aggregation
                     })
                     .OrderBy(x => x.date)
-                    .ToListAsync();
+                    .ToList();
 
                 // Top properties by bid count
                 var topProperties = await _context.Auctions

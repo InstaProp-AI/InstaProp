@@ -60,33 +60,49 @@ namespace PropertyFlipperAPI.Services
 
             if (auction?.Property == null) return;
 
+            var notificationsToSync = new List<(long userId, Notification notification)>();
+
+            // Load all bids for this auction into memory to avoid SQLite decimal aggregate issues
+            var allAuctionBids = await _context.Bids
+                .Where(b => b.AuctionId == auctionId)
+                .ToListAsync();
+
             foreach (var bidderId in previousBidders)
             {
                 // Only notify if their highest bid is lower than the new bid
-                var highestBid = await _context.Bids
-                    .Where(b => b.AuctionId == auctionId && b.BidderId == bidderId)
-                    .MaxAsync(b => b.BidAmount);
-
-                if (highestBid < newBidAmount)
+                // Use LINQ to Objects (in-memory) to avoid SQLite decimal aggregate issues
+                var bidderBids = allAuctionBids.Where(b => b.BidderId == bidderId).ToList();
+                
+                if (bidderBids.Any())
                 {
-                    var notification = new Notification
-                    {
-                        UserId = bidderId,
-                        Title = "You've Been Outbid",
-                        Message = $"Someone placed a higher bid of ${newBidAmount:N2} on '{auction.Property.Name}'. Place a new bid to stay in the race!",
-                        Type = NotificationType.Outbid,
-                        AuctionId = auctionId,
-                        CreatedAt = DateTime.UtcNow
-                    };
+                    var highestBid = bidderBids.Max(b => b.BidAmount);
 
-                    _context.Notifications.Add(notification);
-                    
-                    // Update Firestore for real-time sync
-                    await _firestoreService.UpdateUserNotificationAsync(bidderId, notification);
+                    if (highestBid < newBidAmount)
+                    {
+                        var notification = new Notification
+                        {
+                            UserId = bidderId,
+                            Title = "You've Been Outbid",
+                            Message = $"Someone placed a higher bid of ${newBidAmount:N2} on '{auction.Property.Name}'. Place a new bid to stay in the race!",
+                            Type = NotificationType.Outbid,
+                            AuctionId = auctionId,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        _context.Notifications.Add(notification);
+                        notificationsToSync.Add((bidderId, notification));
+                    }
                 }
             }
 
+            // Save to database first to get NotificationIds
             await _context.SaveChangesAsync();
+
+            // Then sync to Firestore
+            foreach (var (userId, notification) in notificationsToSync)
+            {
+                await _firestoreService.UpdateUserNotificationAsync(userId, notification);
+            }
         }
 
         // Create notification when a new auction starts
@@ -103,6 +119,8 @@ namespace PropertyFlipperAPI.Services
                 .Where(a => a.AccountId != auction.Property.OwnerId && a.Type == AccountType.User)
                 .ToListAsync();
 
+            var notificationsToSync = new List<(long userId, Notification notification)>();
+
             foreach (var user in users)
             {
                 var notification = new Notification
@@ -117,12 +135,17 @@ namespace PropertyFlipperAPI.Services
                 };
 
                 _context.Notifications.Add(notification);
-                
-                // Update Firestore for real-time sync
-                await _firestoreService.UpdateUserNotificationAsync(user.AccountId, notification);
+                notificationsToSync.Add((user.AccountId, notification));
             }
 
+            // Save to database first to get NotificationIds
             await _context.SaveChangesAsync();
+
+            // Then sync to Firestore
+            foreach (var (userId, notification) in notificationsToSync)
+            {
+                await _firestoreService.UpdateUserNotificationAsync(userId, notification);
+            }
         }
 
         // Create notification when auction is approved
@@ -213,6 +236,8 @@ namespace PropertyFlipperAPI.Services
                 .Where(a => a.AccountId != eventItem.UserId && a.Type == AccountType.User)
                 .ToListAsync();
 
+            var notificationsToSync = new List<(long userId, Notification notification)>();
+
             foreach (var user in users)
             {
                 var notification = new Notification
@@ -226,12 +251,17 @@ namespace PropertyFlipperAPI.Services
                 };
 
                 _context.Notifications.Add(notification);
-                
-                // Update Firestore for real-time sync
-                await _firestoreService.UpdateUserNotificationAsync(user.AccountId, notification);
+                notificationsToSync.Add((user.AccountId, notification));
             }
 
+            // Save to database first to get NotificationIds
             await _context.SaveChangesAsync();
+
+            // Then sync to Firestore
+            foreach (var (userId, notification) in notificationsToSync)
+            {
+                await _firestoreService.UpdateUserNotificationAsync(userId, notification);
+            }
         }
 
         // Get all notifications for a user

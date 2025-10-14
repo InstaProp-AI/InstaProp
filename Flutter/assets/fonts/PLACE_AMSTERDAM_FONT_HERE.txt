@@ -1,0 +1,13 @@
+⚠️ IMPORTANT: Download and place Amsterdam font files here
+
+REQUIRED FILES:
+✓ Amsterdam.ttf (or Amsterdam-Regular.ttf)
+✓ Amsterdam-Bold.ttf (optional)
+
+DOWNLOAD FROM:
+→ https://www.dafont.com/amsterdam.font
+
+INSTRUCTIONS:
+→ See AMSTERDAM_FONT_SETUP.md in the Flutter directory
+
+Current status: ⏳ WAITING FOR YOU TO ADD FONT FILES

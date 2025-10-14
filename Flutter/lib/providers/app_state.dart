@@ -6,6 +6,7 @@ import '../services/property_service.dart';
 import '../services/bid_service.dart';
 import '../services/notification_service.dart';
 import '../services/dashboard_service.dart';
+import '../services/firestore_service.dart';
 import '../services/api_client.dart';
 import '../models/user.dart';
 import '../models/auction.dart';
@@ -16,6 +17,7 @@ class AppState extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final NotificationService _notificationService = NotificationService();
   Timer? _fallbackTimer;
+  StreamSubscription<List<Auction>>? _auctionsSubscription;
 
   // Expose notification service
   NotificationService get notificationService => _notificationService;
@@ -103,16 +105,45 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     // Load initial data for freemium experience
     loadInitialData();
-    // Start polling for updates
+    // Start real-time listeners for Firebase
+    _startFirestoreListeners();
+    // Start fallback polling as backup (less frequent now)
     _startFallbackPolling();
+
+    // Start notification listeners if user is already logged in
+    if (isLoggedIn && user != null) {
+      _notificationService.startNotificationListeners(user!.accountId);
+    }
+  }
+
+  /// Start Firestore real-time listeners for instant updates
+  void _startFirestoreListeners() {
+    print('🔥 Starting Firestore real-time listeners for auctions...');
+
+    // Listen to all auctions in real-time
+    _auctionsSubscription = FirestoreService.listenToAllAuctions().listen(
+      (auctions) {
+        if (auctions.isNotEmpty) {
+          print('🔥 Firestore: Received ${auctions.length} auctions');
+          _auctions = auctions;
+          notifyListeners();
+        }
+      },
+      onError: (error) {
+        print('❌ Firestore auction listener error: $error');
+        // Fallback to API if Firestore fails
+        print('⚠️ Falling back to API for auctions');
+      },
+    );
   }
 
   void _startFallbackPolling() {
     // Only start fallback if not already running
     if (_fallbackTimer != null) return;
 
-    print('Starting fallback polling every 60 seconds');
-    _fallbackTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+    // Reduced frequency since we have real-time Firestore updates
+    print('Starting fallback polling every 5 minutes (backup)');
+    _fallbackTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       _refreshDataFallback();
     });
   }
@@ -131,33 +162,6 @@ class AppState extends ChangeNotifier {
       print('Error during fallback refresh: $e');
     } finally {
       _isRefreshing = false;
-      notifyListeners();
-    }
-  }
-
-  void _updateAuction(Auction updatedAuction) {
-    final existingIndex = _auctions.indexWhere(
-      (a) => a.auctionId == updatedAuction.auctionId,
-    );
-    if (existingIndex != -1) {
-      print(
-        '🔄 Updating auction ${updatedAuction.auctionId}: Price=\$${updatedAuction.currentPrice}, Bids=${updatedAuction.bidCount}',
-      );
-      _auctions[existingIndex] = updatedAuction;
-      notifyListeners();
-    } else {
-      print('⚠️ Auction ${updatedAuction.auctionId} not found in local list');
-    }
-  }
-
-  void _updateBidCount(int auctionId) {
-    final existingIndex = _auctions.indexWhere((a) => a.auctionId == auctionId);
-    if (existingIndex != -1) {
-      print('💰 Bid count updated for auction $auctionId');
-      // Just increment bid count - the auction update will handle price
-      _auctions[existingIndex] = _auctions[existingIndex].copyWith(
-        bidCount: _auctions[existingIndex].bidCount + 1,
-      );
       notifyListeners();
     }
   }
@@ -208,11 +212,11 @@ class AppState extends ChangeNotifier {
     // Always load initial data for freemium experience
     loadInitialData();
 
-    // Load notifications if logged in
+    // Start/stop notification listeners based on login status
     if (isLoggedIn && user != null) {
-      _notificationService.getNotifications(); // Load initial notifications
+      _notificationService.startNotificationListeners(user!.accountId);
     } else {
-      _notificationService.clear();
+      _notificationService.stopNotificationListeners();
     }
   }
 
@@ -412,6 +416,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _fallbackTimer?.cancel();
+    _auctionsSubscription?.cancel();
     _authService.removeListener(_onAuthChanged);
     _notificationService.dispose();
     super.dispose();

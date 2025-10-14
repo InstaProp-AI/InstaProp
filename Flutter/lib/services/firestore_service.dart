@@ -20,13 +20,23 @@ class FirestoreService {
         .snapshots()
         .map((snapshot) {
           if (!snapshot.exists || snapshot.data() == null) {
+            print('⚠️ Firestore: Auction $auctionId document does not exist');
             return null;
           }
 
           try {
-            return Auction.fromJson(snapshot.data()!);
-          } catch (e) {
-            print('Error parsing auction from Firestore: $e');
+            final data = snapshot.data()!;
+            print(
+              '🔥 Firestore: Received auction $auctionId data: ${data.keys}',
+            );
+            print(
+              '🔥 Firestore: currentPrice = ${data['currentPrice']}, bidCount = ${data['bidCount']}',
+            );
+            return Auction.fromJson(data);
+          } catch (e, stackTrace) {
+            print('❌ Error parsing auction from Firestore: $e');
+            print('❌ Stack trace: $stackTrace');
+            print('❌ Data received: ${snapshot.data()}');
             return null;
           }
         });
@@ -106,6 +116,7 @@ class FirestoreService {
   /// Listen to notifications for a specific user
   /// Returns a stream that emits list of notifications
   static Stream<List<AppNotification>> listenToUserNotifications(int userId) {
+    print('🔥 Setting up Firestore listener for user $userId notifications');
     return _firestore
         .collection('users')
         .doc(userId.toString())
@@ -114,17 +125,28 @@ class FirestoreService {
         .limit(50) // Limit to last 50 notifications
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
+          print(
+            '🔥 Firestore: User $userId notifications snapshot - ${snapshot.docs.length} documents',
+          );
+
+          final notifications = snapshot.docs
               .map((doc) {
                 try {
-                  return AppNotification.fromJson(doc.data());
-                } catch (e) {
-                  print('Error parsing notification ${doc.id}: $e');
+                  final data = doc.data();
+                  print('📬 Parsing notification ${doc.id}: ${data['title']}');
+                  return AppNotification.fromJson(data);
+                } catch (e, stackTrace) {
+                  print('❌ Error parsing notification ${doc.id}: $e');
+                  print('❌ Data: ${doc.data()}');
+                  print('❌ Stack trace: $stackTrace');
                   return null;
                 }
               })
               .whereType<AppNotification>()
               .toList();
+
+          print('✅ Successfully parsed ${notifications.length} notifications');
+          return notifications;
         });
   }
 

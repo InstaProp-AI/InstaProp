@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
@@ -21,49 +20,47 @@ class AppTheme {
       ),
       useMaterial3: true,
 
-      // TEXT THEME
-      textTheme: GoogleFonts.poppinsTextTheme(
-        const TextTheme(
-          headlineLarge: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-            letterSpacing: -1,
-          ),
-          headlineMedium: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.5,
-          ),
-          titleLarge: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primary,
-            letterSpacing: -0.5,
-          ),
-          titleMedium: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-          bodyLarge: TextStyle(
-            fontSize: 16,
-            color: AppColors.textPrimary,
-            letterSpacing: 0,
-          ),
-          bodyMedium: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-          bodySmall: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+      // TEXT THEME - Using default system fonts only
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+          letterSpacing: -1,
         ),
+        headlineMedium: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+          letterSpacing: -0.5,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+          letterSpacing: -0.5,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          color: AppColors.textPrimary,
+          letterSpacing: 0,
+        ),
+        bodyMedium: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        bodySmall: TextStyle(fontSize: 12, color: AppColors.textTertiary),
       ),
 
-      // APPBAR THEME
-      appBarTheme: AppBarTheme(
+      // APPBAR THEME - Using default Roboto font (simple, clean)
+      appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.onPrimary,
@@ -71,7 +68,7 @@ class AppTheme {
         ),
       ),
 
-      // BUTTON THEMES
+      // BUTTON THEMES - Using default Roboto font (simple, clean)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
@@ -82,7 +79,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: GoogleFonts.poppins(
+          textStyle: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
@@ -98,7 +95,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: GoogleFonts.poppins(
+          textStyle: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             letterSpacing: -0.3,
@@ -109,7 +106,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
-          textStyle: GoogleFonts.poppins(
+          textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             letterSpacing: -0.3,
@@ -126,7 +123,7 @@ class AppTheme {
         color: AppColors.surface,
       ),
 
-      // INPUT DECORATION THEME
+      // INPUT DECORATION THEME - Using default Roboto font (simple, clean)
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -157,11 +154,8 @@ class AppTheme {
           horizontal: 16,
           vertical: 16,
         ),
-        labelStyle: GoogleFonts.poppins(color: AppColors.primary, fontSize: 14),
-        hintStyle: GoogleFonts.poppins(
-          color: AppColors.secondary,
-          fontSize: 14,
-        ),
+        labelStyle: const TextStyle(color: AppColors.primary, fontSize: 14),
+        hintStyle: const TextStyle(color: AppColors.secondary, fontSize: 14),
       ),
 
       // DIVIDER THEME

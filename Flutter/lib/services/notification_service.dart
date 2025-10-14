@@ -2,12 +2,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 import '../models/notification.dart';
+import 'firestore_service.dart';
 
 class NotificationService extends ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _isLoading = false;
   int _unreadCount = 0;
   bool _isLoggedIn = false;
+  int? _currentUserId;
+
+  // Firestore real-time listeners
+  StreamSubscription<List<AppNotification>>? _notificationsSubscription;
 
   List<AppNotification> get notifications => _notifications;
   List<AppNotification> get unreadNotifications =>
@@ -192,8 +197,56 @@ class NotificationService extends ChangeNotifier {
     await getNotifications();
   }
 
+  /// Start Firestore real-time listeners for notifications
+  void startNotificationListeners(int userId) {
+    _currentUserId = userId;
+    _isLoggedIn = true;
+
+    print('🔥 Starting Firestore notification listener for user $userId');
+
+    // Listen to user notifications in real-time
+    _notificationsSubscription =
+        FirestoreService.listenToUserNotifications(userId).listen(
+          (notifications) {
+            print(
+              '🔥 Firestore: Received ${notifications.length} notifications for user $userId',
+            );
+            if (notifications.isNotEmpty) {
+              print('🔔 Latest notification: ${notifications.first.title}');
+              print(
+                '🔔 Latest notification message: ${notifications.first.message}',
+              );
+            }
+            _notifications = notifications;
+            _unreadCount = notifications.where((n) => !n.isRead).length;
+            print('📬 Unread notifications: $_unreadCount');
+            notifyListeners();
+          },
+          onError: (error) {
+            print('❌ Firestore notification listener error: $error');
+            print('⚠️ Error details: ${error.toString()}');
+            print('⚠️ Falling back to API for notifications...');
+            // Fallback to API if Firestore fails
+            getNotifications();
+          },
+        );
+  }
+
+  /// Stop Firestore listeners (when user logs out)
+  void stopNotificationListeners() {
+    print('🛑 Stopping Firestore notification listeners');
+    _notificationsSubscription?.cancel();
+    _notificationsSubscription = null;
+    _currentUserId = null;
+    _isLoggedIn = false;
+    _notifications = [];
+    _unreadCount = 0;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
+    _notificationsSubscription?.cancel();
     super.dispose();
   }
 }
