@@ -252,6 +252,40 @@ namespace PropertyFlipperAPI.Services
             await SendToMultipleDevicesAsync(deviceTokens, title, body, data);
         }
 
+        /// <summary>
+        /// Sends notification for new chat messages
+        /// </summary>
+        public async Task SendChatNotificationAsync(
+            long recipientId,
+            string title,
+            string message)
+        {
+            if (!_isEnabled)
+            {
+                _logger.LogInformation($"📱 [FCM Disabled] Would send chat notification to user {recipientId}: {title}");
+                return;
+            }
+
+            try
+            {
+                var data = new Dictionary<string, string>
+                {
+                    ["type"] = "chat",
+                    ["recipientId"] = recipientId.ToString()
+                };
+
+                // TODO: Get device tokens for recipient from database
+                // For now, send to topic based on user ID
+                await SendToTopicAsync($"user_{recipientId}", title, message, data);
+                
+                _logger.LogInformation($"✅ Chat notification sent to user {recipientId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to send chat notification to user {recipientId}");
+            }
+        }
+
         private async Task<bool> SendFcmMessageAsync(object message)
         {
             try

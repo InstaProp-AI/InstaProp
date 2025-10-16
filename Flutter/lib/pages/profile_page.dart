@@ -9,6 +9,8 @@ import '../models/user.dart';
 import 'kyc_verification_page.dart';
 import 'email_verification_page.dart';
 import 'phone_verification_page.dart';
+import 'rewards_page.dart';
+import 'saved_searches_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -515,7 +517,52 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+
+                    // Quick Access Features (only when not editing)
+                    if (!_isEditing) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildFeatureCard(
+                              context,
+                              icon: Icons.card_giftcard,
+                              title: 'Rewards',
+                              subtitle: 'Points & Badges',
+                              color: Colors.orange,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const RewardsPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildFeatureCard(
+                              context,
+                              icon: Icons.bookmark,
+                              title: 'Saved Searches',
+                              subtitle: 'Your searches',
+                              color: Colors.blue,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const SavedSearchesPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Email & Phone Verification Status
                     if (!_isEditing) ...[
@@ -1244,6 +1291,54 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildFeatureCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 11, color: AppColors.primary),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

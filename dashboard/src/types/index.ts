@@ -129,6 +129,7 @@ export interface CreatePropertyDto {
   category?: string;
   imageUrl: string;
   projectId?: number;
+  type?: string; // 'Primary' or 'Resale' - optional for admin
 }
 
 export interface UserDocument {

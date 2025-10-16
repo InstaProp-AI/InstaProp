@@ -63,7 +63,8 @@ const PropertiesPage: React.FC = () => {
     yearBuilt: new Date().getFullYear(),
     category: 'Residential',
     projectId: undefined as number | undefined,
-    imageUrl: ''
+    imageUrl: '',
+    type: 'Resale' as string | undefined // Optional for admin
   });
 
   useEffect(() => {
@@ -213,7 +214,8 @@ const PropertiesPage: React.FC = () => {
       yearBuilt: new Date().getFullYear(),
       category: 'Residential',
       projectId: undefined,
-      imageUrl: ''
+      imageUrl: '',
+      type: 'Resale'
     });
   };
 
@@ -1541,6 +1543,33 @@ const PropertiesPage: React.FC = () => {
                       </select>
                     </div>
                     
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
+                      }}>Property Type (Optional)</label>
+                      <select
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem',
+                          outline: 'none',
+                          transition: 'all 0.2s',
+                          backgroundColor: 'white'
+                        }}
+                        value={newProperty.type || 'Resale'}
+                        onChange={(e) => setNewProperty({ ...newProperty, type: e.target.value })}
+                      >
+                        <option value="Primary">Primary (New Construction)</option>
+                        <option value="Resale">Resale (Existing Property)</option>
+                      </select>
+                    </div>
+                    
                     <div style={{ gridColumn: 'span 2' }}>
                       <label style={{
                         display: 'block',
@@ -2096,7 +2125,8 @@ const PropertiesPage: React.FC = () => {
                                 </div>
                                 <div style={{ fontSize: '0.875rem', fontWeight: '700', color: '#059669' }}>
                                   {auction.highestBid.bidderName || 
-                                   (auction.highestBid.bidder ? `${auction.highestBid.bidder.firstName} ${auction.highestBid.bidder.lastName}` : 'Unknown')}
+                                   (auction.highestBid.Bidder ? `${auction.highestBid.Bidder.FirstName} ${auction.highestBid.Bidder.LastName}` :
+                                   (auction.highestBid.bidder ? `${auction.highestBid.bidder.firstName || auction.highestBid.bidder.FirstName} ${auction.highestBid.bidder.lastName || auction.highestBid.bidder.LastName}` : 'Unknown'))}
                                 </div>
                               </div>
                             </div>
@@ -2120,7 +2150,9 @@ const PropertiesPage: React.FC = () => {
                                   }}>
                                     <div>
                                       <div style={{ fontSize: '0.875rem', fontWeight: bidIndex === 0 ? '600' : '400', color: '#111827' }}>
-                                        {bid.bidderName || (bid.bidder ? `${bid.bidder.firstName || bid.bidder.FirstName} ${bid.bidder.lastName || bid.bidder.LastName}` : 'Unknown')}
+                                        {bid.bidderName || 
+                                         (bid.Bidder ? `${bid.Bidder.FirstName} ${bid.Bidder.LastName}` :
+                                         (bid.bidder ? `${bid.bidder.firstName || bid.bidder.FirstName} ${bid.bidder.lastName || bid.bidder.LastName}` : 'Unknown'))}
                                       </div>
                                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                                         {new Date(bid.createdAt || bid.CreatedAt).toLocaleString()}

@@ -408,6 +408,170 @@ namespace PropertyFlipperAPI.Services
 
         #endregion
 
+        #region Chat Updates
+
+        /// <summary>
+        /// Creates a chat room in Firestore
+        /// </summary>
+        public async Task CreateChatAsync(long chatId, long userId, long developerId, long? projectId)
+        {
+            if (!_isEnabled || _db == null)
+            {
+                _logger.LogInformation($"[Firestore Disabled] Would create chat {chatId}");
+                return;
+            }
+
+            try
+            {
+                var chatRef = _db.Collection("chats").Document(chatId.ToString());
+                
+                var chatData = new Dictionary<string, object>
+                {
+                    ["chatId"] = chatId,
+                    ["userId"] = userId,
+                    ["developerId"] = developerId,
+                    ["projectId"] = projectId ?? 0,
+                    ["createdAt"] = DateTime.UtcNow,
+                    ["lastMessageAt"] = DateTime.UtcNow,
+                    ["isActive"] = true
+                };
+
+                await chatRef.SetAsync(chatData);
+                _logger.LogInformation($"✅ Created chat {chatId} in Firestore");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"❌ Failed to create chat {chatId} in Firestore");
+            }
+        }
+
+        /// <summary>
+        /// Sends a chat message to Firestore for real-time delivery
+        /// </summary>
+        public async Task SendChatMessageAsync(long chatId, long messageId, long senderId, string content, long? propertyId, DateTime createdAt, DateTime expiresAt)
+        {
+            if (!_isEnabled || _db == null)
+            {
+                _logger.LogInformation($"[Firestore Disabled] Would send message {messageId} to chat {chatId}");
+                return;
+            }
+
+            try
+            {
+                var messageRef = _db.Collection("chats")
+                    .Document(chatId.ToString())
+                    .Collection("messages")
+                    .Document(messageId.ToString());
+
+                var messageData = new Dictionary<string, object>
+                {
+                    ["messageId"] = messageId,
+                    ["chatId"] = chatId,
+                    ["senderId"] = senderId,
+                    ["content"] = content,
+                    ["propertyId"] = propertyId ?? 0,
+                    ["createdAt"] = createdAt,
+                    ["isRead"] = false,
+                    ["expiresAt"] = expiresAt
+                };
+
+                await messageRef.SetAsync(messageData);
+
+                // Update chat's lastMessageAt
+                var chatRef = _db.Collection("chats").Document(chatId.ToString());
+                await chatRef.UpdateAsync(new Dictionary<string, object>
+                {
+                    ["lastMessageAt"] = DateTime.UtcNow
+                });
+
+                _logger.LogInformation($"✅ Sent message {messageId} to chat {chatId} in Firestore");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"❌ Failed to send message {messageId} to Firestore");
+            }
+        }
+
+        /// <summary>
+        /// Marks chat messages as read in Firestore
+        /// </summary>
+        public async Task MarkChatMessagesAsReadAsync(long chatId, long userId)
+        {
+            if (!_isEnabled || _db == null) return;
+
+            try
+            {
+                var messagesRef = _db.Collection("chats")
+                    .Document(chatId.ToString())
+                    .Collection("messages");
+
+                var unreadMessages = await messagesRef
+                    .WhereNotEqualTo("senderId", userId)
+                    .WhereEqualTo("isRead", false)
+                    .GetSnapshotAsync();
+
+                var batch = _db.StartBatch();
+                foreach (var doc in unreadMessages.Documents)
+                {
+                    batch.Update(doc.Reference, new Dictionary<string, object>
+                    {
+                        ["isRead"] = true
+                    });
+                }
+                await batch.CommitAsync();
+
+                _logger.LogInformation($"✅ Marked {unreadMessages.Count} messages as read in chat {chatId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"❌ Failed to mark messages as read in chat {chatId}");
+            }
+        }
+
+        /// <summary>
+        /// Deletes expired chat messages from Firestore
+        /// </summary>
+        public async Task DeleteExpiredChatMessagesAsync()
+        {
+            if (!_isEnabled || _db == null) return;
+
+            try
+            {
+                var now = DateTime.UtcNow;
+                var chatsRef = _db.Collection("chats");
+                var chats = await chatsRef.GetSnapshotAsync();
+
+                int totalDeleted = 0;
+
+                foreach (var chatDoc in chats.Documents)
+                {
+                    var messagesRef = chatDoc.Reference.Collection("messages");
+                    var expiredMessages = await messagesRef
+                        .WhereLessThan("expiresAt", now.ToString("o"))
+                        .GetSnapshotAsync();
+
+                    if (expiredMessages.Count > 0)
+                    {
+                        var batch = _db.StartBatch();
+                        foreach (var messageDoc in expiredMessages.Documents)
+                        {
+                            batch.Delete(messageDoc.Reference);
+                        }
+                        await batch.CommitAsync();
+                        totalDeleted += expiredMessages.Count;
+                    }
+                }
+
+                _logger.LogInformation($"🧹 Deleted {totalDeleted} expired chat messages from Firestore");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to delete expired chat messages");
+            }
+        }
+
+        #endregion
+
         #region Utility Methods
 
         /// <summary>

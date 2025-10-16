@@ -1,9 +1,9 @@
 import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 import '../providers/app_state.dart';
 import '../models/property.dart';
+import '../services/valuation_service.dart';
 
 class ValuatePage extends StatefulWidget {
   const ValuatePage({super.key});
@@ -21,10 +21,9 @@ class _ValuatePageState extends State<ValuatePage> {
 
   bool _isLoading = false;
   bool _hasValuation = false;
-  double _estimatedValue = 0;
-  String _valuationRange = '';
-  List<Map<String, dynamic>> _comparableProperties = [];
+  EnhancedValuationResult? _valuationResult;
   bool _showManualForm = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -53,51 +52,57 @@ class _ValuatePageState extends State<ValuatePage> {
     _performValuation();
   }
 
-  void _performValuation() {
-    if (_addressController.text.isEmpty) return;
+  Future<void> _performValuation() async {
+    if (_addressController.text.isEmpty ||
+        _bedroomsController.text.isEmpty ||
+        _bathroomsController.text.isEmpty ||
+        _squareFeetController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please fill in all required fields';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
-    // Simulate AI valuation process
-    Future.delayed(const Duration(seconds: 3), () {
+    try {
+      final request = ValuationRequest(
+        location: _addressController.text,
+        bedrooms: int.parse(_bedroomsController.text),
+        bathrooms: int.parse(_bathroomsController.text),
+        squareFeet: int.parse(_squareFeetController.text),
+        yearBuilt:
+            int.tryParse(_yearBuiltController.text) ?? DateTime.now().year,
+        propertyType: 'Residential',
+      );
+
+      final response = await ValuationService.calculateAIValuation(request);
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _valuationResult = response.data;
+          _hasValuation = true;
+          _errorMessage = null;
+        });
+      } else {
+        setState(() {
+          _errorMessage = response.error ?? 'Failed to calculate valuation';
+          _hasValuation = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error calculating valuation: $e';
+        _hasValuation = false;
+      });
+    } finally {
       setState(() {
         _isLoading = false;
-        _hasValuation = true;
-        _estimatedValue = 450000.0 + (Random().nextInt(200000)).toDouble();
-        _valuationRange =
-            '${(_estimatedValue * 0.9).toStringAsFixed(0)} - ${(_estimatedValue * 1.1).toStringAsFixed(0)}';
-
-        // Generate comparable properties
-        _comparableProperties = [
-          {
-            'address': '123 Oak Street',
-            'price': 425000,
-            'bedrooms': 3,
-            'bathrooms': 2,
-            'sqft': 1800,
-            'soldDate': '2 months ago',
-          },
-          {
-            'address': '456 Pine Avenue',
-            'price': 480000,
-            'bedrooms': 4,
-            'bathrooms': 3,
-            'sqft': 2200,
-            'soldDate': '1 month ago',
-          },
-          {
-            'address': '789 Maple Drive',
-            'price': 520000,
-            'bedrooms': 3,
-            'bathrooms': 2,
-            'sqft': 2000,
-            'soldDate': '3 months ago',
-          },
-        ];
       });
-    });
+    }
   }
 
   Widget _buildFeatureChip(IconData icon, String label, MaterialColor color) {
@@ -161,7 +166,7 @@ class _ValuatePageState extends State<ValuatePage> {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary!),
+              border: Border.all(color: AppColors.primary),
             ),
             child: Column(
               children: [
@@ -216,7 +221,7 @@ class _ValuatePageState extends State<ValuatePage> {
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [AppColors.surface, AppColors.background!],
+                        colors: [AppColors.surface, AppColors.background],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -236,7 +241,7 @@ class _ValuatePageState extends State<ValuatePage> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [AppColors.primary!, Colors.green[400]!],
+                            colors: [AppColors.primary, Colors.green[400]!],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -305,32 +310,16 @@ class _ValuatePageState extends State<ValuatePage> {
                           ),
                         ],
                       ),
-                      trailing: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [AppColors.primary!, AppColors.primary!],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blue.withOpacity(0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton.icon(
-                          onPressed: () => _valuateProperty(property),
-                          icon: const Icon(Icons.analytics, size: 18),
-                          label: const Text('Valuate'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            foregroundColor: AppColors.surface,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                      trailing: ElevatedButton.icon(
+                        onPressed: () => _valuateProperty(property),
+                        icon: const Icon(Icons.auto_awesome, size: 18),
+                        label: const Text('AI Value'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                         ),
                       ),
@@ -451,7 +440,7 @@ class _ValuatePageState extends State<ValuatePage> {
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.secondary!),
+                border: Border.all(color: AppColors.secondary),
               ),
               child: Column(
                 children: [
@@ -508,7 +497,7 @@ class _ValuatePageState extends State<ValuatePage> {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary!),
+              border: Border.all(color: AppColors.primary),
             ),
             child: Column(
               children: [
@@ -671,6 +660,9 @@ class _ValuatePageState extends State<ValuatePage> {
                                     _performValuation();
                                   }
                                 },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                          ),
                           child: _isLoading
                               ? const SizedBox(
                                   height: 20,
@@ -678,11 +670,38 @@ class _ValuatePageState extends State<ValuatePage> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppColors.surface,
+                                      Colors.white,
                                     ),
                                   ),
                                 )
-                              : const Text('Get Valuation'),
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Get AI Valuation',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'AI',
+                                        style: TextStyle(
+                                          color: Colors.blue,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                     ],
@@ -694,118 +713,293 @@ class _ValuatePageState extends State<ValuatePage> {
 
           const SizedBox(height: 24),
 
+          // Error Message
+          if (_errorMessage != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[300]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[700]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+
           // Valuation Results
-          if (_hasValuation) ...[
+          if (_hasValuation && _valuationResult != null) ...[
+            // Main Valuation Card
             Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue[50]!, Colors.green[50]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(24),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.analytics,
+                          size: 32,
+                          color: Colors.blue[700],
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'AI Valuation',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'AI Powered',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     Text(
-                      'Valuation Results',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      '\$${_valuationResult!.estimatedValue.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 48,
                         fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Range: \$${_valuationResult!.priceRangeLow.toStringAsFixed(0)} - \$${_valuationResult!.priceRangeHigh.toStringAsFixed(0)}',
+                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                    ),
                     const SizedBox(height: 16),
-
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppColors.background!, AppColors.primary!],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    // Confidence Indicator
+                    Row(
+                      children: [
+                        const Text(
+                          'Confidence: ',
+                          style: TextStyle(fontSize: 14),
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green[200]!),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.analytics,
-                            size: 48,
-                            color: AppColors.primary,
+                        Expanded(
+                          child: LinearProgressIndicator(
+                            value: _valuationResult!.confidence,
+                            backgroundColor: Colors.grey[300],
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              _valuationResult!.confidence > 0.8
+                                  ? Colors.green
+                                  : _valuationResult!.confidence > 0.6
+                                  ? Colors.orange
+                                  : Colors.red,
+                            ),
+                            minHeight: 8,
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Estimated Value',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${(_valuationResult!.confidence * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '\$${_estimatedValue.toStringAsFixed(0)}',
-                            style: Theme.of(context).textTheme.headlineLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Range: \$${_valuationRange}',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: AppColors.primary),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Based on ${_valuationResult!.comparablesCount} comparable properties and ${_valuationResult!.auctionsCount} auctions',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
             ),
 
+            const SizedBox(height: 20),
+
+            // AI Reasoning Card
+            if (_valuationResult!.aiReasoning != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.lightbulb_outline,
+                            color: Colors.amber[700],
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'AI Insights',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _valuationResult!.aiReasoning!,
+                        style: const TextStyle(fontSize: 14, height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // Market Trends Card
+            if (_valuationResult!.marketTrends != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.trending_up, color: Colors.green[700]),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Market Trends',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _valuationResult!.marketTrends!,
+                        style: const TextStyle(fontSize: 14, height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             const SizedBox(height: 24),
 
-            // Comparable Properties
+            // Top Comparable Properties
             Text(
-              'Comparable Properties',
+              'Top 5 Comparable Properties',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            ..._comparableProperties
-                .map(
-                  (property) => Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: AppColors.primary,
-                        child: Icon(Icons.home, color: AppColors.primary),
-                      ),
-                      title: Text(property['address']),
-                      subtitle: Text(
-                        '${property['bedrooms']} bed • ${property['bathrooms']} bath • ${property['sqft']} sqft',
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '\$${property['price'].toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            property['soldDate'],
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+            ..._valuationResult!.topComparables.map(
+              (property) => Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blue[100],
+                    child: Icon(Icons.home, color: Colors.blue[700]),
                   ),
-                )
-                .toList(),
+                  title: Text(
+                    property.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        property.location,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${property.bedrooms} bed • ${property.bathrooms} bath • ${property.squareFeet} sqft',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                      ),
+                    ],
+                  ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '\$${property.price.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.green,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: property.status.toLowerCase().contains('sold')
+                              ? Colors.green[100]
+                              : Colors.blue[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          property.status,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color:
+                                property.status.toLowerCase().contains('sold')
+                                ? Colors.green[700]
+                                : Colors.blue[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
 
           // Login prompt for unauthenticated users
@@ -817,7 +1011,7 @@ class _ValuatePageState extends State<ValuatePage> {
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.secondary!),
+                border: Border.all(color: AppColors.secondary),
               ),
               child: Column(
                 children: [

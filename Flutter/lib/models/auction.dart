@@ -69,9 +69,16 @@ class Auction {
             json['CreatedAt'] ??
             DateTime.now().toIso8601String(),
       ),
-      bids: (json['bids'] ?? json['Bids'] ?? [])
-          .map<Bid>((bid) => Bid.fromJson(bid))
-          .toList(),
+      bids: (() {
+        final dynamic raw = json['bids'] ?? json['Bids'] ?? [];
+        if (raw is List) {
+          return raw
+              .where((e) => e is Map<String, dynamic>)
+              .map<Bid>((e) => Bid.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+        return <Bid>[];
+      })(),
     );
   }
 

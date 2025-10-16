@@ -149,4 +149,55 @@ class EventService {
       Event.fromJson,
     );
   }
+
+  // Scan payment schedule from image
+  static Future<ApiResponse<PaymentScheduleScanResult>> scanPaymentSchedule(
+    List<int> imageBytes,
+    String fileName,
+    int? reminderMinutes,
+  ) async {
+    return await ApiClient.uploadFileBytes(
+      '/api/event/scan-payment-schedule',
+      'image',
+      imageBytes,
+      fileName,
+      additionalFields: reminderMinutes != null
+          ? {'reminderMinutes': reminderMinutes.toString()}
+          : null,
+      fromJson: (data) => PaymentScheduleScanResult.fromJson(data),
+    );
+  }
+}
+
+// Payment Schedule Scan Result Model
+class PaymentScheduleScanResult {
+  final bool success;
+  final String message;
+  final int eventsCreated;
+  final List<Event>? events;
+
+  PaymentScheduleScanResult({
+    required this.success,
+    required this.message,
+    required this.eventsCreated,
+    this.events,
+  });
+
+  factory PaymentScheduleScanResult.fromJson(Map<String, dynamic> json) {
+    List<Event>? eventsList;
+
+    final eventsData = json['events'] ?? json['Events'];
+    if (eventsData != null && eventsData is List) {
+      eventsList = eventsData
+          .map((e) => Event.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    return PaymentScheduleScanResult(
+      success: json['success'] ?? json['Success'] ?? false,
+      message: json['message'] ?? json['Message'] ?? '',
+      eventsCreated: json['eventsCreated'] ?? json['EventsCreated'] ?? 0,
+      events: eventsList,
+    );
+  }
 }

@@ -23,11 +23,9 @@ class Bid {
   factory Bid.fromJson(Map<String, dynamic> json) {
     Auction? parseAuction() {
       try {
-        if (json['auction'] != null || json['Auction'] != null) {
-          final auctionData = json['auction'] ?? json['Auction'];
-          if (auctionData is Map<String, dynamic>) {
-            return Auction.fromJson(auctionData);
-          }
+        final dynamic auctionData = json['auction'] ?? json['Auction'];
+        if (auctionData is Map<String, dynamic>) {
+          return Auction.fromJson(auctionData);
         }
       } catch (e) {
         print('⚠️ Error parsing auction in bid: $e');

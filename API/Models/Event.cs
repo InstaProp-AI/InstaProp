@@ -45,6 +45,17 @@ namespace PropertyFlipperAPI.Models
 
         public bool IsPublic { get; set; } = false; // Public events visible to all users
 
+        // Recurring event fields
+        public bool IsRecurring { get; set; } = false;
+        public RecurrencePattern? RecurrencePattern { get; set; }
+        public int? RecurrenceInterval { get; set; } // How often it repeats (e.g., every 2 days, every 3 weeks)
+        public DateTime? RecurrenceEndDate { get; set; }
+        public int? RecurrenceCount { get; set; } // How many occurrences (alternative to EndDate)
+        public long? ParentEventId { get; set; } // For recurring event instances, reference to the parent
+
+        // Amount field for payment-related events
+        public decimal? Amount { get; set; }
+
         // Related entity IDs (optional)
         public long? PropertyId { get; set; }
         public long? AuctionId { get; set; }
@@ -68,5 +79,13 @@ namespace PropertyFlipperAPI.Models
         Maintenance = 8,           // Property maintenance
         Meeting = 9,               // General meetings
         Other = 10                 // Custom events
+    }
+
+    public enum RecurrencePattern
+    {
+        Daily = 0,
+        Weekly = 1,
+        Monthly = 2,
+        Yearly = 3
     }
 }

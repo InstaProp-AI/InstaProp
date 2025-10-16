@@ -11,10 +11,12 @@ namespace PropertyFlipperAPI.Controllers
     public class ValuationController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly PropertyFlipperAPI.Services.OpenAIService _openAIService;
 
-        public ValuationController(AppDbContext context)
+        public ValuationController(AppDbContext context, PropertyFlipperAPI.Services.OpenAIService openAIService)
         {
             _context = context;
+            _openAIService = openAIService;
         }
 
         // POST: api/Valuation/calculate
@@ -118,6 +120,163 @@ namespace PropertyFlipperAPI.Controllers
             };
         }
 
+        // POST: api/Valuation/calculate-ai
+        [HttpPost("calculate-ai")]
+        [Authorize]
+        public async Task<ActionResult<EnhancedValuationResult>> CalculateAIValuation([FromBody] ValuationRequest request)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            try
+            {
+                // Create property data for AI
+                var propertyData = new PropertyFlipperAPI.Services.PropertyValuationData
+                {
+                    Location = request.Location ?? "",
+                    Bedrooms = request.Bedrooms,
+                    Bathrooms = request.Bathrooms,
+                    SquareFeet = request.SquareFeet,
+                    YearBuilt = request.YearBuilt,
+                    PropertyType = request.PropertyType ?? "Residential"
+                };
+
+                // Query similar properties (20-30)
+                var comparables = await GetSimilarProperties(request);
+
+                // Query auction data (both completed and active)
+                var auctions = await GetRelevantAuctions(request);
+
+                Console.WriteLine($"Found {comparables.Count} comparable properties and {auctions.Count} auctions");
+
+                // Call OpenAI for valuation
+                var aiResult = await _openAIService.ValuatePropertyAsync(propertyData, comparables, auctions);
+
+                // Map to enhanced result
+                var result = new EnhancedValuationResult
+                {
+                    EstimatedValue = aiResult.EstimatedPrice,
+                    PriceRangeLow = aiResult.PriceRangeLow,
+                    PriceRangeHigh = aiResult.PriceRangeHigh,
+                    Confidence = aiResult.Confidence,
+                    AiReasoning = aiResult.Reasoning,
+                    MarketTrends = aiResult.MarketTrends,
+                    TopComparables = aiResult.TopComparables.Select(tc => new ComparablePropertyDto
+                    {
+                        Name = tc.Name,
+                        Location = tc.Location,
+                        Bedrooms = tc.Bedrooms,
+                        Bathrooms = tc.Bathrooms,
+                        SquareFeet = tc.SquareFeet,
+                        Price = tc.Price,
+                        Status = tc.Status
+                    }).ToList(),
+                    CalculatedAt = DateTime.UtcNow,
+                    ComparablesCount = comparables.Count,
+                    AuctionsCount = auctions.Count
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error calculating AI valuation: {ex.Message}" });
+            }
+        }
+
+        private async Task<List<PropertyFlipperAPI.Services.ComparablePropertyData>> GetSimilarProperties(ValuationRequest request)
+        {
+            var comparables = new List<PropertyFlipperAPI.Services.ComparablePropertyData>();
+
+            // Calculate size range (±20%)
+            var minSqft = (int)(request.SquareFeet * 0.8);
+            var maxSqft = (int)(request.SquareFeet * 1.2);
+
+            // Extract city from location
+            var location = request.Location ?? "";
+            
+            // Query similar properties with their auction data
+            var properties = await _context.Properties
+                .Include(p => p.Auctions)
+                .Where(p => 
+                    // Same general location
+                    (p.Location != null && (p.Location.Contains(location) || location.Contains(p.Location))) &&
+                    // Similar size
+                    p.SquareFeet >= minSqft && p.SquareFeet <= maxSqft &&
+                    // Same bedrooms OR bathrooms
+                    (p.Bedrooms == request.Bedrooms || p.Bathrooms == request.Bathrooms)
+                )
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(30)
+                .ToListAsync();
+
+            foreach (var prop in properties)
+            {
+                // Get price from most recent auction if available
+                var latestAuction = prop.Auctions.OrderByDescending(a => a.CreatedAt).FirstOrDefault();
+                decimal price = latestAuction?.CurrentPrice ?? latestAuction?.StartPrice ?? 0;
+
+                comparables.Add(new PropertyFlipperAPI.Services.ComparablePropertyData
+                {
+                    Name = prop.Name,
+                    Location = prop.Location ?? "",
+                    Bedrooms = prop.Bedrooms,
+                    Bathrooms = prop.Bathrooms,
+                    SquareFeet = prop.SquareFeet,
+                    YearBuilt = prop.YearBuilt,
+                    Type = prop.Type.ToString(),
+                    Price = price,
+                    Status = prop.Status.ToString()
+                });
+            }
+
+            return comparables;
+        }
+
+        private async Task<List<PropertyFlipperAPI.Services.AuctionDataForValuation>> GetRelevantAuctions(ValuationRequest request)
+        {
+            var auctionData = new List<PropertyFlipperAPI.Services.AuctionDataForValuation>();
+
+            var minSqft = (int)(request.SquareFeet * 0.8);
+            var maxSqft = (int)(request.SquareFeet * 1.2);
+            var location = request.Location ?? "";
+
+            // Get auctions with similar properties
+            var auctions = await _context.Auctions
+                .Include(a => a.Property)
+                .Where(a => 
+                    // Similar location
+                    (a.Property.Location.Contains(location) || location.Contains(a.Property.Location)) &&
+                    // Similar size
+                    a.Property.SquareFeet >= minSqft && a.Property.SquareFeet <= maxSqft &&
+                    // Same bedrooms OR bathrooms
+                    (a.Property.Bedrooms == request.Bedrooms || a.Property.Bathrooms == request.Bathrooms)
+                )
+                .OrderByDescending(a => a.CreatedAt)
+                .Take(30)
+                .ToListAsync();
+
+            foreach (var auction in auctions)
+            {
+                decimal currentPrice = auction.CurrentPrice > 0 ? auction.CurrentPrice : auction.StartPrice;
+                
+                auctionData.Add(new PropertyFlipperAPI.Services.AuctionDataForValuation
+                {
+                    PropertyName = auction.Property.Name,
+                    Location = auction.Property.Location,
+                    Bedrooms = auction.Property.Bedrooms,
+                    Bathrooms = auction.Property.Bathrooms,
+                    SquareFeet = auction.Property.SquareFeet,
+                    CurrentPrice = currentPrice,
+                    Status = auction.Status,
+                    BidCount = auction.BidCount
+                });
+            }
+
+            return auctionData;
+        }
+
         private long? GetCurrentAccountId()
         {
             var uidClaim = User.FindFirst("uid");
@@ -153,5 +312,30 @@ namespace PropertyFlipperAPI.Controllers
         public string? Location { get; set; }
         public decimal CalculatedValue { get; set; }
         public DateTime CalculatedAt { get; set; }
+    }
+
+    public class EnhancedValuationResult
+    {
+        public decimal EstimatedValue { get; set; }
+        public decimal PriceRangeLow { get; set; }
+        public decimal PriceRangeHigh { get; set; }
+        public decimal Confidence { get; set; }
+        public string? AiReasoning { get; set; }
+        public string? MarketTrends { get; set; }
+        public List<ComparablePropertyDto> TopComparables { get; set; } = new List<ComparablePropertyDto>();
+        public DateTime CalculatedAt { get; set; }
+        public int ComparablesCount { get; set; }
+        public int AuctionsCount { get; set; }
+    }
+
+    public class ComparablePropertyDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Location { get; set; } = string.Empty;
+        public int Bedrooms { get; set; }
+        public int Bathrooms { get; set; }
+        public int SquareFeet { get; set; }
+        public decimal Price { get; set; }
+        public string Status { get; set; } = string.Empty;
     }
 }

@@ -27,6 +27,8 @@ builder.Services.AddSingleton<ErrorTrackingService>();
 builder.Services.AddScoped<FcmPushNotificationService>();
 builder.Services.AddScoped<FileValidationService>();
 builder.Services.AddScoped<ImgBBService>(); // ImgBB image upload service
+builder.Services.AddScoped<RewardService>(); // Gamification rewards
+builder.Services.AddScoped<OpenAIService>(); // OpenAI Vision API for payment schedule scanning
 
 // Add HttpClient for FCM and ImgBB
 builder.Services.AddHttpClient();
@@ -34,6 +36,7 @@ builder.Services.AddHttpClient();
 // Add Background Services
 builder.Services.AddHostedService<AuctionExpirationService>();
 builder.Services.AddHostedService<NotificationCleanupService>();
+builder.Services.AddHostedService<ChatCleanupService>();
 
 // Add Health Checks
 builder.Services.AddHealthChecks();

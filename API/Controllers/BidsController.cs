@@ -35,7 +35,42 @@ namespace PropertyFlipperAPI.Controllers
                 .Where(b => b.AuctionId == auctionId)
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
-            return Ok(bids);
+
+            // Sync bids to Firestore if they're not already there
+            // This ensures existing bids from before Firestore was implemented are available
+            _ = Task.Run(async () =>
+            {
+                foreach (var bid in bids)
+                {
+                    try
+                    {
+                        await _firestoreService.AddBidAsync(auctionId, bid);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail the request
+                        Console.WriteLine($"Warning: Failed to sync bid {bid.BidId} to Firestore: {ex.Message}");
+                    }
+                }
+            });
+
+            var bidDtos = bids.Select(b => new
+            {
+                b.BidId,
+                b.AuctionId,
+                b.BidderId,
+                BidAmount = (double)b.BidAmount,
+                b.CreatedAt,
+                Bidder = b.Bidder != null ? new
+                {
+                    b.Bidder.AccountId,
+                    b.Bidder.FirstName,
+                    b.Bidder.LastName,
+                    b.Bidder.Email
+                } : null
+            }).ToList();
+
+            return Ok(bidDtos);
         }
 
         // GET: api/bids/bidders/{auctionId} (Public - Get unique bidders for an auction)
@@ -48,8 +83,9 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(b => b.Bidder)
                 .ToListAsync();
 
-            // Group by bidder and calculate stats in-memory to avoid SQLite decimal aggregate issues
+            // Filter out bids with null bidders and group by bidder
             var bidders = bidsForAuction
+                .Where(b => b.Bidder != null) // Filter out null bidders
                 .GroupBy(b => new
                 {
                     b.Bidder.AccountId,
@@ -151,7 +187,22 @@ namespace PropertyFlipperAPI.Controllers
                 // 2. Notify outbid bidders
                 await _notificationService.NotifyOutbidBidders(bidDto.AuctionId, userId, (decimal)bidDto.BidAmount);
 
-                return Ok(createdBid);
+                // Return clean DTO to avoid circular reference issues
+                return Ok(new
+                {
+                    createdBid.BidId,
+                    createdBid.AuctionId,
+                    createdBid.BidderId,
+                    BidAmount = (double)createdBid.BidAmount,
+                    createdBid.CreatedAt,
+                    Bidder = new
+                    {
+                        createdBid.Bidder.AccountId,
+                        createdBid.Bidder.FirstName,
+                        createdBid.Bidder.LastName,
+                        createdBid.Bidder.Email
+                    }
+                });
             }
             catch (Exception ex)
             {

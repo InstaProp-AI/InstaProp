@@ -25,6 +25,9 @@ namespace PropertyFlipperAPI.Models
         public string? ImageUrl { get; set; } = string.Empty;
 
         public long? ProjectId { get; set; }
+
+        // Optional: allows developers and admins to choose property type
+        public string? Type { get; set; }
     }
 
     public class PropertyUpdateDto

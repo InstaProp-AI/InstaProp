@@ -8,7 +8,7 @@ namespace PropertyFlipperAPI.Models
     {
         public long AuctionId { get; set; }
         public long PropertyId { get; set; }
-        public Property Property { get; set; }
+        public AuctionPropertyDto Property { get; set; }
         public decimal StartPrice { get; set; }
         public decimal CurrentPrice { get; set; }
         public DateTime StartAt { get; set; }
@@ -18,7 +18,6 @@ namespace PropertyFlipperAPI.Models
         public int BidCount { get; set; }
         public string Status { get; set; }
         public DateTime CreatedAt { get; set; }
-        public List<Bid> Bids { get; set; } = new List<Bid>();
 
         public static AuctionDto FromAuction(Auction auction)
         {
@@ -27,7 +26,31 @@ namespace PropertyFlipperAPI.Models
             {
                 AuctionId = auction.AuctionId,
                 PropertyId = auction.PropertyId,
-                Property = auction.Property,
+                Property = auction.Property != null ? new AuctionPropertyDto
+                {
+                    PropertyId = auction.Property.PropertyId,
+                    Name = auction.Property.Name,
+                    Description = auction.Property.Description,
+                    Location = auction.Property.Location,
+                    Type = auction.Property.Type.ToString(),
+                    Status = auction.Property.Status.ToString(),
+                    Bedrooms = auction.Property.Bedrooms,
+                    Bathrooms = auction.Property.Bathrooms,
+                    SquareFeet = auction.Property.SquareFeet,
+                    YearBuilt = auction.Property.YearBuilt,
+                    Category = auction.Property.Category,
+                    ImageUrl = auction.Property.ImageUrl,
+                    Project = auction.Property.Project?.Name,
+                    PropertyImages = auction.Property.PropertyImages?.Select(img => new PropertyImageDto
+                    {
+                        PropertyImageId = img.PropertyImageId,
+                        PropertyId = img.PropertyId,
+                        ImageUrl = img.ImageUrl,
+                        ImageType = img.ImageType,
+                        IsMainImage = img.IsMainImage,
+                        DisplayOrder = img.DisplayOrder
+                    }).ToList() ?? new List<PropertyImageDto>()
+                } : null,
                 StartPrice = auction.StartPrice,
                 CurrentPrice = auction.CurrentPrice, // Use database value
                 StartAt = auction.StartAt,
@@ -36,9 +59,36 @@ namespace PropertyFlipperAPI.Models
                 BuyNowPrice = auction.BuyNowPrice,
                 BidCount = auction.BidCount, // Use database value
                 Status = auction.Status,
-                CreatedAt = auction.CreatedAt,
-                Bids = auction.Bids.ToList()
+                CreatedAt = auction.CreatedAt
             };
         }
+    }
+
+    public class AuctionPropertyDto
+    {
+        public long PropertyId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Location { get; set; }
+        public string Type { get; set; }
+        public string Status { get; set; }
+        public int Bedrooms { get; set; }
+        public int Bathrooms { get; set; }
+        public int SquareFeet { get; set; }
+        public int YearBuilt { get; set; }
+        public string Category { get; set; }
+        public string ImageUrl { get; set; }
+        public string Project { get; set; }
+        public List<PropertyImageDto> PropertyImages { get; set; } = new List<PropertyImageDto>();
+    }
+
+    public class PropertyImageDto
+    {
+        public long PropertyImageId { get; set; }
+        public long PropertyId { get; set; }
+        public string ImageUrl { get; set; }
+        public string ImageType { get; set; }
+        public bool IsMainImage { get; set; }
+        public int DisplayOrder { get; set; }
     }
 }

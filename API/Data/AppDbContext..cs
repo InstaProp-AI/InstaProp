@@ -17,6 +17,25 @@ namespace PropertyFlipperAPI.Data
         public DbSet<Project> Projects { get; set; }
         public DbSet<Event> Events { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Chat> Chats { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<DeveloperProfile> DeveloperProfiles { get; set; }
+        public DbSet<DeveloperRating> DeveloperRatings { get; set; }
+        
+        // Phase 3: Project enhancements
+        public DbSet<ProjectMilestone> ProjectMilestones { get; set; }
+        public DbSet<ProjectUpdate> ProjectUpdates { get; set; }
+        
+        // Phase 4: Gamification & Engagement
+        public DbSet<UserReward> UserRewards { get; set; }
+        public DbSet<UserBadge> UserBadges { get; set; }
+        public DbSet<SavedSearch> SavedSearches { get; set; }
+        public DbSet<Referral> Referrals { get; set; }
+        public DbSet<PropertyView> PropertyViews { get; set; }
+
+        // AI Broker Chat System
+        public DbSet<AIChat> AIChats { get; set; }
+        public DbSet<AIChatMessage> AIChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -164,6 +183,168 @@ namespace PropertyFlipperAPI.Data
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired(false); // UserId is now optional for bulk notifications
+            });
+
+            // Configure Chat
+            modelBuilder.Entity<Chat>(entity =>
+            {
+                entity.HasKey(e => e.ChatId);
+                entity.Property(e => e.ChatId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Developer)
+                    .WithMany()
+                    .HasForeignKey(e => e.DeveloperId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Project)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure ChatMessage
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                entity.HasKey(e => e.MessageId);
+                entity.Property(e => e.MessageId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Content).IsRequired();
+                entity.HasOne(e => e.Chat)
+                    .WithMany(c => c.Messages)
+                    .HasForeignKey(e => e.ChatId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Sender)
+                    .WithMany()
+                    .HasForeignKey(e => e.SenderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Property)
+                    .WithMany()
+                    .HasForeignKey(e => e.PropertyId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure DeveloperProfile
+            modelBuilder.Entity<DeveloperProfile>(entity =>
+            {
+                entity.HasKey(e => e.ProfileId);
+                entity.Property(e => e.ProfileId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Rating).HasColumnType("decimal(3,2)");
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure DeveloperRating
+            modelBuilder.Entity<DeveloperRating>(entity =>
+            {
+                entity.HasKey(e => e.RatingId);
+                entity.Property(e => e.RatingId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Rating).IsRequired();
+                entity.Property(e => e.RatingType).HasConversion<int>();
+                entity.HasOne(e => e.Developer)
+                    .WithMany()
+                    .HasForeignKey(e => e.DeveloperId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure ProjectMilestone
+            modelBuilder.Entity<ProjectMilestone>(entity =>
+            {
+                entity.HasKey(e => e.MilestoneId);
+                entity.Property(e => e.MilestoneId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Status).HasConversion<int>();
+                entity.HasOne(e => e.Project)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure ProjectUpdate
+            modelBuilder.Entity<ProjectUpdate>(entity =>
+            {
+                entity.HasKey(e => e.UpdateId);
+                entity.Property(e => e.UpdateId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+                entity.HasOne(e => e.Project)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure UserReward
+            modelBuilder.Entity<UserReward>(entity =>
+            {
+                entity.HasKey(e => e.RewardId);
+                entity.Property(e => e.RewardId).ValueGeneratedOnAdd();
+                entity.Property(e => e.RewardType).HasMaxLength(100).IsRequired();
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure UserBadge
+            modelBuilder.Entity<UserBadge>(entity =>
+            {
+                entity.HasKey(e => e.BadgeId);
+                entity.Property(e => e.BadgeId).ValueGeneratedOnAdd();
+                entity.Property(e => e.BadgeName).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.BadgeIcon).HasMaxLength(100).IsRequired();
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure SavedSearch
+            modelBuilder.Entity<SavedSearch>(entity =>
+            {
+                entity.HasKey(e => e.SearchId);
+                entity.Property(e => e.SearchId).ValueGeneratedOnAdd();
+                entity.Property(e => e.SearchName).HasMaxLength(100).IsRequired();
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Referral
+            modelBuilder.Entity<Referral>(entity =>
+            {
+                entity.HasKey(e => e.ReferralId);
+                entity.Property(e => e.ReferralId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ReferralCode).HasMaxLength(20).IsRequired();
+                entity.HasOne(e => e.Referrer)
+                    .WithMany()
+                    .HasForeignKey(e => e.ReferrerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ReferredUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ReferredUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                entity.HasIndex(e => e.ReferralCode).IsUnique();
+            });
+
+            // Configure PropertyView
+            modelBuilder.Entity<PropertyView>(entity =>
+            {
+                entity.HasKey(e => e.ViewId);
+                entity.Property(e => e.ViewId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Property)
+                    .WithMany()
+                    .HasForeignKey(e => e.PropertyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

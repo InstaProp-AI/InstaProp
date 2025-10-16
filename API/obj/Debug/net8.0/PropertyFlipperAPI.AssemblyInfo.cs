@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PropertyFlipperAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a4c740c2a1e21ce75609080738bb3acbb26e568b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+db0befdb3d399caa972ad69e1c3b3fb548d833d1")]
 [assembly: System.Reflection.AssemblyProductAttribute("PropertyFlipperAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PropertyFlipperAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

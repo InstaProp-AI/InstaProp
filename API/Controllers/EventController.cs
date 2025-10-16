@@ -14,11 +14,13 @@ namespace PropertyFlipperAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly NotificationService _notificationService;
+        private readonly OpenAIService _openAIService;
 
-        public EventController(AppDbContext context, NotificationService notificationService)
+        public EventController(AppDbContext context, NotificationService notificationService, OpenAIService openAIService)
         {
             _context = context;
             _notificationService = notificationService;
+            _openAIService = openAIService;
         }
 
         // Helper method to get current user ID
@@ -143,6 +145,7 @@ namespace PropertyFlipperAPI.Controllers
             if (userId == null)
                 return Unauthorized();
 
+            // Create the parent/first event
             var eventEntity = new Event
             {
                 UserId = userId.Value,
@@ -157,6 +160,13 @@ namespace PropertyFlipperAPI.Controllers
                 IsCompleted = false,
                 IsReminderSet = eventDto.IsReminderSet,
                 ReminderMinutes = eventDto.ReminderMinutes,
+                IsRecurring = eventDto.IsRecurring,
+                RecurrencePattern = eventDto.RecurrencePattern,
+                RecurrenceInterval = eventDto.RecurrenceInterval,
+                RecurrenceEndDate = eventDto.RecurrenceEndDate,
+                RecurrenceCount = eventDto.RecurrenceCount,
+                ParentEventId = null, // This is the parent
+                Amount = eventDto.Amount,
                 PropertyId = eventDto.PropertyId,
                 AuctionId = eventDto.AuctionId,
                 BidId = eventDto.BidId,
@@ -165,6 +175,17 @@ namespace PropertyFlipperAPI.Controllers
 
             _context.Events.Add(eventEntity);
             await _context.SaveChangesAsync();
+
+            // If this is a recurring event, generate the recurring instances
+            if (eventDto.IsRecurring && eventDto.RecurrencePattern.HasValue && eventDto.RecurrenceInterval.HasValue)
+            {
+                var recurringEvents = GenerateRecurringEvents(eventEntity, eventDto, userId.Value);
+                if (recurringEvents.Any())
+                {
+                    _context.Events.AddRange(recurringEvents);
+                    await _context.SaveChangesAsync();
+                }
+            }
 
             return CreatedAtAction("GetEvent", new { id = eventEntity.EventId }, EventDto.FromEvent(eventEntity));
         }
@@ -397,9 +418,212 @@ namespace PropertyFlipperAPI.Controllers
             return eventDtos;
         }
 
+        // POST: api/Event/scan-payment-schedule
+        [HttpPost("scan-payment-schedule")]
+        [Authorize]
+        public async Task<ActionResult<PaymentScheduleScanResult>> ScanPaymentSchedule([FromForm] IFormFile image, [FromForm] int? reminderMinutes)
+        {
+            var userId = GetCurrentAccountId();
+            if (userId == null)
+                return Unauthorized();
+
+            if (image == null || image.Length == 0)
+                return BadRequest("No image file provided");
+
+            // Validate image file type - accept all image formats
+            var contentType = image.ContentType?.ToLower() ?? "";
+            
+            // Log the content type for debugging
+            Console.WriteLine($"Received file with ContentType: {image.ContentType}, FileName: {image.FileName}");
+            
+            // Accept any file that is an image or has image extension
+            var isImageType = string.IsNullOrEmpty(contentType) || 
+                             contentType.StartsWith("image/") || 
+                             contentType.Contains("image");
+            
+            var fileName = image.FileName?.ToLower() ?? "";
+            var hasImageExtension = fileName.EndsWith(".jpg") || 
+                                   fileName.EndsWith(".jpeg") || 
+                                   fileName.EndsWith(".png") || 
+                                   fileName.EndsWith(".gif") || 
+                                   fileName.EndsWith(".bmp") ||
+                                   fileName.EndsWith(".webp");
+            
+            if (!isImageType && !hasImageExtension)
+            {
+                return BadRequest($"Invalid file type. Received ContentType: '{image.ContentType}', FileName: '{image.FileName}'. Please upload an image file (JPEG, PNG, etc.).");
+            }
+
+            // Validate file size (max 10MB)
+            if (image.Length > 10 * 1024 * 1024)
+                return BadRequest("Image file too large. Maximum size is 10MB.");
+
+            try
+            {
+                // Read image data
+                byte[] imageData;
+                using (var memoryStream = new MemoryStream())
+                {
+                    await image.CopyToAsync(memoryStream);
+                    imageData = memoryStream.ToArray();
+                }
+
+                // Analyze image with OpenAI
+                var paymentItems = await _openAIService.AnalyzePaymentScheduleAsync(imageData);
+
+                if (paymentItems == null || paymentItems.Count == 0)
+                    return BadRequest("No payment schedule data could be extracted from the image. Please ensure the image contains a clear payment schedule.");
+
+                var createdEvents = new List<Event>();
+
+                // Create events for each payment item
+                foreach (var item in paymentItems)
+                {
+                    DateTime paymentDate;
+                    if (!DateTime.TryParse(item.Date, out paymentDate))
+                    {
+                        // Skip invalid dates
+                        continue;
+                    }
+
+                    var eventEntity = new Event
+                    {
+                        UserId = userId.Value,
+                        Title = $"Payment: {item.Description}",
+                        Description = $"Amount: ${item.Amount:F2}\n{item.Description}",
+                        EventDate = paymentDate,
+                        Type = EventType.Installment,
+                        Location = null,
+                        IsAllDay = true,
+                        StartTime = null,
+                        EndTime = null,
+                        IsCompleted = false,
+                        IsReminderSet = reminderMinutes.HasValue && reminderMinutes.Value > 0,
+                        ReminderMinutes = reminderMinutes,
+                        PropertyId = null,
+                        AuctionId = null,
+                        BidId = null,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Events.Add(eventEntity);
+                    createdEvents.Add(eventEntity);
+                }
+
+                if (createdEvents.Count == 0)
+                    return BadRequest("No valid payment dates could be extracted from the image.");
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new PaymentScheduleScanResult
+                {
+                    Success = true,
+                    Message = $"Successfully created {createdEvents.Count} payment event(s)",
+                    EventsCreated = createdEvents.Count,
+                    Events = createdEvents.Select(EventDto.FromEvent).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new PaymentScheduleScanResult
+                {
+                    Success = false,
+                    Message = $"Error processing payment schedule: {ex.Message}",
+                    EventsCreated = 0
+                });
+            }
+        }
+
         private bool EventExists(long id)
         {
             return _context.Events.Any(e => e.EventId == id);
+        }
+
+        private List<Event> GenerateRecurringEvents(Event parentEvent, EventCreateDto dto, long userId)
+        {
+            var events = new List<Event>();
+            
+            if (!dto.IsRecurring || dto.RecurrencePattern == null || dto.RecurrenceInterval == null)
+            {
+                return events;
+            }
+
+            var currentDate = dto.EventDate;
+            var maxOccurrences = dto.RecurrenceCount ?? 100; // Default max 100 if no end date or count specified
+            var hasEndDate = dto.RecurrenceEndDate.HasValue;
+            var endDate = dto.RecurrenceEndDate ?? currentDate.AddYears(2); // Default 2 years
+
+            var occurrenceCount = 0;
+
+            // Generate events (skip first one as parent already created)
+            while (occurrenceCount < maxOccurrences && currentDate <= endDate)
+            {
+                // Calculate next occurrence date
+                switch (dto.RecurrencePattern.Value)
+                {
+                    case RecurrencePattern.Daily:
+                        currentDate = currentDate.AddDays(dto.RecurrenceInterval.Value);
+                        break;
+                    case RecurrencePattern.Weekly:
+                        currentDate = currentDate.AddDays(7 * dto.RecurrenceInterval.Value);
+                        break;
+                    case RecurrencePattern.Monthly:
+                        currentDate = currentDate.AddMonths(dto.RecurrenceInterval.Value);
+                        break;
+                    case RecurrencePattern.Yearly:
+                        currentDate = currentDate.AddYears(dto.RecurrenceInterval.Value);
+                        break;
+                }
+
+                // Check if we've passed the end date
+                if (hasEndDate && currentDate > endDate)
+                {
+                    break;
+                }
+
+                occurrenceCount++;
+
+                // Check if we've reached the count limit
+                if (dto.RecurrenceCount.HasValue && occurrenceCount >= dto.RecurrenceCount.Value)
+                {
+                    if (currentDate > endDate)
+                        break;
+                }
+
+                // Create the recurring event instance
+                var recurringEvent = new Event
+                {
+                    UserId = userId,
+                    Title = dto.Title,
+                    Description = dto.Description,
+                    EventDate = currentDate,
+                    Type = dto.Type,
+                    Location = dto.Location,
+                    IsAllDay = dto.IsAllDay,
+                    StartTime = dto.StartTime.HasValue 
+                        ? new DateTime(currentDate.Year, currentDate.Month, currentDate.Day, 
+                                      dto.StartTime.Value.Hour, dto.StartTime.Value.Minute, dto.StartTime.Value.Second)
+                        : null,
+                    EndTime = dto.EndTime.HasValue 
+                        ? new DateTime(currentDate.Year, currentDate.Month, currentDate.Day, 
+                                      dto.EndTime.Value.Hour, dto.EndTime.Value.Minute, dto.EndTime.Value.Second)
+                        : null,
+                    IsCompleted = false,
+                    IsReminderSet = dto.IsReminderSet,
+                    ReminderMinutes = dto.ReminderMinutes,
+                    PropertyId = dto.PropertyId,
+                    AuctionId = dto.AuctionId,
+                    BidId = dto.BidId,
+                    IsRecurring = false, // Individual instances are not recurring themselves
+                    ParentEventId = parentEvent.EventId,
+                    Amount = dto.Amount,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                events.Add(recurringEvent);
+            }
+
+            return events;
         }
     }
 
@@ -419,6 +643,13 @@ namespace PropertyFlipperAPI.Controllers
         public bool IsReminderSet { get; set; }
         public int? ReminderMinutes { get; set; }
         public bool IsPublic { get; set; }
+        public bool IsRecurring { get; set; }
+        public RecurrencePattern? RecurrencePattern { get; set; }
+        public int? RecurrenceInterval { get; set; }
+        public DateTime? RecurrenceEndDate { get; set; }
+        public int? RecurrenceCount { get; set; }
+        public long? ParentEventId { get; set; }
+        public decimal? Amount { get; set; }
         public long? PropertyId { get; set; }
         public long? AuctionId { get; set; }
         public long? BidId { get; set; }
@@ -441,6 +672,13 @@ namespace PropertyFlipperAPI.Controllers
                 IsReminderSet = eventEntity.IsReminderSet,
                 ReminderMinutes = eventEntity.ReminderMinutes,
                 IsPublic = eventEntity.IsPublic,
+                IsRecurring = eventEntity.IsRecurring,
+                RecurrencePattern = eventEntity.RecurrencePattern,
+                RecurrenceInterval = eventEntity.RecurrenceInterval,
+                RecurrenceEndDate = eventEntity.RecurrenceEndDate,
+                RecurrenceCount = eventEntity.RecurrenceCount,
+                ParentEventId = eventEntity.ParentEventId,
+                Amount = eventEntity.Amount,
                 PropertyId = eventEntity.PropertyId,
                 AuctionId = eventEntity.AuctionId,
                 BidId = eventEntity.BidId,
@@ -461,6 +699,12 @@ namespace PropertyFlipperAPI.Controllers
         public DateTime? EndTime { get; set; }
         public bool IsReminderSet { get; set; } = false;
         public int? ReminderMinutes { get; set; }
+        public bool IsRecurring { get; set; } = false;
+        public RecurrencePattern? RecurrencePattern { get; set; }
+        public int? RecurrenceInterval { get; set; }
+        public DateTime? RecurrenceEndDate { get; set; }
+        public int? RecurrenceCount { get; set; }
+        public decimal? Amount { get; set; }
         public long? PropertyId { get; set; }
         public long? AuctionId { get; set; }
         public long? BidId { get; set; }
@@ -493,5 +737,13 @@ namespace PropertyFlipperAPI.Controllers
         public bool IsCompleted { get; set; }
         public bool IsReminderSet { get; set; }
         public int? ReminderMinutes { get; set; }
+    }
+
+    public class PaymentScheduleScanResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public int EventsCreated { get; set; }
+        public List<EventDto>? Events { get; set; }
     }
 }

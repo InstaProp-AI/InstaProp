@@ -28,12 +28,30 @@ class AppNotification {
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
+    // Parse notification type (can be int or string)
+    NotificationType parseType() {
+      final typeValue = json['type'] ?? json['Type'];
+      if (typeValue == null) return NotificationType.general;
+
+      // If it's an int, use fromInt
+      if (typeValue is int) {
+        return NotificationType.fromInt(typeValue);
+      }
+
+      // If it's a string, use fromString
+      if (typeValue is String) {
+        return NotificationType.fromString(typeValue);
+      }
+
+      return NotificationType.general;
+    }
+
     return AppNotification(
       notificationId: json['notificationId'] ?? json['NotificationId'] ?? 0,
       userId: json['userId'] ?? json['UserId'] ?? 0,
       title: json['title'] ?? json['Title'] ?? '',
       message: json['message'] ?? json['Message'] ?? '',
-      type: NotificationType.fromInt(json['type'] ?? json['Type'] ?? 0),
+      type: parseType(),
       isRead: json['isRead'] ?? json['IsRead'] ?? false,
       auctionId: json['auctionId'] ?? json['AuctionId'],
       bidId: json['bidId'] ?? json['BidId'],
@@ -106,6 +124,43 @@ enum NotificationType {
       (e) => e.value == value,
       orElse: () => NotificationType.general,
     );
+  }
+
+  static NotificationType fromString(String value) {
+    final normalized = value.toLowerCase();
+    switch (normalized) {
+      case 'bidplaced':
+      case 'bid_placed':
+        return NotificationType.bidPlaced;
+      case 'outbid':
+        return NotificationType.outbid;
+      case 'auctionstarted':
+      case 'auction_started':
+        return NotificationType.auctionStarted;
+      case 'auctionending':
+      case 'auction_ending':
+        return NotificationType.auctionEnding;
+      case 'auctionwon':
+      case 'auction_won':
+        return NotificationType.auctionWon;
+      case 'auctionlost':
+      case 'auction_lost':
+        return NotificationType.auctionLost;
+      case 'eventreminder':
+      case 'event_reminder':
+        return NotificationType.eventReminder;
+      case 'publicevent':
+      case 'public_event':
+        return NotificationType.publicEvent;
+      case 'auctionapproved':
+      case 'auction_approved':
+        return NotificationType.auctionApproved;
+      case 'auctionrejected':
+      case 'auction_rejected':
+        return NotificationType.auctionRejected;
+      default:
+        return NotificationType.general;
+    }
   }
 
   String get displayName {

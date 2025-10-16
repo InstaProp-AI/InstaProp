@@ -14,6 +14,9 @@ import 'auction_details_page.dart';
 import 'auctions_page.dart';
 import 'create_auction_request_dialog.dart';
 import '../widgets/loading_button.dart';
+import 'calendar_page.dart';
+import 'saved_searches_page.dart';
+import 'property_comparison_page.dart';
 
 class PropertiesManagementPage extends StatefulWidget {
   const PropertiesManagementPage({super.key});
@@ -149,7 +152,18 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+
+          // Quick Access Row: Calendar & Saved Searches
+          Row(
+            children: [
+              Expanded(child: _buildCalendarSection(context)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildSavedSearchesSection(context)),
+            ],
+          ),
+
+          const SizedBox(height: 20),
 
           // My Bids Section
           _buildMyBidsSection(appState),
@@ -205,6 +219,28 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             ],
           ),
 
+          const SizedBox(height: 12),
+
+          // Compare Properties Button
+          SizedBox(
+            width: double.infinity,
+            child: _buildActionCard(
+              context,
+              icon: Icons.compare_arrows,
+              title: 'Compare Properties',
+              subtitle: 'Side-by-side comparison',
+              color: Colors.purple,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PropertyComparisonPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           // My Properties Section
@@ -251,93 +287,244 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     );
   }
 
+  Widget _buildCalendarSection(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.purple.shade400, Colors.blue.shade400],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CalendarPage()),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'My Calendar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Events & schedules',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSavedSearchesSection(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade400, Colors.cyan.shade400],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SavedSearchesPage(),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.bookmark,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Saved Searches',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your saved filters',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMyBidsSection(AppState appState) {
+    // Get only the latest bid per auction
+    final Map<int, Bid> latestBidsMap = {};
+    for (var bid in _myBids) {
+      final existingBid = latestBidsMap[bid.auctionId];
+      if (existingBid == null || bid.createdAt.isAfter(existingBid.createdAt)) {
+        latestBidsMap[bid.auctionId] = bid;
+      }
+    }
+    final latestBids = latestBidsMap.values.toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.gavel, color: AppColors.primary),
-            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue, Colors.blue.shade700],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.gavel, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
             Text(
-              'My Bids',
+              'My Active Bids',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+                color: AppColors.textPrimary,
               ),
             ),
-            if (_loadingBids) ...[
-              const SizedBox(width: 12),
+            const Spacer(),
+            if (_loadingBids)
               const SizedBox(
-                width: 16,
-                height: 16,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.blue),
+                ),
+                child: Text(
+                  '${latestBids.length} ${latestBids.length == 1 ? 'Property' : 'Properties'}',
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
               ),
-            ],
           ],
         ),
         const SizedBox(height: 16),
 
-        if (!_loadingBids && _myBids.isEmpty)
+        if (!_loadingBids && latestBids.isEmpty)
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary!, AppColors.primary!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary!, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(color: AppColors.secondary!, width: 1),
             ),
             child: Center(
               child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.gavel_rounded,
-                      size: 48,
-                      color: AppColors.primary,
-                    ),
+                  Icon(
+                    Icons.gavel_rounded,
+                    size: 60,
+                    color: AppColors.secondary,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
-                    'No Bids Yet',
+                    'No Active Bids',
                     style: TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                      fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Start bidding on properties you love!',
-                    style: TextStyle(color: AppColors.primary, fontSize: 14),
-                    textAlign: TextAlign.center,
+                    'Start bidding on properties!',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Navigate to auctions page
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -345,26 +532,15 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.search, size: 20),
-                    label: const Text(
-                      'Browse Auctions',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    icon: const Icon(Icons.search, size: 18),
+                    label: const Text('Browse Auctions'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.surface,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
+                        horizontal: 24,
+                        vertical: 12,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 4,
-                      shadowColor: Colors.blue.withOpacity(0.5),
                     ),
                   ),
                 ],
@@ -373,12 +549,12 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           )
         else if (!_loadingBids)
           SizedBox(
-            height: 180,
+            height: 260,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: _myBids.length,
+              itemCount: latestBids.length,
               itemBuilder: (context, index) {
-                final bid = _myBids[index];
+                final bid = latestBids[index];
                 final auction =
                     bid.auction ??
                     appState.auctions.firstWhere(
@@ -395,7 +571,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                         createdAt: DateTime.now(),
                       ),
                     );
-                return _buildBidCard(bid, auction);
+                return _buildEnhancedBidCard(bid, auction);
               },
             ),
           ),
@@ -403,20 +579,22 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     );
   }
 
-  Widget _buildBidCard(Bid bid, Auction auction) {
+  Widget _buildEnhancedBidCard(Bid bid, Auction auction) {
     final isWinning = auction.currentPrice == bid.bidAmount;
     final property = auction.property;
+    final priceDifference = auction.currentPrice - bid.bidAmount;
+    final isOutbid = priceDifference > 0;
 
     return Container(
-      width: 280,
-      margin: const EdgeInsets.only(right: 16),
+      width: 300,
+      margin: const EdgeInsets.only(right: 12),
       child: Card(
-        elevation: 3,
+        elevation: isWinning ? 4 : 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: isWinning ? Colors.green : AppColors.secondary!,
-            width: isWinning ? 2 : 1,
+            color: isWinning ? Colors.green : Colors.orange,
+            width: 2,
           ),
         ),
         child: InkWell(
@@ -428,51 +606,92 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Property Image
+              // Property Image with Status Badge
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+                  top: Radius.circular(16),
                 ),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child:
-                      property?.imageUrl != null &&
-                          property!.imageUrl.isNotEmpty
-                      ? Image.network(
-                          property.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: AppColors.background,
-                              child: const Icon(
-                                Icons.home,
-                                size: 40,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          color: AppColors.background,
-                          child: const Icon(
-                            Icons.home,
-                            size: 40,
-                            color: Colors.grey,
-                          ),
+                child: Stack(
+                  children: [
+                    Container(
+                      height: 100,
+                      width: double.infinity,
+                      color: Colors.grey[300],
+                      child:
+                          property?.imageUrl != null &&
+                              property!.imageUrl.isNotEmpty
+                          ? Image.network(
+                              property.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.home,
+                                  size: 40,
+                                  color: Colors.grey,
+                                );
+                              },
+                            )
+                          : const Icon(
+                              Icons.home,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                    ),
+                    // Winning/Outbid Badge
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
+                        decoration: BoxDecoration(
+                          color: isWinning ? Colors.green : Colors.orange,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isWinning ? Icons.emoji_events : Icons.warning,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isWinning ? 'WINNING' : 'OUTBID',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
               // Bid Details
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Property Name
                     Text(
                       property?.name ?? 'Property #${auction.propertyId}',
                       style: const TextStyle(
@@ -483,94 +702,97 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
+
+                    // Stats Row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your Bid',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 11,
-                              ),
-                            ),
-                            Text(
-                              '\$${bid.bidAmount.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ],
+                        // Your Bid
+                        _buildBidStat(
+                          'Your Bid',
+                          '\$${bid.bidAmount.toStringAsFixed(0)}',
+                          Colors.blue,
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'Current',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 11,
-                              ),
-                            ),
-                            Text(
-                              '\$${auction.currentPrice.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: isWinning
-                                    ? AppColors.primary
-                                    : AppColors.primary,
-                              ),
-                            ),
-                          ],
+                        // Current Price
+                        _buildBidStat(
+                          'Current',
+                          '\$${auction.currentPrice.toStringAsFixed(0)}',
+                          isWinning ? Colors.green : Colors.red,
+                        ),
+                        // Total Bids
+                        _buildBidStat(
+                          'Bids',
+                          '${auction.bidCount}',
+                          Colors.purple,
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isWinning
-                            ? AppColors.background
-                            : AppColors.background,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: isWinning
-                              ? Colors.green[200]!
-                              : AppColors.secondary!,
+
+                    // Status Info
+                    if (isOutbid)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.arrow_upward,
+                              size: 12,
+                              color: Colors.orange,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Outbid by \$${priceDifference.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.emoji_events,
+                              size: 12,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'You\'re in the lead!',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isWinning ? Icons.emoji_events : Icons.pending,
-                            size: 14,
-                            color: isWinning
-                                ? AppColors.primary
-                                : AppColors.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isWinning ? 'Winning!' : 'Outbid',
-                            style: TextStyle(
-                              color: isWinning
-                                  ? AppColors.primary
-                                  : AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -578,6 +800,31 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBidStat(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 9,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 
@@ -625,31 +872,24 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
 
           const SizedBox(height: 24),
 
-          // Quick Valuation Section
-          Text(
-            'Quick Property Valuation',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Get an instant estimate of your property value',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
-          ),
-          const SizedBox(height: 16),
-
-          _buildActionCard(
-            context,
-            icon: Icons.assessment,
-            title: 'Quick Estimate',
-            subtitle: 'Basic property valuation',
-            color: Colors.blue,
-            onTap: () {
-              _showQuickValuationDialog(context);
-            },
+          // Quick Access Row: Calendar & Valuation
+          Row(
+            children: [
+              Expanded(child: _buildCalendarSection(context)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionCard(
+                  context,
+                  icon: Icons.assessment,
+                  title: 'Quick Estimate',
+                  subtitle: 'Property valuation',
+                  color: Colors.blue,
+                  onTap: () {
+                    _showQuickValuationDialog(context);
+                  },
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 24),

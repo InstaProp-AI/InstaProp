@@ -52,6 +52,19 @@ namespace PropertyFlipperAPI.Controllers
                 return NotFound();
             }
 
+            // Sync to Firestore for real-time updates (ensures existing auctions are in Firestore)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _firestoreService.UpdateAuctionAsync(id, auction);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Failed to sync auction {id} to Firestore: {ex.Message}");
+                }
+            });
+
             // Convert to DTO to avoid circular references
             var auctionDto = AuctionDto.FromAuction(auction);
             return auctionDto;
@@ -126,6 +139,22 @@ namespace PropertyFlipperAPI.Controllers
                            a.StartAt <= now &&  // Has started
                            a.StartAt.AddHours(a.Duration) >= now)  // Hasn't ended
                 .ToList();
+
+            // Sync active auctions to Firestore for real-time updates
+            _ = Task.Run(async () =>
+            {
+                foreach (var auction in activeAuctions)
+                {
+                    try
+                    {
+                        await _firestoreService.UpdateAuctionAsync(auction.AuctionId, auction);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Failed to sync auction {auction.AuctionId} to Firestore: {ex.Message}");
+                    }
+                }
+            });
 
             // Convert to DTOs with calculated values
             var auctionDtos = activeAuctions.Select(AuctionDto.FromAuction).ToList();

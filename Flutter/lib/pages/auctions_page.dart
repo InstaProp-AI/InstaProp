@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
+import '../models/property.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
 import 'auction_details_page.dart';
+import 'property_comparison_page.dart';
+import 'property_search_page.dart';
 
 class AuctionsPage extends StatefulWidget {
   const AuctionsPage({super.key});
@@ -23,6 +26,9 @@ class _AuctionsPageState extends State<AuctionsPage> {
   final Set<int> _highlightedAuctions = {};
   final Map<int, double> _previousPrices = {}; // Track previous prices
   final Map<int, int> _previousBidCounts = {}; // Track previous bid counts
+
+  // Track when we last applied filters to avoid redundant calls
+  int _lastAuctionsHash = 0;
 
   // Filter options
   final Map<String, String> _categoryOptions = {
@@ -244,11 +250,21 @@ class _AuctionsPageState extends State<AuctionsPage> {
       _highlightedAuctions.add(auctionId);
     });
 
-    // Remove highlight after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    // Remove yellow highlight after 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {
         setState(() {
           _highlightedAuctions.remove(auctionId);
+        });
+      }
+    });
+
+    // Remove from priority sorting after 60 seconds (auction will return to normal position)
+    Future.delayed(const Duration(seconds: 60), () {
+      if (mounted) {
+        setState(() {
+          _recentlyUpdatedAuctions.remove(auctionId);
+          _applyFilters(); // Re-sort to move it back to normal position
         });
       }
     });
@@ -281,28 +297,53 @@ class _AuctionsPageState extends State<AuctionsPage> {
   }
 
   void _applySorting(List<Auction> auctions) {
-    if (_currentSort == 'none') return;
+    // First, separate recently updated auctions from the rest
+    final recentlyUpdated = <Auction>[];
+    final rest = <Auction>[];
 
-    switch (_currentSort) {
-      case 'bidders_asc':
-        auctions.sort((a, b) => a.bidCount.compareTo(b.bidCount));
-        break;
-      case 'bidders_desc':
-        auctions.sort((a, b) => b.bidCount.compareTo(a.bidCount));
-        break;
-      case 'price_asc':
-        auctions.sort((a, b) => a.currentPrice.compareTo(b.currentPrice));
-        break;
-      case 'price_desc':
-        auctions.sort((a, b) => b.currentPrice.compareTo(a.currentPrice));
-        break;
-      case 'end_time_asc':
-        auctions.sort((a, b) => a.endAt.compareTo(b.endAt));
-        break;
-      case 'end_time_desc':
-        auctions.sort((a, b) => b.endAt.compareTo(a.endAt));
-        break;
+    for (final auction in auctions) {
+      if (_recentlyUpdatedAuctions.containsKey(auction.auctionId)) {
+        recentlyUpdated.add(auction);
+      } else {
+        rest.add(auction);
+      }
     }
+
+    // Sort recently updated by their update time (most recent first)
+    recentlyUpdated.sort((a, b) {
+      final timeA = _recentlyUpdatedAuctions[a.auctionId]!;
+      final timeB = _recentlyUpdatedAuctions[b.auctionId]!;
+      return timeB.compareTo(timeA); // Most recent first
+    });
+
+    // Apply user's selected sort to the rest
+    if (_currentSort != 'none') {
+      switch (_currentSort) {
+        case 'bidders_asc':
+          rest.sort((a, b) => a.bidCount.compareTo(b.bidCount));
+          break;
+        case 'bidders_desc':
+          rest.sort((a, b) => b.bidCount.compareTo(a.bidCount));
+          break;
+        case 'price_asc':
+          rest.sort((a, b) => a.currentPrice.compareTo(b.currentPrice));
+          break;
+        case 'price_desc':
+          rest.sort((a, b) => b.currentPrice.compareTo(a.currentPrice));
+          break;
+        case 'end_time_asc':
+          rest.sort((a, b) => a.endAt.compareTo(b.endAt));
+          break;
+        case 'end_time_desc':
+          rest.sort((a, b) => b.endAt.compareTo(a.endAt));
+          break;
+      }
+    }
+
+    // Clear and rebuild the list with recently updated first
+    auctions.clear();
+    auctions.addAll(recentlyUpdated);
+    auctions.addAll(rest);
   }
 
   void _setSort(String sortKey) {
@@ -375,6 +416,26 @@ class _AuctionsPageState extends State<AuctionsPage> {
           // Track auction updates for highlighting
           _trackAuctionUpdates(appState.auctions);
 
+          // Re-apply filters when AppState auctions actually change
+          // Use a hash to detect if auction data changed
+          final currentHash = appState.auctions.fold<int>(
+            0,
+            (hash, auction) =>
+                hash ^
+                auction.auctionId.hashCode ^
+                auction.currentPrice.hashCode ^
+                auction.bidCount.hashCode,
+          );
+
+          if (currentHash != _lastAuctionsHash) {
+            _lastAuctionsHash = currentHash;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _applyFilters();
+              }
+            });
+          }
+
           if (appState.loadingAuctions) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -407,6 +468,68 @@ class _AuctionsPageState extends State<AuctionsPage> {
             ],
           );
         },
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(left: 30),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Properties View Switch Button
+            FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PropertySearchPage(),
+                  ),
+                );
+              },
+              backgroundColor: AppColors.surface,
+              icon: Icon(Icons.home_work, color: AppColors.primary),
+              label: Text(
+                'Properties',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              heroTag: 'properties_button',
+            ),
+            // Compare Button (smaller)
+            FloatingActionButton(
+              onPressed: () {
+                // Get properties from filtered auctions
+                final properties = _filteredAuctions
+                    .where((a) => a.property != null)
+                    .map((a) => a.property!)
+                    .toList();
+
+                if (properties.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PropertyComparisonPage(
+                        preSelectedProperties: properties.take(5).toList(),
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('No properties available to compare'),
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.compare_arrows, color: AppColors.surface),
+              heroTag: 'compare_button',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -727,8 +850,8 @@ class _AuctionsPageState extends State<AuctionsPage> {
                 // Sticky Header row
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: headerColor,
@@ -739,76 +862,88 @@ class _AuctionsPageState extends State<AuctionsPage> {
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 80, // Fixed width for property image
+                        width: 60, // Fixed width for property image
                         child: Text(
                           'Image',
                           style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 8),
                       SizedBox(
-                        width: 200, // Fixed width for property name
+                        width: 140, // Fixed width for property name
                         child: Text(
-                          'Property Name',
+                          'Property',
                           style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 8),
                       SizedBox(
-                        width: 120, // Fixed width for start price
+                        width: 90, // Fixed width for start price
                         child: Text(
                           'Start Price',
                           style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 8),
                       SizedBox(
-                        width: 120, // Fixed width for current price
+                        width: 100, // Fixed width for current price
                         child: Text(
                           'Current Price',
                           style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 8),
                       SizedBox(
-                        width: 80, // Fixed width for bids
+                        width: 50, // Fixed width for bids
                         child: Text(
                           'Bids',
                           style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 8),
                       SizedBox(
-                        width: 100, // Fixed width for time left
+                        width: 85, // Fixed width for time left
                         child: Text(
                           isUpcoming
                               ? 'Starts In'
                               : (isLive ? 'Time Left' : 'Ended'),
                           style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 8),
                       SizedBox(
-                        width: 120, // Fixed width for project
+                        width: 100, // Fixed width for type
                         child: Text(
-                          'Project',
+                          'Type',
                           style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      SizedBox(
-                        width: 120, // Fixed width for category
-                        child: Text(
-                          'Category',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                         ),
                       ),
                     ],
@@ -853,7 +988,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: isHighlighted
             ? Colors.yellow.withOpacity(0.15) // Light yellow highlight
@@ -874,149 +1009,177 @@ class _AuctionsPageState extends State<AuctionsPage> {
             builder: (context) => AuctionDetailsPage(auction: auction),
           ),
         ),
-        child: Row(
-          children: [
-            // Property Image/Carousel
-            SizedBox(
-              width: 80, // Fixed width for property image
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.secondary!),
-                ),
-                child: PropertyImageCarousel(
-                  images: auction.property?.propertyImages ?? [],
-                  fallbackImageUrl: auction.property?.imageUrl,
-                  height: 50,
-                  showIndicators: false,
-                  showNavigationButtons: false,
-                  showImageCounter: false,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: 200, // Fixed width for property name
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    auction.property?.name ?? 'Property',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    auction.property?.location ?? '',
-                    style: TextStyle(color: AppColors.primary, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: 120, // Fixed width for start price
-              child: Text(
-                '\$${auction.startPrice.toStringAsFixed(0)}',
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: 120, // Fixed width for current price
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '\$${auction.currentPrice.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isHighlighted
-                          ? Colors.green[700]
-                          : AppColors.primary,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (isHighlighted)
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              // Property Image/Carousel
+              SizedBox(
+                width: 60, // Fixed width for property image
+                child: Stack(
+                  children: [
                     Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
+                      height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.secondary!),
                       ),
-                      child: const Text(
-                        'NEW BID',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
+                      child: PropertyImageCarousel(
+                        images: auction.property?.propertyImages ?? [],
+                        fallbackImageUrl: auction.property?.imageUrl,
+                        height: 40,
+                        showIndicators: false,
+                        showNavigationButtons: false,
+                        showImageCounter: false,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    // "Recently Updated" indicator
+                    if (_recentlyUpdatedAuctions.containsKey(auction.auctionId))
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                          child: const Icon(
+                            Icons.fiber_new,
+                            color: Colors.white,
+                            size: 12,
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: 80, // Fixed width for bids
-              child: Text(
-                '${auction.bidCount}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.primary,
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: 100, // Fixed width for time left/ended
-              child: isUpcoming
-                  ? _buildStartsInWidget(auction)
-                  : (isLive
-                        ? AuctionTimer(
-                            auction: auction,
-                            textStyle: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
-                              fontSize: 12,
-                            ),
-                            onAuctionEnded: onAuctionEnded,
-                          )
-                        : Text(
-                            'Ended',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
-                              fontSize: 12,
-                            ),
-                          )),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: 120, // Fixed width for project
-              child: Text(
-                auction.property?.project ?? 'N/A',
-                style: TextStyle(color: AppColors.primary, fontSize: 12),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 140, // Fixed width for property name
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      auction.property?.name ?? 'Property',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      auction.property?.project ?? 'N/A',
+                      style: TextStyle(color: AppColors.primary, fontSize: 10),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              width: 120, // Fixed width for category
-              child: Text(
-                auction.property?.category ?? 'N/A',
-                style: TextStyle(color: AppColors.primary, fontSize: 12),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 90, // Fixed width for start price
+                child: Text(
+                  '\$${auction.startPrice.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                  ),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 100, // Fixed width for current price
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '\$${auction.currentPrice.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isHighlighted
+                            ? Colors.green[700]
+                            : AppColors.primary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (isHighlighted)
+                      Container(
+                        margin: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 3,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: const Text(
+                          'NEW BID',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 7,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 50, // Fixed width for bids
+                child: Text(
+                  '${auction.bidCount}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.primary,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 85, // Fixed width for time left/ended
+                child: isUpcoming
+                    ? _buildStartsInWidget(auction)
+                    : (isLive
+                          ? AuctionTimer(
+                              auction: auction,
+                              textStyle: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.primary,
+                                fontSize: 10,
+                              ),
+                              onAuctionEnded: onAuctionEnded,
+                            )
+                          : Text(
+                              'Ended',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.primary,
+                                fontSize: 10,
+                              ),
+                            )),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 100, // Fixed width for type
+                child: _buildPropertyTypeTag(auction.property?.type),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1042,7 +1205,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
       style: TextStyle(
         fontWeight: FontWeight.w500,
         color: AppColors.primary,
-        fontSize: 12,
+        fontSize: 10,
       ),
     );
   }
@@ -1158,6 +1321,43 @@ class _AuctionsPageState extends State<AuctionsPage> {
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPropertyTypeTag(PropertyType? type) {
+    final isPrimary = type == PropertyType.primary;
+    final backgroundColor = isPrimary ? Colors.blue[100]! : Colors.purple[100]!;
+    final borderColor = isPrimary ? Colors.blue[400]! : Colors.purple[400]!;
+    final textColor = isPrimary ? Colors.blue[900]! : Colors.purple[900]!;
+    final text = isPrimary ? 'Primary' : 'Resale';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPrimary ? Icons.new_releases : Icons.recycling,
+            size: 10,
+            color: textColor,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }

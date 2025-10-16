@@ -14,6 +14,13 @@ class Event {
   final bool isReminderSet;
   final int? reminderMinutes;
   final bool isPublic;
+  final bool isRecurring;
+  final RecurrencePattern? recurrencePattern;
+  final int? recurrenceInterval;
+  final DateTime? recurrenceEndDate;
+  final int? recurrenceCount;
+  final int? parentEventId;
+  final double? amount;
   final int? propertyId;
   final int? auctionId;
   final int? bidId;
@@ -33,6 +40,13 @@ class Event {
     this.isReminderSet = false,
     this.reminderMinutes,
     this.isPublic = false,
+    this.isRecurring = false,
+    this.recurrencePattern,
+    this.recurrenceInterval,
+    this.recurrenceEndDate,
+    this.recurrenceCount,
+    this.parentEventId,
+    this.amount,
     this.propertyId,
     this.auctionId,
     this.bidId,
@@ -58,6 +72,28 @@ class Event {
       isReminderSet: json['isReminderSet'] ?? json['IsReminderSet'] ?? false,
       reminderMinutes: json['reminderMinutes'] ?? json['ReminderMinutes'],
       isPublic: json['isPublic'] ?? json['IsPublic'] ?? false,
+      isRecurring: json['isRecurring'] ?? json['IsRecurring'] ?? false,
+      recurrencePattern:
+          json['recurrencePattern'] != null || json['RecurrencePattern'] != null
+          ? RecurrencePatternExtension.fromValue(
+              json['recurrencePattern'] ?? json['RecurrencePattern'],
+            )
+          : null,
+      recurrenceInterval:
+          json['recurrenceInterval'] ?? json['RecurrenceInterval'],
+      recurrenceEndDate:
+          json['recurrenceEndDate'] != null || json['RecurrenceEndDate'] != null
+          ? DateTime.parse(
+              json['recurrenceEndDate'] ?? json['RecurrenceEndDate'],
+            )
+          : null,
+      recurrenceCount: json['recurrenceCount'] ?? json['RecurrenceCount'],
+      parentEventId: json['parentEventId'] ?? json['ParentEventId'],
+      amount: json['amount'] != null
+          ? (json['amount'] as num).toDouble()
+          : json['Amount'] != null
+          ? (json['Amount'] as num).toDouble()
+          : null,
       propertyId: json['propertyId'] ?? json['PropertyId'],
       auctionId: json['auctionId'] ?? json['AuctionId'],
       bidId: json['bidId'] ?? json['BidId'],
@@ -293,6 +329,12 @@ class EventCreateDto {
   final DateTime? endTime;
   final bool isReminderSet;
   final int? reminderMinutes;
+  final bool isRecurring;
+  final RecurrencePattern? recurrencePattern;
+  final int? recurrenceInterval;
+  final DateTime? recurrenceEndDate;
+  final int? recurrenceCount;
+  final double? amount;
   final int? propertyId;
   final int? auctionId;
   final int? bidId;
@@ -308,6 +350,12 @@ class EventCreateDto {
     this.endTime,
     this.isReminderSet = false,
     this.reminderMinutes,
+    this.isRecurring = false,
+    this.recurrencePattern,
+    this.recurrenceInterval,
+    this.recurrenceEndDate,
+    this.recurrenceCount,
+    this.amount,
     this.propertyId,
     this.auctionId,
     this.bidId,
@@ -325,6 +373,12 @@ class EventCreateDto {
       'endTime': endTime?.toIso8601String(),
       'isReminderSet': isReminderSet,
       'reminderMinutes': reminderMinutes,
+      'isRecurring': isRecurring,
+      'recurrencePattern': recurrencePattern?.value,
+      'recurrenceInterval': recurrenceInterval,
+      'recurrenceEndDate': recurrenceEndDate?.toIso8601String(),
+      'recurrenceCount': recurrenceCount,
+      'amount': amount,
       'propertyId': propertyId,
       'auctionId': auctionId,
       'bidId': bidId,
@@ -414,5 +468,66 @@ class PublicEventCreateDto {
       'isReminderSet': isReminderSet,
       'reminderMinutes': reminderMinutes,
     };
+  }
+}
+
+enum RecurrencePattern { daily, weekly, monthly, yearly }
+
+extension RecurrencePatternExtension on RecurrencePattern {
+  String get displayName {
+    switch (this) {
+      case RecurrencePattern.daily:
+        return 'Daily';
+      case RecurrencePattern.weekly:
+        return 'Weekly';
+      case RecurrencePattern.monthly:
+        return 'Monthly';
+      case RecurrencePattern.yearly:
+        return 'Yearly';
+    }
+  }
+
+  int get value {
+    switch (this) {
+      case RecurrencePattern.daily:
+        return 0;
+      case RecurrencePattern.weekly:
+        return 1;
+      case RecurrencePattern.monthly:
+        return 2;
+      case RecurrencePattern.yearly:
+        return 3;
+    }
+  }
+
+  static RecurrencePattern fromValue(dynamic value) {
+    if (value is int) {
+      switch (value) {
+        case 0:
+          return RecurrencePattern.daily;
+        case 1:
+          return RecurrencePattern.weekly;
+        case 2:
+          return RecurrencePattern.monthly;
+        case 3:
+          return RecurrencePattern.yearly;
+        default:
+          return RecurrencePattern.daily;
+      }
+    } else if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'daily':
+          return RecurrencePattern.daily;
+        case 'weekly':
+          return RecurrencePattern.weekly;
+        case 'monthly':
+          return RecurrencePattern.monthly;
+        case 'yearly':
+          return RecurrencePattern.yearly;
+        default:
+          return RecurrencePattern.daily;
+      }
+    }
+    return RecurrencePattern.daily;
   }
 }

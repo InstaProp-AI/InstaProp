@@ -17,6 +17,84 @@ namespace PropertyFlipperAPI.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChat", b =>
+                {
+                    b.Property<long>("AIChatId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserPreferences")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("AIChatId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AIChats");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChatMessage", b =>
+                {
+                    b.Property<long>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AIChatId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("DeveloperId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Options")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("PropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("QuestionType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("AIChatId");
+
+                    b.ToTable("AIChatMessages");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Account", b =>
                 {
                     b.Property<long>("AccountId")
@@ -192,11 +270,162 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Bids");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Chat", b =>
+                {
+                    b.Property<long>("ChatId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("DeveloperId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ChatId");
+
+                    b.HasIndex("DeveloperId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Chats");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ChatMessage", b =>
+                {
+                    b.Property<long>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ChatId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("PropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("SenderId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("ChatId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
+                {
+                    b.Property<long>("ProfileId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Bio")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PortfolioDescription")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileImageUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Rating")
+                        .HasColumnType("decimal(3,2)");
+
+                    b.Property<int>("TotalRatings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ProfileId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("DeveloperProfiles");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperRating", b =>
+                {
+                    b.Property<long>("RatingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("DeveloperId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RatingType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("RatingId");
+
+                    b.HasIndex("DeveloperId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DeveloperRatings");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Event", b =>
                 {
                     b.Property<long>("EventId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("Amount")
+                        .HasColumnType("TEXT");
 
                     b.Property<long?>("AuctionId")
                         .HasColumnType("INTEGER");
@@ -225,6 +454,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<bool>("IsPublic")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsReminderSet")
                         .HasColumnType("INTEGER");
 
@@ -232,7 +464,22 @@ namespace PropertyFlipperAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("ParentEventId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("PropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RecurrenceCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("RecurrenceEndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RecurrenceInterval")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RecurrencePattern")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("ReminderMinutes")
@@ -355,6 +602,79 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("DeveloperId");
 
                     b.ToTable("Projects");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectMilestone", b =>
+                {
+                    b.Property<long>("MilestoneId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CompletionPercentage")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("TargetDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("MilestoneId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ProjectMilestones");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectUpdate", b =>
+                {
+                    b.Property<long>("UpdateId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("UpdateId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ProjectUpdates");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Property", b =>
@@ -491,6 +811,143 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("PropertyImages");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyView", b =>
+                {
+                    b.Property<long>("ViewId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DeviceType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserLocation")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ViewedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ViewId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PropertyViews");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Referral", b =>
+                {
+                    b.Property<long>("ReferralId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ConvertedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsConverted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ReferralCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("ReferredUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ReferrerId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ReferralId");
+
+                    b.HasIndex("ReferralCode")
+                        .IsUnique();
+
+                    b.HasIndex("ReferredUserId");
+
+                    b.HasIndex("ReferrerId");
+
+                    b.ToTable("Referrals");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.SavedSearch", b =>
+                {
+                    b.Property<long>("SearchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Filters")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastNotifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("NotifyOnMatch")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SearchName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("SearchId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("SavedSearches");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>
+                {
+                    b.Property<long>("BadgeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AwardedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BadgeIcon")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BadgeName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("BadgeId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("UserBadges");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserDoc", b =>
                 {
                     b.Property<long>("DocId")
@@ -523,6 +980,61 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("UserDocs");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.UserReward", b =>
+                {
+                    b.Property<long>("RewardId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EarnedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("RelatedPropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RewardType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("RewardId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("UserRewards");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChat", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChatMessage", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.AIChat", "AIChat")
+                        .WithMany("Messages")
+                        .HasForeignKey("AIChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AIChat");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Auction", b =>
                 {
                     b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
@@ -551,6 +1063,88 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Auction");
 
                     b.Navigation("Bidder");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Chat", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Developer")
+                        .WithMany()
+                        .HasForeignKey("DeveloperId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Developer");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ChatMessage", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Chat", "Chat")
+                        .WithMany("Messages")
+                        .HasForeignKey("ChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Chat");
+
+                    b.Navigation("Property");
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperRating", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Developer")
+                        .WithMany()
+                        .HasForeignKey("DeveloperId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Developer");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Event", b =>
@@ -583,6 +1177,28 @@ namespace PropertyFlipperAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Developer");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectMilestone", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectUpdate", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Property", b =>
@@ -625,6 +1241,64 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Property");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyView", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Property");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Referral", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "ReferredUser")
+                        .WithMany()
+                        .HasForeignKey("ReferredUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Referrer")
+                        .WithMany()
+                        .HasForeignKey("ReferrerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReferredUser");
+
+                    b.Navigation("Referrer");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.SavedSearch", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserDoc", b =>
                 {
                     b.HasOne("PropertyFlipperAPI.Models.Account", "User")
@@ -634,6 +1308,22 @@ namespace PropertyFlipperAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.UserReward", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChat", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Account", b =>
@@ -650,6 +1340,11 @@ namespace PropertyFlipperAPI.Migrations
             modelBuilder.Entity("PropertyFlipperAPI.Models.Auction", b =>
                 {
                     b.Navigation("Bids");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Chat", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>

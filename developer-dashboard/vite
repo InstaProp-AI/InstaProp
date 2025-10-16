@@ -1,0 +1,11 @@
+
+
+  VITE v4.5.14  ready in 1458 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+  ➜  press h to show help
+
+warn - The `content` option in your Tailwind CSS configuration is missing or empty.
+warn - Configure your content sources or your generated CSS will be missing styles.
+warn - https://tailwindcss.com/docs/content-configuration[A[Bs@ss-MacBook-Pro dashboard % > admin-dashboard@1.0.0 dev

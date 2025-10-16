@@ -7,6 +7,9 @@ import '../services/event_service.dart';
 import '../services/api_client.dart';
 import 'add_event_dialog.dart';
 import 'event_details_dialog.dart';
+import 'add_event_choice_dialog.dart';
+import 'payment_schedule_scanner_dialog.dart';
+import 'auth_page.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -94,14 +97,147 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Future<void> _showAddEventDialog() async {
-    final result = await showDialog<Event>(
+    final appState = context.read<AppState>();
+
+    // First, show choice dialog
+    final choice = await showDialog<String>(
       context: context,
-      builder: (context) => const AddEventDialog(),
+      builder: (context) => const AddEventChoiceDialog(),
     );
 
-    if (result != null) {
-      _loadEvents();
+    if (choice == null) return;
+
+    // Check if user is logged in before proceeding
+    if (!appState.isLoggedIn) {
+      _showSignupPrompt();
+      return;
     }
+
+    if (choice == 'manual') {
+      // Show manual event dialog
+      final result = await showDialog<Event>(
+        context: context,
+        builder: (context) => const AddEventDialog(),
+      );
+      if (result != null) {
+        _loadEvents();
+      }
+    } else if (choice == 'scan') {
+      // Show payment schedule scanner dialog
+      final result = await showDialog<PaymentScheduleScanResult>(
+        context: context,
+        builder: (context) => const PaymentScheduleScannerDialog(),
+      );
+
+      if (result != null && mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        // Reload events
+        _loadEvents();
+      }
+    }
+  }
+
+  void _showSignupPrompt() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.lock_outline,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Flexible(
+              child: Text(
+                'Sign Up Required',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You need to create an account to use this feature.',
+              style: TextStyle(fontSize: 16, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.secondary),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Sign up now to add and manage your calendar events!',
+                      style: TextStyle(fontSize: 14, color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Maybe Later',
+              style: TextStyle(
+                color: AppColors.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AuthPage()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Sign Up',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showEventDetails(Event event) async {
@@ -122,6 +258,13 @@ class _CalendarPageState extends State<CalendarPage> {
           title: const Text('Public Calendar'),
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: AppColors.surface,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: _showAddEventDialog,
+              tooltip: 'Add Event',
+            ),
+          ],
         ),
         body: _buildCalendarContent(),
       );
@@ -540,7 +683,7 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.background!),
+        border: Border.all(color: AppColors.background),
       ),
       child: Row(
         children: [

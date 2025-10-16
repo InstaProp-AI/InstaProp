@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
+import '../models/property.dart';
 import '../models/bid.dart';
 import '../services/bid_service.dart';
 import '../services/auction_service.dart';
@@ -14,6 +15,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
+import 'property_comparison_page.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
   final Auction auction;
@@ -75,9 +77,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         );
 
     _animationController.forward();
-    _loadBids();
-    // Start Firebase real-time listeners
-    _startFirestoreListeners();
+    // Load initial data from API first, then start Firestore listeners
+    _loadBids().then((_) {
+      // Only start Firestore listeners after initial data is loaded
+      // This gives the backend time to sync data to Firestore
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _startFirestoreListeners();
+      });
+    });
     // Start fallback polling as backup (less frequent)
     _startFallbackPolling();
   }
@@ -96,7 +103,6 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               print(
                 '🔥 Firestore: Auction updated - Price: \$${auction.currentPrice}, Bids: ${auction.bidCount}',
               );
-              print('🔥 Firestore: Updating _currentAuction in setState...');
 
               // Check if price changed and play sound
               if (_previousPrice != null &&
@@ -109,12 +115,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 _currentAuction = auction;
                 _previousPrice = auction.currentPrice; // Update previous price
               });
-              print(
-                '✅ Firestore: _currentAuction updated successfully! New price: \$${_currentAuction!.currentPrice}',
-              );
-            } else if (auction == null) {
-              print('⚠️ Firestore: Received null auction update');
             }
+            // Null auction updates are normal when document doesn't exist yet
+            // The auto-sync will create it after the first API call
           },
           onError: (error) {
             print('❌ Firestore auction listener error: $error');
@@ -305,6 +308,10 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         });
         // Reload data to show new bid
         _loadBids();
+
+        // Refresh global auctions list so auctions page gets updated data
+        final appState = context.read<AppState>();
+        appState.loadAuctions();
       } else {
         setState(() {
           _errorMessage = response.error ?? 'Failed to place bid';
@@ -671,9 +678,32 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 _buildLeaderboard(),
                 _buildChartsSection(),
                 _buildPropertyDescription(),
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ),
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          if (_currentAuction?.property != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PropertyComparisonPage(
+                  preSelectedProperties: [_currentAuction!.property!],
+                ),
+              ),
+            );
+          }
+        },
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.compare_arrows, color: AppColors.surface),
+        label: const Text(
+          'Compare',
+          style: TextStyle(
+            color: AppColors.surface,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -682,7 +712,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
   Widget _buildModernAppBar() {
     return SliverAppBar(
-      expandedHeight: 300,
+      expandedHeight: 250,
       floating: false,
       pinned: true,
       backgroundColor: AppColors.primary,
@@ -694,7 +724,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             PropertyImageCarousel(
               images: _currentAuction!.property?.propertyImages ?? [],
               fallbackImageUrl: _currentAuction!.property?.imageUrl,
-              height: 300,
+              height: 250,
               showIndicators: true,
               showNavigationButtons: true,
               showImageCounter: true,
@@ -716,9 +746,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
             // Property Info (IgnorePointer allows swipes to pass through)
             Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
+              bottom: 16,
+              left: 16,
+              right: 16,
               child: IgnorePointer(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -727,19 +757,23 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       _currentAuction!.property?.name ?? 'Property',
                       style: const TextStyle(
                         color: AppColors.surface,
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       _currentAuction!.property?.location ?? '',
                       style: TextStyle(
                         color: AppColors.secondary,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -779,24 +813,25 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   Widget _buildPropertyDetails() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Card(
-          elevation: 4,
+          elevation: 3,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Property Details',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 if (_currentAuction!.property != null) ...[
                   _buildDetailRow(
@@ -838,9 +873,34 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildDetailRow(
-                    'Category',
-                    _currentAuction!.property!.category,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Type',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildPropertyTypeTag(
+                              _currentAuction!.property!.type,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildDetailRow(
+                          'Category',
+                          _currentAuction!.property!.category,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],
@@ -876,14 +936,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   Widget _buildBiddingSection() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Card(
-          elevation: 4,
+          elevation: 3,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1319,24 +1379,25 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   Widget _buildChartsSection() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Card(
-          elevation: 4,
+          elevation: 3,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Bidding Activity',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 SizedBox(height: 200, child: _buildBidChart()),
               ],
@@ -1486,24 +1547,25 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   Widget _buildLeaderboard() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Card(
-          elevation: 4,
+          elevation: 3,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Top Bidders',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 if (_bids.isEmpty)
                   _buildEmptyState(
@@ -1676,24 +1738,25 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   Widget _buildPropertyDescription() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Card(
-          elevation: 4,
+          elevation: 3,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.description, color: AppColors.primary, size: 24),
-                    const SizedBox(width: 12),
+                    Icon(Icons.description, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 10),
                     Text(
                       'Property Description',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
                       ),
@@ -2013,5 +2076,42 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     }
 
     return highlights;
+  }
+
+  Widget _buildPropertyTypeTag(PropertyType? type) {
+    final isPrimary = type == PropertyType.primary;
+    final backgroundColor = isPrimary ? Colors.blue[100]! : Colors.purple[100]!;
+    final borderColor = isPrimary ? Colors.blue[400]! : Colors.purple[400]!;
+    final textColor = isPrimary ? Colors.blue[900]! : Colors.purple[900]!;
+    final text = isPrimary ? 'Primary' : 'Resale';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPrimary ? Icons.new_releases : Icons.recycling,
+            size: 14,
+            color: textColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

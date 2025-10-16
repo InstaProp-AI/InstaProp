@@ -177,8 +177,27 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Account not found");
             }
 
-            // Determine property type based on account type
-            var propertyType = account.Type == AccountType.Developer ? PropertyType.Primary : PropertyType.Resale;
+            // Determine property type based on account type and provided type
+            PropertyType propertyType;
+            if (account.Type == AccountType.Admin)
+            {
+                // Admin can set any type - use provided or default to Resale
+                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
+                    ? parsedType 
+                    : PropertyType.Resale;
+            }
+            else if (account.Type == AccountType.Developer)
+            {
+                // Developer can choose between Primary and Resale
+                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
+                    ? parsedType 
+                    : PropertyType.Primary; // Default to Primary for developers
+            }
+            else
+            {
+                // Regular users always get Resale, regardless of what they send
+                propertyType = PropertyType.Resale;
+            }
 
             // Create Property entity from DTO
             var property = new Property
@@ -224,8 +243,27 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Account not found");
             }
 
-            // Determine property type based on account type
-            var propertyType = account.Type == AccountType.Developer ? PropertyType.Primary : PropertyType.Resale;
+            // Determine property type based on account type and provided type
+            PropertyType propertyType;
+            if (account.Type == AccountType.Admin)
+            {
+                // Admin can set any type - use provided or default to Resale
+                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
+                    ? parsedType 
+                    : PropertyType.Resale;
+            }
+            else if (account.Type == AccountType.Developer)
+            {
+                // Developer can choose between Primary and Resale
+                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
+                    ? parsedType 
+                    : PropertyType.Primary; // Default to Primary for developers
+            }
+            else
+            {
+                // Regular users always get Resale, regardless of what they send
+                propertyType = PropertyType.Resale;
+            }
 
             // Create Property entity from DTO
             var property = new Property

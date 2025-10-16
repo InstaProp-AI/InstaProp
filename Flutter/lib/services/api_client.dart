@@ -42,25 +42,20 @@ class ApiClient {
   // Automatically detect the correct base URL based on platform
   static String get baseUrl {
     if (kIsWeb) {
-      // For web, use localhost or your deployed backend URL
-      // Use Mac's IP so it works from phone too
-      return 'http://192.168.1.16:5284';
+      // For web, use localhost
+      return 'http://localhost:5284';
     } else if (Platform.isAndroid) {
       // Android emulator: 10.0.2.2 maps to host's localhost
-      // Physical Android device: use your computer's IP address
-      // To detect if running on emulator, we'll try to use the environment
-      // For now, defaulting to physical device IP
-      return 'http://192.168.33.214:5284';
+      return 'http://10.0.2.2:5284';
     } else if (Platform.isIOS) {
       // iOS Simulator can use localhost directly
-      // Physical iOS device: use your computer's IP address
-      return 'http://192.168.33.214:5284';
+      return 'http://localhost:5284';
     } else {
       return 'http://localhost:5284';
     }
   }
 
-  static const Duration timeout = Duration(seconds: 30);
+  static const Duration timeout = Duration(seconds: 60);
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -415,6 +410,94 @@ class ApiClient {
             ? (data['message'] ?? data['error'] ?? 'Unknown error')
             : 'Request failed with status ${response.statusCode}';
         return ApiResponse.error(errorMessage, statusCode: response.statusCode);
+      }
+    } on SocketException catch (e) {
+      print('❌ SocketException: $e');
+      return ApiResponse.error(
+        'Cannot connect to server. Please check if backend is running at $baseUrl',
+      );
+    } on HttpException catch (e) {
+      print('❌ HttpException: $e');
+      return ApiResponse.error('HTTP error occurred: $e');
+    } on FormatException catch (e) {
+      print('❌ FormatException: $e');
+      return ApiResponse.error('Invalid response format: $e');
+    } catch (e) {
+      print('❌ Unexpected error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
+  // Upload a file using bytes (works on both web and mobile)
+  static Future<ApiResponse<T>> uploadFileBytes<T>(
+    String endpoint,
+    String fieldName,
+    List<int> fileBytes,
+    String fileName, {
+    Map<String, String>? additionalFields,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl$endpoint');
+      final token = await getToken();
+
+      print('🌐 POST (Upload File Bytes) $uri');
+      print('📡 Base URL: $baseUrl');
+      print('📤 File: $fileName (${fileBytes.length} bytes)');
+
+      var request = http.MultipartRequest('POST', uri);
+
+      // Add authorization header
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Add file from bytes
+      request.files.add(
+        http.MultipartFile.fromBytes(fieldName, fileBytes, filename: fileName),
+      );
+
+      // Add additional fields
+      if (additionalFields != null) {
+        request.fields.addAll(additionalFields);
+      }
+
+      var streamedResponse = await request.send().timeout(timeout);
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('✅ Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic>) {
+          return ApiResponse.success(
+            fromJson(data),
+            statusCode: response.statusCode,
+          );
+        }
+        return ApiResponse.error(
+          'Invalid response format',
+          statusCode: response.statusCode,
+        );
+      } else {
+        try {
+          final data = jsonDecode(response.body);
+          final errorMessage = data is Map<String, dynamic>
+              ? (data['message'] ?? data['error'] ?? 'Unknown error')
+              : (data is String
+                    ? data
+                    : 'Request failed with status ${response.statusCode}');
+          return ApiResponse.error(
+            errorMessage,
+            statusCode: response.statusCode,
+          );
+        } catch (e) {
+          return ApiResponse.error(
+            response.body.isNotEmpty ? response.body : 'Request failed',
+            statusCode: response.statusCode,
+          );
+        }
       }
     } on SocketException catch (e) {
       print('❌ SocketException: $e');
