@@ -42,13 +42,13 @@ class ApiClient {
   // Automatically detect the correct base URL based on platform
   static String get baseUrl {
     if (kIsWeb) {
-      // For web, use localhost
+      // Use your Mac IP (must be reachable from browser)
       return 'http://localhost:5284';
     } else if (Platform.isAndroid) {
-      // Android emulator: 10.0.2.2 maps to host's localhost
+      // Emulator
       return 'http://10.0.2.2:5284';
     } else if (Platform.isIOS) {
-      // iOS Simulator can use localhost directly
+      // iOS Simulator
       return 'http://localhost:5284';
     } else {
       return 'http://localhost:5284';
@@ -85,6 +85,14 @@ class ApiClient {
   ) async {
     try {
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Handle empty response body (e.g., 204 No Content)
+        if (response.body.isEmpty || response.statusCode == 204) {
+          return ApiResponse.success(
+            fromJson({}),
+            statusCode: response.statusCode,
+          );
+        }
+
         final data = jsonDecode(response.body);
 
         // Ensure data is a Map before calling fromJson

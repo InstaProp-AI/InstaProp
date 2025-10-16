@@ -18,12 +18,14 @@ namespace PropertyFlipperAPI.Controllers
         private readonly AppDbContext _context;
         private readonly FirestoreService _firestoreService;
         private readonly NotificationService _notificationService;
+        private readonly RewardService _rewardService;
         
-        public BidsController(AppDbContext context, FirestoreService firestoreService, NotificationService notificationService)
+        public BidsController(AppDbContext context, FirestoreService firestoreService, NotificationService notificationService, RewardService rewardService)
         {
             _context = context;
             _firestoreService = firestoreService;
             _notificationService = notificationService;
+            _rewardService = rewardService;
         }
 
         // GET: api/bids/by-auction/{auctionId} (Public - No auth required)
@@ -54,6 +56,17 @@ namespace PropertyFlipperAPI.Controllers
                 }
             });
 
+            // Preload top badges for bidders
+            var bidderIds = bids.Where(b => b.BidderId != 0).Select(b => b.BidderId).Distinct().ToList();
+            var topBadges = await _context.UserBadges
+                .Where(ub => bidderIds.Contains(ub.AccountId))
+                .GroupBy(ub => ub.AccountId)
+                .Select(g => new {
+                    AccountId = g.Key,
+                    TopBadge = g.OrderByDescending(x => x.AwardedAt).FirstOrDefault()
+                })
+                .ToListAsync();
+
             var bidDtos = bids.Select(b => new
             {
                 b.BidId,
@@ -66,7 +79,9 @@ namespace PropertyFlipperAPI.Controllers
                     b.Bidder.AccountId,
                     b.Bidder.FirstName,
                     b.Bidder.LastName,
-                    b.Bidder.Email
+                    b.Bidder.Email,
+                    TopBadgeIcon = topBadges.FirstOrDefault(tb => tb.AccountId == b.BidderId)?.TopBadge?.BadgeIcon,
+                    TopBadgeName = topBadges.FirstOrDefault(tb => tb.AccountId == b.BidderId)?.TopBadge?.BadgeName
                 } : null
             }).ToList();
 
@@ -165,6 +180,9 @@ namespace PropertyFlipperAPI.Controllers
                     auction.BidCount = await _context.Bids.CountAsync(b => b.AuctionId == bidDto.AuctionId);
                     await _context.SaveChangesAsync(); // Save the auction update
                 }
+
+                // Award rewards to bidder
+                await _rewardService.AwardPointsAsync(userId, "Bid", RewardPoints.Bid, $"Placed bid of ${(double)bidDto.BidAmount:N0}", auction.PropertyId);
 
                 // Return the bid with bidder information
                 var createdBid = await _context.Bids

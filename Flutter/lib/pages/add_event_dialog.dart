@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/event.dart';
 import '../services/event_service.dart';
+import '../widgets/reward_popup.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_state.dart';
 
 class AddEventDialog extends StatefulWidget {
   const AddEventDialog({super.key});
@@ -171,7 +174,22 @@ class _AddEventDialogState extends State<AddEventDialog> {
       final response = await EventService.createEvent(eventDto);
       if (response.success) {
         if (mounted) {
-          Navigator.of(context).pop(response.data);
+          // Show reward popup
+          final appState = context.read<AppState>();
+          await appState.refreshUserProfile();
+          if (mounted && appState.user?.totalPoints != null) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => RewardPopup(
+                pointsAwarded: 2,
+                totalPoints: appState.user!.totalPoints!,
+              ),
+            );
+          }
+          if (mounted) {
+            Navigator.of(context).pop(response.data);
+          }
         }
       } else {
         if (mounted) {

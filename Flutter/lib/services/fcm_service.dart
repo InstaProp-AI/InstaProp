@@ -81,15 +81,11 @@ class FcmService {
     print('  Body: ${message.notification?.body}');
     print('  Data: ${message.data}');
 
-    // Navigate to specific screen based on notification data
-    final String? type = message.data['type'];
-    final String? auctionId = message.data['auctionId'];
-
-    if (type == 'auction' && auctionId != null) {
-      print('🏠 Navigate to auction: $auctionId');
-      // TODO: Navigate to auction details page
-      // navigatorKey.currentState?.pushNamed('/auction-details', arguments: auctionId);
-    }
+    // All notifications now open the chatbot
+    // The chatbot displays notifications with action buttons
+    print('🤖 Opening AI Broker chatbot for notification');
+    // Navigation will be handled by the main navigator
+    // The app will open to the chatbot page where notification is displayed
   }
 
   /// Subscribe to a topic (e.g., 'all_users', 'new_auctions')

@@ -33,6 +33,16 @@ class EventService {
     return await ApiClient.getList('/api/event/upcoming', Event.fromJson);
   }
 
+  // Get events linked to a specific property (current user only)
+  static Future<ApiResponse<List<Event>>> getEventsByProperty(
+    int propertyId,
+  ) async {
+    return await ApiClient.getList(
+      '/api/event/by-property/$propertyId',
+      Event.fromJson,
+    );
+  }
+
   // Create a new event
   static Future<ApiResponse<Event>> createEvent(EventCreateDto eventDto) async {
     return await ApiClient.post(
@@ -154,16 +164,24 @@ class EventService {
   static Future<ApiResponse<PaymentScheduleScanResult>> scanPaymentSchedule(
     List<int> imageBytes,
     String fileName,
+    int propertyId, {
     int? reminderMinutes,
-  ) async {
+    double? buyingPrice,
+  }) async {
+    final fields = <String, String>{'propertyId': propertyId.toString()};
+    if (reminderMinutes != null) {
+      fields['reminderMinutes'] = reminderMinutes.toString();
+    }
+    if (buyingPrice != null) {
+      fields['buyingPrice'] = buyingPrice.toString();
+    }
+
     return await ApiClient.uploadFileBytes(
       '/api/event/scan-payment-schedule',
       'image',
       imageBytes,
       fileName,
-      additionalFields: reminderMinutes != null
-          ? {'reminderMinutes': reminderMinutes.toString()}
-          : null,
+      additionalFields: fields,
       fromJson: (data) => PaymentScheduleScanResult.fromJson(data),
     );
   }

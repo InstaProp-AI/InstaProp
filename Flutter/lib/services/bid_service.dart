@@ -27,10 +27,18 @@ class BidService {
       );
     }
 
-    return await ApiClient.post('/api/bids', {
+    final response = await ApiClient.post('/api/bids', {
       'auctionId': auctionId,
       'bidAmount': bidAmount,
     }, Bid.fromJson);
+    // On success, refresh user profile to update points
+    if (response.success) {
+      try {
+        final appState = context.read<AppState>();
+        await appState.refreshUserProfile();
+      } catch (_) {}
+    }
+    return response;
   }
 
   // Helper method to check if user can place a bid

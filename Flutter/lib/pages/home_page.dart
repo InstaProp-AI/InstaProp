@@ -9,7 +9,6 @@ import '../models/developer_profile.dart';
 import '../services/project_service.dart';
 import '../services/developer_service.dart';
 import '../services/api_client.dart';
-import '../notification_page.dart';
 import '../widgets/property_image_carousel.dart';
 import 'profile_page.dart';
 import 'featured_auctions_page.dart';
@@ -20,8 +19,6 @@ import 'projects_list_page.dart';
 import 'project_details_page.dart';
 import 'developer_profile_page.dart';
 import 'chat_list_page.dart';
-import 'ai_broker_chat_page.dart';
-import '../services/ai_broker_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -72,43 +69,6 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _openMyBroker() async {
-    try {
-      // Check if there's an active conversation
-      final activeResponse = await AIBrokerService.getActiveChat();
-
-      if (activeResponse.success && activeResponse.data != null) {
-        // Open existing active conversation
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  AIBrokerChatPage(aichatId: activeResponse.data!.aichatId),
-            ),
-          );
-        }
-      } else {
-        // No active conversation, create new one
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AIBrokerChatPage()),
-          );
-        }
-      }
-    } catch (e) {
-      // On error, just open with no ID (will create new)
-      print('Error checking for active chat: $e');
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AIBrokerChatPage()),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,20 +78,6 @@ class _HomePageState extends State<HomePage>
         child: _buildSelectedPage(),
       ),
       bottomNavigationBar: _buildBottomNavigation(),
-      floatingActionButton: _selectedIndex == 2
-          ? FloatingActionButton.extended(
-              onPressed: _openMyBroker,
-              backgroundColor: Colors.blue,
-              icon: const Icon(Icons.smart_toy, color: Colors.white),
-              label: const Text(
-                'My Broker',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
-          : null,
     );
   }
 
@@ -330,22 +276,7 @@ class _HomePageState extends State<HomePage>
                 );
               },
             ),
-            // Add notification bell to expanded header too
-            actions: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.surface,
-                  size: 28,
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const NotificationPage()),
-                  );
-                },
-              ),
-            ],
+            // Notification system removed - now integrated in chatbot
           ),
 
           // Content

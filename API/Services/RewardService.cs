@@ -47,30 +47,28 @@ namespace PropertyFlipperAPI.Services
                 .Select(b => b.BadgeName)
                 .ToListAsync();
 
-            // Award badges based on milestones
+            // Award badges based on milestones (lowered thresholds for easier achievement)
             var badgesToAward = new List<(string name, string icon, string description)>();
 
-            if (totalPoints >= 100 && !existingBadges.Contains("Getting Started"))
-                badgesToAward.Add(("Getting Started", "🌟", "Earned 100 points"));
+            if (totalPoints >= 500 && !existingBadges.Contains("Getting Started"))
+                badgesToAward.Add(("Getting Started", "🌟", "Earned 500 points"));
 
-            if (totalPoints >= 500 && !existingBadges.Contains("Active User"))
-                badgesToAward.Add(("Active User", "🔥", "Earned 500 points"));
+            if (totalPoints >= 1000 && !existingBadges.Contains("Active User"))
+                badgesToAward.Add(("Active User", "🔥", "Earned 1000 points"));
 
-            if (totalPoints >= 1000 && !existingBadges.Contains("Power User"))
-                badgesToAward.Add(("Power User", "⚡", "Earned 1000 points"));
+            if (totalPoints >= 2500 && !existingBadges.Contains("Power User"))
+                badgesToAward.Add(("Power User", "⚡", "Earned 2500 points"));
 
             if (totalPoints >= 5000 && !existingBadges.Contains("VIP Member"))
                 badgesToAward.Add(("VIP Member", "👑", "Earned 5000 points"));
+
+            if (totalPoints >= 10000 && !existingBadges.Contains("Elite"))
+                badgesToAward.Add(("Elite", "💎", "Earned 10000 points"));
 
             // Check for first bid badge
             var hasBid = await _context.Bids.AnyAsync(b => b.BidderId == accountId);
             if (hasBid && !existingBadges.Contains("First Bidder"))
                 badgesToAward.Add(("First Bidder", "🎯", "Placed your first bid"));
-
-            // Check for first property view badge
-            var viewCount = await _context.PropertyViews.CountAsync(v => v.UserId == accountId);
-            if (viewCount >= 10 && !existingBadges.Contains("Property Explorer"))
-                badgesToAward.Add(("Property Explorer", "🔍", "Viewed 10+ properties"));
 
             // Award new badges
             foreach (var (name, icon, description) in badgesToAward)
@@ -98,16 +96,19 @@ namespace PropertyFlipperAPI.Services
         }
     }
 
-    // Reward point values
+    // Reward point values (increased for easier achievement)
     public static class RewardPoints
     {
-        public const int PropertyView = 1;
-        public const int PropertySaved = 5;
-        public const int FirstBid = 10;
-        public const int Bid = 5;
-        public const int Purchase = 100;
-        public const int Referral = 50;
-        public const int SuccessfulReferral = 100; // When referred user makes purchase
+        public const int PropertySaved = 50;
+        public const int FirstBid = 150;
+        public const int Bid = 100;
+        public const int Purchase = 1000;
+        public const int Referral = 500;
+        public const int SuccessfulReferral = 1000; // When referred user makes purchase
+        public const int Valuation = 150; // Property valuation
+        public const int AddProperty = 200; // Adding a property
+        public const int EventCreated = 20; // Creating an event
+        public const int ScheduleImport = 250; // Importing payment schedule
     }
 }
 

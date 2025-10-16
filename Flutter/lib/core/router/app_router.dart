@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../pages/home_page.dart';
 import '../../pages/auth_page.dart';
 import '../../pages/profile_page.dart';
+import '../../pages/valuate_page.dart';
 
 /// Centralized app router
 class AppRouter {
@@ -12,9 +13,10 @@ class AppRouter {
   static const String auth = '/auth';
   static const String login = '/login';
   static const String profile = '/profile';
+  static const String valuate = '/valuate';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    final args = settings.arguments;
+    // final args = settings.arguments; // reserved for future use
 
     switch (settings.name) {
       case root:
@@ -28,6 +30,9 @@ class AppRouter {
 
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfilePage());
+
+      case valuate:
+        return MaterialPageRoute(builder: (_) => const ValuatePage());
 
       default:
         return MaterialPageRoute(

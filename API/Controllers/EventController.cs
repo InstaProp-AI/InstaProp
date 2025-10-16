@@ -15,12 +15,16 @@ namespace PropertyFlipperAPI.Controllers
         private readonly AppDbContext _context;
         private readonly NotificationService _notificationService;
         private readonly OpenAIService _openAIService;
+        private readonly RewardService _rewardService;
+        private readonly ImgBBService _imgBBService;
 
-        public EventController(AppDbContext context, NotificationService notificationService, OpenAIService openAIService)
+        public EventController(AppDbContext context, NotificationService notificationService, OpenAIService openAIService, ImgBBService imgBBService, RewardService rewardService)
         {
             _context = context;
             _notificationService = notificationService;
             _openAIService = openAIService;
+            _imgBBService = imgBBService;
+            _rewardService = rewardService;
         }
 
         // Helper method to get current user ID
@@ -145,6 +149,19 @@ namespace PropertyFlipperAPI.Controllers
             if (userId == null)
                 return Unauthorized();
 
+            // Validate payment event requirements
+            if (eventDto.Type == EventType.Installment)
+            {
+                if (!eventDto.PropertyId.HasValue)
+                {
+                    return BadRequest("PropertyId is required for installment events");
+                }
+                if (!eventDto.Amount.HasValue || eventDto.Amount.Value <= 0)
+                {
+                    return BadRequest("Amount is required and must be > 0 for installment events");
+                }
+            }
+
             // Create the parent/first event
             var eventEntity = new Event
             {
@@ -175,6 +192,9 @@ namespace PropertyFlipperAPI.Controllers
 
             _context.Events.Add(eventEntity);
             await _context.SaveChangesAsync();
+
+            // Award rewards for creating an event
+            await _rewardService.AwardPointsAsync(userId.Value, "EventCreate", RewardPoints.EventCreated, $"Created event '{eventDto.Title}'", eventDto.PropertyId);
 
             // If this is a recurring event, generate the recurring instances
             if (eventDto.IsRecurring && eventDto.RecurrencePattern.HasValue && eventDto.RecurrenceInterval.HasValue)
@@ -273,6 +293,28 @@ namespace PropertyFlipperAPI.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        // GET: api/Event/by-property/{propertyId}
+        [HttpGet("by-property/{propertyId}")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<EventDto>>> GetEventsByProperty(long propertyId)
+        {
+            var userId = GetCurrentAccountId();
+            if (userId == null)
+                return Unauthorized();
+
+            // Ensure the property belongs to the user (or allow if events are public)
+            var ownsProperty = await _context.Properties.AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == userId);
+            if (!ownsProperty)
+                return StatusCode(403, new { message = "You can only view events for your own properties" });
+
+            var events = await _context.Events
+                .Where(e => e.UserId == userId && e.PropertyId == propertyId)
+                .OrderBy(e => e.EventDate)
+                .ToListAsync();
+
+            return events.Select(EventDto.FromEvent).ToList();
         }
 
         // POST: api/Event/public (Admin only - Create public event for all users)
@@ -421,7 +463,7 @@ namespace PropertyFlipperAPI.Controllers
         // POST: api/Event/scan-payment-schedule
         [HttpPost("scan-payment-schedule")]
         [Authorize]
-        public async Task<ActionResult<PaymentScheduleScanResult>> ScanPaymentSchedule([FromForm] IFormFile image, [FromForm] int? reminderMinutes)
+        public async Task<ActionResult<PaymentScheduleScanResult>> ScanPaymentSchedule([FromForm] IFormFile image, [FromForm] long propertyId, [FromForm] int? reminderMinutes, [FromForm] decimal? buyingPrice)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -429,6 +471,13 @@ namespace PropertyFlipperAPI.Controllers
 
             if (image == null || image.Length == 0)
                 return BadRequest("No image file provided");
+
+            // Validate property ownership
+            var property = await _context.Properties.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+            if (property == null)
+                return NotFound("Property not found");
+            if (property.OwnerId != userId)
+                return StatusCode(403, new { message = "You can only upload schedules for your own properties" });
 
             // Validate image file type - accept all image formats
             var contentType = image.ContentType?.ToLower() ?? "";
@@ -468,6 +517,24 @@ namespace PropertyFlipperAPI.Controllers
                     imageData = memoryStream.ToArray();
                 }
 
+                // Upload the original schedule image
+                string? uploadedImageUrl = null;
+                try
+                {
+                    byte[] fileBytesForUpload = imageData;
+                    var uploadResult = await _imgBBService.UploadImageAsync(
+                        fileBytesForUpload,
+                        $"payment_schedule_property_{propertyId}_{DateTime.UtcNow.Ticks}",
+                        0
+                    );
+                    uploadedImageUrl = uploadResult.DisplayUrl;
+                }
+                catch (Exception ex)
+                {
+                    // If upload fails, continue without image URL
+                    Console.WriteLine($"Warning: Failed to upload schedule image: {ex.Message}");
+                }
+
                 // Analyze image with OpenAI
                 var paymentItems = await _openAIService.AnalyzePaymentScheduleAsync(imageData);
 
@@ -475,6 +542,7 @@ namespace PropertyFlipperAPI.Controllers
                     return BadRequest("No payment schedule data could be extracted from the image. Please ensure the image contains a clear payment schedule.");
 
                 var createdEvents = new List<Event>();
+                var scheduleGroupId = Guid.NewGuid().ToString();
 
                 // Create events for each payment item
                 foreach (var item in paymentItems)
@@ -500,9 +568,13 @@ namespace PropertyFlipperAPI.Controllers
                         IsCompleted = false,
                         IsReminderSet = reminderMinutes.HasValue && reminderMinutes.Value > 0,
                         ReminderMinutes = reminderMinutes,
-                        PropertyId = null,
+                        PropertyId = propertyId,
                         AuctionId = null,
                         BidId = null,
+                        Amount = item.Amount,
+                        ScheduleImageUrl = uploadedImageUrl,
+                        ScheduleGroupId = scheduleGroupId,
+                        ScheduleBuyingPrice = buyingPrice,
                         CreatedAt = DateTime.UtcNow
                     };
 
@@ -514,6 +586,9 @@ namespace PropertyFlipperAPI.Controllers
                     return BadRequest("No valid payment dates could be extracted from the image.");
 
                 await _context.SaveChangesAsync();
+
+                // Award rewards for importing payment schedule
+                await _rewardService.AwardPointsAsync(userId.Value, "ScheduleImport", RewardPoints.ScheduleImport, $"Imported {createdEvents.Count} payment events", propertyId);
 
                 return Ok(new PaymentScheduleScanResult
                 {
@@ -654,6 +729,9 @@ namespace PropertyFlipperAPI.Controllers
         public long? AuctionId { get; set; }
         public long? BidId { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? ScheduleImageUrl { get; set; }
+        public string? ScheduleGroupId { get; set; }
+        public decimal? ScheduleBuyingPrice { get; set; }
 
         public static EventDto FromEvent(Event eventEntity)
         {
@@ -682,7 +760,10 @@ namespace PropertyFlipperAPI.Controllers
                 PropertyId = eventEntity.PropertyId,
                 AuctionId = eventEntity.AuctionId,
                 BidId = eventEntity.BidId,
-                CreatedAt = eventEntity.CreatedAt
+                CreatedAt = eventEntity.CreatedAt,
+                ScheduleImageUrl = eventEntity.ScheduleImageUrl,
+                ScheduleGroupId = eventEntity.ScheduleGroupId,
+                ScheduleBuyingPrice = eventEntity.ScheduleBuyingPrice
             };
         }
     }
@@ -708,6 +789,9 @@ namespace PropertyFlipperAPI.Controllers
         public long? PropertyId { get; set; }
         public long? AuctionId { get; set; }
         public long? BidId { get; set; }
+        public string? ScheduleImageUrl { get; set; }
+        public string? ScheduleGroupId { get; set; }
+        public decimal? ScheduleBuyingPrice { get; set; }
     }
 
     public class PublicEventCreateDto

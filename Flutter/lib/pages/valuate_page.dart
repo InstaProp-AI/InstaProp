@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/property.dart';
 import '../services/valuation_service.dart';
+import '../widgets/reward_popup.dart';
 
 class ValuatePage extends StatefulWidget {
   const ValuatePage({super.key});
@@ -87,6 +88,19 @@ class _ValuatePageState extends State<ValuatePage> {
           _hasValuation = true;
           _errorMessage = null;
         });
+        // Show reward popup after valuation
+        final appState = context.read<AppState>();
+        await appState.refreshUserProfile();
+        if (mounted && appState.user?.totalPoints != null) {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => RewardPopup(
+              pointsAwarded: 5,
+              totalPoints: appState.user!.totalPoints!,
+            ),
+          );
+        }
       } else {
         setState(() {
           _errorMessage = response.error ?? 'Failed to calculate valuation';

@@ -15,12 +15,14 @@ namespace PropertyFlipperAPI.Controllers
         private readonly AppDbContext _context;
         private readonly ImgBBService _imgBBService;
         private readonly FileValidationService _fileValidationService;
+        private readonly RewardService _rewardService;
 
-        public PropertyController(AppDbContext context, ImgBBService imgBBService, FileValidationService fileValidationService)
+        public PropertyController(AppDbContext context, ImgBBService imgBBService, FileValidationService fileValidationService, RewardService rewardService)
         {
             _context = context;
             _imgBBService = imgBBService;
             _fileValidationService = fileValidationService;
+            _rewardService = rewardService;
         }
 
         // GET: api/Property (Public - only properties with auctions)
@@ -158,6 +160,65 @@ namespace PropertyFlipperAPI.Controllers
             });
         }
 
+        // GET: api/Property/{id}/financials
+        [HttpGet("{id}/financials")]
+        [Authorize]
+        public async Task<ActionResult<object>> GetPropertyFinancials(long id, [FromQuery] decimal? marketValue)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var property = await _context.Properties.FirstOrDefaultAsync(p => p.PropertyId == id);
+            if (property == null)
+                return NotFound();
+
+            if (property.OwnerId != accountId)
+                return StatusCode(403, new { message = "You can only view financials for your own properties" });
+
+            var events = await _context.Events
+                .Where(e => e.PropertyId == id && e.UserId == accountId && e.Type == EventType.Installment)
+                .ToListAsync();
+
+            var sumInstallments = events.Where(e => e.Amount.HasValue).Sum(e => e.Amount!.Value);
+            
+            // Installments are considered paid when manually marked as completed
+            var paidSoFar = events.Where(e => e.Amount.HasValue && e.IsCompleted).Sum(e => e.Amount!.Value);
+            
+            // Remaining installments are those not yet completed
+            var remainingInstallments = events.Where(e => e.Amount.HasValue && !e.IsCompleted)
+                .Sum(e => e.Amount!.Value);
+
+            // Buying price: use any schedule group's buying price if present; otherwise null
+            var scheduleBuyingPrice = events
+                .Where(e => e.ScheduleBuyingPrice.HasValue)
+                .Select(e => e.ScheduleBuyingPrice!.Value)
+                .Cast<decimal?>()
+                .FirstOrDefault();
+
+            var effectiveBuyingPrice = scheduleBuyingPrice ?? (decimal?)null;
+            var remainingToPay = (effectiveBuyingPrice ?? sumInstallments) - paidSoFar;
+            if (remainingToPay < 0) remainingToPay = 0;
+
+            decimal? roiPercent = null;
+            if (marketValue.HasValue && effectiveBuyingPrice.HasValue && effectiveBuyingPrice.Value > 0)
+            {
+                roiPercent = (marketValue.Value - effectiveBuyingPrice.Value) / effectiveBuyingPrice.Value * 100m;
+            }
+
+            return Ok(new
+            {
+                propertyId = id,
+                sumInstallments,
+                paidSoFar,
+                remainingInstallments,
+                remainingToPay,
+                buyingPrice = effectiveBuyingPrice,
+                marketValue = marketValue,
+                roiPercent
+            });
+        }
+
         // POST: api/Property 
         [HttpPost]
         [Authorize]
@@ -220,6 +281,9 @@ namespace PropertyFlipperAPI.Controllers
 
             _context.Properties.Add(property);
             await _context.SaveChangesAsync();
+
+            // Award rewards to property owner for creating a property
+            await _rewardService.AwardPointsAsync(userId, "PropertyCreate", RewardPoints.AddProperty, $"Created property '{property.Name}'", property.PropertyId);
 
             return CreatedAtAction("GetProperty", new { id = property.PropertyId }, property);
         }

@@ -61,6 +61,11 @@ namespace PropertyFlipperAPI.Models
         public long? AuctionId { get; set; }
         public long? BidId { get; set; }
 
+        // Payment schedule metadata
+        public string? ScheduleImageUrl { get; set; }
+        public string? ScheduleGroupId { get; set; }
+        public decimal? ScheduleBuyingPrice { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }

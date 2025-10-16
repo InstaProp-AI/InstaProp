@@ -8,6 +8,7 @@ import '../services/property_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import 'property_docs_upload_page.dart';
+import '../widgets/reward_popup.dart';
 
 class AddPropertyPage extends StatefulWidget {
   const AddPropertyPage({super.key});
@@ -152,6 +153,20 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         setState(() {
           _successMessage = 'Property added successfully!';
         });
+
+        // Show reward popup
+        final appState = context.read<AppState>();
+        await appState.refreshUserProfile();
+        if (mounted && appState.user?.totalPoints != null) {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => RewardPopup(
+              pointsAwarded: 50,
+              totalPoints: appState.user!.totalPoints!,
+            ),
+          );
+        }
 
         // Clear form
         _nameController.clear();

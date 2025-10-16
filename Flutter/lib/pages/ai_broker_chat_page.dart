@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../services/ai_broker_service.dart';
+import '../services/notification_service.dart';
+import '../services/auction_service.dart';
+import '../services/bid_service.dart';
 import '../widgets/developer_comparison_card.dart';
 import '../widgets/property_suggestion_card.dart';
+import '../widgets/notification_message_card.dart';
+import '../models/notification.dart';
+import 'auction_details_page.dart';
+import 'dart:async';
 
 class AIBrokerChatPage extends StatefulWidget {
   final int? aichatId;
@@ -18,9 +26,11 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
   final TextEditingController _textController = TextEditingController();
 
   List<AIBrokerMessage> _messages = [];
+  List<AppNotification> _notificationMessages = [];
   int? _currentChatId;
   bool _isLoading = false;
   bool _isSending = false;
+  StreamSubscription<AppNotification>? _notificationSubscription;
 
   @override
   void initState() {
@@ -30,13 +40,110 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
     } else {
       _startNewConversation();
     }
+
+    // Load past notifications and listen to new ones
+    _loadNotifications();
+    _listenToNotifications();
+
+    // Mark all notifications as read when the chat is opened
+    _markAllNotificationsAsRead();
+  }
+
+  void _markAllNotificationsAsRead() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notificationService = Provider.of<NotificationService>(
+        context,
+        listen: false,
+      );
+      notificationService.markAllAsRead();
+    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
     _textController.dispose();
+    _notificationSubscription?.cancel();
     super.dispose();
+  }
+
+  void _loadNotifications() {
+    final notificationService = Provider.of<NotificationService>(
+      context,
+      listen: false,
+    );
+
+    // Load past notifications (last 20)
+    setState(() {
+      _notificationMessages = notificationService.notifications
+          .take(20)
+          .toList();
+    });
+  }
+
+  void _listenToNotifications() {
+    final notificationService = Provider.of<NotificationService>(
+      context,
+      listen: false,
+    );
+
+    // Listen to new notifications
+    _notificationSubscription = notificationService.notificationStream.listen((
+      notification,
+    ) {
+      print('🤖 Chatbot received new notification: ${notification.title}');
+      setState(() {
+        _notificationMessages.insert(0, notification);
+      });
+      _scrollToBottom();
+
+      // Show push notification when app is in foreground
+      _showPushNotification(notification);
+    });
+  }
+
+  void _showPushNotification(AppNotification notification) {
+    // Show a snackbar notification that opens chatbot when tapped
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.smart_toy, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'My Broker',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      notification.title,
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.blue,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _startNewConversation() async {
@@ -134,6 +241,38 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
           _messages.addAll(response.data!.messages);
         });
         _scrollToBottom();
+
+        // Foreground alert for new assistant messages
+        final newAssistantMessages = response.data!.messages
+            .where((m) => m.role != 'User')
+            .toList();
+        if (newAssistantMessages.isNotEmpty && mounted) {
+          final preview = newAssistantMessages.last.content;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.smart_toy, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      preview,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.blue,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
       } else {
         _showError(response.error ?? 'Failed to send message');
       }
@@ -235,18 +374,32 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Messages List
+                // Messages List (notifications + AI messages)
                 Expanded(
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length + (_isSending ? 1 : 0),
+                    itemCount:
+                        _notificationMessages.length +
+                        _messages.length +
+                        (_isSending ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (_isSending && index == _messages.length) {
+                      // Show typing indicator at the end
+                      if (_isSending &&
+                          index ==
+                              _notificationMessages.length + _messages.length) {
                         return _buildTypingIndicator();
                       }
 
-                      final message = _messages[index];
+                      // Show notifications first
+                      if (index < _notificationMessages.length) {
+                        final notification = _notificationMessages[index];
+                        return _buildNotificationMessage(notification);
+                      }
+
+                      // Then show AI broker messages
+                      final messageIndex = index - _notificationMessages.length;
+                      final message = _messages[messageIndex];
                       return _buildMessage(message);
                     },
                   ),
@@ -581,5 +734,252 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
         Text(label, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
       ],
     );
+  }
+
+  Widget _buildNotificationMessage(AppNotification notification) {
+    return NotificationMessageCard(
+      notification: notification,
+      isRead: notification.isRead,
+      onActionTap: (action) => _handleNotificationAction(action, notification),
+    );
+  }
+
+  Future<void> _handleNotificationAction(
+    String action,
+    AppNotification notification,
+  ) async {
+    final notificationService = Provider.of<NotificationService>(
+      context,
+      listen: false,
+    );
+
+    switch (action) {
+      case 'quick_bid':
+        await _handleQuickBid(notification);
+        break;
+      case 'place_bid':
+        await _handlePlaceBid(notification);
+        break;
+      case 'view_auction':
+        await _handleViewAuction(notification);
+        break;
+      case 'view_event':
+        await _handleViewEvent(notification);
+        break;
+      case 'find_similar':
+        _showInfo('Feature coming soon!');
+        break;
+      case 'learn_more':
+        _showInfo(notification.message);
+        break;
+      case 'dismiss':
+        await _handleDismiss(notification, notificationService);
+        break;
+      default:
+        print('Unknown action: $action');
+    }
+  }
+
+  Future<void> _handleQuickBid(AppNotification notification) async {
+    if (notification.auctionId == null) {
+      _showError('Auction information not available');
+      return;
+    }
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.blue)),
+    );
+
+    try {
+      // Fetch auction to get current highest bid
+      final auctionResponse = await AuctionService.getAuction(
+        notification.auctionId!,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      if (!auctionResponse.success || auctionResponse.data == null) {
+        _showError('Could not load auction details');
+        return;
+      }
+
+      final auction = auctionResponse.data!;
+      final newBidAmount = auction.currentPrice + 1000;
+
+      // Show confirmation dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Confirm Bid'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Current bid: \$${auction.currentPrice.toStringAsFixed(0)}'),
+              const SizedBox(height: 8),
+              Text(
+                'Your bid: \$${newBidAmount.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Are you sure you want to place this bid?',
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Place Bid'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      // Place the bid
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) =>
+            const Center(child: CircularProgressIndicator(color: Colors.blue)),
+      );
+
+      final bidResponse = await BidService.placeBid(
+        auctionId: auction.auctionId,
+        bidAmount: newBidAmount,
+        context: context,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      if (bidResponse.success) {
+        _showSuccess('Bid placed successfully!');
+        // Mark notification as read
+        await Provider.of<NotificationService>(
+          context,
+          listen: false,
+        ).markAsRead(notification.notificationId);
+      } else {
+        _showError(bidResponse.error ?? 'Failed to place bid');
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading if still showing
+        _showError('Error: $e');
+      }
+    }
+  }
+
+  Future<void> _handlePlaceBid(AppNotification notification) async {
+    // Same as quick bid but can be customized differently
+    await _handleQuickBid(notification);
+  }
+
+  Future<void> _handleViewAuction(AppNotification notification) async {
+    if (notification.auctionId == null) {
+      _showError('Auction information not available');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.blue)),
+    );
+
+    try {
+      final response = await AuctionService.getAuction(notification.auctionId!);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      if (response.success && response.data != null) {
+        // Mark as read
+        await Provider.of<NotificationService>(
+          context,
+          listen: false,
+        ).markAsRead(notification.notificationId);
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AuctionDetailsPage(auction: response.data!),
+          ),
+        );
+      } else {
+        _showError(response.error ?? 'Auction not found');
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showError('Error loading auction: $e');
+      }
+    }
+  }
+
+  Future<void> _handleViewEvent(AppNotification notification) async {
+    if (notification.eventId == null) {
+      _showError('Event information not available');
+      return;
+    }
+
+    // Mark as read
+    await Provider.of<NotificationService>(
+      context,
+      listen: false,
+    ).markAsRead(notification.notificationId);
+
+    _showInfo('Event details feature coming soon!');
+  }
+
+  Future<void> _handleDismiss(
+    AppNotification notification,
+    NotificationService notificationService,
+  ) async {
+    await notificationService.markAsRead(notification.notificationId);
+    setState(() {
+      _notificationMessages.removeWhere(
+        (n) => n.notificationId == notification.notificationId,
+      );
+    });
+  }
+
+  void _showSuccess(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.green),
+      );
+    }
+  }
+
+  void _showInfo(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 }

@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../theme/app_colors.dart';
 import '../services/event_service.dart';
+import '../models/property.dart';
+import '../providers/app_state.dart';
+import 'package:provider/provider.dart';
+import '../widgets/reward_popup.dart';
 
 class PaymentScheduleScannerDialog extends StatefulWidget {
-  const PaymentScheduleScannerDialog({super.key});
+  final Property? initialProperty;
+
+  const PaymentScheduleScannerDialog({super.key, this.initialProperty});
 
   @override
   State<PaymentScheduleScannerDialog> createState() =>
@@ -21,6 +27,14 @@ class _PaymentScheduleScannerDialogState
   int? _selectedReminderMinutes;
   bool _useCustomReminder = false;
   int _customDays = 1;
+  Property? _selectedProperty;
+  final _buyingPriceController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedProperty = widget.initialProperty;
+  }
 
   // Predefined reminder options
   final Map<String, int> _reminderOptions = {
@@ -56,6 +70,12 @@ class _PaymentScheduleScannerDialogState
 
   /// Scan and create events
   Future<void> _scanAndCreateEvents() async {
+    if (_selectedProperty == null) {
+      setState(() {
+        _errorMessage = 'Please select a property to assign this schedule';
+      });
+      return;
+    }
     if (_selectedImage == null) {
       setState(() {
         _errorMessage = 'Please select an image first';
@@ -76,15 +96,36 @@ class _PaymentScheduleScannerDialogState
       // Read image bytes
       final imageBytes = await _selectedImage!.readAsBytes();
 
+      final buyingPrice = _buyingPriceController.text.isNotEmpty
+          ? double.tryParse(_buyingPriceController.text)
+          : null;
+
       final response = await EventService.scanPaymentSchedule(
         imageBytes,
         _selectedImage!.name,
-        reminderMinutes,
+        _selectedProperty!.propertyId,
+        reminderMinutes: reminderMinutes,
+        buyingPrice: buyingPrice,
       );
 
       if (response.success && response.data != null) {
         if (mounted) {
-          Navigator.of(context).pop(response.data);
+          // Show reward popup
+          final appState = context.read<AppState>();
+          await appState.refreshUserProfile();
+          if (mounted && appState.user?.totalPoints != null) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => RewardPopup(
+                pointsAwarded: response.data!.eventsCreated.clamp(1, 20),
+                totalPoints: appState.user!.totalPoints!,
+              ),
+            );
+          }
+          if (mounted) {
+            Navigator.of(context).pop(response.data);
+          }
         }
       } else {
         setState(() {
@@ -106,6 +147,7 @@ class _PaymentScheduleScannerDialogState
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       contentPadding: const EdgeInsets.all(20),
@@ -159,9 +201,56 @@ class _PaymentScheduleScannerDialogState
               ),
               const SizedBox(height: 12),
               const Text(
-                'Upload an image of your payment schedule and AI will extract all payment dates automatically.',
+                'Select property, enter buying price (optional), then upload an image. AI will extract all payment dates and link them to the property.',
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
+              // Property selector
+              const SizedBox(height: 12),
+              const Text(
+                'Assign to Property',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<Property>(
+                isExpanded: true,
+                value: _selectedProperty,
+                items: appState.userProperties
+                    .map(
+                      (p) => DropdownMenuItem<Property>(
+                        value: p,
+                        child: Text(p.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _isUploading
+                    ? null
+                    : (p) => setState(() => _selectedProperty = p),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  hintText: 'Select property',
+                ),
+              ),
+
+              const SizedBox(height: 12),
+              // Buying price field (optional)
+              const Text(
+                'Buying Price (optional)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _buyingPriceController,
+                enabled: !_isUploading,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  prefixText: '\$ ',
+                  hintText: 'e.g., 250000',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+
               const SizedBox(height: 20),
 
               // Error Message
@@ -197,7 +286,9 @@ class _PaymentScheduleScannerDialogState
 
               // Image Upload Card
               InkWell(
-                onTap: _isUploading ? null : _pickAndScanSchedule,
+                onTap: (_isUploading || _selectedProperty == null)
+                    ? null
+                    : _pickAndScanSchedule,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.all(20),

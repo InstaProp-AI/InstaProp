@@ -28,6 +28,7 @@ namespace PropertyFlipperAPI.Controllers
         private readonly PhoneVerificationService _phoneVerificationService;
         private readonly FirestoreService _firestoreService;
         private readonly FileValidationService _fileValidationService;
+        private readonly RewardService _rewardService;
 
         public AccountController(
             AppDbContext context, 
@@ -35,7 +36,8 @@ namespace PropertyFlipperAPI.Controllers
             EmailVerificationService emailVerificationService,
             PhoneVerificationService phoneVerificationService,
             FirestoreService firestoreService,
-            FileValidationService fileValidationService)
+            FileValidationService fileValidationService,
+            RewardService rewardService)
         {
             _context = context;
             _config = config;
@@ -43,6 +45,7 @@ namespace PropertyFlipperAPI.Controllers
             _phoneVerificationService = phoneVerificationService;
             _firestoreService = firestoreService;
             _fileValidationService = fileValidationService;
+            _rewardService = rewardService;
         }
 
         // Check if email exists
@@ -570,6 +573,9 @@ namespace PropertyFlipperAPI.Controllers
                 return NotFound();
 
             // Return account without sensitive PIN data
+            var totalPoints = await _context.UserRewards.Where(r => r.AccountId == account.AccountId).SumAsync(r => r.Points);
+            var topBadge = await _context.UserBadges.Where(b => b.AccountId == account.AccountId).OrderByDescending(b => b.AwardedAt).FirstOrDefaultAsync();
+
             var accountResponse = new
             {
                 account.AccountId,
@@ -587,10 +593,42 @@ namespace PropertyFlipperAPI.Controllers
                 account.FailedLoginAttempts,
                 account.LockedUntil,
                 account.CreatedAt,
-                account.UpdatedAt
+                account.UpdatedAt,
+                TotalPoints = totalPoints,
+                TopBadgeIcon = topBadge?.BadgeIcon,
+                TopBadgeName = topBadge?.BadgeName
             };
 
             return Ok(accountResponse);
+        }
+
+        // GET: api/Account/rewards
+        [HttpGet("rewards")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<UserReward>>> GetMyRewards()
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null) return Unauthorized();
+            var rewards = await _context.UserRewards
+                .Where(r => r.AccountId == accountId)
+                .OrderByDescending(r => r.EarnedAt)
+                .Take(200)
+                .ToListAsync();
+            return Ok(rewards);
+        }
+
+        // GET: api/Account/badges
+        [HttpGet("badges")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<UserBadge>>> GetMyBadges()
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null) return Unauthorized();
+            var badges = await _context.UserBadges
+                .Where(b => b.AccountId == accountId)
+                .OrderByDescending(b => b.AwardedAt)
+                .ToListAsync();
+            return Ok(badges);
         }
 
         // GET: api/Account/me (alias for current)

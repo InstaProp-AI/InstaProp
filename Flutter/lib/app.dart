@@ -4,6 +4,7 @@ import 'core/router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'providers/app_state.dart';
 import 'pages/home_page.dart';
+import 'widgets/floating_ai_broker_button.dart';
 
 /// Main app widget
 class PropertyFlipperApp extends StatelessWidget {
@@ -28,6 +29,16 @@ class PropertyFlipperApp extends StatelessWidget {
               theme: AppTheme.lightTheme,
               onGenerateRoute: AppRouter.onGenerateRoute,
               home: const HomePage(),
+              // Add floating button globally to all pages
+              builder: (context, child) {
+                print('🔵 MaterialApp builder called, adding floating button');
+                return Stack(
+                  children: [
+                    child ?? const SizedBox.shrink(),
+                    const FloatingAIBrokerButton(),
+                  ],
+                );
+              },
             ),
           );
         },

@@ -14,11 +14,19 @@ class NotificationService extends ChangeNotifier {
   // Firestore real-time listeners
   StreamSubscription<List<AppNotification>>? _notificationsSubscription;
 
+  // Stream controller for broadcasting new notifications to chatbot
+  final StreamController<AppNotification> _notificationStreamController =
+      StreamController<AppNotification>.broadcast();
+
   List<AppNotification> get notifications => _notifications;
   List<AppNotification> get unreadNotifications =>
       _notifications.where((n) => !n.isRead).toList();
   bool get isLoading => _isLoading;
   int get unreadCount => _unreadCount;
+
+  // Stream for chatbot to listen to new notifications
+  Stream<AppNotification> get notificationStream =>
+      _notificationStreamController.stream;
 
   // Fetch all notifications (public for non-logged-in, user-specific for logged-in)
   Future<ApiResponse<List<AppNotification>>> getNotifications({
@@ -217,6 +225,23 @@ class NotificationService extends ChangeNotifier {
                 '🔔 Latest notification message: ${notifications.first.message}',
               );
             }
+
+            // Detect new notifications and broadcast to chatbot
+            final oldNotificationIds = _notifications
+                .map((n) => n.notificationId)
+                .toSet();
+            final newNotifications = notifications
+                .where((n) => !oldNotificationIds.contains(n.notificationId))
+                .toList();
+
+            // Broadcast each new notification to the stream
+            for (final notification in newNotifications) {
+              print(
+                '📢 Broadcasting new notification to chatbot: ${notification.title}',
+              );
+              _notificationStreamController.add(notification);
+            }
+
             _notifications = notifications;
             _unreadCount = notifications.where((n) => !n.isRead).length;
             print('📬 Unread notifications: $_unreadCount');
@@ -247,6 +272,7 @@ class NotificationService extends ChangeNotifier {
   @override
   void dispose() {
     _notificationsSubscription?.cancel();
+    _notificationStreamController.close();
     super.dispose();
   }
 }

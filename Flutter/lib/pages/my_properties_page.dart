@@ -10,6 +10,12 @@ import '../services/auction_service.dart';
 import 'add_property_page.dart';
 import 'edit_property_page.dart';
 import 'property_docs_upload_page.dart';
+import 'payment_schedule_scanner_dialog.dart';
+import '../services/event_service.dart';
+import '../services/property_financials_service.dart';
+import '../models/event.dart';
+import '../services/api_client.dart';
+import '../widgets/property_installments_card.dart';
 
 class MyPropertiesPage extends StatefulWidget {
   const MyPropertiesPage({super.key});
@@ -440,7 +446,7 @@ class PropertyCard extends StatelessWidget {
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,
-                          side: BorderSide(color: AppColors.primary!),
+                          side: BorderSide(color: AppColors.primary),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
@@ -459,7 +465,7 @@ class PropertyCard extends StatelessWidget {
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,
-                          side: BorderSide(color: AppColors.primary!),
+                          side: BorderSide(color: AppColors.primary),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
@@ -516,7 +522,41 @@ class PropertyCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await showDialog(
+                          context: context,
+                          builder: (context) => PaymentScheduleScannerDialog(
+                            initialProperty: property,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.event_available, size: 18),
+                      label: const Text(
+                        'Add Payment Schedule',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
                 ],
+
+                // Payment Installments Card
+                const SizedBox(height: 16),
+                PropertyInstallmentsCard(
+                  propertyId: property.propertyId,
+                  onPaymentMade: () {
+                    // Refresh property data when payment is made
+                    context.read<AppState>().loadProperties();
+                  },
+                ),
 
                 if (!property.isApproved)
                   Container(
@@ -525,7 +565,7 @@ class PropertyCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.secondary!),
+                      border: Border.all(color: AppColors.secondary),
                     ),
                     child: Row(
                       children: [
@@ -551,21 +591,17 @@ class PropertyCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green[200]!),
+                      border: Border.all(color: Colors.green),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.verified,
-                          color: Colors.green[700],
-                          size: 16,
-                        ),
+                        Icon(Icons.verified, color: Colors.green, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Property verified - documents and details are locked',
                             style: TextStyle(
-                              color: Colors.green[800],
+                              color: Colors.green,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -574,6 +610,175 @@ class PropertyCard extends StatelessWidget {
                       ],
                     ),
                   ),
+
+                const SizedBox(height: 12),
+                // Payments & Financials quick view
+                FutureBuilder(
+                  future: Future.wait([
+                    EventService.getEventsByProperty(property.propertyId),
+                    PropertyFinancialsService.getFinancials(
+                      property.propertyId,
+                    ),
+                  ]),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox.shrink();
+                    }
+                    if (!snapshot.hasData) return const SizedBox.shrink();
+                    final eventsResp =
+                        snapshot.data![0] as ApiResponse<List<Event>>;
+                    final finResp =
+                        snapshot.data![1] as ApiResponse<PropertyFinancials>;
+                    if (!eventsResp.success ||
+                        !finResp.success ||
+                        eventsResp.data == null ||
+                        finResp.data == null) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final payments =
+                        eventsResp.data!
+                            .where((e) => e.type == EventType.installment)
+                            .toList()
+                          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+                    final fin = finResp.data!;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Payments & Financials',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.secondary),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  _miniStat(
+                                    'Paid',
+                                    '\$${fin.paidSoFar.toStringAsFixed(0)}',
+                                  ),
+                                  _miniStat(
+                                    'Remaining',
+                                    '\$${fin.remainingToPay.toStringAsFixed(0)}',
+                                  ),
+                                  _miniStat(
+                                    'Total',
+                                    '\$${fin.sumInstallments.toStringAsFixed(0)}',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (fin.roiPercent != null)
+                                Row(
+                                  children: [
+                                    _miniStat(
+                                      'ROI',
+                                      '${fin.roiPercent!.toStringAsFixed(1)}%',
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Upcoming Installments',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              ...payments
+                                  .where(
+                                    (e) =>
+                                        !e.isCompleted &&
+                                        e.eventDate.isAfter(
+                                          DateTime.now().subtract(
+                                            const Duration(days: 1),
+                                          ),
+                                        ),
+                                  )
+                                  .take(3)
+                                  .map(
+                                    (e) => Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.event,
+                                          size: 14,
+                                          color: Colors.blue,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            '${e.eventDate.year}-${e.eventDate.month.toString().padLeft(2, '0')}-${e.eventDate.day.toString().padLeft(2, '0')}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          e.amount != null
+                                              ? '\$${e.amount!.toStringAsFixed(0)}'
+                                              : '',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () async {
+                                      // Run valuation then refresh
+                                      if (!context.mounted) return;
+                                      Navigator.pushNamed(context, '/valuate');
+                                    },
+                                    icon: const Icon(
+                                      Icons.assessment,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Run Valuation'),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TextButton(
+                                    onPressed: () async {
+                                      await showDialog(
+                                        context: context,
+                                        builder: (context) =>
+                                            PaymentScheduleScannerDialog(
+                                              initialProperty: property,
+                                            ),
+                                      );
+                                      if (context.mounted) {
+                                        context
+                                            .read<AppState>()
+                                            .loadProperties();
+                                      }
+                                    },
+                                    child: const Text('Add/Update Schedule'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -588,7 +793,7 @@ class PropertyCard extends StatelessWidget {
     String text;
 
     if (property.isApproved) {
-      backgroundColor = AppColors.background!;
+      backgroundColor = AppColors.background;
       textColor = Colors.green[800]!;
       text = 'Verified';
     } else {
@@ -610,6 +815,19 @@ class PropertyCard extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+
+  Widget _miniStat(String label, String value) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
@@ -799,7 +1017,7 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.secondary!),
+                      border: Border.all(color: AppColors.secondary),
                     ),
                     child: Column(
                       children: [

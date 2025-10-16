@@ -51,6 +51,9 @@ class Account {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final List<KycDocument> kycDocuments;
+  final int? totalPoints;
+  final String? topBadgeIcon;
+  final String? topBadgeName;
 
   Account({
     required this.accountId,
@@ -69,6 +72,9 @@ class Account {
     required this.createdAt,
     this.updatedAt,
     this.kycDocuments = const [],
+    this.totalPoints,
+    this.topBadgeIcon,
+    this.topBadgeName,
   });
 
   factory Account.fromJson(Map<String, dynamic> json) {
@@ -110,6 +116,11 @@ class Account {
                 .map<KycDocument>((doc) => KycDocument.fromJson(doc))
                 .toList()
           : [],
+      totalPoints: (json['totalPoints'] ?? json['TotalPoints']) != null
+          ? (json['totalPoints'] ?? json['TotalPoints']) as int
+          : null,
+      topBadgeIcon: json['topBadgeIcon'] ?? json['TopBadgeIcon'],
+      topBadgeName: json['topBadgeName'] ?? json['TopBadgeName'],
     );
   }
 

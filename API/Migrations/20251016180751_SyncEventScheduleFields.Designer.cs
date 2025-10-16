@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PropertyFlipperAPI.Data;
 
@@ -10,9 +11,11 @@ using PropertyFlipperAPI.Data;
 namespace PropertyFlipperAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251016180751_SyncEventScheduleFields")]
+    partial class SyncEventScheduleFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
@@ -891,6 +894,40 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Referrals");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.SavedSearch", b =>
+                {
+                    b.Property<long>("SearchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Filters")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastNotifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("NotifyOnMatch")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SearchName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("SearchId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("SavedSearches");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>
                 {
                     b.Property<long>("BadgeId")
@@ -1250,6 +1287,17 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("ReferredUser");
 
                     b.Navigation("Referrer");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.SavedSearch", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>

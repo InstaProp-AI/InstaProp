@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../services/api_client.dart';
+import '../services/reward_service.dart';
 
 class RewardsPage extends StatefulWidget {
   const RewardsPage({super.key});
@@ -21,7 +21,7 @@ class _RewardsPageState extends State<RewardsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadRewardsData();
   }
 
@@ -39,11 +39,14 @@ class _RewardsPageState extends State<RewardsPage>
     }
 
     try {
-      // For now, use mock data as rewards endpoints might not be implemented
+      await appState.refreshUserProfile();
+      final rewardsResp = await RewardService.getMyRewards();
+      final badgesResp = await RewardService.getMyBadges();
+
       setState(() {
-        totalPoints = 0;
-        recentRewards = [];
-        badges = [];
+        totalPoints = appState.user?.totalPoints ?? 0;
+        recentRewards = rewardsResp.data ?? [];
+        badges = badgesResp.data ?? [];
         isLoading = false;
       });
     } catch (e) {
@@ -79,69 +82,272 @@ class _RewardsPageState extends State<RewardsPage>
     }
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // App Bar with Points
-          SliverAppBar(
-            expandedHeight: 200,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+      appBar: AppBar(
+        title: const Text('Rewards'),
+        backgroundColor: const Color(0xFF667eea),
+        foregroundColor: Colors.white,
+      ),
+      body: Column(
+        children: [
+          // Points Display Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+              ),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.stars, size: 50, color: Colors.white),
+                const SizedBox(height: 8),
+                Text(
+                  '$totalPoints',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-                child: SafeArea(
+                const Text(
+                  'Total Points',
+                  style: TextStyle(fontSize: 16, color: Colors.white70),
+                ),
+                const SizedBox(height: 16),
+                // Progress bar
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.stars, size: 60, color: Colors.white),
-                      const SizedBox(height: 10),
-                      Text(
-                        '$totalPoints',
-                        style: const TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: _getProgressToNextBadge(totalPoints),
+                          minHeight: 10,
+                          backgroundColor: Colors.white24,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       ),
-                      const Text(
-                        'Total Points',
-                        style: TextStyle(fontSize: 18, color: Colors.white70),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Next milestone: ${_getNextMilestone(totalPoints)} pts',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
-            bottom: TabBar(
+          ),
+
+          // Tab Bar
+          Container(
+            color: Colors.white,
+            child: TabBar(
               controller: _tabController,
-              indicatorColor: Colors.white,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
+              indicatorColor: const Color(0xFF667eea),
+              labelColor: const Color(0xFF667eea),
+              unselectedLabelColor: Colors.grey,
+              isScrollable: true,
               tabs: const [
+                Tab(text: 'How It Works'),
                 Tab(text: 'Activity'),
                 Tab(text: 'Badges'),
-                Tab(text: 'Leaderboard'),
+                Tab(text: 'Redeem'),
               ],
             ),
           ),
 
           // Tab Content
-          SliverFillRemaining(
+          Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
+                _buildHowItWorksTab(),
                 _buildActivityTab(),
                 _buildBadgesTab(),
-                _buildLeaderboardTab(),
+                _buildRedeemTab(),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHowItWorksTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Illustration Header
+          Center(
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: const Color(0xFF667eea).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.card_giftcard,
+                      size: 80,
+                      color: Color(0xFF667eea),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Earn & Redeem',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF667eea),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // How to Earn Points Section
+          const Text(
+            'How to Earn Points',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildEarnCard(
+            icon: Icons.gavel,
+            title: 'Place a Bid',
+            points: 100,
+            description: 'Participate in auctions by placing bids',
+            color: Colors.orange,
+          ),
+          _buildEarnCard(
+            icon: Icons.home_work,
+            title: 'Add a Property',
+            points: 200,
+            description: 'List your properties on the platform',
+            color: Colors.blue,
+          ),
+          _buildEarnCard(
+            icon: Icons.assessment,
+            title: 'Valuate a Property',
+            points: 150,
+            description: 'Get instant AI-powered property valuations',
+            color: Colors.green,
+          ),
+          _buildEarnCard(
+            icon: Icons.calendar_today,
+            title: 'Create an Event',
+            points: 20,
+            description: 'Manage your calendar with reminders',
+            color: Colors.purple,
+          ),
+          _buildEarnCard(
+            icon: Icons.schedule,
+            title: 'Import Payment Schedule',
+            points: 250,
+            description: 'Upload and track payment schedules',
+            color: Colors.teal,
+          ),
+
+          const SizedBox(height: 24),
+
+          // Badge Progression
+          const Text(
+            'Badge Progression',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildBadgeProgressionCard('🌟', 'Getting Started', 500),
+          _buildBadgeProgressionCard('🔥', 'Active User', 1000),
+          _buildBadgeProgressionCard('⚡', 'Power User', 2500),
+          _buildBadgeProgressionCard('👑', 'VIP Member', 5000),
+          _buildBadgeProgressionCard('💎', 'Elite', 10000),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEarnCard({
+    required IconData icon,
+    required String title,
+    required int points,
+    required String description,
+    required Color color,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(description),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '+$points pts',
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadgeProgressionCard(String emoji, String name, int points) {
+    final unlocked = totalPoints >= points;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: unlocked ? const Color(0xFF667eea).withOpacity(0.1) : null,
+      child: ListTile(
+        leading: Text(
+          emoji,
+          style: TextStyle(
+            fontSize: 32,
+            color: unlocked ? null : Colors.grey[300],
+          ),
+        ),
+        title: Text(
+          name,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: unlocked ? const Color(0xFF667eea) : Colors.grey[600],
+          ),
+        ),
+        subtitle: Text('Requires $points points'),
+        trailing: unlocked
+            ? const Icon(Icons.check_circle, color: Colors.green)
+            : Icon(Icons.lock_outline, color: Colors.grey[400]),
       ),
     );
   }
@@ -204,19 +410,19 @@ class _RewardsPageState extends State<RewardsPage>
       {
         'name': 'Getting Started',
         'icon': '🌟',
-        'description': 'Earned 100 points',
+        'description': 'Earned 500 points',
         'unlocked': _hasBadge('Getting Started'),
       },
       {
         'name': 'Active User',
         'icon': '🔥',
-        'description': 'Earned 500 points',
+        'description': 'Earned 1000 points',
         'unlocked': _hasBadge('Active User'),
       },
       {
         'name': 'Power User',
         'icon': '⚡',
-        'description': 'Earned 1000 points',
+        'description': 'Earned 2500 points',
         'unlocked': _hasBadge('Power User'),
       },
       {
@@ -226,16 +432,16 @@ class _RewardsPageState extends State<RewardsPage>
         'unlocked': _hasBadge('VIP Member'),
       },
       {
+        'name': 'Elite',
+        'icon': '💎',
+        'description': 'Earned 10000 points',
+        'unlocked': _hasBadge('Elite'),
+      },
+      {
         'name': 'First Bidder',
         'icon': '🎯',
         'description': 'Placed your first bid',
         'unlocked': _hasBadge('First Bidder'),
-      },
-      {
-        'name': 'Property Explorer',
-        'icon': '🔍',
-        'description': 'Viewed 10+ properties',
-        'unlocked': _hasBadge('Property Explorer'),
       },
     ];
 
@@ -305,27 +511,237 @@ class _RewardsPageState extends State<RewardsPage>
     );
   }
 
-  Widget _buildLeaderboardTab() {
-    return Center(
+  Widget _buildRedeemTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.emoji_events, size: 80, color: Color(0xFFFFD700)),
-          const SizedBox(height: 20),
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.redeem, size: 50, color: Colors.white),
+                const SizedBox(height: 8),
+                const Text(
+                  'Redeem Your Points',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You have $totalPoints points',
+                  style: const TextStyle(fontSize: 14, color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Cashback Section
           const Text(
-            'Leaderboard',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            'Cashback Rewards',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Coming Soon!',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          const SizedBox(height: 12),
+          _buildRedeemCard(
+            icon: Icons.attach_money,
+            title: '\$5 Cashback',
+            description: 'Get \$5 credited to your wallet',
+            points: 500,
+            color: Colors.green,
           ),
-          const SizedBox(height: 20),
-          Text(
-            'Compete with other users\nfor the top spot',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[500]),
+          _buildRedeemCard(
+            icon: Icons.attach_money,
+            title: '\$10 Cashback',
+            description: 'Get \$10 credited to your wallet',
+            points: 1000,
+            color: Colors.green,
+          ),
+          _buildRedeemCard(
+            icon: Icons.attach_money,
+            title: '\$25 Cashback',
+            description: 'Get \$25 credited to your wallet',
+            points: 2500,
+            color: Colors.green,
+          ),
+          _buildRedeemCard(
+            icon: Icons.attach_money,
+            title: '\$50 Cashback',
+            description: 'Get \$50 credited to your wallet',
+            points: 5000,
+            color: Colors.green,
+          ),
+
+          const SizedBox(height: 24),
+
+          // Vouchers Section
+          const Text(
+            'Gift Vouchers',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildRedeemCard(
+            icon: Icons.shopping_bag,
+            title: 'Amazon \$10 Voucher',
+            description: 'Shop on Amazon with this voucher',
+            points: 1000,
+            color: Colors.orange,
+          ),
+          _buildRedeemCard(
+            icon: Icons.card_giftcard,
+            title: 'Starbucks \$10 Voucher',
+            description: 'Enjoy your favorite coffee',
+            points: 1000,
+            color: Colors.brown,
+          ),
+          _buildRedeemCard(
+            icon: Icons.local_gas_station,
+            title: 'Gas Station \$15 Voucher',
+            description: 'Save on fuel costs',
+            points: 1500,
+            color: Colors.blue,
+          ),
+          _buildRedeemCard(
+            icon: Icons.restaurant,
+            title: 'Restaurant \$15 Voucher',
+            description: 'Dine at partner restaurants',
+            points: 1500,
+            color: Colors.red,
+          ),
+
+          const SizedBox(height: 24),
+
+          // Premium Features Section
+          const Text(
+            'Premium Features',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildRedeemCard(
+            icon: Icons.trending_up,
+            title: 'Advanced Analytics (1 month)',
+            description: 'Get detailed property insights',
+            points: 800,
+            color: Colors.purple,
+          ),
+          _buildRedeemCard(
+            icon: Icons.priority_high,
+            title: 'Priority Support (1 month)',
+            description: '24/7 dedicated customer support',
+            points: 600,
+            color: Colors.indigo,
+          ),
+          _buildRedeemCard(
+            icon: Icons.verified,
+            title: 'Verified Seller Badge',
+            description: 'Stand out with a verified badge',
+            points: 1000,
+            color: Colors.teal,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRedeemCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required int points,
+    required Color color,
+  }) {
+    final canRedeem = totalPoints >= points;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(description),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.stars, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  '$points points',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: ElevatedButton(
+          onPressed: canRedeem
+              ? () {
+                  _showRedeemDialog(title, points);
+                }
+              : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: canRedeem ? color : Colors.grey,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: const Text('Redeem'),
+        ),
+        isThreeLine: true,
+      ),
+    );
+  }
+
+  void _showRedeemDialog(String item, int points) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Redemption'),
+        content: Text(
+          'Are you sure you want to redeem $points points for $item?\n\nThis feature is coming soon!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Redemption feature coming soon!'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            },
+            child: const Text('Confirm'),
           ),
         ],
       ),
@@ -334,6 +750,31 @@ class _RewardsPageState extends State<RewardsPage>
 
   bool _hasBadge(String badgeName) {
     return badges.any((badge) => badge['badgeName'] == badgeName);
+  }
+
+  int _getNextMilestone(int points) {
+    if (points < 500) return 500;
+    if (points < 1000) return 1000;
+    if (points < 2500) return 2500;
+    if (points < 5000) return 5000;
+    if (points < 10000) return 10000;
+    return 20000;
+  }
+
+  double _getProgressToNextBadge(int points) {
+    final nextTarget = _getNextMilestone(points);
+    final start = points < 500
+        ? 0
+        : points < 1000
+        ? 500
+        : points < 2500
+        ? 1000
+        : points < 5000
+        ? 2500
+        : points < 10000
+        ? 5000
+        : 10000;
+    return ((points - start) / (nextTarget - start)).clamp(0.0, 1.0);
   }
 
   String _formatDate(dynamic date) {

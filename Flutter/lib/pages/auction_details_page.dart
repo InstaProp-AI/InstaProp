@@ -16,6 +16,7 @@ import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
 import 'property_comparison_page.dart';
+import '../widgets/reward_popup.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
   final Auction auction;
@@ -306,6 +307,20 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           _successMessage = 'Bid placed successfully!';
           _bidController.clear();
         });
+        // Show reward popup after successful bid
+        if (mounted && context.read<AppState>().user?.totalPoints != null) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => RewardPopup(
+                pointsAwarded: 5,
+                totalPoints: context.read<AppState>().user!.totalPoints!,
+              ),
+            );
+          }
+        }
         // Reload data to show new bid
         _loadBids();
 
@@ -1729,10 +1744,20 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   String _getBidderName(Bid bid) {
     final firstName = bid.bidder?.firstName;
     final lastName = bid.bidder?.lastName;
-    if (firstName != null && firstName.isNotEmpty) {
-      return '$firstName $lastName';
-    }
-    return 'Bidder #${bid.bidderId}';
+    final baseName = (firstName != null && firstName.isNotEmpty)
+        ? '$firstName $lastName'
+        : 'Bidder #${bid.bidderId}';
+    // Append top badge icon if available (from API's bidder payload)
+    try {
+      final dynamic raw = (bid.toJson()['bidder']);
+      final String? topIcon = raw != null
+          ? raw['TopBadgeIcon'] ?? raw['topBadgeIcon']
+          : null;
+      if (topIcon != null && topIcon.isNotEmpty) {
+        return '$baseName  $topIcon';
+      }
+    } catch (_) {}
+    return baseName;
   }
 
   Widget _buildPropertyDescription() {

@@ -15,8 +15,7 @@ import 'auctions_page.dart';
 import 'create_auction_request_dialog.dart';
 import '../widgets/loading_button.dart';
 import 'calendar_page.dart';
-import 'saved_searches_page.dart';
-import 'property_comparison_page.dart';
+// removed: saved searches feature
 
 class PropertiesManagementPage extends StatefulWidget {
   const PropertiesManagementPage({super.key});
@@ -154,14 +153,8 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
 
           const SizedBox(height: 20),
 
-          // Quick Access Row: Calendar & Saved Searches
-          Row(
-            children: [
-              Expanded(child: _buildCalendarSection(context)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildSavedSearchesSection(context)),
-            ],
-          ),
+          // Quick Access Row: Calendar
+          Row(children: [Expanded(child: _buildCalendarSection(context))]),
 
           const SizedBox(height: 20),
 
@@ -217,28 +210,6 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 ),
               ),
             ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Compare Properties Button
-          SizedBox(
-            width: double.infinity,
-            child: _buildActionCard(
-              context,
-              icon: Icons.compare_arrows,
-              title: 'Compare Properties',
-              subtitle: 'Side-by-side comparison',
-              color: Colors.purple,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PropertyComparisonPage(),
-                  ),
-                );
-              },
-            ),
           ),
 
           const SizedBox(height: 24),
@@ -332,13 +303,71 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'My Calendar',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'My Calendar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    // Rewards progress (mini)
+                    Consumer<AppState>(
+                      builder: (context, appState, _) {
+                        final points = appState.user?.totalPoints ?? 0;
+                        final nextTarget = points < 100
+                            ? 100
+                            : points < 500
+                            ? 500
+                            : points < 1000
+                            ? 1000
+                            : 5000;
+                        final start = points < 100
+                            ? 0
+                            : points < 500
+                            ? 100
+                            : points < 1000
+                            ? 500
+                            : 1000;
+                        final progress =
+                            ((points - start) / (nextTarget - start)).clamp(
+                              0.0,
+                              1.0,
+                            );
+                        return SizedBox(
+                          width: 120,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '$points pts',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  minHeight: 6,
+                                  backgroundColor: Colors.white24,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.greenAccent,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -356,76 +385,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     );
   }
 
-  Widget _buildSavedSearchesSection(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade400, Colors.cyan.shade400],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SavedSearchesPage(),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.bookmark,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Saved Searches',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Your saved filters',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // removed saved searches section
 
   Widget _buildMyBidsSection(AppState appState) {
     // Get only the latest bid per auction
@@ -455,7 +415,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             ),
             const SizedBox(width: 12),
             Text(
-              'My Active Bids',
+              'Your Positions',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -498,7 +458,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.secondary!, width: 1),
+              border: Border.all(color: AppColors.secondary, width: 1),
             ),
             child: Center(
               child: Column(
@@ -510,7 +470,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No Active Bids',
+                    'No Positions',
                     style: TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.bold,
@@ -581,9 +541,37 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
 
   Widget _buildEnhancedBidCard(Bid bid, Auction auction) {
     final isWinning = auction.currentPrice == bid.bidAmount;
+    final isActive = auction.isActive;
+    final isEnded = auction.isEnded;
+    final isUpcoming = auction.isUpcoming;
     final property = auction.property;
-    final priceDifference = auction.currentPrice - bid.bidAmount;
-    final isOutbid = priceDifference > 0;
+
+    // Derive status label and color based on auction state and user's position
+    Color statusColor;
+    String statusLabel;
+    if (isEnded) {
+      if (isWinning) {
+        statusColor = Colors.green;
+        statusLabel = 'WINNER';
+      } else {
+        statusColor = Colors.red;
+        statusLabel = 'AUCTION LOST';
+      }
+    } else if (isActive) {
+      if (isWinning) {
+        statusColor = Colors.green;
+        statusLabel = 'WINNING';
+      } else {
+        statusColor = Colors.orange;
+        statusLabel = 'OUTBID';
+      }
+    } else if (isUpcoming) {
+      statusColor = Colors.blue;
+      statusLabel = 'UPCOMING';
+    } else {
+      statusColor = Colors.grey;
+      statusLabel = auction.status.toUpperCase();
+    }
 
     return Container(
       width: 300,
@@ -592,10 +580,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
         elevation: isWinning ? 4 : 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: isWinning ? Colors.green : Colors.orange,
-            width: 2,
-          ),
+          side: BorderSide(color: statusColor, width: 2),
         ),
         child: InkWell(
           onTap: () {
@@ -623,9 +608,9 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                       color: Colors.grey[300],
                       child:
                           property?.imageUrl != null &&
-                              property!.imageUrl.isNotEmpty
+                              (property?.imageUrl.isNotEmpty ?? false)
                           ? Image.network(
-                              property.imageUrl,
+                              property!.imageUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return const Icon(
@@ -641,7 +626,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                               color: Colors.grey,
                             ),
                     ),
-                    // Winning/Outbid Badge
+                    // Position/Status Badge
                     Positioned(
                       top: 8,
                       right: 8,
@@ -651,7 +636,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: isWinning ? Colors.green : Colors.orange,
+                          color: statusColor,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -664,13 +649,21 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              isWinning ? Icons.emoji_events : Icons.warning,
+                              isEnded
+                                  ? (isWinning
+                                        ? Icons.emoji_events
+                                        : Icons.cancel)
+                                  : (isActive
+                                        ? (isWinning
+                                              ? Icons.emoji_events
+                                              : Icons.warning)
+                                        : Icons.schedule),
                               size: 14,
                               color: Colors.white,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              isWinning ? 'WINNING' : 'OUTBID',
+                              statusLabel,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -731,7 +724,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                     const SizedBox(height: 8),
 
                     // Status Info
-                    if (isOutbid)
+                    if (isActive && !isWinning)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -752,7 +745,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Outbid by \$${priceDifference.toStringAsFixed(0)}',
+                              'Outbid',
                               style: const TextStyle(
                                 color: Colors.orange,
                                 fontWeight: FontWeight.bold,
@@ -782,10 +775,24 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                               color: Colors.green,
                             ),
                             const SizedBox(width: 4),
-                            const Text(
-                              'You\'re in the lead!',
+                            Text(
+                              isEnded
+                                  ? (isWinning ? 'Winner' : 'Auction lost')
+                                  : (isActive
+                                        ? (isWinning
+                                              ? 'You\'re in the lead!'
+                                              : 'Outbid')
+                                        : (isUpcoming
+                                              ? 'Starts soon'
+                                              : auction.status)),
                               style: TextStyle(
-                                color: Colors.green,
+                                color: isEnded
+                                    ? (isWinning ? Colors.green : Colors.red)
+                                    : (isActive
+                                          ? (isWinning
+                                                ? Colors.green
+                                                : Colors.orange)
+                                          : Colors.blue),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 10,
                               ),
@@ -793,6 +800,48 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           ],
                         ),
                       ),
+
+                    const SizedBox(height: 8),
+                    // Position state: Live / Expired
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isEnded
+                              ? Colors.red.withOpacity(0.08)
+                              : Colors.green.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isEnded ? Colors.red : Colors.green,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isEnded
+                                  ? Icons.event_busy
+                                  : Icons.event_available,
+                              size: 12,
+                              color: isEnded ? Colors.red : Colors.green,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isEnded ? 'Expired' : 'Live',
+                              style: TextStyle(
+                                color: isEnded ? Colors.red : Colors.green,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -901,7 +950,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.secondary!),
+              border: Border.all(color: AppColors.secondary),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1002,7 +1051,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.secondary!),
+        border: Border.all(color: AppColors.secondary),
       ),
       child: Column(
         children: [
@@ -1377,7 +1426,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.secondary!),
+        border: Border.all(color: AppColors.secondary),
       ),
       child: Column(
         children: [
@@ -1653,7 +1702,7 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
                 decoration: BoxDecoration(
                   color: AppColors.background,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
+                  border: Border.all(color: Colors.green),
                 ),
                 child: Column(
                   children: [

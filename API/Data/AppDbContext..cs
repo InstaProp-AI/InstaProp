@@ -29,7 +29,6 @@ namespace PropertyFlipperAPI.Data
         // Phase 4: Gamification & Engagement
         public DbSet<UserReward> UserRewards { get; set; }
         public DbSet<UserBadge> UserBadges { get; set; }
-        public DbSet<SavedSearch> SavedSearches { get; set; }
         public DbSet<Referral> Referrals { get; set; }
         public DbSet<PropertyView> PropertyViews { get; set; }
 
@@ -303,17 +302,7 @@ namespace PropertyFlipperAPI.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Configure SavedSearch
-            modelBuilder.Entity<SavedSearch>(entity =>
-            {
-                entity.HasKey(e => e.SearchId);
-                entity.Property(e => e.SearchId).ValueGeneratedOnAdd();
-                entity.Property(e => e.SearchName).HasMaxLength(100).IsRequired();
-                entity.HasOne(e => e.Account)
-                    .WithMany()
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
+            // Removed SavedSearch entity
 
             // Configure Referral
             modelBuilder.Entity<Referral>(entity =>

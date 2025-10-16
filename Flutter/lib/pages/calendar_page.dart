@@ -241,10 +241,21 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Future<void> _showEventDetails(Event event) async {
-    await showDialog(
+    final result = await showDialog(
       context: context,
-      builder: (context) => EventDetailsDialog(event: event),
+      builder: (context) => EventDetailsDialog(
+        event: event,
+        onEventUpdated: () {
+          // Refresh events when an event is marked as paid
+          _loadEvents();
+        },
+      ),
     );
+
+    // Refresh events if dialog returned true (event was updated)
+    if (result == true && mounted) {
+      await _loadEvents();
+    }
   }
 
   @override
@@ -632,18 +643,21 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Widget _buildNextEventsSection() {
     final now = DateTime.now();
-    final upcomingEvents =
-        _events
-            .where(
-              (event) =>
-                  event.startTime != null && event.startTime!.isAfter(now),
-            )
-            .toList()
-          ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
+    // Start from today (midnight) for proper date comparison
+    final today = DateTime(now.year, now.month, now.day);
+    final twoMonthsFromNow = today.add(const Duration(days: 60));
 
-    if (upcomingEvents.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final upcomingEvents = _events.where((event) {
+      final eventDate = DateTime(
+        event.eventDate.year,
+        event.eventDate.month,
+        event.eventDate.day,
+      );
+      // Include events from today onwards (not completed)
+      return (eventDate.isAtSameMomentAs(today) || eventDate.isAfter(today)) &&
+          eventDate.isBefore(twoMonthsFromNow) &&
+          !event.isCompleted;
+    }).toList()..sort((a, b) => a.eventDate.compareTo(b.eventDate));
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -651,32 +665,87 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[200]!),
+        border: Border.all(color: Colors.green),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.schedule, color: AppColors.primary, size: 20),
+              Icon(Icons.upcoming, color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Upcoming Events',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+              Expanded(
+                child: Text(
+                  'Upcoming Events (Next 2 Months)',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${upcomingEvents.length}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.blue,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          ...upcomingEvents.take(3).map((event) => _buildNextEventItem(event)),
+          if (upcomingEvents.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Icon(Icons.event_busy, size: 48, color: Colors.grey[400]),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No upcoming events in the next 2 months',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            ...upcomingEvents
+                .take(10)
+                .map((event) => _buildNextEventItem(event)),
+            if (upcomingEvents.length > 10)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: Text(
+                    '+${upcomingEvents.length - 10} more events',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildNextEventItem(Event event) {
+    final daysUntil = event.eventDate.difference(DateTime.now()).inDays;
+    final eventColor = event.type.color;
+    final isInstallment = event.type == EventType.installment;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -687,65 +756,193 @@ class _CalendarPageState extends State<CalendarPage> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 4,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.green[400],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 14, color: AppColors.primary),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${_formatDate(event.startTime!)} at ${_formatTime(event.startTime!)}',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
+            child: InkWell(
+              onTap: () => _showEventDetails(event),
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: eventColor,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                event.title,
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (event.amount != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '\$${event.amount!.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 12,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${event.eventDate.year}-${event.eventDate.month.toString().padLeft(2, '0')}-${event.eventDate.day.toString().padLeft(2, '0')}',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.primary),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: eventColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                daysUntil == 0
+                                    ? 'Today'
+                                    : daysUntil == 1
+                                    ? 'Tomorrow'
+                                    : 'In $daysUntil days',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: eventColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (event.description != null &&
+                            event.description!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              event.description!,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey[600]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right, size: 18, color: AppColors.primary),
+                ],
+              ),
             ),
           ),
-          IconButton(
-            onPressed: () => _showEventDetails(event),
-            icon: Icon(Icons.info_outline, size: 18, color: AppColors.primary),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
+          if (isInstallment && !event.isCompleted)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: ElevatedButton(
+                onPressed: () async {
+                  await _markEventAsPaid(event);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: const Size(0, 0),
+                ),
+                child: const Text(
+                  'I Have Paid',
+                  style: TextStyle(fontSize: 11),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final eventDate = DateTime(date.year, date.month, date.day);
+  Future<void> _markEventAsPaid(Event event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Paid'),
+        content: Text('Mark "${event.title}" as paid?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
 
-    if (eventDate == today) {
-      return 'Today';
-    } else if (eventDate == today.add(const Duration(days: 1))) {
-      return 'Tomorrow';
-    } else {
-      return '${_getMonthName(date.month)} ${date.day}';
+    if (confirmed == true && mounted) {
+      final response = await EventService.completeEvent(event.eventId);
+
+      if (response.success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Payment marked as completed!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          await _loadEvents();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed: ${response.error}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
+
+  // Removed unused _formatDate method
 }

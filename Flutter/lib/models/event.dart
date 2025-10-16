@@ -25,6 +25,9 @@ class Event {
   final int? auctionId;
   final int? bidId;
   final DateTime createdAt;
+  final String? scheduleImageUrl;
+  final String? scheduleGroupId;
+  final double? scheduleBuyingPrice;
 
   Event({
     required this.eventId,
@@ -51,6 +54,9 @@ class Event {
     this.auctionId,
     this.bidId,
     required this.createdAt,
+    this.scheduleImageUrl,
+    this.scheduleGroupId,
+    this.scheduleBuyingPrice,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -98,6 +104,13 @@ class Event {
       auctionId: json['auctionId'] ?? json['AuctionId'],
       bidId: json['bidId'] ?? json['BidId'],
       createdAt: DateTime.parse(json['createdAt'] ?? json['CreatedAt']),
+      scheduleImageUrl: json['scheduleImageUrl'] ?? json['ScheduleImageUrl'],
+      scheduleGroupId: json['scheduleGroupId'] ?? json['ScheduleGroupId'],
+      scheduleBuyingPrice:
+          (json['scheduleBuyingPrice'] ?? json['ScheduleBuyingPrice']) != null
+          ? (json['scheduleBuyingPrice'] ?? json['ScheduleBuyingPrice'] as num)
+                .toDouble()
+          : null,
     );
   }
 
@@ -119,6 +132,9 @@ class Event {
       'auctionId': auctionId,
       'bidId': bidId,
       'createdAt': createdAt.toIso8601String(),
+      'scheduleImageUrl': scheduleImageUrl,
+      'scheduleGroupId': scheduleGroupId,
+      'scheduleBuyingPrice': scheduleBuyingPrice,
     };
   }
 
@@ -139,6 +155,9 @@ class Event {
     int? auctionId,
     int? bidId,
     DateTime? createdAt,
+    String? scheduleImageUrl,
+    String? scheduleGroupId,
+    double? scheduleBuyingPrice,
   }) {
     return Event(
       eventId: eventId ?? this.eventId,
@@ -157,6 +176,9 @@ class Event {
       auctionId: auctionId ?? this.auctionId,
       bidId: bidId ?? this.bidId,
       createdAt: createdAt ?? this.createdAt,
+      scheduleImageUrl: scheduleImageUrl ?? this.scheduleImageUrl,
+      scheduleGroupId: scheduleGroupId ?? this.scheduleGroupId,
+      scheduleBuyingPrice: scheduleBuyingPrice ?? this.scheduleBuyingPrice,
     );
   }
 }

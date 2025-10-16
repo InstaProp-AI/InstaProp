@@ -10,7 +10,7 @@ import 'kyc_verification_page.dart';
 import 'email_verification_page.dart';
 import 'phone_verification_page.dart';
 import 'rewards_page.dart';
-import 'saved_searches_page.dart';
+// removed: saved searches feature
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -97,7 +97,7 @@ class _ProfilePageState extends State<ProfilePage> {
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.secondary!),
+                border: Border.all(color: AppColors.secondary),
               ),
               child: Row(
                 children: [
@@ -257,7 +257,7 @@ class _ProfilePageState extends State<ProfilePage> {
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.secondary!),
+                border: Border.all(color: AppColors.secondary),
               ),
               child: Row(
                 children: [
@@ -450,28 +450,80 @@ class _ProfilePageState extends State<ProfilePage> {
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green[200]!),
+                        border: Border.all(color: Colors.green),
                       ),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 40,
-                            backgroundColor: AppColors.primary,
-                            child: Text(
-                              (appState.user?.firstName ?? 'U')[0]
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.surface,
+                          Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 40,
+                                backgroundColor: AppColors.primary,
+                                child: Text(
+                                  (appState.user?.firstName ?? 'U')[0]
+                                      .toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.surface,
+                                  ),
+                                ),
                               ),
-                            ),
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                                    ),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.purple.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        Navigator.pushNamed(context, '/rewards');
+                                      },
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        child: const Icon(
+                                          Icons.stars,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            appState.user?.fullName ?? 'Guest User',
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                appState.user?.fullName ?? 'Guest User',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              if (appState.user?.topBadgeIcon != null) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  appState.user!.topBadgeIcon!,
+                                  style: const TextStyle(fontSize: 24),
+                                ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -479,6 +531,88 @@ class _ProfilePageState extends State<ProfilePage> {
                             style: Theme.of(context).textTheme.bodyLarge
                                 ?.copyWith(color: AppColors.primary),
                           ),
+                          const SizedBox(height: 8),
+                          // Points display
+                          if (appState.user?.totalPoints != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.amber),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.stars,
+                                    size: 14,
+                                    color: Colors.amber,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${appState.user!.totalPoints} points',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          // Points progress bar
+                          if (appState.user?.totalPoints != null)
+                            Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${appState.user!.totalPoints} points',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Next: ${_getNextMilestone(appState.user!.totalPoints!)} pts',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: LinearProgressIndicator(
+                                    value: _getProgressToNextBadge(
+                                      appState.user!.totalPoints!,
+                                    ),
+                                    minHeight: 12,
+                                    backgroundColor: Colors.grey[200],
+                                    valueColor:
+                                        const AlwaysStoppedAnimation<Color>(
+                                          Colors.green,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${(_getProgressToNextBadge(appState.user!.totalPoints!) * 100).toInt()}% to next badge',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -541,24 +675,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildFeatureCard(
-                              context,
-                              icon: Icons.bookmark,
-                              title: 'Saved Searches',
-                              subtitle: 'Your searches',
-                              color: Colors.blue,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const SavedSearchesPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+                          // removed saved searches card
                         ],
                       ),
                       const SizedBox(height: 24),
@@ -657,7 +774,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         decoration: BoxDecoration(
                           color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.secondary!),
+                          border: Border.all(color: AppColors.secondary),
                         ),
                         child: Text(
                           _errorMessage!,
@@ -762,7 +879,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary!),
+                        border: Border.all(color: AppColors.primary),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -832,7 +949,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                         color: AppColors.background,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: AppColors.secondary!,
+                                          color: AppColors.secondary,
                                         ),
                                       ),
                                       child: Text(
@@ -945,11 +1062,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                 appState.user!.status ==
                                     VerificationStatus.pending
                                 ? [
-                                    AppColors.primary!,
-                                    AppColors.primary!.withOpacity(0.3),
+                                    AppColors.primary,
+                                    AppColors.primary.withOpacity(0.3),
                                   ]
                                 : [
-                                    AppColors.background!,
+                                    AppColors.background,
                                     Colors.orange[100]!.withOpacity(0.3),
                                   ],
                           ),
@@ -958,7 +1075,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             color:
                                 appState.user!.status ==
                                     VerificationStatus.pending
-                                ? AppColors.primary!
+                                ? AppColors.primary
                                 : Colors.orange[300]!,
                             width: 2,
                           ),
@@ -1088,7 +1205,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         decoration: BoxDecoration(
                           color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.secondary!),
+                          border: Border.all(color: AppColors.secondary),
                         ),
                         child: Row(
                           children: [
@@ -1149,7 +1266,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         onPressed: _logout,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,
-                          side: BorderSide(color: Colors.red[300]!),
+                          side: const BorderSide(color: Colors.red),
                         ),
                         child: const Text('Logout'),
                       ),
@@ -1168,9 +1285,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Color _getStatusColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return AppColors.background!;
+        return AppColors.background;
       case VerificationStatus.pending:
-        return AppColors.primary!;
+        return AppColors.primary;
       case VerificationStatus.notVerified:
         return Colors.orange[100]!;
     }
@@ -1179,11 +1296,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Color _getStatusTextColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return AppColors.primary!;
+        return AppColors.primary;
       case VerificationStatus.pending:
-        return AppColors.primary!;
+        return AppColors.primary;
       case VerificationStatus.notVerified:
-        return AppColors.primary!;
+        return AppColors.primary;
     }
   }
 
@@ -1292,6 +1409,31 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
       ],
     );
+  }
+
+  int _getNextMilestone(int points) {
+    if (points < 500) return 500;
+    if (points < 1000) return 1000;
+    if (points < 2500) return 2500;
+    if (points < 5000) return 5000;
+    if (points < 10000) return 10000;
+    return 20000;
+  }
+
+  double _getProgressToNextBadge(int points) {
+    final nextTarget = _getNextMilestone(points);
+    final start = points < 500
+        ? 0
+        : points < 1000
+        ? 500
+        : points < 2500
+        ? 1000
+        : points < 5000
+        ? 2500
+        : points < 10000
+        ? 5000
+        : 10000;
+    return ((points - start) / (nextTarget - start)).clamp(0.0, 1.0);
   }
 
   Widget _buildFeatureCard(

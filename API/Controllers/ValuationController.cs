@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using Microsoft.AspNetCore.Authorization;
+using PropertyFlipperAPI.Services;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -12,11 +13,13 @@ namespace PropertyFlipperAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly PropertyFlipperAPI.Services.OpenAIService _openAIService;
+        private readonly RewardService _rewardService;
 
-        public ValuationController(AppDbContext context, PropertyFlipperAPI.Services.OpenAIService openAIService)
+        public ValuationController(AppDbContext context, PropertyFlipperAPI.Services.OpenAIService openAIService, RewardService rewardService)
         {
             _context = context;
             _openAIService = openAIService;
+            _rewardService = rewardService;
         }
 
         // POST: api/Valuation/calculate
@@ -41,6 +44,12 @@ namespace PropertyFlipperAPI.Controllers
 
             // Calculate valuation based on property details
             var valuation = CalculatePropertyValuation(property, request);
+
+            // Award rewards to user for running valuation
+            if (accountId.HasValue)
+            {
+                await _rewardService.AwardPointsAsync(accountId.Value, "Valuation", RewardPoints.Valuation, request.PropertyId.HasValue ? $"Valuated property #{request.PropertyId}" : "Valuation");
+            }
 
             return Ok(valuation);
         }
