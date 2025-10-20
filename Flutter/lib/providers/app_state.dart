@@ -42,6 +42,12 @@ class AppState extends ChangeNotifier {
   bool _loadingStats = false;
   bool _isRefreshing = false;
 
+  // Floating AI Broker button visibility
+  bool _isFloatingButtonHidden = false;
+
+  // Active AI Broker chat ID
+  int? _activeAIChatId;
+
   // Getters
   List<Auction> get auctions => _auctions;
   List<Property> get properties => _properties;
@@ -53,6 +59,8 @@ class AppState extends ChangeNotifier {
   bool get loadingBids => _loadingBids;
   bool get loadingStats => _loadingStats;
   bool get isRefreshing => _isRefreshing;
+  bool get isFloatingButtonHidden => _isFloatingButtonHidden;
+  int? get activeAIChatId => _activeAIChatId;
 
   // Featured auctions (top 2 by bid count)
   List<Auction> get featuredAuctions {
@@ -411,6 +419,28 @@ class AppState extends ChangeNotifier {
     await _authService.logout();
     clearData();
     _notificationService.clear();
+  }
+
+  // Floating button visibility management
+  void hideFloatingButton() {
+    _isFloatingButtonHidden = true;
+    notifyListeners();
+  }
+
+  void showFloatingButton() {
+    _isFloatingButtonHidden = false;
+    notifyListeners();
+  }
+
+  // AI Chat management
+  void setActiveAIChatId(int? chatId) {
+    _activeAIChatId = chatId;
+    notifyListeners();
+  }
+
+  void clearActiveAIChat() {
+    _activeAIChatId = null;
+    notifyListeners();
   }
 
   @override

@@ -356,57 +356,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Text('Auctions'),
-            const SizedBox(width: 8),
-            // Small refresh indicator
-            Consumer<AppState>(
-              builder: (context, appState, child) {
-                if (appState.loadingAuctions) {
-                  return const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.surface,
-                      ),
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.surface,
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: _setSort,
-            icon: const Icon(Icons.sort),
-            itemBuilder: (BuildContext context) {
-              return _sortOptions.entries.map((entry) {
-                return PopupMenuItem<String>(
-                  value: entry.key,
-                  child: Row(
-                    children: [
-                      if (_currentSort == entry.key)
-                        Icon(Icons.check, color: AppColors.primary, size: 20)
-                      else
-                        const SizedBox(width: 20),
-                      const SizedBox(width: 8),
-                      Text(entry.value),
-                    ],
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: Consumer<AppState>(
         builder: (context, appState, child) {
           print(
@@ -436,136 +386,176 @@ class _AuctionsPageState extends State<AuctionsPage> {
             });
           }
 
-          if (appState.loadingAuctions) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          // Add null safety check
-          if (appState.auctions.isEmpty) {
-            return _buildEmptyState(
-              context,
-              'No Auctions',
-              'No auctions available at the moment',
-              Icons.gavel_outlined,
-            );
-          }
-
-          return Column(
-            children: [
-              // Scrollable filter bar
-              _buildScrollableFilterBar(),
-
-              // Auctions Tables with pull-to-refresh
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    await appState.loadAuctions();
-                    _applyFilters();
-                  },
-                  child: _buildAuctionsTables(appState),
+          return CustomScrollView(
+            slivers: [
+              // Minimal Header
+              SliverAppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                pinned: true,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+                  onPressed: () => Navigator.pop(context),
                 ),
+                title: Row(
+                  children: [
+                    const Text(
+                      'Auctions',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (appState.loadingAuctions)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                  ],
+                ),
+                actions: [
+                  PopupMenuButton<String>(
+                    onSelected: _setSort,
+                    icon: const Icon(Icons.sort, color: Color(0xFF1A1A1A)),
+                    itemBuilder: (BuildContext context) {
+                      return _sortOptions.entries.map((entry) {
+                        return PopupMenuItem<String>(
+                          value: entry.key,
+                          child: Row(
+                            children: [
+                              if (_currentSort == entry.key)
+                                Icon(
+                                  Icons.check,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                )
+                              else
+                                const SizedBox(width: 20),
+                              const SizedBox(width: 8),
+                              Text(entry.value),
+                            ],
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ),
+
+              // Content
+              if (appState.loadingAuctions)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (appState.auctions.isEmpty)
+                SliverFillRemaining(
+                  child: _buildEmptyState(
+                    context,
+                    'No Auctions',
+                    'No auctions available at the moment',
+                    Icons.gavel_outlined,
+                  ),
+                )
+              else
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      // Filter bar
+                      _buildScrollableFilterBar(),
+
+                      // Auctions content
+                      _buildAuctionsTables(appState),
+                    ],
+                  ),
+                ),
             ],
           );
         },
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(left: 30),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Properties View Switch Button
-            FloatingActionButton.extended(
-              onPressed: () {
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PropertySearchPage(),
+                ),
+              );
+            },
+            backgroundColor: Colors.grey[100],
+            icon: Icon(Icons.home_work, color: AppColors.primary),
+            label: Text(
+              'Properties',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            heroTag: 'properties_button',
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            onPressed: () {
+              final properties = _filteredAuctions
+                  .where((a) => a.property != null)
+                  .map((a) => a.property!)
+                  .toList();
+
+              if (properties.isNotEmpty) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const PropertySearchPage(),
+                    builder: (context) => PropertyComparisonPage(
+                      preSelectedProperties: properties.take(5).toList(),
+                    ),
                   ),
                 );
-              },
-              backgroundColor: AppColors.surface,
-              icon: Icon(Icons.home_work, color: AppColors.primary),
-              label: Text(
-                'Properties',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              heroTag: 'properties_button',
-            ),
-            // Compare Button (smaller)
-            FloatingActionButton(
-              onPressed: () {
-                // Get properties from filtered auctions
-                final properties = _filteredAuctions
-                    .where((a) => a.property != null)
-                    .map((a) => a.property!)
-                    .toList();
-
-                if (properties.isNotEmpty) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PropertyComparisonPage(
-                        preSelectedProperties: properties.take(5).toList(),
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('No properties available to compare'),
-                      duration: Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-              backgroundColor: AppColors.primary,
-              child: const Icon(Icons.compare_arrows, color: AppColors.surface),
-              heroTag: 'compare_button',
-            ),
-          ],
-        ),
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No properties available to compare'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.compare_arrows, color: Colors.white),
+            heroTag: 'compare_button',
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildScrollableFilterBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(bottom: BorderSide(color: AppColors.background!)),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            // Clear All
             _buildFilterButton('Clear All', 'clear', {}),
             const SizedBox(width: 8),
-
-            // Category Filter
             _buildFilterButton('Category', 'category', _categoryOptions),
             const SizedBox(width: 8),
-
-            // Price Filter
             _buildFilterButton('Price', 'priceRange', _priceRangeOptions),
             const SizedBox(width: 8),
-
-            // Bids Filter
             _buildFilterButton('Bids', 'bidCount', _bidCountOptions),
             const SizedBox(width: 8),
-
-            // Project Filter
             _buildFilterButton('Project', 'project', _projectOptions),
             const SizedBox(width: 8),
-
-            // Location Filter
             _buildFilterButton('Location', 'location', _locationOptions),
           ],
         ),
@@ -627,118 +617,144 @@ class _AuctionsPageState extends State<AuctionsPage> {
       );
     }
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
       child: Column(
         children: [
           // Upcoming Auctions Section
           if (upcomingAuctions.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primary!, AppColors.primary!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary!),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Icon(Icons.schedule, color: AppColors.primary, size: 24),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Upcoming Auctions (${upcomingAuctions.length})',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                  const Text(
+                    'Upcoming',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${upcomingAuctions.length}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
             _buildAuctionsTable(
               context,
               upcomingAuctions,
               isLive: false,
               isUpcoming: true,
             ),
-            const SizedBox(height: 24), // Spacing between sections
+            const SizedBox(height: 32),
           ],
 
           // Live Auctions Section
           if (liveAuctions.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              margin: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: upcomingAuctions.isEmpty ? 16 : 0,
-                bottom: 16,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.background!, AppColors.background!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green[200]!),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.play_circle_fill,
-                    color: AppColors.primary,
-                    size: 24,
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Live Auctions (${liveAuctions.length})',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Live Now',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${liveAuctions.length}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
             _buildAuctionsTable(
               context,
               liveAuctions,
               isLive: true,
               isUpcoming: false,
             ),
+            const SizedBox(height: 32),
           ],
 
           // Ended Auctions Section
-          const SizedBox(height: 24),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.background!, Colors.orange[100]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.secondary!),
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                Icon(Icons.check_circle, color: AppColors.primary, size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  'Ended Auctions (${endedAuctions.length})',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                const Text(
+                  'Ended',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${endedAuctions.length}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700],
+                    ),
                   ),
                 ),
               ],
@@ -751,33 +767,31 @@ class _AuctionsPageState extends State<AuctionsPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(32),
-              margin: const EdgeInsets.symmetric(horizontal: 16),
+              margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.background!),
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 children: [
                   Icon(
                     Icons.hourglass_empty,
                     size: 48,
-                    color: AppColors.secondary,
+                    color: Colors.grey[300],
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  const Text(
                     'No Ended Auctions',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primary,
+                    style: TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Check back later for completed auctions',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -794,6 +808,8 @@ class _AuctionsPageState extends State<AuctionsPage> {
               Icons.filter_list_off,
             ),
           ],
+
+          const SizedBox(height: 100),
         ],
       ),
     );
@@ -805,19 +821,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
     required bool isLive,
     bool isUpcoming = false,
   }) {
-    Color borderColor;
-    Color headerColor;
-
-    if (isUpcoming) {
-      borderColor = AppColors.primary!;
-      headerColor = AppColors.primary!;
-    } else if (isLive) {
-      borderColor = Colors.green[200]!;
-      headerColor = AppColors.background!;
-    } else {
-      borderColor = AppColors.secondary!;
-      headerColor = AppColors.background!;
-    }
+    Color headerColor = Colors.grey[50]!;
 
     // Calculate dynamic height based on actual auction count (max 5)
     final displayCount = auctions.length > 5 ? 5 : auctions.length;
@@ -825,17 +829,10 @@ class _AuctionsPageState extends State<AuctionsPage> {
         displayCount * 60.0 + 48.0; // rows × 60px + header height
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Container(
         height: dynamicHeight,
@@ -843,7 +840,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
           scrollDirection: Axis.horizontal,
           child: Container(
             constraints: BoxConstraints(
-              minWidth: MediaQuery.of(context).size.width - 32,
+              minWidth: MediaQuery.of(context).size.width - 40,
             ),
             child: Column(
               children: [
@@ -856,7 +853,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
                   decoration: BoxDecoration(
                     color: headerColor,
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
+                      top: Radius.circular(16),
                     ),
                   ),
                   child: Row(
@@ -1217,26 +1214,26 @@ class _AuctionsPageState extends State<AuctionsPage> {
     IconData icon,
   ) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(40),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 60, color: AppColors.secondary),
+            Icon(icon, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               message,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1251,21 +1248,20 @@ class _AuctionsPageState extends State<AuctionsPage> {
     Map<String, String> options,
   ) {
     if (filterKey == 'clear') {
-      return InkWell(
+      return GestureDetector(
         onTap: _clearAllFilters,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.red[100],
+            color: Colors.red[50],
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.red[300]!),
           ),
           child: Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+              color: Colors.red[700],
             ),
           ),
         ),
@@ -1276,24 +1272,31 @@ class _AuctionsPageState extends State<AuctionsPage> {
     final currentLabel = options[currentValue] ?? 'All';
     final hasFilter = currentValue != 'all';
 
-    return InkWell(
+    return GestureDetector(
       onTap: () => _showFilterMenu(filterKey, options),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: hasFilter ? AppColors.primary : AppColors.surface,
+          color: hasFilter
+              ? AppColors.primary.withOpacity(0.1)
+              : Colors.grey[100],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasFilter ? AppColors.primary! : AppColors.secondary!,
-          ),
         ),
-        child: Text(
-          currentLabel,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: hasFilter ? FontWeight.w600 : FontWeight.normal,
-            color: hasFilter ? AppColors.primary : AppColors.textPrimary,
-          ),
+        child: Row(
+          children: [
+            Text(
+              currentLabel,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: hasFilter ? AppColors.primary : Colors.grey[700],
+              ),
+            ),
+            if (hasFilter) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.check_circle, size: 14, color: AppColors.primary),
+            ],
+          ],
         ),
       ),
     );

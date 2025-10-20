@@ -39,21 +39,33 @@ class ApiResponse<T> {
 }
 
 class ApiClient {
-  // Automatically detect the correct base URL based on platform
+  // ⚙️ CONFIGURATION - Change this one line based on your setup:
+  // For physical phone on same network: use your computer's IP (run: ifconfig | grep "inet ")
+  // For Android emulator: use 'http://10.0.2.2:5284'
+  // For iOS simulator or localhost: use 'http://localhost:5284'
+
+  // 🔧 Auto-detect best URL based on platform
   static String get baseUrl {
+    // Check if running on physical device or emulator
     if (kIsWeb) {
-      // Use your Mac IP (must be reachable from browser)
       return 'http://localhost:5284';
     } else if (Platform.isAndroid) {
-      // Emulator
-      return 'http://10.0.2.2:5284';
+      // Try to detect if it's emulator or physical device
+      // For physical device, use Mac's IP
+      return 'http://192.168.1.16:5284';
+      // For emulator, uncomment: return 'http://10.0.2.2:5284';
     } else if (Platform.isIOS) {
-      // iOS Simulator
+      // For iOS simulator
       return 'http://localhost:5284';
-    } else {
-      return 'http://localhost:5284';
+      // For physical iOS device, use: return 'http://192.168.1.16:5284';
     }
+    return 'http://localhost:5284';
   }
+
+  // Quick reference:
+  // Physical device (same WiFi): 'http://192.168.1.235:5284'
+  // Android emulator:            'http://10.0.2.2:5284'
+  // iOS simulator/localhost:     'http://localhost:5284'
 
   static const Duration timeout = Duration(seconds: 60);
 

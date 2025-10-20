@@ -4,8 +4,6 @@ import '../models/auction_request.dart';
 import 'api_client.dart';
 
 class AuctionRequestService {
-  static const String _baseUrl = 'http://localhost:5284/api';
-
   Future<AuctionRequestResponse> createAuctionRequest(
     AuctionRequest request,
   ) async {
@@ -18,7 +16,7 @@ class AuctionRequestService {
     print('📤 Request data: ${jsonEncode(request.toJson())}');
 
     final response = await http.post(
-      Uri.parse('$_baseUrl/Auction/request'),
+      Uri.parse('${ApiClient.baseUrl}/api/Auction/request'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -47,7 +45,7 @@ class AuctionRequestService {
     }
 
     final response = await http.get(
-      Uri.parse('$_baseUrl/Auction/requests'),
+      Uri.parse('${ApiClient.baseUrl}/api/Auction/requests'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

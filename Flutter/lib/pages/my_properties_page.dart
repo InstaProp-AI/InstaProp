@@ -9,11 +9,7 @@ import '../widgets/property_image_carousel.dart';
 import '../services/auction_service.dart';
 import 'add_property_page.dart';
 import 'edit_property_page.dart';
-import 'property_docs_upload_page.dart';
-import 'payment_schedule_scanner_dialog.dart';
-import '../services/event_service.dart';
 import '../services/property_financials_service.dart';
-import '../models/event.dart';
 import '../services/api_client.dart';
 import '../widgets/property_installments_card.dart';
 
@@ -84,46 +80,34 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Properties'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.surface,
-        elevation: 0,
-      ),
+      backgroundColor: Colors.white,
       body: Consumer<AppState>(
         builder: (context, appState, child) {
-          if (appState.loadingProperties) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final userProperties = appState.userProperties;
-
-          if (userProperties.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.home_outlined,
-                    size: 80,
-                    color: AppColors.secondary,
+          return CustomScrollView(
+            slivers: [
+              // Minimal Header
+              SliverAppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                pinned: true,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                title: const Text(
+                  'My Properties',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No Properties Yet',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.primary,
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.add, color: Color(0xFF1A1A1A)),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.grey[100],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add your first property to get started',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -132,49 +116,97 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Property'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.surface,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+
+              // Content
+              if (appState.loadingProperties)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (appState.userProperties.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.home_outlined,
+                            size: 64,
+                            color: Colors.grey[300],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No Properties Yet',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Add your first property to get started',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AddPropertyPage(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add, size: 20),
+                                SizedBox(width: 8),
+                                Text('Add Property'),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              await appState.loadProperties();
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: userProperties.length,
-              itemBuilder: (context, index) {
-                final property = userProperties[index];
-                return PropertyCard(
-                  property: property,
-                  onRequestAuction: () => _requestAuction(property),
-                );
-              },
-            ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.all(20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final property = appState.userProperties[index];
+                      return PropertyCard(
+                        property: property,
+                        onRequestAuction: () => _requestAuction(property),
+                      );
+                    }, childCount: appState.userProperties.length),
+                  ),
+                ),
+            ],
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddPropertyPage()),
-          );
-        },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: AppColors.surface),
       ),
     );
   }
@@ -356,10 +388,13 @@ class PropertyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -367,12 +402,12 @@ class PropertyCard extends StatelessWidget {
           PropertyImageCarousel(
             images: property.propertyImages,
             fallbackImageUrl: property.imageUrl,
-            height: 200,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            height: 240,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
 
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -383,166 +418,197 @@ class PropertyCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         property.name,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.5,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     _buildStatusChip(),
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
                 // Location
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 16, color: AppColors.primary),
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: Colors.grey[500],
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         property.location,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.primary,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                // Property Details
-                Row(
-                  children: [
-                    _buildDetailChip(Icons.bed, '${property.bedrooms}'),
-                    const SizedBox(width: 8),
-                    _buildDetailChip(Icons.bathtub, '${property.bathrooms}'),
-                    const SizedBox(width: 8),
-                    _buildDetailChip(
-                      Icons.square_foot,
-                      '${property.squareFeet}',
                     ),
                   ],
                 ),
 
                 const SizedBox(height: 16),
 
-                // Action Buttons - Row 1
+                // Property Details
                 Row(
                   children: [
-                    // Edit Button - Small button always visible
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _handleEdit(context, property),
-                        icon: const Icon(Icons.edit, size: 16),
-                        label: const Text(
-                          'Edit',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: BorderSide(color: AppColors.primary),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
+                    _buildDetailChip(
+                      Icons.bed_outlined,
+                      '${property.bedrooms} bed',
                     ),
-
                     const SizedBox(width: 8),
-
-                    // Delete Button - Small button always visible
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _handleDelete(context, property),
-                        icon: const Icon(Icons.delete, size: 16),
-                        label: const Text(
-                          'Delete',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: BorderSide(color: AppColors.primary),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
+                    _buildDetailChip(
+                      Icons.bathtub_outlined,
+                      '${property.bathrooms} bath',
                     ),
-
-                    // Documents Button - Only visible for non-approved properties
-                    if (!property.isApproved) ...[
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PropertyDocsUploadPage(
-                                  propertyId: property.propertyId,
-                                  propertyName: property.name,
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.upload_file, size: 16),
-                          label: const Text(
-                            'Docs',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.blue,
-                            side: const BorderSide(color: Colors.blue),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ],
+                    const SizedBox(width: 8),
+                    _buildDetailChip(
+                      Icons.square_foot_outlined,
+                      '${property.squareFeet} sqft',
+                    ),
                   ],
                 ),
 
-                // Action Buttons - Row 2 (Auction button if approved)
-                if (property.isApproved) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: onRequestAuction,
-                      icon: const Icon(Icons.gavel, size: 18),
-                      label: const Text(
-                        'Request Auction',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.surface,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                const SizedBox(height: 20),
+
+                // Financials Summary
+                FutureBuilder<ApiResponse<PropertyFinancials>>(
+                  future: PropertyFinancialsService.getFinancials(
+                    property.propertyId,
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData &&
+                        snapshot.data!.success &&
+                        snapshot.data!.data != null) {
+                      final fin = snapshot.data!.data!;
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Financial Summary',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                _buildFinancialStat(
+                                  'Paid',
+                                  '\$${_formatNumber(fin.paidSoFar)}',
+                                  Colors.green,
+                                ),
+                                _buildFinancialStat(
+                                  'Remaining',
+                                  '\$${_formatNumber(fin.remainingToPay)}',
+                                  Colors.orange,
+                                ),
+                                if (fin.roiPercent != null)
+                                  _buildFinancialStat(
+                                    'ROI',
+                                    '${fin.roiPercent!.toStringAsFixed(1)}%',
+                                    fin.roiPercent! >= 0
+                                        ? Colors.green
+                                        : Colors.red,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _handleEdit(context, property),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF1A1A1A),
+                          side: BorderSide(color: Colors.grey[300]!),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: 6),
+                            Text('Edit'),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _handleDelete(context, property),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: BorderSide(color: Colors.red[200]!),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.delete_outline, size: 18),
+                            SizedBox(width: 6),
+                            Text('Delete'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                if (property.isApproved) ...[
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await showDialog(
-                          context: context,
-                          builder: (context) => PaymentScheduleScannerDialog(
-                            initialProperty: property,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.event_available, size: 18),
-                      label: const Text(
-                        'Add Payment Schedule',
-                        style: TextStyle(fontSize: 14),
+                    child: ElevatedButton(
+                      onPressed: onRequestAuction,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.blue,
-                        side: const BorderSide(color: Colors.blue),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.gavel, size: 20),
+                          SizedBox(width: 8),
+                          Text('Request Auction'),
+                        ],
                       ),
                     ),
                   ),
@@ -553,230 +619,7 @@ class PropertyCard extends StatelessWidget {
                 PropertyInstallmentsCard(
                   propertyId: property.propertyId,
                   onPaymentMade: () {
-                    // Refresh property data when payment is made
                     context.read<AppState>().loadProperties();
-                  },
-                ),
-
-                if (!property.isApproved)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.secondary),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info, color: AppColors.primary, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Property pending admin verification',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                if (property.isApproved)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.verified, color: Colors.green, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Property verified - documents and details are locked',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 12),
-                // Payments & Financials quick view
-                FutureBuilder(
-                  future: Future.wait([
-                    EventService.getEventsByProperty(property.propertyId),
-                    PropertyFinancialsService.getFinancials(
-                      property.propertyId,
-                    ),
-                  ]),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox.shrink();
-                    }
-                    if (!snapshot.hasData) return const SizedBox.shrink();
-                    final eventsResp =
-                        snapshot.data![0] as ApiResponse<List<Event>>;
-                    final finResp =
-                        snapshot.data![1] as ApiResponse<PropertyFinancials>;
-                    if (!eventsResp.success ||
-                        !finResp.success ||
-                        eventsResp.data == null ||
-                        finResp.data == null) {
-                      return const SizedBox.shrink();
-                    }
-
-                    final payments =
-                        eventsResp.data!
-                            .where((e) => e.type == EventType.installment)
-                            .toList()
-                          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
-                    final fin = finResp.data!;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Payments & Financials',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.secondary),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  _miniStat(
-                                    'Paid',
-                                    '\$${fin.paidSoFar.toStringAsFixed(0)}',
-                                  ),
-                                  _miniStat(
-                                    'Remaining',
-                                    '\$${fin.remainingToPay.toStringAsFixed(0)}',
-                                  ),
-                                  _miniStat(
-                                    'Total',
-                                    '\$${fin.sumInstallments.toStringAsFixed(0)}',
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              if (fin.roiPercent != null)
-                                Row(
-                                  children: [
-                                    _miniStat(
-                                      'ROI',
-                                      '${fin.roiPercent!.toStringAsFixed(1)}%',
-                                    ),
-                                  ],
-                                ),
-                              const SizedBox(height: 8),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Upcoming Installments',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              ...payments
-                                  .where(
-                                    (e) =>
-                                        !e.isCompleted &&
-                                        e.eventDate.isAfter(
-                                          DateTime.now().subtract(
-                                            const Duration(days: 1),
-                                          ),
-                                        ),
-                                  )
-                                  .take(3)
-                                  .map(
-                                    (e) => Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.event,
-                                          size: 14,
-                                          color: Colors.blue,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            '${e.eventDate.year}-${e.eventDate.month.toString().padLeft(2, '0')}-${e.eventDate.day.toString().padLeft(2, '0')}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                        Text(
-                                          e.amount != null
-                                              ? '\$${e.amount!.toStringAsFixed(0)}'
-                                              : '',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  OutlinedButton.icon(
-                                    onPressed: () async {
-                                      // Run valuation then refresh
-                                      if (!context.mounted) return;
-                                      Navigator.pushNamed(context, '/valuate');
-                                    },
-                                    icon: const Icon(
-                                      Icons.assessment,
-                                      size: 16,
-                                    ),
-                                    label: const Text('Run Valuation'),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  TextButton(
-                                    onPressed: () async {
-                                      await showDialog(
-                                        context: context,
-                                        builder: (context) =>
-                                            PaymentScheduleScannerDialog(
-                                              initialProperty: property,
-                                            ),
-                                      );
-                                      if (context.mounted) {
-                                        context
-                                            .read<AppState>()
-                                            .loadProperties();
-                                      }
-                                    },
-                                    child: const Text('Add/Update Schedule'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
                   },
                 ),
               ],
@@ -788,45 +631,33 @@ class PropertyCard extends StatelessWidget {
   }
 
   Widget _buildStatusChip() {
-    Color backgroundColor;
-    Color textColor;
-    String text;
-
-    if (property.isApproved) {
-      backgroundColor = AppColors.background;
-      textColor = Colors.green[800]!;
-      text = 'Verified';
-    } else {
-      backgroundColor = Colors.orange[100]!;
-      textColor = Colors.orange[800]!;
-      text = 'Pending';
-    }
+    final isApproved = property.isApproved;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: isApproved
+            ? Colors.green.withOpacity(0.1)
+            : Colors.orange.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _miniStat(String label, String value) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Icon(
+            isApproved ? Icons.verified : Icons.schedule,
+            size: 12,
+            color: isApproved ? Colors.green : Colors.orange,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isApproved ? 'Verified' : 'Pending',
+            style: TextStyle(
+              color: isApproved ? Colors.green : Colors.orange,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -834,20 +665,64 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildDetailChip(IconData icon, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: Colors.grey[100],
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.primary),
+          Icon(icon, size: 14, color: Colors.grey[700]),
           const SizedBox(width: 4),
-          Text(text, style: TextStyle(color: AppColors.primary, fontSize: 12)),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildFinancialStat(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatNumber(double number) {
+    if (number >= 1000000) {
+      return '${(number / 1000000).toStringAsFixed(1)}M';
+    } else if (number >= 1000) {
+      return '${(number / 1000).toStringAsFixed(0)}K';
+    } else {
+      return number.toStringAsFixed(0);
+    }
   }
 }
 

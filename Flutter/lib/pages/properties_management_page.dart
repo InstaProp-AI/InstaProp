@@ -3,19 +3,22 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:fl_chart/fl_chart.dart';
 import '../providers/app_state.dart';
 import '../models/bid.dart';
 import '../models/auction.dart';
 import '../services/bid_service.dart';
+import '../services/property_financials_service.dart';
 import 'add_property_page.dart';
 import 'valuate_page.dart';
 import 'my_properties_page.dart';
 import 'auction_details_page.dart';
 import 'auctions_page.dart';
 import 'create_auction_request_dialog.dart';
+import 'portfolio_analytics_page.dart';
 import '../widgets/loading_button.dart';
 import 'calendar_page.dart';
-// removed: saved searches feature
+import '../services/api_client.dart';
 
 class PropertiesManagementPage extends StatefulWidget {
   const PropertiesManagementPage({super.key});
@@ -28,6 +31,9 @@ class PropertiesManagementPage extends StatefulWidget {
 class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
   List<Bid> _myBids = [];
   bool _loadingBids = true;
+  bool _loadingFinancials = true;
+  PortfolioSummary? _portfolioSummary;
+  List<PropertyFinancials> _propertiesFinancials = [];
 
   @override
   void initState() {
@@ -36,8 +42,57 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
       if (context.read<AppState>().isLoggedIn) {
         context.read<AppState>().loadProperties();
         _loadMyBids();
+        _loadPortfolioFinancials();
       }
     });
+  }
+
+  Future<void> _loadPortfolioFinancials() async {
+    setState(() {
+      _loadingFinancials = true;
+    });
+
+    try {
+      final appState = context.read<AppState>();
+      final propertyIds = appState.userProperties
+          .map((p) => p.propertyId)
+          .toList();
+
+      if (propertyIds.isEmpty) {
+        setState(() {
+          _portfolioSummary = PortfolioSummary(
+            totalNetValue: 0,
+            totalAssets: 0,
+            totalOwed: 0,
+            totalEquity: 0,
+            averageROI: 0,
+            propertiesCount: 0,
+          );
+          _propertiesFinancials = [];
+          _loadingFinancials = false;
+        });
+        return;
+      }
+
+      final financials =
+          await PropertyFinancialsService.getAllPropertiesFinancials(
+            propertyIds,
+          );
+      final summary = PropertyFinancialsService.calculatePortfolioSummary(
+        financials,
+      );
+
+      setState(() {
+        _propertiesFinancials = financials;
+        _portfolioSummary = summary;
+        _loadingFinancials = false;
+      });
+    } catch (e) {
+      print('Error loading portfolio financials: $e');
+      setState(() {
+        _loadingFinancials = false;
+      });
+    }
   }
 
   Future<void> _loadMyBids() async {
@@ -88,11 +143,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Properties'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: AppColors.surface,
-      ),
+      backgroundColor: Colors.white,
       body: Consumer<AppState>(
         builder: (context, appState, child) {
           if (appState.isLoggedIn) {
@@ -107,279 +158,434 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
 
   Widget _buildLoggedInContent(BuildContext context, AppState appState) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Welcome Section
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.primary,
-                  Theme.of(context).colorScheme.secondary,
+          // Minimal Header
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Portfolio',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Hello, ${appState.user?.firstName}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[600],
+                      letterSpacing: -0.3,
+                    ),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back, ${appState.user?.firstName}! 👋',
-                  style: const TextStyle(
-                    color: AppColors.surface,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Manage properties & valuations',
-                  style: TextStyle(
-                    color: AppColors.surface.withOpacity(0.9),
-                    fontSize: 16,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          // Quick Access Row: Calendar
-          Row(children: [Expanded(child: _buildCalendarSection(context))]),
-
-          const SizedBox(height: 20),
-
-          // My Bids Section
-          _buildMyBidsSection(appState),
-
-          const SizedBox(height: 24),
-
-          // Quick Actions
-          Text(
-            'Quick Actions',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionCard(
-                  context,
-                  icon: Icons.add_home_work,
-                  title: 'Add Property',
-                  subtitle: 'List your property',
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AddPropertyPage(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildActionCard(
-                  context,
-                  icon: Icons.assessment,
-                  title: 'Get Valuation',
-                  subtitle: 'Detailed analysis',
-                  color: Colors.blue,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ValuatePage(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // My Properties Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'My Properties',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyPropertiesPage(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.view_list),
-                label: const Text('View All'),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Properties List
-          if (appState.loadingProperties)
-            const Center(child: CircularProgressIndicator())
-          else if (appState.userProperties.isEmpty)
-            _buildEmptyPropertiesState(context)
-          else
-            _buildPropertiesList(context, appState),
+          // Financial Dashboard
+          if (!_loadingFinancials && _portfolioSummary != null)
+            _buildFinancialDashboard(),
 
           const SizedBox(height: 32),
 
-          // My Auctions Section
-          _buildMyAuctionsSection(context, appState),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Quick Access: Calendar
+                _buildCalendarSection(context),
+
+                const SizedBox(height: 24),
+
+                // My Bids Section
+                _buildMyBidsSection(appState),
+
+                const SizedBox(height: 32),
+
+                // Quick Actions
+                const Text(
+                  'Quick Actions',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
+                    letterSpacing: -0.7,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        icon: Icons.add_home_work,
+                        title: 'Add Property',
+                        subtitle: 'List your property',
+                        color: Colors.green,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AddPropertyPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        icon: Icons.assessment,
+                        title: 'Get Valuation',
+                        subtitle: 'Detailed analysis',
+                        color: Colors.blue,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ValuatePage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 32),
+
+                // My Properties Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'My Properties',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1A),
+                        letterSpacing: -0.7,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MyPropertiesPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.view_list),
+                      label: const Text('View All'),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Properties List
+                if (appState.loadingProperties)
+                  const Center(child: CircularProgressIndicator())
+                else if (appState.userProperties.isEmpty)
+                  _buildEmptyPropertiesState(context)
+                else
+                  _buildPropertiesList(context, appState),
+
+                const SizedBox(height: 32),
+
+                // My Auctions Section
+                _buildMyAuctionsSection(context, appState),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCalendarSection(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.purple.shade400, Colors.blue.shade400],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.purple.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+  Widget _buildFinancialDashboard() {
+    final summary = _portfolioSummary!;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Key Metrics Grid
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.5,
+            children: [
+              _buildMetricCard(
+                'Net Value',
+                '\$${_formatNumber(summary.totalNetValue)}',
+                Colors.green,
+              ),
+              _buildMetricCard(
+                'Total Assets',
+                '\$${_formatNumber(summary.totalAssets)}',
+                Colors.blue,
+              ),
+              _buildMetricCard(
+                'Total Owed',
+                '\$${_formatNumber(summary.totalOwed)}',
+                Colors.orange,
+              ),
+              _buildMetricCard(
+                'Avg ROI',
+                '${summary.averageROI.toStringAsFixed(1)}%',
+                summary.averageROI >= 0 ? Colors.green : Colors.red,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Pie Chart
+          if (summary.totalAssets > 0) _buildOwnVsOwePieChart(summary),
+
+          const SizedBox(height: 24),
+
+          // Analytics Button
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PortfolioAnalyticsPage(
+                      summary: summary,
+                      propertiesFinancials: _propertiesFinancials,
+                    ),
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.grey[100],
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'View Detailed Analytics',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.arrow_forward, size: 18, color: Colors.grey[800]),
+                ],
+              ),
+            ),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CalendarPage()),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.calendar_month,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'My Calendar',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    // Rewards progress (mini)
-                    Consumer<AppState>(
-                      builder: (context, appState, _) {
-                        final points = appState.user?.totalPoints ?? 0;
-                        final nextTarget = points < 100
-                            ? 100
-                            : points < 500
-                            ? 500
-                            : points < 1000
-                            ? 1000
-                            : 5000;
-                        final start = points < 100
-                            ? 0
-                            : points < 500
-                            ? 100
-                            : points < 1000
-                            ? 500
-                            : 1000;
-                        final progress =
-                            ((points - start) / (nextTarget - start)).clamp(
-                              0.0,
-                              1.0,
-                            );
-                        return SizedBox(
-                          width: 120,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '$points pts',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: LinearProgressIndicator(
-                                  value: progress,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.white24,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.greenAccent,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Events & schedules',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
             ),
           ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: color,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnVsOwePieChart(PortfolioSummary summary) {
+    final owned = summary.totalEquity;
+    final owed = summary.totalOwed;
+
+    return Container(
+      height: 220,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 2,
+                centerSpaceRadius: 50,
+                sections: [
+                  PieChartSectionData(
+                    color: Colors.green,
+                    value: owned,
+                    title: '${summary.ownedPercent.toStringAsFixed(0)}%',
+                    radius: 40,
+                    titleStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  PieChartSectionData(
+                    color: Colors.orange,
+                    value: owed,
+                    title: '${summary.owedPercent.toStringAsFixed(0)}%',
+                    radius: 40,
+                    titleStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildLegendItem('Owned', Colors.green),
+              const SizedBox(width: 24),
+              _buildLegendItem('Owed', Colors.orange),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[700],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatNumber(double number) {
+    if (number >= 1000000) {
+      return '${(number / 1000000).toStringAsFixed(1)}M';
+    } else if (number >= 1000) {
+      return '${(number / 1000).toStringAsFixed(0)}K';
+    } else {
+      return number.toStringAsFixed(0);
+    }
+  }
+
+  Widget _buildCalendarSection(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CalendarPage()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.calendar_month,
+                color: Colors.blue,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'My Calendar',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Events & schedules',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+          ],
         ),
       ),
     );
@@ -402,26 +608,17 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue, Colors.blue.shade700],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.gavel, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Text(
+            const Text(
               'Your Positions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: -0.7,
               ),
             ),
-            const Spacer(),
             if (_loadingBids)
               const SizedBox(
                 width: 20,
@@ -436,15 +633,14 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 ),
                 decoration: BoxDecoration(
                   color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.blue),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${latestBids.length} ${latestBids.length == 1 ? 'Property' : 'Properties'}',
+                  '${latestBids.length}',
                   style: const TextStyle(
                     color: Colors.blue,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -456,25 +652,20 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.secondary, width: 1),
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Center(
               child: Column(
                 children: [
-                  Icon(
-                    Icons.gavel_rounded,
-                    size: 60,
-                    color: AppColors.secondary,
-                  ),
+                  Icon(Icons.gavel_rounded, size: 48, color: Colors.grey[300]),
                   const SizedBox(height: 16),
-                  Text(
+                  const Text(
                     'No Positions',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
                       fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -483,7 +674,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                     style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
                   const SizedBox(height: 20),
-                  ElevatedButton.icon(
+                  ElevatedButton(
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -492,15 +683,24 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.search, size: 18),
-                    label: const Text('Browse Auctions'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.surface,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
                       ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search, size: 18),
+                        SizedBox(width: 8),
+                        Text('Browse Auctions'),
+                      ],
                     ),
                   ),
                 ],
@@ -543,310 +743,168 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     final isWinning = auction.currentPrice == bid.bidAmount;
     final isActive = auction.isActive;
     final isEnded = auction.isEnded;
-    final isUpcoming = auction.isUpcoming;
     final property = auction.property;
 
-    // Derive status label and color based on auction state and user's position
-    Color statusColor;
-    String statusLabel;
-    if (isEnded) {
-      if (isWinning) {
-        statusColor = Colors.green;
-        statusLabel = 'WINNER';
-      } else {
-        statusColor = Colors.red;
-        statusLabel = 'AUCTION LOST';
-      }
-    } else if (isActive) {
-      if (isWinning) {
-        statusColor = Colors.green;
-        statusLabel = 'WINNING';
-      } else {
-        statusColor = Colors.orange;
-        statusLabel = 'OUTBID';
-      }
-    } else if (isUpcoming) {
-      statusColor = Colors.blue;
-      statusLabel = 'UPCOMING';
-    } else {
-      statusColor = Colors.grey;
-      statusLabel = auction.status.toUpperCase();
-    }
-
-    return Container(
-      width: 300,
-      margin: const EdgeInsets.only(right: 12),
-      child: Card(
-        elevation: isWinning ? 4 : 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: statusColor, width: 2),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AuctionDetailsPage(auction: auction),
+          ),
+        );
+      },
+      child: Container(
+        width: 280,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AuctionDetailsPage(auction: auction),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Property Image
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
               ),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Property Image with Status Badge
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                child: Stack(
-                  children: [
-                    Container(
-                      height: 100,
-                      width: double.infinity,
-                      color: Colors.grey[300],
-                      child:
-                          property?.imageUrl != null &&
-                              (property?.imageUrl.isNotEmpty ?? false)
-                          ? Image.network(
-                              property!.imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.home,
-                                  size: 40,
-                                  color: Colors.grey,
-                                );
-                              },
-                            )
-                          : const Icon(
-                              Icons.home,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                    ),
-                    // Position/Status Badge
+              child: Stack(
+                children: [
+                  Container(
+                    height: 140,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child:
+                        property?.imageUrl != null &&
+                            (property?.imageUrl.isNotEmpty ?? false)
+                        ? Image.network(
+                            property!.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.home,
+                                size: 40,
+                                color: Colors.grey[400],
+                              );
+                            },
+                          )
+                        : Icon(Icons.home, size: 40, color: Colors.grey[400]),
+                  ),
+                  // Status Badge
+                  if (isWinning && isActive)
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 12,
+                      right: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: statusColor,
+                          color: Colors.green,
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 4,
-                            ),
-                          ],
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              isEnded
-                                  ? (isWinning
-                                        ? Icons.emoji_events
-                                        : Icons.cancel)
-                                  : (isActive
-                                        ? (isWinning
-                                              ? Icons.emoji_events
-                                              : Icons.warning)
-                                        : Icons.schedule),
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              statusLabel,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Bid Details
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Property Name
-                    Text(
-                      property?.name ?? 'Property #${auction.propertyId}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Stats Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Your Bid
-                        _buildBidStat(
-                          'Your Bid',
-                          '\$${bid.bidAmount.toStringAsFixed(0)}',
-                          Colors.blue,
-                        ),
-                        // Current Price
-                        _buildBidStat(
-                          'Current',
-                          '\$${auction.currentPrice.toStringAsFixed(0)}',
-                          isWinning ? Colors.green : Colors.red,
-                        ),
-                        // Total Bids
-                        _buildBidStat(
-                          'Bids',
-                          '${auction.bidCount}',
-                          Colors.purple,
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Status Info
-                    if (isActive && !isWinning)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.arrow_upward,
-                              size: 12,
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Outbid',
-                              style: const TextStyle(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
                               Icons.emoji_events,
                               size: 12,
-                              color: Colors.green,
+                              color: Colors.white,
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
-                              isEnded
-                                  ? (isWinning ? 'Winner' : 'Auction lost')
-                                  : (isActive
-                                        ? (isWinning
-                                              ? 'You\'re in the lead!'
-                                              : 'Outbid')
-                                        : (isUpcoming
-                                              ? 'Starts soon'
-                                              : auction.status)),
+                              'Winning',
                               style: TextStyle(
-                                color: isEnded
-                                    ? (isWinning ? Colors.green : Colors.red)
-                                    : (isActive
-                                          ? (isWinning
-                                                ? Colors.green
-                                                : Colors.orange)
-                                          : Colors.blue),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 8),
-                    // Position state: Live / Expired
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isEnded
-                              ? Colors.red.withOpacity(0.08)
-                              : Colors.green.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isEnded ? Colors.red : Colors.green,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isEnded
-                                  ? Icons.event_busy
-                                  : Icons.event_available,
-                              size: 12,
-                              color: isEnded ? Colors.red : Colors.green,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isEnded ? 'Expired' : 'Live',
-                              style: TextStyle(
-                                color: isEnded ? Colors.red : Colors.green,
+                                color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 10,
+                                fontSize: 11,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            // Bid Details
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    property?.name ?? 'Property #${auction.propertyId}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Stats Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildBidStat(
+                        'Your Bid',
+                        '\$${bid.bidAmount.toStringAsFixed(0)}',
+                        Colors.blue,
+                      ),
+                      _buildBidStat(
+                        'Current',
+                        '\$${auction.currentPrice.toStringAsFixed(0)}',
+                        isWinning ? Colors.green : Colors.red,
+                      ),
+                      _buildBidStat(
+                        'Bids',
+                        '${auction.bidCount}',
+                        Colors.grey[700]!,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isEnded
+                          ? Colors.grey[200]
+                          : (isWinning
+                                ? Colors.green.withOpacity(0.1)
+                                : Colors.orange.withOpacity(0.1)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isEnded
+                          ? (isWinning ? 'Won' : 'Lost')
+                          : (isActive
+                                ? (isWinning ? 'Leading' : 'Outbid')
+                                : auction.status),
+                      style: TextStyle(
+                        color: isEnded
+                            ? Colors.grey[700]
+                            : (isWinning ? Colors.green : Colors.orange),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -860,16 +918,16 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           label,
           style: TextStyle(
             color: Colors.grey[600],
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
             color: color,
           ),
         ),
@@ -879,115 +937,128 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
 
   Widget _buildNotLoggedInContent(BuildContext context, AppState appState) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Welcome Section
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.primary,
-                  Theme.of(context).colorScheme.secondary,
+          // Minimal Header
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Portfolio',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Property Management',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[600],
+                      letterSpacing: -0.3,
+                    ),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Explore Property Management',
-                  style: TextStyle(
-                    color: AppColors.surface,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Get property valuations and manage your listings',
-                  style: TextStyle(
-                    color: AppColors.surface.withOpacity(0.9),
-                    fontSize: 16,
-                  ),
-                ),
-              ],
             ),
           ),
 
-          const SizedBox(height: 24),
-
-          // Quick Access Row: Calendar & Valuation
-          Row(
-            children: [
-              Expanded(child: _buildCalendarSection(context)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildActionCard(
-                  context,
-                  icon: Icons.assessment,
-                  title: 'Quick Estimate',
-                  subtitle: 'Property valuation',
-                  color: Colors.blue,
-                  onTap: () {
-                    _showQuickValuationDialog(context);
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Login Prompt
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.secondary),
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Quick Access Row: Calendar & Valuation
                 Row(
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Want More Features?',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Expanded(child: _buildCalendarSection(context)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionCard(
+                        context,
+                        icon: Icons.assessment,
+                        title: 'Quick Estimate',
+                        subtitle: 'Property valuation',
+                        color: Colors.blue,
+                        onTap: () {
+                          _showQuickValuationDialog(context);
+                        },
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Sign up to add your own properties, get detailed valuations, and manage your listings.',
-                  style: TextStyle(color: AppColors.primary, fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
+
+                const SizedBox(height: 32),
+
+                // Login Prompt
+                Container(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Navigate to auth page
-                      Navigator.pushNamed(context, '/auth');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.surface,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('Sign Up Now'),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.info_outline,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Want More Features?',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Sign up to add your own properties, get detailed valuations, and manage your listings.',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/auth');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Sign Up Now'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1006,40 +1077,40 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 32),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 12, color: AppColors.primary),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
@@ -1047,32 +1118,31 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
 
   Widget _buildEmptyPropertiesState(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.secondary),
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
-          Icon(Icons.home_outlined, size: 64, color: AppColors.secondary),
+          Icon(Icons.home_outlined, size: 48, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No Properties Yet',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(color: AppColors.primary),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Add your first property to get started',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
+          const SizedBox(height: 20),
+          ElevatedButton(
             onPressed: () {
               Navigator.push(
                 context,
@@ -1081,12 +1151,15 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 ),
               );
             },
-            icon: const Icon(Icons.add),
-            label: const Text('Add Property'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: AppColors.surface,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
+            child: const Text('Add Property'),
           ),
         ],
       ),
@@ -1096,60 +1169,86 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
   Widget _buildPropertiesList(BuildContext context, AppState appState) {
     return Column(
       children: appState.userProperties.take(3).map((property) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          child: ListTile(
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                property.imageUrl,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 60,
-                    height: 60,
-                    color: AppColors.background,
-                    child: const Icon(Icons.home, color: Colors.grey),
-                  );
-                },
-              ),
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MyPropertiesPage()),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(16),
             ),
-            title: Text(
-              property.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(property.location),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: property.isApproved
-                    ? AppColors.background
-                    : Colors.orange[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                property.isApproved ? 'Approved' : 'Pending',
-                style: TextStyle(
-                  color: property.isApproved
-                      ? AppColors.primary
-                      : AppColors.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    property.imageUrl,
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 70,
+                        height: 70,
+                        color: Colors.grey[200],
+                        child: Icon(
+                          Icons.home,
+                          color: Colors.grey[400],
+                          size: 28,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const MyPropertiesPage(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        property.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        property.location,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: property.isApproved
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    property.isApproved ? 'Approved' : 'Pending',
+                    style: TextStyle(
+                      color: property.isApproved ? Colors.green : Colors.orange,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }).toList(),
@@ -1171,28 +1270,39 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               'My Auctions',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: -0.7,
+              ),
             ),
-            ElevatedButton.icon(
+            ElevatedButton(
               onPressed: () {
                 showDialog(
                   context: context,
                   builder: (context) => const CreateAuctionRequestDialog(),
                 );
               },
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Create Auction'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.surface,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 8,
+                  vertical: 10,
                 ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.add, size: 18),
+                  SizedBox(width: 4),
+                  Text('Create'),
+                ],
               ),
             ),
           ],
@@ -1249,35 +1359,27 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
       children: [
         Row(
           children: [
-            Container(
-              width: 4,
-              height: 20,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 8),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
               ),
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '${auctions.length}',
                 style: TextStyle(
                   color: color,
                   fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -1303,118 +1405,95 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
   }
 
   Widget _buildAuctionCard(BuildContext context, auction, Color color) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AuctionDetailsPage(auction: auction),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Property Image
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: auction.property?.imageUrl.isNotEmpty == true
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.network(
-                          auction.property!.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.home,
-                            color: AppColors.secondary,
-                            size: 20,
-                          ),
-                        ),
-                      )
-                    : Icon(Icons.home, color: AppColors.secondary, size: 20),
-              ),
-              const SizedBox(width: 12),
-
-              // Auction Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      auction.property?.name ?? 'Unknown Property',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      auction.property?.location ?? 'Unknown Location',
-                      style: TextStyle(color: AppColors.primary, fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          '\$${auction.currentPrice.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            auction.status,
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Status Icon
-              Icon(
-                auction.isActive
-                    ? Icons.play_circle
-                    : auction.isEnded
-                    ? Icons.check_circle
-                    : Icons.schedule,
-                color: color,
-                size: 20,
-              ),
-            ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AuctionDetailsPage(auction: auction),
           ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            // Property Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 60,
+                height: 60,
+                color: Colors.grey[200],
+                child: auction.property?.imageUrl.isNotEmpty == true
+                    ? Image.network(
+                        auction.property!.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Icon(Icons.home, color: Colors.grey[400], size: 24),
+                      )
+                    : Icon(Icons.home, color: Colors.grey[400], size: 24),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Auction Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    auction.property?.name ?? 'Unknown Property',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    auction.property?.location ?? 'Unknown Location',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '\$${auction.currentPrice.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Status Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                auction.status,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1422,43 +1501,52 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
 
   Widget _buildEmptyAuctionsState(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.secondary),
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
-          Icon(Icons.gavel_outlined, size: 64, color: AppColors.secondary),
+          Icon(Icons.gavel_outlined, size: 48, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No Auctions Yet',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(color: AppColors.primary),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Create your first auction request to get started',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
+          const SizedBox(height: 20),
+          ElevatedButton(
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (context) => const CreateAuctionRequestDialog(),
               );
             },
-            icon: const Icon(Icons.add),
-            label: const Text('Create Auction Request'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: AppColors.surface,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 18),
+                SizedBox(width: 8),
+                Text('Create Auction'),
+              ],
             ),
           ),
         ],
@@ -1518,7 +1606,7 @@ class _QuickValuationDialogState extends State<QuickValuationDialog> {
     try {
       // Call the public estimation API
       final response = await http.post(
-        Uri.parse('http://localhost:5284/api/Property/estimate'),
+        Uri.parse('${ApiClient.baseUrl}/api/Property/estimate'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'location': _locationController.text,

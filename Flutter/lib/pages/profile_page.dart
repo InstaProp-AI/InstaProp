@@ -417,145 +417,154 @@ class _ProfilePageState extends State<ProfilePage> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.of(context).pushReplacementNamed('/auth');
           });
-          // Return empty scaffold while redirecting
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Profile'),
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.surface,
-            actions: [
-              if (!_isEditing && appState.isLoggedIn)
-                IconButton(
-                  onPressed: _showEditWarning,
-                  icon: const Icon(Icons.edit),
-                ),
-            ],
-          ),
+          backgroundColor: Colors.white,
           body: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (appState.isLoggedIn) ...[
-                    // Profile header
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green),
-                      ),
-                      child: Column(
-                        children: [
-                          Stack(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Minimal Header
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Profile',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1A1A),
+                            letterSpacing: -1,
+                          ),
+                        ),
+                        if (!_isEditing)
+                          IconButton(
+                            onPressed: _showEditWarning,
+                            icon: const Icon(Icons.edit_outlined),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.grey[100],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Profile Avatar Section
+                        Center(
+                          child: Stack(
                             children: [
                               CircleAvatar(
-                                radius: 40,
-                                backgroundColor: AppColors.primary,
+                                radius: 50,
+                                backgroundColor: Colors.grey[200],
                                 child: Text(
                                   (appState.user?.firstName ?? 'U')[0]
                                       .toUpperCase(),
                                   style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.surface,
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1A1A1A),
                                   ),
                                 ),
                               ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                              if (appState.user?.topBadgeIcon != null)
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 2,
+                                      ),
                                     ),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.purple.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () {
-                                        Navigator.pushNamed(context, '/rewards');
-                                      },
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        child: const Icon(
-                                          Icons.stars,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
+                                    child: Text(
+                                      appState.user!.topBadgeIcon!,
+                                      style: const TextStyle(fontSize: 20),
                                     ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Name and Email
+                        Center(
+                          child: Column(
                             children: [
                               Text(
                                 appState.user?.fullName ?? 'Guest User',
-                                style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              if (appState.user?.topBadgeIcon != null) ...[
-                                const SizedBox(width: 8),
-                                Text(
-                                  appState.user!.topBadgeIcon!,
-                                  style: const TextStyle(fontSize: 24),
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1A1A1A),
+                                  letterSpacing: -0.5,
                                 ),
-                              ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                appState.user?.email ?? 'No email',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            appState.user?.email ?? 'No email',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: AppColors.primary),
-                          ),
-                          const SizedBox(height: 8),
-                          // Points display
-                          if (appState.user?.totalPoints != null)
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Status and Points Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
-                                vertical: 4,
+                                vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.2),
+                                color: _getStatusColor(appState.user!.status),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.amber),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
-                                    Icons.stars,
+                                  Icon(
+                                    _getStatusIcon(appState.user!.status),
                                     size: 14,
-                                    color: Colors.amber,
+                                    color: _getStatusTextColor(
+                                      appState.user!.status,
+                                    ),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '${appState.user!.totalPoints} points',
-                                    style: const TextStyle(
+                                    _getStatusText(appState.user!.status),
+                                    style: TextStyle(
+                                      color: _getStatusTextColor(
+                                        appState.user!.status,
+                                      ),
                                       fontWeight: FontWeight.w600,
                                       fontSize: 12,
                                     ),
@@ -563,625 +572,658 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ],
                               ),
                             ),
-                          const SizedBox(height: 12),
-                          // Points progress bar
-                          if (appState.user?.totalPoints != null)
-                            Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${appState.user!.totalPoints} points',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Next: ${_getNextMilestone(appState.user!.totalPoints!)} pts',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: LinearProgressIndicator(
-                                    value: _getProgressToNextBadge(
-                                      appState.user!.totalPoints!,
-                                    ),
-                                    minHeight: 12,
-                                    backgroundColor: Colors.grey[200],
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          Colors.green,
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${(_getProgressToNextBadge(appState.user!.totalPoints!) * 100).toInt()}% to next badge',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(appState.user!.status),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _getStatusIcon(appState.user!.status),
-                                  size: 14,
-                                  color: _getStatusTextColor(
-                                    appState.user!.status,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _getStatusText(appState.user!.status),
-                                  style: TextStyle(
-                                    color: _getStatusTextColor(
-                                      appState.user!.status,
-                                    ),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Quick Access Features (only when not editing)
-                    if (!_isEditing) ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildFeatureCard(
-                              context,
-                              icon: Icons.card_giftcard,
-                              title: 'Rewards',
-                              subtitle: 'Points & Badges',
-                              color: Colors.orange,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const RewardsPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // removed saved searches card
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // Email & Phone Verification Status
-                    if (!_isEditing) ...[
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.purple[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.purple[200]!),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.verified_user,
-                                  color: Colors.purple[700],
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Account Verification',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.purple[900],
-                                      ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Email Verification Status
-                            _buildVerificationItem(
-                              icon: Icons.email,
-                              title: 'Email Verification',
-                              subtitle: appState.user!.email,
-                              isVerified: appState.user!.emailVerified,
-                              onVerify: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => EmailVerificationPage(
-                                      email: appState.user!.email,
-                                      canSkip: true,
-                                      onVerified: () {
-                                        Navigator.pop(context);
-                                        _loadUserData();
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-
-                            const Divider(height: 24),
-
-                            // Phone Verification Status
-                            _buildVerificationItem(
-                              icon: Icons.phone,
-                              title: 'Phone Verification',
-                              subtitle: appState.user!.phoneNumber,
-                              isVerified: appState.user!.phoneVerified,
-                              onVerify: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => PhoneVerificationPage(
-                                      phoneNumber: appState.user!.phoneNumber,
-                                      canSkip: true,
-                                      onVerified: () {
-                                        Navigator.pop(context);
-                                        _loadUserData();
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // Error message
-                    if (_errorMessage != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.secondary),
-                        ),
-                        child: Text(
-                          _errorMessage!,
-                          style: TextStyle(color: AppColors.primary),
-                        ),
-                      ),
-
-                    // Success message
-                    if (_successMessage != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green[200]!),
-                        ),
-                        child: Text(
-                          _successMessage!,
-                          style: TextStyle(color: AppColors.primary),
-                        ),
-                      ),
-
-                    // Profile form
-                    Text(
-                      'Personal Information',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // First name
-                    CustomTextField(
-                      controller: _firstNameController,
-                      labelText: 'First Name',
-                      enabled: _isEditing,
-                      validator: (value) => value?.isEmpty == true
-                          ? 'First name is required'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Last name
-                    CustomTextField(
-                      controller: _lastNameController,
-                      labelText: 'Last Name',
-                      enabled: _isEditing,
-                      validator: (value) => value?.isEmpty == true
-                          ? 'Last name is required'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Phone number
-                    CustomTextField(
-                      controller: _phoneController,
-                      labelText: 'Phone Number',
-                      keyboardType: TextInputType.phone,
-                      enabled: _isEditing,
-                      validator: (value) => value?.isEmpty == true
-                          ? 'Phone number is required'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Email
-                    CustomTextField(
-                      controller: _emailController,
-                      labelText: 'Email',
-                      keyboardType: TextInputType.emailAddress,
-                      enabled: _isEditing,
-                      validator: (value) {
-                        if (value?.isEmpty == true) return 'Email is required';
-                        if (!value!.contains('@')) return 'Invalid email';
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Member since (read-only)
-                    TextFormField(
-                      initialValue:
-                          'Member since ${appState.user?.createdAt.day ?? 0}/${appState.user?.createdAt.month ?? 0}/${appState.user?.createdAt.year ?? 0}',
-                      decoration: const InputDecoration(
-                        labelText: 'Member Since',
-                        border: OutlineInputBorder(),
-                      ),
-                      enabled: false,
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Change Password Section
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.lock_outline,
-                                color: AppColors.primary,
-                                size: 24,
-                              ),
+                            if (appState.user?.totalPoints != null) ...[
                               const SizedBox(width: 12),
-                              Text(
-                                'Security',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Changing your password does not affect your verification status',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          if (!_showChangePassword)
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  setState(() {
-                                    _showChangePassword = true;
-                                    _passwordErrorMessage = null;
-                                  });
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pushNamed(context, '/rewards');
                                 },
-                                icon: const Icon(Icons.key),
-                                label: const Text('Change Password'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.surface,
+                                child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
+                                    horizontal: 12,
+                                    vertical: 6,
                                   ),
-                                ),
-                              ),
-                            ),
-
-                          if (_showChangePassword)
-                            Form(
-                              key: _passwordFormKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  // Password error message
-                                  if (_passwordErrorMessage != null)
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      margin: const EdgeInsets.only(bottom: 16),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.background,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: AppColors.secondary,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        _passwordErrorMessage!,
-                                        style: TextStyle(
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-
-                                  // Current password
-                                  CustomTextField(
-                                    controller: _currentPasswordController,
-                                    labelText: 'Current Password',
-                                    obscureText: true,
-                                    validator: (value) => value?.isEmpty == true
-                                        ? 'Current password is required'
-                                        : null,
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  const SizedBox(height: 16),
-
-                                  // New password
-                                  CustomTextField(
-                                    controller: _newPasswordController,
-                                    labelText: 'New Password',
-                                    obscureText: true,
-                                    validator: (value) {
-                                      if (value?.isEmpty == true) {
-                                        return 'New password is required';
-                                      }
-                                      if (value!.length < 6) {
-                                        return 'Password must be at least 6 characters';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // Confirm password
-                                  CustomTextField(
-                                    controller: _confirmPasswordController,
-                                    labelText: 'Confirm New Password',
-                                    obscureText: true,
-                                    validator: (value) {
-                                      if (value?.isEmpty == true) {
-                                        return 'Please confirm your password';
-                                      }
-                                      if (value !=
-                                          _newPasswordController.text) {
-                                        return 'Passwords do not match';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // Action buttons
-                                  Row(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Expanded(
-                                        child: LoadingButton(
-                                          onPressed: _isChangingPassword
-                                              ? null
-                                              : _changePassword,
-                                          isLoading: _isChangingPassword,
-                                          child: const Text('Update Password'),
-                                        ),
+                                      const Icon(
+                                        Icons.stars,
+                                        size: 14,
+                                        color: Colors.amber,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed: _isChangingPassword
-                                              ? null
-                                              : () {
-                                                  setState(() {
-                                                    _showChangePassword = false;
-                                                    _passwordErrorMessage =
-                                                        null;
-                                                    _currentPasswordController
-                                                        .clear();
-                                                    _newPasswordController
-                                                        .clear();
-                                                    _confirmPasswordController
-                                                        .clear();
-                                                  });
-                                                },
-                                          child: const Text('Cancel'),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${appState.user!.totalPoints} pts',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                          color: Color(0xFF1A1A1A),
                                         ),
                                       ),
                                     ],
                                   ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Quick Access (only when not editing)
+                        if (!_isEditing) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFeatureCard(
+                                  context,
+                                  icon: Icons.card_giftcard,
+                                  title: 'Rewards',
+                                  subtitle: 'Points & Badges',
+                                  color: Colors.orange,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const RewardsPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildFeatureCard(
+                                  context,
+                                  icon: Icons.verified_user,
+                                  title: 'Verification',
+                                  subtitle: 'KYC Status',
+                                  color: Colors.blue,
+                                  onTap: () {
+                                    if (appState.user!.status ==
+                                        VerificationStatus.notVerified) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              KycVerificationPage(
+                                                firstName:
+                                                    appState.user!.firstName,
+                                                lastName:
+                                                    appState.user!.lastName,
+                                                email: appState.user!.email,
+                                                isNewSignup: false,
+                                              ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Email & Phone Verification Status
+                        if (!_isEditing) ...[
+                          const Text(
+                            'Account Verification',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A1A),
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Email Verification
+                          _buildVerificationItem(
+                            icon: Icons.email_outlined,
+                            title: 'Email',
+                            subtitle: appState.user!.email,
+                            isVerified: appState.user!.emailVerified,
+                            onVerify: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EmailVerificationPage(
+                                    email: appState.user!.email,
+                                    canSkip: true,
+                                    onVerified: () {
+                                      Navigator.pop(context);
+                                      _loadUserData();
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Phone Verification
+                          _buildVerificationItem(
+                            icon: Icons.phone_outlined,
+                            title: 'Phone',
+                            subtitle: appState.user!.phoneNumber,
+                            isVerified: appState.user!.phoneVerified,
+                            onVerify: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PhoneVerificationPage(
+                                    phoneNumber: appState.user!.phoneNumber,
+                                    canSkip: true,
+                                    onVerified: () {
+                                      Navigator.pop(context);
+                                      _loadUserData();
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Error message
+                        if (_errorMessage != null)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+
+                        // Success message
+                        if (_successMessage != null)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _successMessage!,
+                              style: TextStyle(
+                                color: Colors.green[700],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+
+                        // Profile form
+                        const Text(
+                          'Personal Information',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1A1A1A),
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // First name
+                        CustomTextField(
+                          controller: _firstNameController,
+                          labelText: 'First Name',
+                          enabled: _isEditing,
+                          validator: (value) => value?.isEmpty == true
+                              ? 'First name is required'
+                              : null,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Last name
+                        CustomTextField(
+                          controller: _lastNameController,
+                          labelText: 'Last Name',
+                          enabled: _isEditing,
+                          validator: (value) => value?.isEmpty == true
+                              ? 'Last name is required'
+                              : null,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Phone number
+                        CustomTextField(
+                          controller: _phoneController,
+                          labelText: 'Phone Number',
+                          keyboardType: TextInputType.phone,
+                          enabled: _isEditing,
+                          validator: (value) => value?.isEmpty == true
+                              ? 'Phone number is required'
+                              : null,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Email
+                        CustomTextField(
+                          controller: _emailController,
+                          labelText: 'Email',
+                          keyboardType: TextInputType.emailAddress,
+                          enabled: _isEditing,
+                          validator: (value) {
+                            if (value?.isEmpty == true)
+                              return 'Email is required';
+                            if (!value!.contains('@')) return 'Invalid email';
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Member since (read-only)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Member Since',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                '${appState.user?.createdAt.day ?? 0}/${appState.user?.createdAt.month ?? 0}/${appState.user?.createdAt.year ?? 0}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Security Section
+                        const Text(
+                          'Security',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1A1A1A),
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        if (!_showChangePassword)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showChangePassword = true;
+                                  _passwordErrorMessage = null;
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey[100],
+                                foregroundColor: const Color(0xFF1A1A1A),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.lock_outlined, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('Change Password'),
                                 ],
                               ),
                             ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Verification Status Warning (if not verified or pending)
-                    if (appState.user!.status != VerificationStatus.verified &&
-                        !_isEditing)
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        margin: const EdgeInsets.only(bottom: 24),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors:
-                                appState.user!.status ==
-                                    VerificationStatus.pending
-                                ? [
-                                    AppColors.primary,
-                                    AppColors.primary.withOpacity(0.3),
-                                  ]
-                                : [
-                                    AppColors.background,
-                                    Colors.orange[100]!.withOpacity(0.3),
-                                  ],
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color:
-                                appState.user!.status ==
-                                    VerificationStatus.pending
-                                ? AppColors.primary
-                                : Colors.orange[300]!,
-                            width: 2,
+
+                        const SizedBox(height: 32),
+
+                        // Security Section
+                        const Text(
+                          'Security',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1A1A1A),
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        appState.user!.status ==
-                                            VerificationStatus.pending
-                                        ? AppColors.primary
-                                        : Colors.orange[100],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    appState.user!.status ==
-                                            VerificationStatus.pending
-                                        ? Icons.hourglass_empty
-                                        : Icons.verified_user,
-                                    color:
-                                        appState.user!.status ==
-                                            VerificationStatus.pending
-                                        ? AppColors.primary
-                                        : AppColors.primary,
-                                    size: 28,
-                                  ),
+                        const SizedBox(height: 16),
+
+                        if (!_showChangePassword)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showChangePassword = true;
+                                  _passwordErrorMessage = null;
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey[100],
+                                foregroundColor: const Color(0xFF1A1A1A),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.lock_outlined, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('Change Password'),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        if (_showChangePassword)
+                          Form(
+                            key: _passwordFormKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Password error message
+                                if (_passwordErrorMessage != null)
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red[50],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _passwordErrorMessage!,
+                                      style: TextStyle(
+                                        color: Colors.red[700],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+
+                                CustomTextField(
+                                  controller: _currentPasswordController,
+                                  labelText: 'Current Password',
+                                  obscureText: true,
+                                  validator: (value) => value?.isEmpty == true
+                                      ? 'Current password is required'
+                                      : null,
+                                ),
+                                const SizedBox(height: 16),
+
+                                CustomTextField(
+                                  controller: _newPasswordController,
+                                  labelText: 'New Password',
+                                  obscureText: true,
+                                  validator: (value) {
+                                    if (value?.isEmpty == true) {
+                                      return 'New password is required';
+                                    }
+                                    if (value!.length < 6) {
+                                      return 'Password must be at least 6 characters';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                CustomTextField(
+                                  controller: _confirmPasswordController,
+                                  labelText: 'Confirm New Password',
+                                  obscureText: true,
+                                  validator: (value) {
+                                    if (value?.isEmpty == true) {
+                                      return 'Please confirm your password';
+                                    }
+                                    if (value != _newPasswordController.text) {
+                                      return 'Passwords do not match';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: LoadingButton(
+                                        onPressed: _isChangingPassword
+                                            ? null
+                                            : _changePassword,
+                                        isLoading: _isChangingPassword,
+                                        child: const Text('Update'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: _isChangingPassword
+                                            ? null
+                                            : () {
+                                                setState(() {
+                                                  _showChangePassword = false;
+                                                  _passwordErrorMessage = null;
+                                                  _currentPasswordController
+                                                      .clear();
+                                                  _newPasswordController
+                                                      .clear();
+                                                  _confirmPasswordController
+                                                      .clear();
+                                                });
+                                              },
+                                        child: const Text('Cancel'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        const SizedBox(height: 24),
+
+                        // KYC Verification Banner (if not verified)
+                        if (appState.user!.status !=
+                                VerificationStatus.verified &&
+                            !_isEditing)
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            margin: const EdgeInsets.only(bottom: 24),
+                            decoration: BoxDecoration(
+                              color:
+                                  appState.user!.status ==
+                                      VerificationStatus.pending
+                                  ? Colors.blue[50]
+                                  : Colors.orange[50],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      appState.user!.status ==
+                                              VerificationStatus.pending
+                                          ? Icons.hourglass_empty
+                                          : Icons.verified_user,
+                                      color:
+                                          appState.user!.status ==
+                                              VerificationStatus.pending
+                                          ? Colors.blue[700]
+                                          : Colors.orange[700],
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
                                         appState.user!.status ==
                                                 VerificationStatus.pending
                                             ? 'Documents Under Review'
                                             : 'Complete Your Verification',
                                         style: TextStyle(
-                                          color:
-                                              appState.user!.status ==
-                                                  VerificationStatus.pending
-                                              ? AppColors.primary
-                                              : Colors.orange[900],
-                                          fontWeight: FontWeight.bold,
                                           fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1A1A1A),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        appState.user!.status ==
-                                                VerificationStatus.pending
-                                            ? 'Your documents are being reviewed by our team. We\'ll notify you once verified.'
-                                            : 'Upload your ID or Passport to unlock all features',
-                                        style: TextStyle(
-                                          color:
-                                              appState.user!.status ==
-                                                  VerificationStatus.pending
-                                              ? AppColors.primary
-                                              : AppColors.primary,
-                                          fontSize: 13,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  appState.user!.status ==
+                                          VerificationStatus.pending
+                                      ? 'Your documents are being reviewed. We\'ll notify you once verified.'
+                                      : 'Upload your ID or Passport to unlock all features',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                if (appState.user!.status ==
+                                    VerificationStatus.notVerified) ...[
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                KycVerificationPage(
+                                                  firstName:
+                                                      appState.user!.firstName,
+                                                  lastName:
+                                                      appState.user!.lastName,
+                                                  email: appState.user!.email,
+                                                  isNewSignup: false,
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                       ),
-                                    ],
+                                      child: const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.upload_file, size: 20),
+                                          SizedBox(width: 8),
+                                          Text('Upload Documents'),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                        // Edit Warning
+                        if (_isEditing)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Colors.blue[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Saving changes will set your account to pending. An admin will review your updates.',
+                                    style: TextStyle(
+                                      color: Colors.blue[700],
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                            // Only show upload button if NotVerified
-                            if (appState.user!.status ==
-                                VerificationStatus.notVerified) ...[
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            KycVerificationPage(
-                                              firstName:
-                                                  appState.user!.firstName,
-                                              lastName: appState.user!.lastName,
-                                              email: appState.user!.email,
-                                              isNewSignup:
-                                                  false, // Existing user
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.upload_file),
-                                  label: const Text(
-                                    'Upload Verification Documents',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.surface,
+                          ),
+
+                        // Save/Cancel Buttons (when editing)
+                        if (_isEditing)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: LoadingButton(
+                                  onPressed: _isLoading ? null : _updateProfile,
+                                  isLoading: _isLoading,
+                                  child: const Text('Save Changes'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _isEditing = false;
+                                            _errorMessage = null;
+                                            _successMessage = null;
+                                            _loadUserData();
+                                          });
+                                        },
+                                  style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 14,
                                     ),
@@ -1189,91 +1231,44 @@ class _ProfilePageState extends State<ProfilePage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
+                                  child: const Text('Cancel'),
                                 ),
                               ),
                             ],
-                          ],
-                        ),
-                      ),
+                          ),
 
-                    // Action buttons
-                    if (_isEditing) ...[
-                      // Warning about unverification
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.secondary),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Saving changes will set your account to pending. An admin will review your updates.',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                        const SizedBox(height: 32),
+
+                        // Logout button
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: _logout,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: BorderSide(color: Colors.red[300]!),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: LoadingButton(
-                              onPressed: _isLoading ? null : _updateProfile,
-                              isLoading: _isLoading,
-                              child: const Text('Save Changes'),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.logout, size: 20),
+                                SizedBox(width: 8),
+                                Text('Logout'),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _isEditing = false;
-                                        _errorMessage = null;
-                                        _successMessage = null;
-                                        _loadUserData(); // Reset to original values
-                                      });
-                                    },
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-
-                    const SizedBox(height: 32),
-
-                    // Logout button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: _logout,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: Colors.red),
                         ),
-                        child: const Text('Logout'),
-                      ),
+
+                        const SizedBox(height: 32),
+                      ],
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -1285,22 +1280,22 @@ class _ProfilePageState extends State<ProfilePage> {
   Color _getStatusColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return AppColors.background;
+        return Colors.green.withOpacity(0.1);
       case VerificationStatus.pending:
-        return AppColors.primary;
+        return Colors.blue.withOpacity(0.1);
       case VerificationStatus.notVerified:
-        return Colors.orange[100]!;
+        return Colors.orange.withOpacity(0.1);
     }
   }
 
   Color _getStatusTextColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return AppColors.primary;
+        return Colors.green;
       case VerificationStatus.pending:
-        return AppColors.primary;
+        return Colors.blue;
       case VerificationStatus.notVerified:
-        return AppColors.primary;
+        return Colors.orange;
     }
   }
 
@@ -1333,107 +1328,94 @@ class _ProfilePageState extends State<ProfilePage> {
     required bool isVerified,
     required VoidCallback onVerify,
   }) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: isVerified ? AppColors.background : Colors.orange[100],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            color: isVerified ? AppColors.primary : AppColors.primary,
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(color: AppColors.primary, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        if (isVerified)
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
+              color: isVerified
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.grey[200],
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Icon(
+              icon,
+              color: isVerified ? Colors.green : Colors.grey[600],
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_circle, size: 14, color: AppColors.primary),
-                const SizedBox(width: 4),
                 Text(
-                  'Verified',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Color(0xFF1A1A1A),
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ],
             ),
-          )
-        else
-          ElevatedButton(
-            onPressed: onVerify,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
+          ),
+          const SizedBox(width: 8),
+          if (isVerified)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, size: 14, color: Colors.green),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Verified',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            TextButton(
+              onPressed: onVerify,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              ),
+              child: Text(
+                'Verify',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
             ),
-            child: const Text(
-              'Verify',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ),
-      ],
+        ],
+      ),
     );
-  }
-
-  int _getNextMilestone(int points) {
-    if (points < 500) return 500;
-    if (points < 1000) return 1000;
-    if (points < 2500) return 2500;
-    if (points < 5000) return 5000;
-    if (points < 10000) return 10000;
-    return 20000;
-  }
-
-  double _getProgressToNextBadge(int points) {
-    final nextTarget = _getNextMilestone(points);
-    final start = points < 500
-        ? 0
-        : points < 1000
-        ? 500
-        : points < 2500
-        ? 1000
-        : points < 5000
-        ? 2500
-        : points < 10000
-        ? 5000
-        : 10000;
-    return ((points - start) / (nextTarget - start)).clamp(0.0, 1.0);
   }
 
   Widget _buildFeatureCard(
@@ -1444,41 +1426,41 @@ class _ProfilePageState extends State<ProfilePage> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 28),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 11, color: AppColors.primary),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

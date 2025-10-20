@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../providers/app_state.dart';
 import '../services/ai_broker_service.dart';
 import '../services/notification_service.dart';
 import '../services/auction_service.dart';
@@ -35,11 +36,6 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.aichatId != null) {
-      _loadConversation(widget.aichatId!);
-    } else {
-      _startNewConversation();
-    }
 
     // Load past notifications and listen to new ones
     _loadNotifications();
@@ -47,6 +43,46 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
 
     // Mark all notifications as read when the chat is opened
     _markAllNotificationsAsRead();
+
+    // Initialize chat - check for active chat first
+    _initializeChat();
+  }
+
+  Future<void> _initializeChat() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // First, check if there's already an active chat in AppState
+      final appState = Provider.of<AppState>(context, listen: false);
+
+      if (widget.aichatId != null) {
+        // If a specific chat ID was passed, load it
+        await _loadConversation(widget.aichatId!);
+      } else if (appState.activeAIChatId != null) {
+        // If we have an active chat ID stored, use it
+        print('🤖 Loading existing chat: ${appState.activeAIChatId}');
+        await _loadConversation(appState.activeAIChatId!);
+      } else {
+        // No active chat, try to get the most recent one from API
+        print('🤖 Checking for existing chat from API...');
+        final activeResponse = await AIBrokerService.getActiveChat();
+
+        if (activeResponse.success && activeResponse.data != null) {
+          print('🤖 Found active chat: ${activeResponse.data!.aichatId}');
+          appState.setActiveAIChatId(activeResponse.data!.aichatId);
+          await _loadConversation(activeResponse.data!.aichatId);
+        } else {
+          // No existing chat, create a new one
+          print('🤖 No existing chat found, creating new one');
+          await _startNewConversation();
+        }
+      }
+    } catch (e) {
+      print('🤖 Error initializing chat: $e');
+      _showError('Error initializing chat: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _markAllNotificationsAsRead() {
@@ -147,8 +183,6 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
   }
 
   Future<void> _startNewConversation() async {
-    setState(() => _isLoading = true);
-
     try {
       print('🤖 Starting AI Broker conversation...');
       final response = await AIBrokerService.startConversation();
@@ -160,6 +194,10 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
       if (response.success && response.data != null) {
         print('🤖 Chat ID: ${response.data!.aichatId}');
         print('🤖 Messages count: ${response.data!.messages.length}');
+
+        // Store the new chat ID in AppState
+        final appState = Provider.of<AppState>(context, listen: false);
+        appState.setActiveAIChatId(response.data!.aichatId);
 
         setState(() {
           _currentChatId = response.data!.aichatId;
@@ -173,8 +211,48 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
       print('🤖 Exception: $e');
       print('🤖 Stack trace: $stackTrace');
       _showError('Error starting conversation: $e');
-    } finally {
+    }
+  }
+
+  Future<void> _clearHistoryAndStartNew() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Chat History?'),
+        content: const Text(
+          'This will start a new conversation. Your previous messages will not be deleted from the server.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Clear & Start New'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isLoading = true);
+
+      // Clear the active chat ID
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.clearActiveAIChat();
+
+      // Start a new conversation
+      await _startNewConversation();
+
       setState(() => _isLoading = false);
+
+      _showSuccess('Started new conversation!');
     }
   }
 
@@ -329,85 +407,134 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-                shape: BoxShape.circle,
+    return Consumer<AppState>(
+      builder: (context, appState, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.smart_toy,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'My Broker',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'AI Property Assistant',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.normal,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.surface,
+            foregroundColor: AppColors.textPrimary,
+            iconTheme: const IconThemeData(color: AppColors.primary),
+            elevation: 2,
+            actions: [
+              // Clear history button
+              IconButton(
+                icon: const Icon(Icons.delete_sweep, color: AppColors.primary),
+                onPressed: _clearHistoryAndStartNew,
               ),
-              child: const Icon(Icons.smart_toy, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'My Broker',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+              // Show restore button if floating button is hidden
+              if (appState.isFloatingButtonHidden)
+                IconButton(
+                  icon: const Icon(Icons.restore, color: AppColors.primary),
+                  onPressed: () {
+                    appState.showFloatingButton();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Floating AI Broker restored!',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: Colors.green,
+                        duration: const Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                Text(
-                  'AI Property Assistant',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.normal,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
-        iconTheme: const IconThemeData(color: AppColors.primary),
-        elevation: 2,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Messages List (notifications + AI messages)
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount:
-                        _notificationMessages.length +
-                        _messages.length +
-                        (_isSending ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      // Show typing indicator at the end
-                      if (_isSending &&
-                          index ==
-                              _notificationMessages.length + _messages.length) {
-                        return _buildTypingIndicator();
-                      }
+            ],
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    // Messages List (notifications + AI messages)
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount:
+                            _notificationMessages.length +
+                            _messages.length +
+                            (_isSending ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          // Show typing indicator at the end
+                          if (_isSending &&
+                              index ==
+                                  _notificationMessages.length +
+                                      _messages.length) {
+                            return _buildTypingIndicator();
+                          }
 
-                      // Show notifications first
-                      if (index < _notificationMessages.length) {
-                        final notification = _notificationMessages[index];
-                        return _buildNotificationMessage(notification);
-                      }
+                          // Show notifications first
+                          if (index < _notificationMessages.length) {
+                            final notification = _notificationMessages[index];
+                            return _buildNotificationMessage(notification);
+                          }
 
-                      // Then show AI broker messages
-                      final messageIndex = index - _notificationMessages.length;
-                      final message = _messages[messageIndex];
-                      return _buildMessage(message);
-                    },
-                  ),
+                          // Then show AI broker messages
+                          final messageIndex =
+                              index - _notificationMessages.length;
+                          final message = _messages[messageIndex];
+                          return _buildMessage(message);
+                        },
+                      ),
+                    ),
+                    // Text Input Area
+                    _buildMessageInput(),
+                  ],
                 ),
-                // Text Input Area
-                _buildMessageInput(),
-              ],
-            ),
+        );
+      },
     );
   }
 
@@ -970,7 +1097,21 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
   void _showSuccess(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.green),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Text(message),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       );
     }
   }
