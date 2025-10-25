@@ -16,20 +16,22 @@ namespace PropertyFlipperAPI.Controllers
         private readonly ImgBBService _imgBBService;
         private readonly FileValidationService _fileValidationService;
         private readonly RewardService _rewardService;
+        private readonly OpenAIService _openAIService;
 
-        public PropertyController(AppDbContext context, ImgBBService imgBBService, FileValidationService fileValidationService, RewardService rewardService)
+        public PropertyController(AppDbContext context, ImgBBService imgBBService, FileValidationService fileValidationService, RewardService rewardService, OpenAIService openAIService)
         {
             _context = context;
             _imgBBService = imgBBService;
             _fileValidationService = fileValidationService;
             _rewardService = rewardService;
+            _openAIService = openAIService;
         }
 
         // GET: api/Property (Public - only properties with auctions)
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Property>>> GetProperties()
+        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetProperties()
         {
-            return await _context.Properties
+            return await _context.ChildProperties
                 .Where(p => p.Auctions.Any()) // Only properties that have auctions
                 .Include(p => p.Owner)
                 .Include(p => p.Auctions.Where(a => a.Status == "Active")) // Only active auctions
@@ -41,9 +43,9 @@ namespace PropertyFlipperAPI.Controllers
         [HttpGet("all")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<ActionResult<IEnumerable<Property>>> GetAllProperties()
+        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetAllProperties()
         {
-            return await _context.Properties
+            return await _context.ChildProperties
                 .Include(p => p.Owner)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
@@ -54,7 +56,7 @@ namespace PropertyFlipperAPI.Controllers
         // GET: api/Property/my-properties (User's own properties)
         [HttpGet("my-properties")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<Property>>> GetMyProperties()
+        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetMyProperties()
         {
             var userIdClaim = User.FindFirst("uid");
             if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
@@ -62,7 +64,7 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Invalid user ID");
             }
 
-            return await _context.Properties
+            return await _context.ChildProperties
                 .Where(p => p.OwnerId == userId)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
@@ -74,7 +76,7 @@ namespace PropertyFlipperAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<object>> GetProperty(int id)
         {
-            var property = await _context.Properties
+            var property = await _context.ChildProperties
                 .Include(p => p.Owner)
                 .Include(p => p.Auctions)
                 .Include(p => p.Project)
@@ -126,7 +128,6 @@ namespace PropertyFlipperAPI.Controllers
                     a.CurrentPrice,
                     a.StartAt,
                     a.Duration,
-                    a.BuyNowPrice,
                     a.Status,
                     a.BidCount,
                     a.CreatedAt
@@ -169,7 +170,7 @@ namespace PropertyFlipperAPI.Controllers
             if (accountId == null)
                 return Unauthorized();
 
-            var property = await _context.Properties.FirstOrDefaultAsync(p => p.PropertyId == id);
+            var property = await _context.ChildProperties.FirstOrDefaultAsync(p => p.PropertyId == id);
             if (property == null)
                 return NotFound();
 
@@ -200,21 +201,43 @@ namespace PropertyFlipperAPI.Controllers
             var remainingToPay = (effectiveBuyingPrice ?? sumInstallments) - paidSoFar;
             if (remainingToPay < 0) remainingToPay = 0;
 
-            decimal? roiPercent = null;
-            if (marketValue.HasValue && effectiveBuyingPrice.HasValue && effectiveBuyingPrice.Value > 0)
+            // Determine market value: use provided value, or get from AI valuation, or use contracted price as fallback
+            decimal? finalMarketValue = marketValue;
+            
+            if (!finalMarketValue.HasValue)
             {
-                roiPercent = (marketValue.Value - effectiveBuyingPrice.Value) / effectiveBuyingPrice.Value * 100m;
+                // Try to get AI valuation
+                var valuationService = new ValuationService(_context, _openAIService);
+                var aiValuation = await valuationService.GetOrCalculatePropertyValuation((int)id);
+                
+                if (aiValuation.HasValue)
+                {
+                    finalMarketValue = aiValuation.Value;
+                }
+                else
+                {
+                    // Fallback to contracted price if AI valuation fails
+                    finalMarketValue = effectiveBuyingPrice;
+                }
+            }
+
+            decimal? roiPercent = null;
+            if (finalMarketValue.HasValue && effectiveBuyingPrice.HasValue && effectiveBuyingPrice.Value > 0)
+            {
+                roiPercent = (finalMarketValue.Value - effectiveBuyingPrice.Value) / effectiveBuyingPrice.Value * 100m;
             }
 
             return Ok(new
             {
                 propertyId = id,
+                propertyName = !string.IsNullOrEmpty(property.Name) ? property.Name : $"Property #{id}",
                 sumInstallments,
                 paidSoFar,
                 remainingInstallments,
                 remainingToPay,
                 buyingPrice = effectiveBuyingPrice,
-                marketValue = marketValue,
+                contractedPrice = effectiveBuyingPrice, // Alias for frontend
+                marketValue = finalMarketValue,
                 roiPercent
             });
         }
@@ -222,7 +245,7 @@ namespace PropertyFlipperAPI.Controllers
         // POST: api/Property 
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<Property>> PostProperty(PropertyDto propertyDto)
+        public async Task<ActionResult<ChildProperty>> PostProperty(PropertyDto propertyDto)
         {
             // Get the current user ID from the JWT token
             var userIdClaim = User.FindFirst("uid");
@@ -245,23 +268,23 @@ namespace PropertyFlipperAPI.Controllers
                 // Admin can set any type - use provided or default to Resale
                 propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
                     ? parsedType 
-                    : PropertyType.Resale;
+                    : PropertyType.Apartment;
             }
             else if (account.Type == AccountType.Developer)
             {
                 // Developer can choose between Primary and Resale
                 propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
                     ? parsedType 
-                    : PropertyType.Primary; // Default to Primary for developers
+                    : PropertyType.Villa; // Default to Primary for developers
             }
             else
             {
                 // Regular users always get Resale, regardless of what they send
-                propertyType = PropertyType.Resale;
+                propertyType = PropertyType.Apartment;
             }
 
             // Create Property entity from DTO
-            var property = new Property
+            var property = new ChildProperty
             {
                 OwnerId = userId,
                 ProjectId = propertyDto.ProjectId, // Optional for developers
@@ -279,7 +302,7 @@ namespace PropertyFlipperAPI.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Properties.Add(property);
+            _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();
 
             // Award rewards to property owner for creating a property
@@ -291,7 +314,7 @@ namespace PropertyFlipperAPI.Controllers
         // POST: api/Property/skip-documents
         [HttpPost("skip-documents")]
         [Authorize]
-        public async Task<ActionResult<Property>> PostPropertySkipDocuments(PropertyDto propertyDto)
+        public async Task<ActionResult<ChildProperty>> PostPropertySkipDocuments(PropertyDto propertyDto)
         {
             // Get the current user ID from the JWT token
             var userIdClaim = User.FindFirst("uid");
@@ -314,23 +337,23 @@ namespace PropertyFlipperAPI.Controllers
                 // Admin can set any type - use provided or default to Resale
                 propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
                     ? parsedType 
-                    : PropertyType.Resale;
+                    : PropertyType.Apartment;
             }
             else if (account.Type == AccountType.Developer)
             {
                 // Developer can choose between Primary and Resale
                 propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
                     ? parsedType 
-                    : PropertyType.Primary; // Default to Primary for developers
+                    : PropertyType.Villa; // Default to Primary for developers
             }
             else
             {
                 // Regular users always get Resale, regardless of what they send
-                propertyType = PropertyType.Resale;
+                propertyType = PropertyType.Apartment;
             }
 
             // Create Property entity from DTO
-            var property = new Property
+            var property = new ChildProperty
             {
                 OwnerId = userId,
                 ProjectId = propertyDto.ProjectId, // Optional for developers
@@ -348,7 +371,7 @@ namespace PropertyFlipperAPI.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Properties.Add(property);
+            _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetProperty", new { id = property.PropertyId }, property);
@@ -360,7 +383,7 @@ namespace PropertyFlipperAPI.Controllers
         public async Task<IActionResult> PutProperty(int id, [FromBody] PropertyUpdateDto updateDto)
         {
             // Check if property is editable (only before approval)
-            var existingProperty = await _context.Properties.FindAsync(id);
+            var existingProperty = await _context.ChildProperties.FindAsync(id);
             if (existingProperty == null)
                 return NotFound();
 
@@ -411,7 +434,7 @@ namespace PropertyFlipperAPI.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteProperty(int id)
         {
-            var property = await _context.Properties
+            var property = await _context.ChildProperties
                 .Include(p => p.Auctions)
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
                 
@@ -443,7 +466,7 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest(new { message = "Cannot delete property. It is currently in auction or has a pending auction request." });
             }
 
-            _context.Properties.Remove(property);
+            _context.ChildProperties.Remove(property);
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -456,7 +479,7 @@ namespace PropertyFlipperAPI.Controllers
         [AdminAuthorize]
         public async Task<IActionResult> ApproveProperty(int id)
         {
-            var property = await _context.Properties.FindAsync(id);
+            var property = await _context.ChildProperties.FindAsync(id);
             if (property == null)
             {
                 return NotFound();
@@ -486,7 +509,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var property = await _context.Properties.FindAsync(id);
+                var property = await _context.ChildProperties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -541,7 +564,7 @@ namespace PropertyFlipperAPI.Controllers
                     // Create new document
                     var propertyDoc = new PropertyDoc
                     {
-                        PropertyId = id,
+                        PropertyId = (int)id,
                         DocType = docType,
                         ImgUrl = uploadResult.DisplayUrl,
                         DeleteUrl = uploadResult.DeleteUrl,
@@ -568,7 +591,7 @@ namespace PropertyFlipperAPI.Controllers
         [Authorize]
         public async Task<ActionResult<IEnumerable<PropertyDoc>>> GetPropertyDocuments(long id)
         {
-            var property = await _context.Properties.FindAsync(id);
+            var property = await _context.ChildProperties.FindAsync(id);
             if (property == null)
                 return NotFound();
 
@@ -586,7 +609,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var property = await _context.Properties.FindAsync(id);
+                var property = await _context.ChildProperties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -636,7 +659,7 @@ namespace PropertyFlipperAPI.Controllers
                     // Create new property image
                     var propertyImage = new PropertyImage
                     {
-                        PropertyId = id,
+                        PropertyId = (int)id,
                         ImageUrl = uploadResult.DisplayUrl,
                         ImageType = imageType ?? "Gallery",
                         IsMainImage = isMainImage,
@@ -681,7 +704,7 @@ namespace PropertyFlipperAPI.Controllers
         [HttpGet("{id}/images")]
         public async Task<ActionResult<IEnumerable<PropertyImage>>> GetPropertyImages(long id)
         {
-            var property = await _context.Properties.FindAsync(id);
+            var property = await _context.ChildProperties.FindAsync(id);
             if (property == null)
                 return NotFound();
 
@@ -700,7 +723,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var property = await _context.Properties.FindAsync(propertyId);
+                var property = await _context.ChildProperties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -764,7 +787,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var property = await _context.Properties.FindAsync(propertyId);
+                var property = await _context.ChildProperties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -820,7 +843,7 @@ namespace PropertyFlipperAPI.Controllers
 
         private bool PropertyExists(int id)
         {
-            return _context.Properties.Any(e => e.PropertyId == id);
+            return _context.ChildProperties.Any(e => e.PropertyId == id);
         }
 
         private long? GetCurrentAccountId()

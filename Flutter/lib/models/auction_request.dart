@@ -3,14 +3,12 @@ class AuctionRequest {
   final double startPrice;
   final DateTime startAt;
   final int duration; // hours
-  final double? buyNowPrice;
 
   AuctionRequest({
     required this.propertyId,
     required this.startPrice,
     required this.startAt,
     required this.duration,
-    this.buyNowPrice,
   });
 
   Map<String, dynamic> toJson() {
@@ -19,7 +17,6 @@ class AuctionRequest {
       'startPrice': startPrice,
       'startAt': startAt.toIso8601String(),
       'duration': duration,
-      'buyNowPrice': buyNowPrice,
     };
   }
 
@@ -31,9 +28,6 @@ class AuctionRequest {
         json['startAt'] ?? json['StartAt'] ?? DateTime.now().toIso8601String(),
       ),
       duration: json['duration'] ?? json['Duration'] ?? 0,
-      buyNowPrice: json['buyNowPrice'] != null || json['BuyNowPrice'] != null
-          ? (json['buyNowPrice'] ?? json['BuyNowPrice']).toDouble()
-          : null,
     );
   }
 }

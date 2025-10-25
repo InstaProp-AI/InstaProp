@@ -24,10 +24,10 @@ namespace PropertyFlipperAPI.Models
         [Required]
         public string Content { get; set; } = string.Empty;
 
-        public long? PropertyId { get; set; }
+        public int? PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public Property? Property { get; set; }
+        public ChildProperty? Property { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

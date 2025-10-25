@@ -108,41 +108,89 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> init() async {
-    await _authService.init();
-    _authService.addListener(_onAuthChanged);
-    notifyListeners();
-    // Load initial data for freemium experience
-    loadInitialData();
-    // Start real-time listeners for Firebase
-    _startFirestoreListeners();
-    // Start fallback polling as backup (less frequent now)
-    _startFallbackPolling();
+    try {
+      // Add a longer delay to ensure Flutter engine is fully ready
+      await Future.delayed(const Duration(milliseconds: 500));
 
-    // Start notification listeners if user is already logged in
-    if (isLoggedIn && user != null) {
-      _notificationService.startNotificationListeners(user!.accountId);
+      // Initialize auth service with error handling
+      try {
+        await _authService.init();
+        _authService.addListener(_onAuthChanged);
+        notifyListeners();
+      } catch (e) {
+        print('❌ Error initializing auth service: $e');
+      }
+
+      // Load initial data for freemium experience with delay
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        try {
+          loadInitialData();
+        } catch (e) {
+          print('❌ Error loading initial data: $e');
+        }
+      });
+
+      // Start real-time listeners for Firebase with delay
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        try {
+          _startFirestoreListeners();
+        } catch (e) {
+          print('❌ Error starting Firestore listeners: $e');
+        }
+      });
+
+      // Start fallback polling as backup (less frequent now) with delay
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        try {
+          _startFallbackPolling();
+        } catch (e) {
+          print('❌ Error starting fallback polling: $e');
+        }
+      });
+
+      // Start notification listeners if user is already logged in with delay
+      Future.delayed(const Duration(milliseconds: 2500), () {
+        try {
+          if (isLoggedIn && user != null) {
+            _notificationService.startNotificationListeners(user!.accountId);
+          }
+        } catch (e) {
+          print('❌ Error starting notification listeners: $e');
+        }
+      });
+    } catch (e) {
+      print('❌ Error in AppState.init(): $e');
+      // Continue with basic functionality even if initialization fails
     }
   }
 
   /// Start Firestore real-time listeners for instant updates
   void _startFirestoreListeners() {
-    print('🔥 Starting Firestore real-time listeners for auctions...');
+    try {
+      print('🔥 Starting Firestore real-time listeners for auctions...');
 
-    // Listen to all auctions in real-time
-    _auctionsSubscription = FirestoreService.listenToAllAuctions().listen(
-      (auctions) {
-        if (auctions.isNotEmpty) {
-          print('🔥 Firestore: Received ${auctions.length} auctions');
-          _auctions = auctions;
-          notifyListeners();
-        }
-      },
-      onError: (error) {
-        print('❌ Firestore auction listener error: $error');
-        // Fallback to API if Firestore fails
-        print('⚠️ Falling back to API for auctions');
-      },
-    );
+      // Listen to all auctions in real-time
+      _auctionsSubscription = FirestoreService.listenToAllAuctions().listen(
+        (auctions) {
+          try {
+            if (auctions.isNotEmpty) {
+              print('🔥 Firestore: Received ${auctions.length} auctions');
+              _auctions = auctions;
+              notifyListeners();
+            }
+          } catch (e) {
+            print('❌ Error in Firestore listener: $e');
+          }
+        },
+        onError: (error) {
+          print('❌ Firestore auction listener error: $error');
+          // Fallback to API if Firestore fails
+          print('⚠️ Falling back to API for auctions');
+        },
+      );
+    } catch (e) {
+      print('❌ Error starting Firestore listeners: $e');
+    }
   }
 
   void _startFallbackPolling() {
@@ -445,10 +493,14 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
-    _fallbackTimer?.cancel();
-    _auctionsSubscription?.cancel();
-    _authService.removeListener(_onAuthChanged);
-    _notificationService.dispose();
+    try {
+      _fallbackTimer?.cancel();
+      _auctionsSubscription?.cancel();
+      _authService.removeListener(_onAuthChanged);
+      _notificationService.dispose();
+    } catch (e) {
+      print('⚠️ Error during AppState disposal: $e');
+    }
     super.dispose();
   }
 }

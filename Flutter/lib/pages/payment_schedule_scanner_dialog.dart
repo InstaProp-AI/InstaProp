@@ -113,13 +113,13 @@ class _PaymentScheduleScannerDialogState
           // Show reward popup
           final appState = context.read<AppState>();
           await appState.refreshUserProfile();
-          if (mounted && appState.user?.totalPoints != null) {
+          if (mounted && appState.user?.totalEarnedPoints != null) {
             await showDialog(
               context: context,
               barrierDismissible: false,
               builder: (context) => RewardPopup(
                 pointsAwarded: response.data!.eventsCreated.clamp(1, 20),
-                totalPoints: appState.user!.totalPoints!,
+                totalPoints: appState.user!.totalEarnedPoints!,
               ),
             );
           }

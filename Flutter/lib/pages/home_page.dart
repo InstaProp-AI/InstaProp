@@ -17,7 +17,9 @@ import 'properties_management_page.dart';
 import 'projects_list_page.dart';
 import 'project_details_page.dart';
 import 'developer_profile_page.dart';
+import 'developers_list_page.dart';
 import 'chat_list_page.dart';
+import 'market_hub_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,30 +30,50 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  int _selectedIndex = 2; // Start on Home tab
+  int _selectedIndex = 0; // Start on Home tab
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-    _animationController.forward();
-    WidgetsBinding.instance.addObserver(this);
 
-    // Load notifications when home page opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final appState = Provider.of<AppState>(context, listen: false);
-      if (appState.isLoggedIn && appState.user != null) {
-        appState.notificationService.getNotifications();
-      }
-    });
+    try {
+      _animationController = AnimationController(
+        duration: const Duration(milliseconds: 800),
+        vsync: this,
+      );
+      _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+      );
+
+      // Add a small delay before starting animation to prevent assertion errors
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _animationController.forward();
+        }
+      });
+
+      WidgetsBinding.instance.addObserver(this);
+
+      // Load notifications when home page opens with delay
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted) {
+            try {
+              final appState = Provider.of<AppState>(context, listen: false);
+              if (appState.isLoggedIn && appState.user != null) {
+                appState.notificationService.getNotifications();
+              }
+            } catch (e) {
+              print('❌ Error loading notifications: $e');
+            }
+          }
+        });
+      });
+    } catch (e) {
+      print('❌ Error in HomePage initState: $e');
+    }
   }
 
   @override
@@ -63,8 +85,16 @@ class _HomePageState extends State<HomePage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _animationController.forward();
+    try {
+      if (state == AppLifecycleState.resumed && mounted) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _animationController.forward();
+          }
+        });
+      }
+    } catch (e) {
+      print('❌ Error in didChangeAppLifecycleState: $e');
     }
   }
 
@@ -85,11 +115,11 @@ class _HomePageState extends State<HomePage>
       builder: (context, appState, child) {
         switch (_selectedIndex) {
           case 0:
-            return const AuctionsPage();
-          case 1:
-            return _buildValuationPage(context, appState);
-          case 2:
             return _buildHomeContent(appState);
+          case 1:
+            return const MarketHubPage();
+          case 2:
+            return _buildValuationPage(context, appState);
           case 3:
             return const ChatListPage();
           case 4:
@@ -172,7 +202,12 @@ class _HomePageState extends State<HomePage>
                 if (appState.auctions.isNotEmpty)
                   _buildMinimalHeroSection(context, appState.auctions.first),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
+
+                // Points Display Section
+                _buildPointsDisplaySection(context, appState),
+
+                const SizedBox(height: 32),
 
                 // Live Auctions
                 Padding(
@@ -267,7 +302,13 @@ class _HomePageState extends State<HomePage>
                       child: _buildMinimalSectionHeader(
                         context,
                         'Developers',
-                        () {},
+                        () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const DevelopersListPage(),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -350,16 +391,16 @@ class _HomePageState extends State<HomePage>
         ),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.gavel_rounded),
-            label: 'Auctions',
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.store_rounded),
+            label: 'Market',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics_rounded),
             label: 'Portfolio',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_rounded),
@@ -875,7 +916,7 @@ class _HomePageState extends State<HomePage>
                   : null,
               child: developer.profileImageUrl == null
                   ? Text(
-                      developer.firstName[0],
+                      (developer.companyName ?? developer.firstName)[0],
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
@@ -885,7 +926,7 @@ class _HomePageState extends State<HomePage>
             ),
             const SizedBox(height: 12),
             Text(
-              developer.firstName,
+              developer.companyName ?? developer.firstName,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
@@ -928,6 +969,114 @@ class _HomePageState extends State<HomePage>
             Text(
               message,
               style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPointsDisplaySection(BuildContext context, AppState appState) {
+    if (appState.user == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF667eea).withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.stars, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 16),
+            // Points Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '${appState.user!.currentPoints}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'pts',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Current Points (Spendable)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${appState.user!.totalEarnedPoints} total earned',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Rewards Button
+            GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, '/rewards');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                ),
+                child: const Text(
+                  'Rewards',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

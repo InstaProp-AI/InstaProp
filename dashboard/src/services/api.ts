@@ -368,7 +368,7 @@ export const projectsApi = {
 // Properties API - Using Admin endpoints
 export const propertiesApi = {
   getProperties: async (): Promise<Property[]> => {
-    const response = await api.get('/admin/properties');
+    const response = await api.get('/Property');
     return response.data;
   },
   

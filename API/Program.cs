@@ -14,7 +14,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
    // options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 // "DefaultConnection": "Host=metro.proxy.rlwy.net;Port=20873;Database=railway;Username=postgres;Password=wXQPZyZfdnrcYMrZCpXEcPJnJXQUUPmv;SslMode=Require"
 // Add Services
-builder.Services.AddScoped<SeedDataService>();
+//builder.Services.AddScoped<SeedDataService>();
+//builder.Services.AddScoped<CompleteEgyptianSeedingService>();
 builder.Services.AddSingleton<FirestoreService>();
 builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
 builder.Services.AddScoped<EmailTemplateService>(); // HTML email templates
@@ -139,14 +140,14 @@ app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed data - DISABLED (notifications successfully seeded!)
-// Uncomment below to re-seed the database
-// using (var scope = app.Services.CreateScope())
-// {
-//     var seedService = scope.ServiceProvider.GetRequiredService<SeedDataService>();
-//     await seedService.SeedDataAsync();
-// }
-
+// Seed data - Complete Egyptian Real Estate Data
+// Uncomment below to seed the database with comprehensive Egyptian data
+/*using (var scope = app.Services.CreateScope())
+{
+    var seedService = scope.ServiceProvider.GetRequiredService<CompleteEgyptianSeedingService>();
+    await seedService.SeedAllDataAsync();
+}
+*/
 app.MapControllers();
 
 // Health check endpoint for monitoring

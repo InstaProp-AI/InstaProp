@@ -251,8 +251,22 @@ class PortfolioAnalyticsPage extends StatelessWidget {
       return _buildEmptyChart('No ROI data available');
     }
 
-    return Container(
-      height: 250,
+    // Calculate chart dimensions based on number of properties
+    final isScrollable = roiData.length > 5;
+    final chartWidth = isScrollable ? roiData.length * 80.0 : 300.0;
+    final chartHeight = 280.0;
+
+    final maxROI = roiData
+        .map((f) => f.roiPercent!)
+        .reduce((a, b) => a > b ? a : b);
+    final minROI = roiData
+        .map((f) => f.roiPercent!)
+        .reduce((a, b) => a < b ? a : b);
+    final chartMaxY = maxROI + 5;
+    final chartMinY = minROI - 5;
+
+    Widget chartWidget = Container(
+      height: chartHeight,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.grey[50],
@@ -261,13 +275,24 @@ class PortfolioAnalyticsPage extends StatelessWidget {
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY:
-              roiData
-                  .map((f) => f.roiPercent!)
-                  .reduce((a, b) => a > b ? a : b) +
-              5,
-          minY: 0,
-          barTouchData: BarTouchData(enabled: true),
+          maxY: chartMaxY,
+          minY: chartMinY,
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipBgColor: Colors.black87,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final property = roiData[groupIndex];
+                final name = property.propertyName?.isNotEmpty == true
+                    ? property.propertyName!
+                    : 'Property ${property.propertyId}';
+                return BarTooltipItem(
+                  '$name\nROI: ${rod.toY.toStringAsFixed(1)}%',
+                  const TextStyle(color: Colors.white, fontSize: 12),
+                );
+              },
+            ),
+          ),
           titlesData: FlTitlesData(
             show: true,
             bottomTitles: AxisTitles(
@@ -275,15 +300,20 @@ class PortfolioAnalyticsPage extends StatelessWidget {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   if (value.toInt() < roiData.length) {
+                    final property = roiData[value.toInt()];
+                    final name = property.propertyName?.isNotEmpty == true
+                        ? property.propertyName!
+                        : 'Property ${value.toInt() + 1}';
                     return Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        'P${value.toInt() + 1}',
+                        name.length > 12 ? '${name.substring(0, 12)}...' : name,
                         style: TextStyle(
                           color: Colors.grey[600],
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.w500,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     );
                   }
@@ -331,7 +361,7 @@ class PortfolioAnalyticsPage extends StatelessWidget {
                       color: entry.value.roiPercent! >= 0
                           ? Colors.green
                           : Colors.red,
-                      width: 20,
+                      width: isScrollable ? 30 : 20,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(4),
                       ),
@@ -343,6 +373,105 @@ class PortfolioAnalyticsPage extends StatelessWidget {
         ),
       ),
     );
+
+    // Add ROI value labels on top of bars
+    chartWidget = Stack(
+      children: [
+        chartWidget,
+        Positioned(
+          top: 20,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: chartHeight - 40,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: chartMaxY,
+                minY: chartMinY,
+                barTouchData: BarTouchData(enabled: false),
+                titlesData: const FlTitlesData(show: false),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: roiData
+                    .asMap()
+                    .entries
+                    .map(
+                      (entry) => BarChartGroupData(
+                        x: entry.key,
+                        barRods: [
+                          BarChartRodData(
+                            toY: 0,
+                            color: Colors.transparent,
+                            width: isScrollable ? 30 : 20,
+                          ),
+                        ],
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        ),
+        // ROI value labels
+        Positioned(
+          top: 20,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: chartHeight - 40,
+            child: CustomPaint(
+              painter: ROILabelPainter(
+                roiData: roiData,
+                isScrollable: isScrollable,
+                chartMaxY: chartMaxY,
+                chartMinY: chartMinY,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    // Add min/max ROI labels
+    final minMaxWidget = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Min ROI: ${minROI.toStringAsFixed(1)}%',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            'Max ROI: ${maxROI.toStringAsFixed(1)}%',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (isScrollable) {
+      return Column(
+        children: [
+          minMaxWidget,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(width: chartWidth, child: chartWidget),
+          ),
+        ],
+      );
+    } else {
+      return Column(children: [minMaxWidget, chartWidget]);
+    }
   }
 
   Widget _buildPropertyBreakdown() {
@@ -366,7 +495,9 @@ class PortfolioAnalyticsPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Property #${f.propertyId}',
+                f.propertyName?.isNotEmpty == true
+                    ? f.propertyName!
+                    : 'Property #${f.propertyId}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -378,14 +509,14 @@ class PortfolioAnalyticsPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _buildPropertyStat(
-                      'Market Value',
-                      '\$${_formatNumber(f.marketValue ?? 0)}',
+                      'Contracted Price',
+                      '\$${_formatNumber(f.contractedPrice ?? 0)}',
                     ),
                   ),
                   Expanded(
                     child: _buildPropertyStat(
-                      'Equity',
-                      '\$${_formatNumber(equity)}',
+                      'Market Value',
+                      '\$${_formatNumber(f.marketValue ?? 0)}',
                     ),
                   ),
                 ],
@@ -395,10 +526,21 @@ class PortfolioAnalyticsPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _buildPropertyStat(
+                      'Equity',
+                      '\$${_formatNumber(equity)}',
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildPropertyStat(
                       'Remaining',
                       '\$${_formatNumber(f.remainingToPay)}',
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
                   Expanded(
                     child: _buildPropertyStat(
                       'ROI',
@@ -406,6 +548,9 @@ class PortfolioAnalyticsPage extends StatelessWidget {
                       color: roi >= 0 ? Colors.green : Colors.red,
                     ),
                   ),
+                  const Expanded(
+                    child: SizedBox(),
+                  ), // Empty space for alignment
                 ],
               ),
             ],
@@ -492,4 +637,57 @@ class PortfolioAnalyticsPage extends StatelessWidget {
       return number.toStringAsFixed(0);
     }
   }
+}
+
+class ROILabelPainter extends CustomPainter {
+  final List<PropertyFinancials> roiData;
+  final bool isScrollable;
+  final double chartMaxY;
+  final double chartMinY;
+
+  ROILabelPainter({
+    required this.roiData,
+    required this.isScrollable,
+    required this.chartMaxY,
+    required this.chartMinY,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    final barWidth = isScrollable ? 30.0 : 20.0;
+    final spacing = size.width / roiData.length;
+
+    for (int i = 0; i < roiData.length; i++) {
+      final roi = roiData[i].roiPercent!;
+      final x = (i * spacing) + (spacing / 2) - (barWidth / 2);
+
+      // Calculate Y position based on ROI value
+      final normalizedY = (roi - chartMinY) / (chartMaxY - chartMinY);
+      final y = size.height - (normalizedY * size.height) - 20;
+
+      // Create text
+      final text = TextSpan(
+        text: '${roi.toStringAsFixed(1)}%',
+        style: const TextStyle(
+          color: Color(0xFF1A1A1A),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+
+      textPainter.text = text;
+      textPainter.layout();
+
+      // Draw text centered above the bar
+      textPainter.paint(
+        canvas,
+        Offset(x + (barWidth / 2) - (textPainter.width / 2), y - 15),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

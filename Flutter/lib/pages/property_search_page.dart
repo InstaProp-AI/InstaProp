@@ -7,7 +7,8 @@ import '../services/auction_service.dart';
 import '../widgets/property_image_carousel.dart';
 import 'property_comparison_page.dart';
 import 'auction_details_page.dart';
-import 'auctions_page.dart';
+import 'projects_list_page.dart';
+import 'developers_list_page.dart';
 
 class PropertySearchPage extends StatefulWidget {
   const PropertySearchPage({super.key});
@@ -152,205 +153,398 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Properties'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.surface,
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search by name, location, category...',
-                      prefixIcon: Icon(Icons.search, color: AppColors.primary),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.clear, color: AppColors.primary),
-                              onPressed: () {
-                                _searchController.clear();
-                                _performSearch('');
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: AppColors.secondary!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: AppColors.primary!,
-                          width: 2,
+      backgroundColor: AppColors.background,
+      body: CustomScrollView(
+        slivers: [
+          // Minimal Clean Header
+          SliverAppBar(
+            expandedHeight: 140,
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                color: Colors.white,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Properties',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1A1A),
+                            letterSpacing: -1,
+                          ),
                         ),
-                      ),
-                      filled: true,
-                      fillColor: AppColors.background,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      ],
                     ),
-                    onChanged: _performSearch,
                   ),
                 ),
-                const SizedBox(width: 8),
-                // Reset Button
-                IconButton(
-                  onPressed: () {
-                    _searchController.clear();
-                    _performSearch('');
-                  },
-                  icon: Icon(Icons.refresh, color: AppColors.primary),
-                  tooltip: 'Reset Search',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.background,
-                    padding: const EdgeInsets.all(12),
-                  ),
+              ),
+              titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              title: const Text(
+                'Properties',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A1A),
+                  letterSpacing: -0.5,
                 ),
-              ],
+              ),
+            ),
+          ),
+
+          // Search Bar
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search by name, location, category...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: Colors.grey[500],
+                                    size: 18,
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _performSearch('');
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.3,
+                        ),
+                        onChanged: _performSearch,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Reset Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+                        _performSearch('');
+                      },
+                      icon: Icon(
+                        Icons.refresh,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      tooltip: 'Reset Search',
+                      style: IconButton.styleFrom(
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
           // Served Searches Section
-          Container(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 12),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border(
-                bottom: BorderSide(color: AppColors.secondary!, width: 1),
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Icon(Icons.stars, color: AppColors.primary, size: 18),
-                      const SizedBox(width: 6),
+                      Icon(Icons.stars, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
                       Text(
                         'Popular Searches',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.5,
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 70,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: _servedSearches.length,
-                    itemBuilder: (context, index) {
-                      final search = _servedSearches[index];
-                      return _buildServedSearchCard(search);
-                    },
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 80,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _servedSearches.length,
+                      itemBuilder: (context, index) {
+                        final search = _servedSearches[index];
+                        return _buildServedSearchCard(search);
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
           // Results Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: AppColors.surface,
-            child: Text(
-              'Results: ${_filteredProperties.length}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  Text(
+                    'Results: ${_filteredProperties.length}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_filteredProperties.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_filteredProperties.length} found',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
 
           // Properties List
-          Expanded(
+          SliverToBoxAdapter(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 : _filteredProperties.isEmpty
                 ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _filteredProperties.length,
-                    itemBuilder: (context, index) {
-                      final property = _filteredProperties[index];
-                      return _buildPropertyCard(property);
-                    },
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: _filteredProperties.map((property) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildPropertyCard(property),
+                        );
+                      }).toList(),
+                    ),
                   ),
           ),
+
+          // Bottom spacing
+          const SliverToBoxAdapter(child: SizedBox(height: 60)),
         ],
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(left: 30),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Auctions View Switch Button (Back Button)
-            FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              backgroundColor: AppColors.surface,
-              icon: Icon(Icons.gavel, color: AppColors.primary),
-              label: Text(
-                'Auctions',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+            // Projects Button
+            Expanded(
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: FloatingActionButton.extended(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProjectsListPage(),
+                      ),
+                    );
+                  },
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  icon: Icon(
+                    Icons.apartment,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  label: Text(
+                    'Projects',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  heroTag: 'projects_button',
                 ),
               ),
-              heroTag: 'auctions_button',
             ),
-            // Compare Button (smaller)
-            FloatingActionButton(
-              onPressed: () {
-                if (_filteredProperties.isNotEmpty) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PropertyComparisonPage(
-                        preSelectedProperties: _filteredProperties
-                            .take(5)
-                            .toList(),
+            const SizedBox(width: 12),
+            // Compare Button (square)
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: FloatingActionButton(
+                onPressed: () {
+                  if (_filteredProperties.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PropertyComparisonPage(
+                          preSelectedProperties: _filteredProperties
+                              .take(5)
+                              .toList(),
+                        ),
                       ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No properties available to compare'),
+                        duration: Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: const Icon(
+                  Icons.compare_arrows,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                heroTag: 'compare_button_properties',
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Developers Button
+            Expanded(
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('No properties available to compare'),
-                      duration: Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
+                  ],
+                ),
+                child: FloatingActionButton.extended(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DevelopersListPage(),
+                      ),
+                    );
+                  },
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  icon: Icon(Icons.people, color: AppColors.primary, size: 20),
+                  label: Text(
+                    'Developers',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      letterSpacing: -0.2,
                     ),
-                  );
-                }
-              },
-              backgroundColor: AppColors.primary,
-              child: const Icon(Icons.compare_arrows, color: AppColors.surface),
-              heroTag: 'compare_button_properties',
+                  ),
+                  heroTag: 'developers_button',
+                ),
+              ),
             ),
           ],
         ),
@@ -373,36 +567,41 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
         );
       },
       child: Container(
-        width: 110,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
+        width: 120,
+        margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.primary!, AppColors.primary!.withOpacity(0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey[200]!),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary!.withOpacity(0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(search['icon'], color: Colors.white, size: 24),
-              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(search['icon'], color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(height: 8),
               Text(
                 search['title'],
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -419,13 +618,22 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
     final auction = _propertyAuctionMap[property.propertyId];
     final hasAuction = auction != null;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: InkWell(
         onTap: () => _handlePropertyTap(property),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -434,7 +642,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(10),
+                    top: Radius.circular(20),
                   ),
                   child: PropertyImageCarousel(
                     images: property.propertyImages ?? [],
@@ -448,23 +656,25 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                 // Auction Status Badge
                 if (hasAuction)
                   Positioned(
-                    top: 38,
-                    right: 12,
+                    top: 16,
+                    right: 16,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
-                        vertical: 6,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         color: auction.isUpcoming
                             ? Colors.blue
-                            : (auction.isActive ? Colors.green : Colors.orange),
-                        borderRadius: BorderRadius.circular(20),
+                            : (auction.isActive
+                                  ? AppColors.success
+                                  : Colors.orange),
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
@@ -480,15 +690,16 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                             color: Colors.white,
                             size: 16,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Text(
                             auction.isUpcoming
                                 ? 'UPCOMING'
                                 : (auction.isActive ? 'LIVE' : 'ENDED'),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.2,
                             ),
                           ),
                         ],
@@ -500,20 +711,23 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
 
             // Property Info
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Property name
                   Text(
                     property.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -0.5,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
 
                   // Tags row
                   Row(
@@ -526,41 +740,43 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                       if (property.category != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
+                            horizontal: 10,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.secondary!),
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey[200]!),
                           ),
                           child: Text(
-                            property.category!,
+                            property.category,
                             style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.2,
                             ),
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   if (property.location != null)
                     Row(
                       children: [
                         Icon(
                           Icons.location_on,
                           size: 14,
-                          color: AppColors.primary,
+                          color: Colors.grey[500],
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            property.location!,
+                            property.location,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[700],
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                              letterSpacing: -0.2,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -568,7 +784,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                         ),
                       ],
                     ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       _buildPropertySpec(
@@ -588,7 +804,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                     ],
                   ),
                   if (property.project != null) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(
@@ -601,9 +817,10 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                           child: Text(
                             'Project: ${property.project}',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: AppColors.primary,
                               fontWeight: FontWeight.w600,
+                              letterSpacing: -0.2,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -624,34 +841,51 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
   Widget _buildPropertySpec(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: AppColors.primary),
-        const SizedBox(width: 3),
-        Text(text, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+        Icon(icon, size: 16, color: Colors.grey[500]),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.2,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off, size: 80, color: AppColors.secondary),
-          const SizedBox(height: 16),
-          Text(
-            'No Properties Found',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 80, color: Colors.grey[300]),
+            const SizedBox(height: 24),
+            const Text(
+              'No Properties Found',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: -0.5,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Try adjusting your search criteria',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              'Try adjusting your search criteria',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                letterSpacing: -0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -798,34 +1032,38 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
 
   Widget _buildPropertyTypeTag(PropertyType type) {
     final isPrimary = type == PropertyType.primary;
-    final backgroundColor = isPrimary ? Colors.blue[100]! : Colors.purple[100]!;
-    final borderColor = isPrimary ? Colors.blue[400]! : Colors.purple[400]!;
-    final textColor = isPrimary ? Colors.blue[900]! : Colors.purple[900]!;
+    final backgroundColor = isPrimary
+        ? AppColors.primary.withOpacity(0.1)
+        : Colors.purple.withOpacity(0.1);
+    final borderColor = isPrimary
+        ? AppColors.primary.withOpacity(0.3)
+        : Colors.purple.withOpacity(0.3);
+    final textColor = isPrimary ? AppColors.primary : Colors.purple[700]!;
     final text = isPrimary ? 'Primary' : 'Resale';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             isPrimary ? Icons.new_releases : Icons.recycling,
-            size: 12,
+            size: 14,
             color: textColor,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             text,
             style: TextStyle(
               color: textColor,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
             ),
           ),
         ],

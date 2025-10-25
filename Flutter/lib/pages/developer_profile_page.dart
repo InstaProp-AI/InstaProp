@@ -85,7 +85,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
       context: context,
       builder: (context) => RateDeveloperDialog(
         developerId: widget.developerId,
-        developerName: _profile?.fullName ?? '',
+        developerName: _profile?.companyName ?? _profile?.fullName ?? '',
         onRated: () {
           _loadProfile(); // Refresh to show new rating
         },
@@ -148,7 +148,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                           : null,
                       child: _profile!.profileImageUrl == null
                           ? Text(
-                              _profile!.firstName[0],
+                              (_profile!.companyName ?? _profile!.firstName)[0],
                               style: const TextStyle(fontSize: 40),
                             )
                           : null,
@@ -171,23 +171,13 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                 child: Column(
                   children: [
                     Text(
-                      _profile!.fullName,
+                      _profile!.companyName ?? _profile!.fullName,
                       style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    if (_profile!.companyName != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _profile!.companyName!,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: AppColors.secondary,
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

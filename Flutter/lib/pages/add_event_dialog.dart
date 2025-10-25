@@ -177,13 +177,13 @@ class _AddEventDialogState extends State<AddEventDialog> {
           // Show reward popup
           final appState = context.read<AppState>();
           await appState.refreshUserProfile();
-          if (mounted && appState.user?.totalPoints != null) {
+          if (mounted && appState.user?.totalEarnedPoints != null) {
             await showDialog(
               context: context,
               barrierDismissible: false,
               builder: (context) => RewardPopup(
                 pointsAwarded: 2,
-                totalPoints: appState.user!.totalPoints!,
+                totalPoints: appState.user!.totalEarnedPoints!,
               ),
             );
           }

@@ -9,6 +9,7 @@ import '../widgets/property_image_carousel.dart';
 import 'auction_details_page.dart';
 import 'property_comparison_page.dart';
 import 'property_search_page.dart';
+import 'vip_auctions_page.dart';
 
 class AuctionsPage extends StatefulWidget {
   const AuctionsPage({super.key});
@@ -417,6 +418,44 @@ class _AuctionsPageState extends State<AuctionsPage> {
                   ],
                 ),
                 actions: [
+                  // VIP Button
+                  IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.diamond, color: Colors.white, size: 16),
+                          SizedBox(width: 4),
+                          Text(
+                            'VIP',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    onPressed: () => _handleVipButtonPress(context, appState),
+                  ),
                   PopupMenuButton<String>(
                     onSelected: _setSort,
                     icon: const Icon(Icons.sort, color: Color(0xFF1A1A1A)),
@@ -1360,6 +1399,206 @@ class _AuctionsPageState extends State<AuctionsPage> {
               letterSpacing: 0.2,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _handleVipButtonPress(BuildContext context, AppState appState) {
+    if (appState.user == null) return;
+
+    final totalEarnedPoints = appState.user!.totalEarnedPoints ?? 0;
+    const vipThreshold = 5000;
+
+    if (totalEarnedPoints >= vipThreshold) {
+      // User is VIP - navigate to VIP auctions page
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const VipAuctionsPage()),
+      );
+    } else {
+      // User is not VIP - show VIP requirements dialog
+      _showVipRequirementsDialog(context, totalEarnedPoints, vipThreshold);
+    }
+  }
+
+  void _showVipRequirementsDialog(
+    BuildContext context,
+    int currentPoints,
+    int vipThreshold,
+  ) {
+    final pointsNeeded = vipThreshold - currentPoints;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.diamond, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('VIP Membership Required'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Unlock exclusive VIP auctions with premium properties and special features!',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[50]!, Colors.purple[50]!],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Your Points:',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        '$currentPoints pts',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'VIP Threshold:',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        '$vipThreshold pts',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: pointsNeeded > 0
+                          ? Colors.orange[100]
+                          : Colors.green[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          pointsNeeded > 0
+                              ? Icons.trending_up
+                              : Icons.check_circle,
+                          color: pointsNeeded > 0
+                              ? Colors.orange[700]
+                              : Colors.green[700],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            pointsNeeded > 0
+                                ? 'You need $pointsNeeded more points to become VIP'
+                                : 'Congratulations! You are VIP!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: pointsNeeded > 0
+                                  ? Colors.orange[700]
+                                  : Colors.green[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Earn points by:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...[
+              'Viewing properties',
+              'Placing bids',
+              'Adding properties',
+              'Creating events',
+            ].map(
+              (activity) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Icon(Icons.star, size: 16, color: Colors.amber[600]),
+                    const SizedBox(width: 8),
+                    Text(
+                      activity,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          if (pointsNeeded > 0)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/rewards');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF667eea),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Earn Points'),
+            ),
         ],
       ),
     );

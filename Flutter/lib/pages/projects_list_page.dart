@@ -271,7 +271,10 @@ class _ProjectsListPageState extends State<ProjectsListPage> {
                             ? NetworkImage(project.developerProfileImage!)
                             : null,
                         child: project.developerProfileImage == null
-                            ? Text(project.developerName[0])
+                            ? Text(
+                                (project.developerCompany ??
+                                    project.developerName)[0],
+                              )
                             : null,
                       ),
                       const SizedBox(width: 8),
@@ -280,7 +283,7 @@ class _ProjectsListPageState extends State<ProjectsListPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              project.developerName,
+                              project.developerCompany ?? project.developerName,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                               ),

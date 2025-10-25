@@ -27,9 +27,21 @@ namespace PropertyFlipperAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AuctionDto>>> GetAuctions()
         {
+            // Only return auctions that are relevant to users:
+            // - Approved (1): Upcoming auctions
+            // - Active (2): Live auctions  
+            // - Closed (3): Ended auctions
+            // - Completed (5): Ended auctions
+            // Exclude: Requested (0) and Cancelled (4)
             var auctions = await _context.Auctions
                 .Include(a => a.Property)
                     .ThenInclude(p => p.PropertyImages)
+                .Where(a => a.Status == "Approved" || 
+                           a.Status == "Active" || 
+                           a.Status == "Closed" || 
+                           a.Status == "Completed" ||
+                           a.Status == "Ended")
+                .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
 
             // Convert to DTOs with calculated values
@@ -169,7 +181,7 @@ namespace PropertyFlipperAPI.Controllers
         public async Task<ActionResult<Auction>> CreateAuction([FromBody] CreateAuctionDto auctionDto)
         {
             // Check if property exists
-            var property = await _context.Properties.FindAsync(auctionDto.PropertyId);
+            var property = await _context.ChildProperties.FindAsync(auctionDto.PropertyId);
             if (property == null)
                 return NotFound("Property not found");
 
@@ -184,12 +196,11 @@ namespace PropertyFlipperAPI.Controllers
             // Create auction directly as Active
             var auction = new Auction
             {
-                PropertyId = auctionDto.PropertyId,
+                PropertyId = (int)auctionDto.PropertyId,
                 StartPrice = auctionDto.StartPrice,
                 CurrentPrice = auctionDto.StartPrice,
                 StartAt = auctionDto.StartAt,
                 Duration = auctionDto.Duration,
-                BuyNowPrice = auctionDto.BuyNowPrice,
                 Status = "Active",
                 BidCount = 0,
                 CreatedAt = DateTime.UtcNow
@@ -220,7 +231,7 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized();
 
             // Check if property exists and belongs to user
-            var property = await _context.Properties.FindAsync(requestDto.PropertyId);
+            var property = await _context.ChildProperties.FindAsync(requestDto.PropertyId);
             if (property == null)
                 return NotFound("Property not found");
 
@@ -242,12 +253,11 @@ namespace PropertyFlipperAPI.Controllers
             // Create auction request
             var auction = new Auction
             {
-                PropertyId = requestDto.PropertyId,
+                PropertyId = (int)requestDto.PropertyId,
                 StartPrice = requestDto.StartPrice,
                 CurrentPrice = requestDto.StartPrice,
                 StartAt = requestDto.StartAt,
                 Duration = requestDto.Duration,
-                BuyNowPrice = requestDto.BuyNowPrice,
                 Status = "Requested",
                 CreatedAt = DateTime.UtcNow
             };
@@ -363,101 +373,6 @@ namespace PropertyFlipperAPI.Controllers
 
 
 
-        // POST: api/Auction/{id}/buynow
-        [HttpPost("{id}/buynow")]
-        [Authorize]
-        public async Task<ActionResult> BuyNow(long id)
-        {
-            var accountId = GetCurrentAccountId();
-            if (accountId == null)
-                return Unauthorized();
-
-            var auction = await _context.Auctions
-                .Include(a => a.Property)
-                    .ThenInclude(p => p.Owner)
-                .Include(a => a.Property)
-                    .ThenInclude(p => p.PropertyImages)
-                .FirstOrDefaultAsync(a => a.AuctionId == id);
-
-            if (auction == null)
-                return NotFound(new { message = "Auction not found" });
-
-            // Verify auction is active
-            var now = DateTime.UtcNow;
-            if (auction.Status != "Active" || auction.StartAt > now || auction.StartAt.AddHours(auction.Duration) < now)
-                return BadRequest(new { message = "Auction is not active" });
-
-            // Verify buy now price exists
-            if (auction.BuyNowPrice == null)
-                return BadRequest(new { message = "This auction does not have a buy now option" });
-
-            // Prevent owner from buying their own auction
-            if (auction.Property.OwnerId == accountId)
-                return BadRequest(new { message = "You cannot buy your own auction" });
-
-            // Get buyer account
-            var buyer = await _context.Accounts.FindAsync(accountId.Value);
-            if (buyer == null)
-                return NotFound(new { message = "Buyer account not found" });
-
-            // End the auction immediately
-            auction.Status = "Sold";
-            auction.CurrentPrice = auction.BuyNowPrice.Value;
-
-            // Create a final bid record for the buy now purchase
-            var buyNowBid = new Bid
-            {
-                AuctionId = auction.AuctionId,
-                BidderId = accountId.Value,
-                BidAmount = auction.BuyNowPrice.Value,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Bids.Add(buyNowBid);
-            auction.BidCount += 1;
-
-            await _context.SaveChangesAsync();
-
-            // Notify the auction owner (seller)
-            var sellerNotification = new Notification
-            {
-                UserId = auction.Property.OwnerId,
-                Title = "Property Sold - Buy Now!",
-                Message = $"🎉 Great news! {buyer.FirstName} {buyer.LastName} purchased your property '{auction.Property.Name}' using Buy Now for ${auction.BuyNowPrice:N2}. We will call you soon to schedule a meeting to finalize the sale.",
-                Type = NotificationType.AuctionEnded,
-                AuctionId = auction.AuctionId,
-                PropertyId = auction.PropertyId,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.Notifications.Add(sellerNotification);
-
-            // Notify the buyer
-            var buyerNotification = new Notification
-            {
-                UserId = accountId.Value,
-                Title = "Purchase Successful!",
-                Message = $"🎉 Congratulations! You successfully purchased '{auction.Property.Name}' for ${auction.BuyNowPrice:N2}. We will call you soon to schedule a meeting to finalize the purchase and arrange payment.",
-                Type = NotificationType.AuctionWon,
-                AuctionId = auction.AuctionId,
-                PropertyId = auction.PropertyId,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.Notifications.Add(buyerNotification);
-
-            await _context.SaveChangesAsync();
-
-            // Update Firestore for real-time sync
-            await _firestoreService.UpdateAuctionAsync(auction.AuctionId, auction);
-            await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId, sellerNotification);
-            await _firestoreService.UpdateUserNotificationAsync(accountId.Value, buyerNotification);
-
-            return Ok(new { 
-                message = "Purchase successful! We will contact you soon to schedule a meeting.",
-                auctionId = auction.AuctionId,
-                purchasePrice = auction.BuyNowPrice,
-                propertyName = auction.Property.Name
-            });
-        }
 
         private bool AuctionExists(int id)
         {
@@ -477,7 +392,6 @@ namespace PropertyFlipperAPI.Controllers
         public decimal StartPrice { get; set; }
         public DateTime StartAt { get; set; }
         public int Duration { get; set; } // hours
-        public decimal? BuyNowPrice { get; set; }
     }
 
     public class AuctionStatusUpdateDto
@@ -491,7 +405,6 @@ namespace PropertyFlipperAPI.Controllers
         public decimal StartPrice { get; set; }
         public DateTime StartAt { get; set; }
         public int Duration { get; set; } // hours
-        public decimal? BuyNowPrice { get; set; }
     }
 
     public class RelistAuctionDto

@@ -60,7 +60,7 @@ namespace PropertyFlipperAPI.Controllers
                 UserId = c.UserId,
                 UserName = $"{c.User.FirstName} {c.User.LastName}",
                 DeveloperId = c.DeveloperId,
-                DeveloperName = $"{c.Developer.FirstName} {c.Developer.LastName}",
+                DeveloperName = "Unknown Developer", // Will be updated to use company name
                 ProjectId = c.ProjectId,
                 ProjectName = c.Project?.Name,
                 CreatedAt = c.CreatedAt,
@@ -104,7 +104,7 @@ namespace PropertyFlipperAPI.Controllers
                 UserId = chat.UserId,
                 UserName = $"{chat.User.FirstName} {chat.User.LastName}",
                 DeveloperId = chat.DeveloperId,
-                DeveloperName = $"{chat.Developer.FirstName} {chat.Developer.LastName}",
+                DeveloperName = "Unknown Developer", // Will be updated to use company name
                 ProjectId = chat.ProjectId,
                 ProjectName = chat.Project?.Name,
                 CreatedAt = chat.CreatedAt,
@@ -215,10 +215,10 @@ namespace PropertyFlipperAPI.Controllers
                 return Forbid();
 
             // Verify property exists if provided
-            Property? property = null;
+            ChildProperty? property = null;
             if (dto.PropertyId.HasValue)
             {
-                property = await _context.Properties.FindAsync(dto.PropertyId.Value);
+                property = await _context.ChildProperties.FindAsync(dto.PropertyId.Value);
                 if (property == null)
                     return NotFound("Property not found");
             }
@@ -229,7 +229,7 @@ namespace PropertyFlipperAPI.Controllers
                 ChatId = chatId,
                 SenderId = accountId.Value,
                 Content = dto.Content,
-                PropertyId = dto.PropertyId,
+                PropertyId = (int?)dto.PropertyId,
                 CreatedAt = DateTime.UtcNow,
                 IsRead = false,
                 ExpiresAt = DateTime.UtcNow.AddDays(30)

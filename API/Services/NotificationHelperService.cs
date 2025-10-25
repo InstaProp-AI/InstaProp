@@ -35,7 +35,7 @@ namespace PropertyFlipperAPI.Services
 
                 case "property_owners":
                     if (!userId.HasValue) return false;
-                    return await _context.Properties
+                    return await _context.ChildProperties
                         .AnyAsync(p => p.OwnerId == userId.Value);
 
                 case "auction_owners":
@@ -44,8 +44,8 @@ namespace PropertyFlipperAPI.Services
                         .Where(a => a.Status == "Active" || a.Status == "Requested")
                         .Select(a => a.PropertyId)
                         .ToListAsync();
-                    return await _context.Properties
-                        .AnyAsync(p => auctionPropertyIds.Contains(p.PropertyId) && p.OwnerId == userId.Value);
+                    return await _context.ChildProperties
+                        .AnyAsync(p => auctionPropertyIds.Contains((int)p.PropertyId) && p.OwnerId == userId.Value);
 
                 case "bidders":
                     if (!userId.HasValue) return false;
@@ -96,15 +96,15 @@ namespace PropertyFlipperAPI.Services
                     return await _context.Accounts.CountAsync(a => a.Type == AccountType.User);
 
                 case "property_owners":
-                    return await _context.Properties.Select(p => p.OwnerId).Distinct().CountAsync();
+                    return await _context.ChildProperties.Select(p => p.OwnerId).Distinct().CountAsync();
 
                 case "auction_owners":
                     var auctionPropertyIds = await _context.Auctions
                         .Where(a => a.Status == "Active" || a.Status == "Requested")
                         .Select(a => a.PropertyId)
                         .ToListAsync();
-                    return await _context.Properties
-                        .Where(p => auctionPropertyIds.Contains(p.PropertyId))
+                    return await _context.ChildProperties
+                        .Where(p => auctionPropertyIds.Contains((int)p.PropertyId))
                         .Select(p => p.OwnerId)
                         .Distinct()
                         .CountAsync();

@@ -64,7 +64,7 @@ namespace PropertyFlipperAPI.Controllers
                     AuctionId = 1,
                     StartPrice = 450000,
                     StartAt = DateTime.UtcNow.AddHours(12),
-                    Property = new Property
+                    Property = new ChildProperty
                     {
                         PropertyId = 1,
                         Name = "Luxury Beachfront Villa",

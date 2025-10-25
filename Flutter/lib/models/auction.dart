@@ -9,7 +9,6 @@ class Auction {
   final double currentPrice;
   final DateTime startAt;
   final int duration;
-  final double? buyNowPrice;
   final int bidCount;
   final String status;
   final DateTime createdAt;
@@ -23,7 +22,6 @@ class Auction {
     required this.currentPrice,
     required this.startAt,
     required this.duration,
-    this.buyNowPrice,
     required this.bidCount,
     required this.status,
     required this.createdAt,
@@ -59,9 +57,6 @@ class Auction {
         json['startAt'] ?? json['StartAt'] ?? DateTime.now().toIso8601String(),
       ),
       duration: json['duration'] ?? json['Duration'] ?? 0,
-      buyNowPrice: json['buyNowPrice'] != null || json['BuyNowPrice'] != null
-          ? (json['buyNowPrice'] ?? json['BuyNowPrice']).toDouble()
-          : null,
       bidCount: json['bidCount'] ?? json['BidCount'] ?? 0,
       status: json['status'] ?? json['Status'] ?? '',
       createdAt: DateTime.parse(
@@ -91,7 +86,6 @@ class Auction {
       'currentPrice': currentPrice,
       'startAt': startAt.toIso8601String(),
       'duration': duration,
-      'buyNowPrice': buyNowPrice,
       'bidCount': bidCount,
       'status': status,
       'createdAt': createdAt.toIso8601String(),
@@ -151,7 +145,6 @@ class Auction {
     double? currentPrice,
     DateTime? startAt,
     int? duration,
-    double? buyNowPrice,
     int? bidCount,
     String? status,
     DateTime? createdAt,
@@ -165,7 +158,6 @@ class Auction {
       currentPrice: currentPrice ?? this.currentPrice,
       startAt: startAt ?? this.startAt,
       duration: duration ?? this.duration,
-      buyNowPrice: buyNowPrice ?? this.buyNowPrice,
       bidCount: bidCount ?? this.bidCount,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,

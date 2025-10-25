@@ -76,6 +76,7 @@ const AuctionsPage: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showRelistModal, setShowRelistModal] = useState(false);
   const [auctionBids, setAuctionBids] = useState<any[]>([]);
+  const [loadingBids, setLoadingBids] = useState(false);
   const [newBidAmount, setNewBidAmount] = useState(0);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -416,27 +417,38 @@ const AuctionsPage: React.FC = () => {
     setSelectedAuction(auction);
     setShowDetailsModal(true);
     
+    // Reset bids state first
+    setAuctionBids([]);
+    setLoadingBids(true);
+    
     // Fetch bids for this auction
     try {
       console.log('📋 Fetching bids for auction:', auction.auctionId);
       const bidsData = await bidsApi.getBidsForAuction(auction.auctionId);
       console.log('📋 Bids data received:', bidsData);
+      console.log('📋 Bids data type:', typeof bidsData, 'isArray:', Array.isArray(bidsData));
       
       // Sort bids by amount descending (highest first)
       const sortedBids = (bidsData || []).sort((a: any, b: any) => 
         (b.bidAmount || b.BidAmount || 0) - (a.bidAmount || a.BidAmount || 0)
       );
       
+      console.log('📋 Sorted bids:', sortedBids);
       setAuctionBids(sortedBids);
       
       if (sortedBids.length > 0) {
         toast.success(`Loaded ${sortedBids.length} bid${sortedBids.length > 1 ? 's' : ''} for this auction`);
+      } else {
+        console.log('📋 No bids found for this auction');
+        toast.info('No bids placed on this auction yet');
       }
     } catch (error: any) {
       console.error('❌ Error fetching auction bids:', error);
       console.error('❌ Error details:', error.response?.data);
       toast.error('Failed to load bids for this auction');
       setAuctionBids([]);
+    } finally {
+      setLoadingBids(false);
     }
   };
 
@@ -1824,9 +1836,28 @@ const AuctionsPage: React.FC = () => {
                 <div>
                   <h4 style={{ fontSize: '1rem', fontWeight: '600', color: '#111827', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Users style={{ height: '1rem', width: '1rem', color: '#667eea' }} />
-                    Bidding History ({auctionBids.length} bids)
+                    Bidding History ({auctionBids?.length || 0} bids)
                   </h4>
-                  {auctionBids.length > 0 ? (
+                  {loadingBids ? (
+                    <div style={{
+                      padding: '3rem',
+                      textAlign: 'center',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{
+                        width: '2rem',
+                        height: '2rem',
+                        border: '3px solid #e2e8f0',
+                        borderTop: '3px solid #667eea',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        margin: '0 auto 1rem'
+                      }} />
+                      <p style={{ margin: 0, color: '#6b7280', fontWeight: '500' }}>Loading bids...</p>
+                    </div>
+                  ) : auctionBids && auctionBids.length > 0 ? (
                     <div style={{
                       maxHeight: '400px',
                       overflowY: 'auto',

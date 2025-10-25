@@ -308,7 +308,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           _bidController.clear();
         });
         // Show reward popup after successful bid
-        if (mounted && context.read<AppState>().user?.totalPoints != null) {
+        if (mounted &&
+            context.read<AppState>().user?.totalEarnedPoints != null) {
           await Future.delayed(const Duration(milliseconds: 500));
           if (mounted) {
             await showDialog(
@@ -316,7 +317,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               barrierDismissible: false,
               builder: (context) => RewardPopup(
                 pointsAwarded: 5,
-                totalPoints: context.read<AppState>().user!.totalPoints!,
+                totalPoints: context.read<AppState>().user!.totalEarnedPoints!,
               ),
             );
           }
@@ -341,204 +342,6 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _handleBuyNow() async {
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.shopping_cart, color: AppColors.primary),
-              const SizedBox(width: 12),
-              const Text('Buy Now Confirmation'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Are you sure you want to purchase this property immediately?',
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.secondary!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Property: ${_currentAuction!.property?.name ?? 'N/A'}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Purchase Price: \$${_currentAuction!.buyNowPrice!.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '⚠️ This will end the auction immediately and you will be committed to purchasing this property.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.primary,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: AppColors.primary, fontSize: 16),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Confirm Purchase',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.surface,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    try {
-      print('Initiating buy now for auction: ${_currentAuction!.auctionId}');
-
-      final response = await AuctionService.buyNow(_currentAuction!.auctionId);
-
-      print('Buy now response: ${response.success}, error: ${response.error}');
-
-      if (response.success) {
-        if (mounted) {
-          // Show success dialog
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                title: Row(
-                  children: [
-                    Icon(Icons.celebration, color: AppColors.primary),
-                    const SizedBox(width: 12),
-                    const Text('Purchase Successful!'),
-                  ],
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '🎉 Congratulations!',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      response.data?['message'] ??
-                          'You have successfully purchased this property! We will contact you soon to schedule a meeting.',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pop(); // Return to previous page
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'OK',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.surface,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      } else {
-        setState(() {
-          _errorMessage = response.error ?? 'Failed to complete purchase';
-        });
-      }
-    } catch (e) {
-      print('Error during buy now: $e');
-      setState(() {
-        _errorMessage = 'Error: $e';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
@@ -1012,65 +815,28 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   ),
                 ),
 
-                if (_currentAuction!.buyNowPrice != null) ...[
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'Buy Now: \$${_currentAuction!.buyNowPrice!.toStringAsFixed(0)}',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Consumer<AppState>(
-                    builder: (context, appState, child) {
-                      // Only show buy now button if user is logged in, verified, active auction
-                      if (!appState.isLoggedIn ||
-                          !appState.user!.isVerified ||
-                          !_currentAuction!.isActive) {
-                        return const SizedBox.shrink();
-                      }
+                Consumer<AppState>(
+                  builder: (context, appState, child) {
+                    // Only show buy now button if user is logged in, verified, active auction
+                    if (!appState.isLoggedIn ||
+                        !appState.user!.isVerified ||
+                        !_currentAuction!.isActive) {
+                      return const SizedBox.shrink();
+                    }
 
-                      // Check if user owns this property
-                      final userOwnsProperty = appState.userProperties.any(
-                        (property) =>
-                            property.propertyId == _currentAuction!.propertyId,
-                      );
+                    // Check if user owns this property
+                    final userOwnsProperty = appState.userProperties.any(
+                      (property) =>
+                          property.propertyId == _currentAuction!.propertyId,
+                    );
 
-                      if (userOwnsProperty) {
-                        return const SizedBox.shrink();
-                      }
+                    if (userOwnsProperty) {
+                      return const SizedBox.shrink();
+                    }
 
-                      return Center(
-                        child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _handleBuyNow,
-                          icon: const Icon(Icons.shopping_cart),
-                          label: Text(
-                            'Buy Now for \$${_currentAuction!.buyNowPrice!.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.surface,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 4,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                    return const SizedBox.shrink();
+                  },
+                ),
 
                 const SizedBox(height: 24),
 

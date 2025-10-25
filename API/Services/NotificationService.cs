@@ -41,7 +41,7 @@ namespace PropertyFlipperAPI.Services
             await _context.SaveChangesAsync();
 
             // Update Firestore for real-time sync
-            await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId, notification);
+            await _firestoreService.UpdateUserNotificationAsync((long)auction.Property.OwnerId, notification);
         }
 
         // Create notification when someone places a higher bid (outbid)
@@ -172,7 +172,7 @@ namespace PropertyFlipperAPI.Services
             await _context.SaveChangesAsync();
 
             // Update Firestore for real-time sync
-            await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId, notification);
+            await _firestoreService.UpdateUserNotificationAsync((long)auction.Property.OwnerId, notification);
         }
 
         // Create notification when auction is rejected
@@ -199,7 +199,7 @@ namespace PropertyFlipperAPI.Services
             await _context.SaveChangesAsync();
 
             // Update Firestore for real-time sync
-            await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId, notification);
+            await _firestoreService.UpdateUserNotificationAsync((long)auction.Property.OwnerId, notification);
         }
 
         // Create notification for upcoming events (reminder)

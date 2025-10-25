@@ -75,7 +75,6 @@ namespace PropertyFlipperAPI.Services
                     ["currentPrice"] = (double)auction.CurrentPrice,
                     ["startAt"] = auction.StartAt.ToString("o"), // ISO 8601 format
                     ["duration"] = auction.Duration,
-                    ["buyNowPrice"] = auction.BuyNowPrice != null ? (double)auction.BuyNowPrice : 0,
                     ["bidCount"] = auction.BidCount,
                     ["status"] = auction.Status,
                     ["createdAt"] = auction.CreatedAt.ToString("o"), // ISO 8601 format
@@ -365,7 +364,7 @@ namespace PropertyFlipperAPI.Services
         /// <summary>
         /// Syncs property to Firestore
         /// </summary>
-        public async Task SyncPropertyAsync(long propertyId, Property property)
+        public async Task SyncPropertyAsync(long propertyId, ChildProperty property)
         {
             if (!_isEnabled || _db == null)
             {

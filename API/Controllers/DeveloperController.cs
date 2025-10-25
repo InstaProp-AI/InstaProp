@@ -45,11 +45,12 @@ namespace PropertyFlipperAPI.Controllers
 
             var projects = await _context.Projects
                 .Where(p => p.DeveloperId == developerId && p.IsActive)
-                .Include(p => p.Properties)
                 .ToListAsync();
 
-            var totalProperties = projects.SelectMany(p => p.Properties).Count();
-            var soldProperties = await _context.Properties
+            var totalProperties = await _context.ChildProperties
+                .Where(cp => projects.Select(p => p.ProjectId).Contains(cp.ProjectId.Value))
+                .CountAsync();
+            var soldProperties = await _context.ChildProperties
                 .Where(p => p.OwnerId == developerId && p.Auctions.Any(a => a.Status == "Sold"))
                 .CountAsync();
 
@@ -62,8 +63,8 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(new DeveloperProfileDto
             {
                 DeveloperId = developer.AccountId,
-                FirstName = developer.FirstName,
-                LastName = developer.LastName,
+                FirstName = profile?.CompanyName ?? "Unknown Developer",
+                LastName = "",
                 Email = developer.Email,
                 PhoneNumber = developer.PhoneNumber,
                 Bio = profile?.Bio,
@@ -72,7 +73,7 @@ namespace PropertyFlipperAPI.Controllers
                 Rating = profile?.Rating ?? 0,
                 TotalRatings = profile?.TotalRatings ?? 0,
                 PortfolioDescription = profile?.PortfolioDescription,
-                ActiveProjectsCount = projects.Count,
+                ActiveProjectsCount = projects.Count(),
                 TotalPropertiesCount = totalProperties,
                 SoldPropertiesCount = soldProperties,
                 Ratings = ratings.Select(r => new DeveloperRatingDto
@@ -141,11 +142,11 @@ namespace PropertyFlipperAPI.Controllers
 
             var projects = await _context.Projects
                 .Where(p => p.DeveloperId == accountId.Value)
-                .Include(p => p.Properties)
-                    .ThenInclude(p => p.Auctions)
                 .ToListAsync();
 
-            var properties = projects.SelectMany(p => p.Properties).ToList();
+            var properties = await _context.ChildProperties
+                .Where(cp => projects.Select(p => p.ProjectId).Contains(cp.ProjectId.Value))
+                .ToListAsync();
             var auctions = properties.SelectMany(p => p.Auctions).ToList();
             
             var activeAuctions = auctions.Count(a => a.Status == "Active");
@@ -180,8 +181,8 @@ namespace PropertyFlipperAPI.Controllers
 
             return Ok(new DeveloperAnalyticsDto
             {
-                TotalProjects = projects.Count,
-                TotalProperties = properties.Count,
+                TotalProjects = projects.Count(),
+                TotalProperties = properties.Count(),
                 ActiveAuctions = activeAuctions,
                 SoldProperties = soldProperties,
                 TotalRevenue = totalRevenue,
@@ -207,22 +208,14 @@ namespace PropertyFlipperAPI.Controllers
 
             // Return projects explicitly owned by developer OR any project that contains properties owned by the developer
             var projects = await _context.Projects
-                .Include(p => p.Properties)
-                    .ThenInclude(prop => prop.PropertyImages)
-                .Where(p => p.DeveloperId == accountId.Value ||
-                            p.Properties.Any(prop => prop.OwnerId == accountId.Value))
+                .Where(p => p.DeveloperId == accountId.Value)
                 .ToListAsync();
 
-            var projectDtos = projects.Select(p => new ProjectWithPropertiesDto
+            var projectDtos = new List<ProjectWithPropertiesDto>();
+            foreach (var p in projects)
             {
-                ProjectId = p.ProjectId,
-                Name = p.Name,
-                Description = p.Description,
-                Location = p.Location,
-                CreatedAt = p.CreatedAt,
-                IsActive = p.IsActive,
-                PropertiesCount = p.Properties.Count,
-                Properties = p.Properties.Select(prop => new PropertySummaryDto
+                var propertiesCount = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).CountAsync();
+                var properties = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).Select(prop => new PropertySummaryDto
                 {
                     PropertyId = prop.PropertyId,
                     Name = prop.Name,
@@ -233,8 +226,20 @@ namespace PropertyFlipperAPI.Controllers
                     Bedrooms = prop.Bedrooms,
                     Bathrooms = prop.Bathrooms,
                     SquareFeet = prop.SquareFeet
-                }).ToList()
-            }).ToList();
+                }).ToListAsync();
+
+                projectDtos.Add(new ProjectWithPropertiesDto
+                {
+                    ProjectId = p.ProjectId,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Location = p.Location,
+                    CreatedAt = p.CreatedAt,
+                    IsActive = p.IsActive,
+                    PropertiesCount = propertiesCount,
+                    Properties = properties
+                });
+            }
 
             return Ok(projectDtos);
         }
@@ -252,7 +257,7 @@ namespace PropertyFlipperAPI.Controllers
             if (account == null || account.Type != AccountType.Developer)
                 return Forbid("Only developers can view their properties");
 
-            var properties = await _context.Properties
+            var properties = await _context.ChildProperties
                 .Where(p => p.OwnerId == accountId.Value)
                 .Include(p => p.PropertyImages)
                 .ToListAsync();
@@ -368,8 +373,8 @@ namespace PropertyFlipperAPI.Controllers
                     return new FeaturedDeveloperDto
                     {
                         DeveloperId = d.AccountId,
-                        FirstName = d.FirstName,
-                        LastName = d.LastName,
+                        FirstName = profile?.CompanyName ?? "Unknown Developer",
+                        LastName = "",
                         CompanyName = profile?.CompanyName,
                         ProfileImageUrl = profile?.ProfileImageUrl,
                         Rating = profile?.Rating ?? 0,

@@ -309,7 +309,7 @@ namespace PropertyFlipperAPI.Controllers
             try
             {
                 // Get top 10 locations by property count
-                var locations = await _context.Properties
+                var locations = await _context.ChildProperties
                     .Where(p => !string.IsNullOrEmpty(p.Location))
                     .GroupBy(p => p.Location)
                     .OrderByDescending(g => g.Count())
@@ -589,7 +589,7 @@ namespace PropertyFlipperAPI.Controllers
             {
                 _logger.LogInformation($"Searching properties with: Location={prefs.Location}, Bedrooms={prefs.Bedrooms}, Bathrooms={prefs.Bathrooms}, Type={prefs.PropertyType}");
 
-                var query = _context.Properties
+                var query = _context.ChildProperties
                     .Include(p => p.Auctions)
                     .AsQueryable();
 
@@ -616,11 +616,11 @@ namespace PropertyFlipperAPI.Controllers
                 {
                     if (prefs.PropertyType.Contains("Primary") || prefs.PropertyType.Contains("New"))
                     {
-                        query = query.Where(p => p.Type == PropertyType.Primary);
+                        query = query.Where(p => p.Type == PropertyType.Villa);
                     }
                     else if (prefs.PropertyType.Contains("Resale"))
                     {
-                        query = query.Where(p => p.Type == PropertyType.Resale);
+                        query = query.Where(p => p.Type == PropertyType.Apartment);
                     }
                 }
 
@@ -666,7 +666,7 @@ namespace PropertyFlipperAPI.Controllers
 
         private async Task<List<DeveloperSuggestionDto>> GetRelevantDevelopers(List<PropertySuggestionDto> properties)
         {
-            var developerIds = await _context.Properties
+            var developerIds = await _context.ChildProperties
                 .Where(p => properties.Select(pr => pr.PropertyId).Contains(p.PropertyId))
                 .Select(p => p.OwnerId)
                 .Distinct()
@@ -680,7 +680,7 @@ namespace PropertyFlipperAPI.Controllers
             return developers.Select(d => new DeveloperSuggestionDto
             {
                 DeveloperId = d.AccountId,
-                Name = d.Account.FirstName + " " + d.Account.LastName,
+                Name = d.CompanyName ?? "Unknown Developer",
                 CompanyName = d.CompanyName ?? "Independent Developer",
                 AverageRating = (double)d.Rating,
                 TotalProjects = _context.Projects.Count(p => p.DeveloperId == d.AccountId),

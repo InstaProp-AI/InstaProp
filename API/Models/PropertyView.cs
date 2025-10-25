@@ -10,10 +10,10 @@ namespace PropertyFlipperAPI.Models
         public long ViewId { get; set; }
 
         [Required]
-        public long PropertyId { get; set; }
+        public int PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public Property Property { get; set; } = null!;
+        public ChildProperty Property { get; set; } = null!;
 
         public long? UserId { get; set; } // Null for anonymous views
 

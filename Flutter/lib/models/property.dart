@@ -1,5 +1,7 @@
 import 'user.dart';
 import 'property_image.dart';
+import 'child_property.dart';
+import 'parent_property.dart';
 
 enum PropertyType { resale, primary }
 
@@ -217,4 +219,103 @@ class Property {
   bool get isApproved => status == PropertyStatus.approved;
   bool get isPending => status == PropertyStatus.pending;
   bool get isNotApproved => status == PropertyStatus.notApproved;
+
+  // Factory method to create Property from ChildProperty for backward compatibility
+  factory Property.fromChildProperty(ChildProperty childProperty) {
+    return Property(
+      propertyId: childProperty.propertyId,
+      ownerId: childProperty.ownerId ?? 0,
+      owner: null, // Will be populated if needed
+      projectId: null, // ChildProperty doesn't have projectId directly
+      project: childProperty.project,
+      name: childProperty.name,
+      description: childProperty.description,
+      location: childProperty.location,
+      type: _convertPropertyTypeFromString(childProperty.propertyType),
+      status: _convertPropertyStatus(childProperty.status),
+      bedrooms: childProperty.bedrooms,
+      bathrooms: childProperty.bathrooms,
+      squareFeet: childProperty.squareFeet,
+      yearBuilt: childProperty.yearBuilt,
+      category: childProperty.category,
+      imageUrl: childProperty.imageUrl,
+      createdAt: childProperty.createdAt,
+      updatedAt: childProperty.updatedAt,
+      hasActiveAuction: childProperty.hasActiveAuction,
+      propertyImages: childProperty.propertyImages ?? [],
+    );
+  }
+
+  // Factory method to create Property from ParentProperty for backward compatibility
+  factory Property.fromParentProperty(ParentProperty parentProperty) {
+    return Property(
+      propertyId: parentProperty.parentPropertyId,
+      ownerId: 0, // ParentProperty doesn't have owner
+      owner: null,
+      projectId: null, // ParentProperty doesn't have projectId directly
+      project: parentProperty.projectName,
+      name: '${parentProperty.propertyType} - ${parentProperty.bedrooms}BR',
+      description:
+          '${parentProperty.propertyType} with ${parentProperty.bedrooms} bedrooms and ${parentProperty.bathrooms} bathrooms',
+      location: parentProperty.projectName,
+      type: _convertPropertyTypeFromString(parentProperty.propertyType),
+      status: PropertyStatus.approved, // Assume approved for parent properties
+      bedrooms: parentProperty.bedrooms,
+      bathrooms: parentProperty.bathrooms,
+      squareFeet: parentProperty.areaSqm,
+      yearBuilt: 0,
+      category: parentProperty.propertyType,
+      imageUrl: '', // ParentProperty doesn't have image
+      createdAt: parentProperty.createdAt,
+      updatedAt: parentProperty.updatedAt,
+      hasActiveAuction: false, // ParentProperty doesn't have auctions directly
+      propertyImages: [],
+    );
+  }
+
+  // Helper methods to convert between old and new property types
+  static PropertyType _convertPropertyType(String? typeString) {
+    if (typeString == null) return PropertyType.resale;
+
+    switch (typeString.toLowerCase()) {
+      case 'apartment':
+      case 'villa':
+      case 'townhouse':
+      case 'penthouse':
+      case 'studio':
+      case 'duplex':
+        return PropertyType.primary;
+      default:
+        return PropertyType.resale;
+    }
+  }
+
+  static PropertyStatus _convertPropertyStatus(String? statusString) {
+    if (statusString == null) return PropertyStatus.notApproved;
+
+    switch (statusString.toLowerCase()) {
+      case 'approved':
+        return PropertyStatus.approved;
+      case 'pending':
+        return PropertyStatus.pending;
+      default:
+        return PropertyStatus.notApproved;
+    }
+  }
+
+  static PropertyType _convertPropertyTypeFromString(String? typeString) {
+    if (typeString == null) return PropertyType.resale;
+
+    switch (typeString.toLowerCase()) {
+      case 'apartment':
+      case 'villa':
+      case 'townhouse':
+      case 'penthouse':
+      case 'studio':
+      case 'duplex':
+        return PropertyType.primary;
+      default:
+        return PropertyType.resale;
+    }
+  }
 }

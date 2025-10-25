@@ -62,8 +62,8 @@ namespace PropertyFlipperAPI.Controllers
             try
             {
                 var user = await _context.Accounts
-                    .Include(a => a.Properties)
-                        .ThenInclude(p => p.Project)
+                    .Include(a => a.Projects)
+                        .ThenInclude(p => p.Developer)
                     .Include(a => a.Bids)
                         .ThenInclude(b => b.Auction)
                             .ThenInclude(a => a.Property)
@@ -89,7 +89,7 @@ namespace PropertyFlipperAPI.Controllers
                     user.SuspensionReason,
                     user.CreatedAt,
                     user.UpdatedAt,
-                    Properties = user.Properties.Select(p => new
+                    Properties = _context.ChildProperties.Where(cp => cp.OwnerId == user.AccountId).Select(p => new
                     {
                         p.PropertyId,
                         p.OwnerId,
@@ -131,7 +131,7 @@ namespace PropertyFlipperAPI.Controllers
                             } : null
                         } : null
                     }).ToList(),
-                    PropertiesCount = user.Properties.Count,
+                    PropertiesCount = await _context.ChildProperties.Where(cp => cp.OwnerId == user.AccountId).CountAsync(),
                     BidsCount = user.Bids.Count,
                     ProjectsCount = user.Projects.Count
                 };
@@ -419,7 +419,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var properties = await _context.Properties
+                var properties = await _context.ChildProperties
                     .Include(p => p.Owner)
                     .Include(p => p.Project)
                     .OrderByDescending(p => p.CreatedAt)
@@ -471,7 +471,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var property = await _context.Properties.FindAsync(id);
+                var property = await _context.ChildProperties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { error = "Property not found" });
 
@@ -494,7 +494,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var property = await _context.Properties.FindAsync(id);
+                var property = await _context.ChildProperties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { error = "Property not found" });
 
@@ -517,7 +517,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var property = await _context.Properties.FindAsync(id);
+                var property = await _context.ChildProperties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { error = "Property not found" });
 
@@ -587,7 +587,6 @@ namespace PropertyFlipperAPI.Controllers
                         a.CurrentPrice,
                         a.StartAt,
                         a.Duration,
-                        a.BuyNowPrice,
                         a.Status,
                         a.BidCount,
                         a.CreatedAt,
@@ -745,15 +744,15 @@ namespace PropertyFlipperAPI.Controllers
                 var totalAdmins = await _context.Accounts.Where(a => a.Type == AccountType.Admin).CountAsync();
                 
                 // Property statistics
-                var totalProperties = await _context.Properties.CountAsync();
-                var approvedProperties = await _context.Properties.Where(p => p.Status == PropertyStatus.Approved).CountAsync();
-                var pendingProperties = await _context.Properties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
-                var notApprovedProperties = await _context.Properties.Where(p => p.Status == PropertyStatus.NotApproved).CountAsync();
+                var totalProperties = await _context.ChildProperties.CountAsync();
+                var approvedProperties = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.Approved).CountAsync();
+                var pendingProperties = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
+                var notApprovedProperties = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.NotApproved).CountAsync();
                 
                 // Auction statistics
                 var totalAuctions = await _context.Auctions.CountAsync();
                 var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
-                var endedAuctionsCount = await _context.Auctions.Where(a => a.Status == "Ended").CountAsync();
+                var endedAuctionsCount = await _context.Auctions.Where(a => a.Status == "Closed" || a.Status == "Completed").CountAsync();
                 
                 // Bid statistics
                 var totalBids = await _context.Bids.CountAsync();
@@ -761,7 +760,7 @@ namespace PropertyFlipperAPI.Controllers
                 // Revenue calculation (sum of all ended auction current prices)
                 // Load into memory to avoid SQLite decimal aggregate issues
                 var endedAuctionsList = await _context.Auctions
-                    .Where(a => a.Status == "Ended")
+                    .Where(a => a.Status == "Closed" || a.Status == "Completed")
                     .ToListAsync();
                 var totalRevenue = endedAuctionsList.Sum(a => a.CurrentPrice);
                 
@@ -850,7 +849,7 @@ namespace PropertyFlipperAPI.Controllers
 
                 // Daily revenue from ended auctions (last 30 days)
                 var allEndedAuctions = await _context.Auctions
-                    .Where(a => a.Status == "Ended" && a.CreatedAt >= last30Days)
+                    .Where(a => a.Status == "Closed" || a.Status == "Completed" && a.CreatedAt >= last30Days)
                     .ToListAsync();
                 
                 var dailyRevenue = allEndedAuctions
@@ -888,7 +887,7 @@ namespace PropertyFlipperAPI.Controllers
                     .CountAsync();
 
                 // Property categories distribution
-                var categoryDistribution = await _context.Properties
+                var categoryDistribution = await _context.ChildProperties
                     .GroupBy(p => p.Category ?? "Uncategorized")
                     .Select(g => new
                     {

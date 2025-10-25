@@ -308,6 +308,114 @@ class ApiClient {
     }
   }
 
+  // GET with query parameters
+  static Future<ApiResponse<T>> getWithQuery<T>(
+    String endpoint,
+    Map<String, dynamic> queryParams,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    try {
+      final uri = Uri.parse('$baseUrl$endpoint').replace(
+        queryParameters: queryParams.map(
+          (key, value) => MapEntry(key, value.toString()),
+        ),
+      );
+      final headers = await _getHeaders();
+
+      print('🌐 GET with query $uri');
+      print('📡 Base URL: $baseUrl');
+
+      final response = await http.get(uri, headers: headers).timeout(timeout);
+      print('✅ Response status: ${response.statusCode}');
+      return _handleResponse(response, fromJson);
+    } on SocketException catch (e) {
+      print('❌ SocketException: $e');
+      return ApiResponse.error(
+        'Cannot connect to server. Please check if backend is running at $baseUrl',
+      );
+    } on HttpException catch (e) {
+      print('❌ HttpException: $e');
+      return ApiResponse.error('HTTP error occurred: $e');
+    } on FormatException catch (e) {
+      print('❌ FormatException: $e');
+      return ApiResponse.error('Invalid response format: $e');
+    } catch (e) {
+      print('❌ Unexpected error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
+  // GET list with query parameters
+  static Future<ApiResponse<List<T>>> getListWithQuery<T>(
+    String endpoint,
+    Map<String, dynamic> queryParams,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    try {
+      final uri = Uri.parse('$baseUrl$endpoint').replace(
+        queryParameters: queryParams.map(
+          (key, value) => MapEntry(key, value.toString()),
+        ),
+      );
+      final headers = await _getHeaders();
+
+      print('GET list with query $uri');
+      print('Headers: $headers');
+
+      final response = await http.get(uri, headers: headers).timeout(timeout);
+      print('Response status: ${response.statusCode}');
+      print(
+        'Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...',
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response.body.isEmpty) {
+          return ApiResponse.success([], statusCode: response.statusCode);
+        }
+
+        final data = jsonDecode(response.body);
+        if (data is List) {
+          final items = data
+              .map((item) => fromJson(item as Map<String, dynamic>))
+              .toList();
+          return ApiResponse.success(items, statusCode: response.statusCode);
+        } else {
+          return ApiResponse.error(
+            'Invalid response format: expected array, got ${data.runtimeType}',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        try {
+          final data = jsonDecode(response.body);
+          final errorMessage = data is Map<String, dynamic>
+              ? (data['message'] ?? data['error'] ?? 'Unknown error')
+              : (data is String
+                    ? data
+                    : 'Request failed with status ${response.statusCode}');
+          return ApiResponse.error(
+            errorMessage,
+            statusCode: response.statusCode,
+          );
+        } catch (e) {
+          return ApiResponse.error(
+            response.body.isNotEmpty ? response.body : 'Request failed',
+            statusCode: response.statusCode,
+          );
+        }
+      }
+    } on SocketException {
+      return ApiResponse.error('No internet connection');
+    } on HttpException {
+      return ApiResponse.error('HTTP error occurred');
+    } on FormatException {
+      return ApiResponse.error('Invalid response format');
+    } catch (e) {
+      print('❌ Unexpected error: $e');
+      return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
   static Future<ApiResponse<T>> put<T>(
     String endpoint,
     Map<String, dynamic> body,

@@ -32,7 +32,7 @@ namespace PropertyFlipperAPI.Models
         public bool IsActive { get; set; } = true;
 
         // 🔗 Relations
-        public ICollection<Property> Properties { get; set; } = new List<Property>();
+        // Properties navigation removed - using ChildProperty system now
     }
 }
 

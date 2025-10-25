@@ -51,7 +51,8 @@ class Account {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final List<KycDocument> kycDocuments;
-  final int? totalPoints;
+  final int? totalEarnedPoints; // For badges/progress
+  final int? currentPoints; // For redemption
   final String? topBadgeIcon;
   final String? topBadgeName;
 
@@ -72,7 +73,8 @@ class Account {
     required this.createdAt,
     this.updatedAt,
     this.kycDocuments = const [],
-    this.totalPoints,
+    this.totalEarnedPoints,
+    this.currentPoints,
     this.topBadgeIcon,
     this.topBadgeName,
   });
@@ -116,8 +118,12 @@ class Account {
                 .map<KycDocument>((doc) => KycDocument.fromJson(doc))
                 .toList()
           : [],
-      totalPoints: (json['totalPoints'] ?? json['TotalPoints']) != null
-          ? (json['totalPoints'] ?? json['TotalPoints']) as int
+      totalEarnedPoints:
+          (json['totalEarnedPoints'] ?? json['TotalEarnedPoints']) != null
+          ? (json['totalEarnedPoints'] ?? json['TotalEarnedPoints']) as int
+          : null,
+      currentPoints: (json['currentPoints'] ?? json['CurrentPoints']) != null
+          ? (json['currentPoints'] ?? json['CurrentPoints']) as int
           : null,
       topBadgeIcon: json['topBadgeIcon'] ?? json['TopBadgeIcon'],
       topBadgeName: json['topBadgeName'] ?? json['TopBadgeName'],

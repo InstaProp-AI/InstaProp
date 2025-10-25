@@ -207,7 +207,7 @@ namespace PropertyFlipperAPI.Controllers
                             // No additional filter
                             break;
                         case "property_owners":
-                            var propertyOwnerIds = await _context.Properties
+                            var propertyOwnerIds = await _context.ChildProperties
                                 .Select(p => p.OwnerId)
                                 .Distinct()
                                 .ToListAsync();
@@ -219,8 +219,8 @@ namespace PropertyFlipperAPI.Controllers
                                 .Select(a => a.PropertyId)
                                 .Distinct()
                                 .ToListAsync();
-                            var auctionOwnerIds = await _context.Properties
-                                .Where(p => auctionPropertyIds.Contains(p.PropertyId))
+                            var auctionOwnerIds = await _context.ChildProperties
+                                .Where(p => auctionPropertyIds.Contains((int)p.PropertyId))
                                 .Select(p => p.OwnerId)
                                 .Distinct()
                                 .ToListAsync();
@@ -272,10 +272,10 @@ namespace PropertyFlipperAPI.Controllers
             try
             {
                 var totalUsers = await _context.Accounts.CountAsync(a => a.Type == AccountType.User);
-                var propertyOwnersCount = await _context.Properties.Select(p => p.OwnerId).Distinct().CountAsync();
+                var propertyOwnersCount = await _context.ChildProperties.Select(p => p.OwnerId).Distinct().CountAsync();
                 var auctionOwnersCount = await _context.Auctions
                     .Where(a => a.Status == "Active" || a.Status == "Requested")
-                    .Join(_context.Properties, a => a.PropertyId, p => p.PropertyId, (a, p) => p.OwnerId)
+                    .Join(_context.ChildProperties, a => a.PropertyId, p => p.PropertyId, (a, p) => p.OwnerId)
                     .Distinct()
                     .CountAsync();
                 var biddersCount = await _context.Bids.Select(b => b.BidderId).Distinct().CountAsync();
@@ -327,7 +327,7 @@ namespace PropertyFlipperAPI.Controllers
 
                     case "property_owners":
                         recipients = "property_owners";
-                        estimatedCount = await _context.Properties.Select(p => p.OwnerId).Distinct().CountAsync();
+                        estimatedCount = await _context.ChildProperties.Select(p => p.OwnerId).Distinct().CountAsync();
                         break;
 
                     case "auction_owners":

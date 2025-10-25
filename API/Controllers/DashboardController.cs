@@ -58,7 +58,7 @@ namespace PropertyFlipperAPI.Controllers
                     });
 
                 // Total properties
-                var totalProperties = await _context.Properties.CountAsync();
+                var totalProperties = await _context.ChildProperties.CountAsync();
 
                 var stats = new
                 {
@@ -101,13 +101,13 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var totalProperties = await _context.Properties.CountAsync();
+                var totalProperties = await _context.ChildProperties.CountAsync();
                 var totalAuctions = await _context.Auctions.CountAsync();
                 var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
                 var totalBids = await _context.Bids.CountAsync();
                 var totalAccounts = await _context.Accounts.CountAsync();
                 var verifiedAccounts = await _context.Accounts.Where(a => a.Status == VerificationStatus.Verified).CountAsync();
-                var propertiesPendingApproval = await _context.Properties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
+                var propertiesPendingApproval = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
 
                 var stats = new
                 {
@@ -145,7 +145,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             var analytics = new
             {
-                PropertyCategories = await _context.Properties
+                PropertyCategories = await _context.ChildProperties
                     .GroupBy(p => p.Category)
                     .Select(g => new { Category = g.Key, Count = g.Count() })
                     .ToListAsync(),

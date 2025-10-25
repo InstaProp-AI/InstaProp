@@ -82,21 +82,25 @@ class PropertyFinancialsService {
 
 class PropertyFinancials {
   final int propertyId;
+  final String? propertyName;
   final double sumInstallments;
   final double paidSoFar;
   final double remainingInstallments;
   final double remainingToPay;
   final double? buyingPrice;
+  final double? contractedPrice;
   final double? marketValue;
   final double? roiPercent;
 
   PropertyFinancials({
     required this.propertyId,
+    this.propertyName,
     required this.sumInstallments,
     required this.paidSoFar,
     required this.remainingInstallments,
     required this.remainingToPay,
     this.buyingPrice,
+    this.contractedPrice,
     this.marketValue,
     this.roiPercent,
   });
@@ -112,6 +116,7 @@ class PropertyFinancials {
 
     return PropertyFinancials(
       propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
+      propertyName: json['propertyName'] ?? json['PropertyName'],
       sumInstallments: toDouble(
         json['sumInstallments'] ?? json['SumInstallments'],
       ),
@@ -124,6 +129,9 @@ class PropertyFinancials {
       ),
       buyingPrice: json['buyingPrice'] != null
           ? toDouble(json['buyingPrice'])
+          : null,
+      contractedPrice: json['contractedPrice'] != null
+          ? toDouble(json['contractedPrice'])
           : null,
       marketValue: json['marketValue'] != null
           ? toDouble(json['marketValue'])

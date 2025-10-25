@@ -44,10 +44,9 @@ namespace PropertyFlipperAPI.Controllers
 
             // Admins can see all projects, developers can only see their own
             var projects = account.Type == Models.AccountType.Admin
-                ? await _context.Projects.Include(p => p.Properties).ToListAsync()
+                ? await _context.Projects.ToListAsync()
                 : await _context.Projects
                     .Where(p => p.DeveloperId == accountId)
-                    .Include(p => p.Properties)
                     .ToListAsync();
 
             return Ok(projects);
@@ -73,10 +72,8 @@ namespace PropertyFlipperAPI.Controllers
             // Admins can access any project, developers can only access their own
             var project = account.Type == Models.AccountType.Admin
                 ? await _context.Projects
-                    .Include(p => p.Properties)
                     .FirstOrDefaultAsync(p => p.ProjectId == id)
                 : await _context.Projects
-                    .Include(p => p.Properties)
                     .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
 
             if (project == null)
@@ -192,7 +189,7 @@ namespace PropertyFlipperAPI.Controllers
         // GET: api/project/{id}/properties
         [HttpGet("{id}/properties")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<Property>>> GetProjectProperties(long id)
+        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetProjectProperties(long id)
         {
             var accountIdClaim = User.FindFirst("uid");
             if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
@@ -217,7 +214,7 @@ namespace PropertyFlipperAPI.Controllers
                 return NotFound("Project not found");
             }
 
-            var properties = await _context.Properties
+            var properties = await _context.ChildProperties
                 .Where(p => p.ProjectId == id)
                 .Include(p => p.Owner)
                 .ToListAsync();
@@ -232,8 +229,6 @@ namespace PropertyFlipperAPI.Controllers
             var projects = await _context.Projects
                 .Where(p => p.IsActive)
                 .Include(p => p.Developer)
-                .Include(p => p.Properties.Where(prop => prop.Status == PropertyStatus.Approved))
-                    .ThenInclude(p => p.PropertyImages)
                 .ToListAsync();
 
             var developerIds = projects.Select(p => p.DeveloperId).Distinct().ToList();
@@ -241,27 +236,34 @@ namespace PropertyFlipperAPI.Controllers
                 .Where(dp => developerIds.Contains(dp.AccountId))
                 .ToListAsync();
 
-            var publicProjects = projects.Select(p =>
+            var publicProjects = new List<PublicProjectDto>();
+            foreach (var p in projects)
             {
                 var profile = developerProfiles.FirstOrDefault(dp => dp.AccountId == p.DeveloperId);
-                var featuredProperty = p.Properties.FirstOrDefault();
+                var featuredProperty = await _context.ChildProperties
+                    .Where(cp => cp.ProjectId == p.ProjectId)
+                    .FirstOrDefaultAsync();
+                
+                var propertiesCount = await _context.ChildProperties
+                    .Where(cp => cp.ProjectId == p.ProjectId)
+                    .CountAsync();
 
-                return new PublicProjectDto
+                publicProjects.Add(new PublicProjectDto
                 {
                     ProjectId = p.ProjectId,
                     Name = p.Name,
                     Description = p.Description,
                     Location = p.Location,
                     CreatedAt = p.CreatedAt,
-                    PropertiesCount = p.Properties.Count,
-                    FeaturedImageUrl = featuredProperty?.ImageUrl ?? featuredProperty?.PropertyImages.FirstOrDefault()?.ImageUrl,
+                    PropertiesCount = propertiesCount,
+                    FeaturedImageUrl = featuredProperty?.ImageUrl,
                     DeveloperId = p.DeveloperId,
-                    DeveloperName = $"{p.Developer.FirstName} {p.Developer.LastName}",
+                    DeveloperName = profile?.CompanyName ?? "Unknown Developer",
                     DeveloperCompany = profile?.CompanyName,
                     DeveloperRating = profile?.Rating ?? 0,
                     DeveloperProfileImage = profile?.ProfileImageUrl
-                };
-            }).ToList();
+                });
+            }
 
             return Ok(publicProjects);
         }
@@ -272,10 +274,6 @@ namespace PropertyFlipperAPI.Controllers
         {
             var project = await _context.Projects
                 .Include(p => p.Developer)
-                .Include(p => p.Properties.Where(prop => prop.Status == PropertyStatus.Approved))
-                    .ThenInclude(p => p.PropertyImages)
-                .Include(p => p.Properties)
-                    .ThenInclude(p => p.Auctions.Where(a => a.Status == "Active"))
                 .FirstOrDefaultAsync(p => p.ProjectId == id && p.IsActive);
 
             if (project == null)
@@ -292,12 +290,12 @@ namespace PropertyFlipperAPI.Controllers
                 Location = project.Location,
                 CreatedAt = project.CreatedAt,
                 DeveloperId = project.DeveloperId,
-                DeveloperName = $"{project.Developer.FirstName} {project.Developer.LastName}",
+                DeveloperName = profile?.CompanyName ?? "Unknown Developer",
                 DeveloperCompany = profile?.CompanyName,
                 DeveloperRating = profile?.Rating ?? 0,
                 DeveloperProfileImage = profile?.ProfileImageUrl,
                 DeveloperBio = profile?.Bio,
-                Properties = project.Properties.Select(p => new PublicPropertyDto
+                Properties = _context.ChildProperties.Where(cp => cp.ProjectId == project.ProjectId).Select(p => new PublicPropertyDto
                 {
                     PropertyId = p.PropertyId,
                     Name = p.Name,
@@ -308,13 +306,56 @@ namespace PropertyFlipperAPI.Controllers
                     SquareFeet = p.SquareFeet,
                     Category = p.Category,
                     ImageUrl = p.ImageUrl,
-                    Images = p.PropertyImages.Select(img => img.ImageUrl).ToList(),
+                    Images = new List<string>(), // TODO: Get images from ChildProperty
                     HasActiveAuction = p.Auctions.Any(a => a.Status == "Active"),
-                    AuctionPrice = p.Auctions.FirstOrDefault(a => a.Status == "Active")?.CurrentPrice
+                    AuctionPrice = p.Auctions.FirstOrDefault(a => a.Status == "Active") != null ? p.Auctions.FirstOrDefault(a => a.Status == "Active").CurrentPrice : 0
                 }).ToList()
             };
 
             return Ok(projectDetails);
+        }
+
+        // GET: api/project/by-developer/{developerId} - Get projects by developer (Public endpoint)
+        [HttpGet("by-developer/{developerId}")]
+        public async Task<ActionResult<IEnumerable<PublicProjectDto>>> GetProjectsByDeveloper(long developerId)
+        {
+            var projects = await _context.Projects
+                .Where(p => p.DeveloperId == developerId && p.IsActive)
+                .Include(p => p.Developer)
+                .ToListAsync();
+
+            var profile = await _context.DeveloperProfiles
+                .FirstOrDefaultAsync(dp => dp.AccountId == developerId);
+
+            var publicProjects = new List<PublicProjectDto>();
+            foreach (var p in projects)
+            {
+                var featuredProperty = await _context.ChildProperties
+                    .Where(cp => cp.ProjectId == p.ProjectId)
+                    .FirstOrDefaultAsync();
+                
+                var propertiesCount = await _context.ChildProperties
+                    .Where(cp => cp.ProjectId == p.ProjectId)
+                    .CountAsync();
+
+                publicProjects.Add(new PublicProjectDto
+                {
+                    ProjectId = p.ProjectId,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Location = p.Location,
+                    CreatedAt = p.CreatedAt,
+                    PropertiesCount = propertiesCount,
+                    FeaturedImageUrl = featuredProperty?.ImageUrl,
+                    DeveloperId = p.DeveloperId,
+                    DeveloperName = profile?.CompanyName ?? "Unknown Developer",
+                    DeveloperCompany = profile?.CompanyName,
+                    DeveloperRating = profile?.Rating ?? 0,
+                    DeveloperProfileImage = profile?.ProfileImageUrl
+                });
+            }
+
+            return Ok(publicProjects);
         }
     }
 

@@ -354,7 +354,7 @@ namespace PropertyFlipperAPI.Controllers
                     return Unauthorized("Invalid or missing token");
 
                 // Check property ownership
-                var property = await _context.Properties.FindAsync(propertyId);
+                var property = await _context.ChildProperties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -398,7 +398,7 @@ namespace PropertyFlipperAPI.Controllers
                     // Create new document
                     var propertyDoc = new PropertyDoc
                     {
-                        PropertyId = propertyId,
+                        PropertyId = (int)propertyId,
                         DocType = docType,
                         ImgUrl = uploadResult.DisplayUrl,
                         DeleteUrl = uploadResult.DeleteUrl,
@@ -514,7 +514,7 @@ namespace PropertyFlipperAPI.Controllers
                     return Unauthorized("Invalid or missing token");
 
                 // Check property ownership
-                var property = await _context.Properties.FindAsync(propertyId);
+                var property = await _context.ChildProperties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -557,7 +557,7 @@ namespace PropertyFlipperAPI.Controllers
                 // Create new image record
                 var propertyImage = new PropertyImage
                 {
-                    PropertyId = propertyId,
+                    PropertyId = (int)propertyId,
                     ImageUrl = uploadResult.DisplayUrl,
                     ImageType = imageType,
                     IsMainImage = isMainImage,

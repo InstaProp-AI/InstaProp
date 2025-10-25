@@ -22,7 +22,6 @@ class _CreateAuctionRequestDialogState
   Property? _selectedProperty;
   final _startingPriceController = TextEditingController();
   final _durationController = TextEditingController(text: '24');
-  final _buyNowPriceController = TextEditingController();
   DateTime _startDate = DateTime.now();
   TimeOfDay _startTime = TimeOfDay.now();
   DateTime _endDate = DateTime.now().add(const Duration(hours: 24));
@@ -32,7 +31,6 @@ class _CreateAuctionRequestDialogState
   void dispose() {
     _startingPriceController.dispose();
     _durationController.dispose();
-    _buyNowPriceController.dispose();
     super.dispose();
   }
 
@@ -90,9 +88,6 @@ class _CreateAuctionRequestDialogState
         startPrice: double.parse(_startingPriceController.text),
         startAt: _getFullStartDateTime(),
         duration: int.parse(_durationController.text),
-        buyNowPrice: _buyNowPriceController.text.isNotEmpty
-            ? double.parse(_buyNowPriceController.text)
-            : null,
       );
 
       print('📋 Created request object: ${request.toJson()}');
@@ -447,25 +442,6 @@ class _CreateAuctionRequestDialogState
                         const SizedBox(height: 16),
 
                         // Buy Now Price (optional)
-                        TextFormField(
-                          controller: _buyNowPriceController,
-                          decoration: const InputDecoration(
-                            labelText: 'Buy Now Price (optional)',
-                            prefixIcon: Icon(Icons.shopping_cart),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value?.isNotEmpty == true) {
-                              if (double.tryParse(value!) == null)
-                                return 'Invalid price';
-                              if (double.parse(value) <= 0)
-                                return 'Price must be greater than 0';
-                            }
-                            return null;
-                          },
-                        ),
-
                         const SizedBox(height: 24),
 
                         // Submit Button

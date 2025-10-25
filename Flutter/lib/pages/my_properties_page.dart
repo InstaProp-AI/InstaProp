@@ -80,130 +80,214 @@ class _MyPropertiesPageState extends State<MyPropertiesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Consumer<AppState>(
         builder: (context, appState, child) {
           return CustomScrollView(
             slivers: [
-              // Minimal Header
+              // Minimal Clean Header
               SliverAppBar(
+                expandedHeight: 120,
+                floating: false,
+                pinned: true,
                 backgroundColor: Colors.white,
                 elevation: 0,
-                pinned: true,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
                   onPressed: () => Navigator.pop(context),
                 ),
-                title: const Text(
-                  'My Properties',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    color: Colors.white,
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'My Properties',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1A1A1A),
+                                letterSpacing: -1,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Manage your property portfolio',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.grey[600],
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  title: const Text(
+                    'My Properties',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.add, color: Color(0xFF1A1A1A)),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.grey[100],
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AddPropertyPage(),
-                        ),
-                      );
-                    },
+                    child: IconButton(
+                      icon: const Icon(Icons.add, color: Color(0xFF1A1A1A)),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AddPropertyPage(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                  const SizedBox(width: 8),
                 ],
               ),
 
               // Content
-              if (appState.loadingProperties)
-                const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (appState.userProperties.isEmpty)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(40),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.home_outlined,
-                            size: 64,
-                            color: Colors.grey[300],
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No Properties Yet',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A1A1A),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Add your first property to get started',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const AddPropertyPage(),
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 32),
+
+                    if (appState.loadingProperties)
+                      const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (appState.userProperties.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.home_outlined,
+                                size: 80,
+                                color: Colors.grey[300],
+                              ),
+                              const SizedBox(height: 24),
+                              const Text(
+                                'No Properties Yet',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1A1A1A),
+                                  letterSpacing: -0.5,
                                 ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 14,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Add your first property to get started',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                  letterSpacing: -0.3,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add, size: 20),
-                                SizedBox(width: 8),
-                                Text('Add Property'),
-                              ],
-                            ),
+                              const SizedBox(height: 32),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const AddPropertyPage(),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    foregroundColor: Colors.white,
+                                    shadowColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 40,
+                                      vertical: 20,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add, size: 22),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        'Add Property',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Properties List
+                            ...appState.userProperties.map(
+                              (property) => Padding(
+                                padding: const EdgeInsets.only(bottom: 20),
+                                child: PropertyCard(
+                                  property: property,
+                                  onRequestAuction: () =>
+                                      _requestAuction(property),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 100,
+                            ), // Space for bottom navigation
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.all(20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final property = appState.userProperties[index];
-                      return PropertyCard(
-                        property: property,
-                        onRequestAuction: () => _requestAuction(property),
-                      );
-                    }, childCount: appState.userProperties.length),
-                  ),
+                  ],
                 ),
+              ),
             ],
           );
         },
@@ -392,8 +476,15 @@ class PropertyCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +494,7 @@ class PropertyCard extends StatelessWidget {
             images: property.propertyImages,
             fallbackImageUrl: property.imageUrl,
             height: 240,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
 
           Padding(
@@ -548,38 +639,40 @@ class PropertyCard extends StatelessWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF1A1A1A),
                           side: BorderSide(color: Colors.grey[300]!),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.edit_outlined, size: 18),
-                            SizedBox(width: 6),
+                            SizedBox(width: 8),
                             Text('Edit'),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => _handleDelete(context, property),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: BorderSide(color: Colors.red[200]!),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: AppColors.error,
+                          side: BorderSide(
+                            color: AppColors.error.withOpacity(0.3),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.delete_outline, size: 18),
-                            SizedBox(width: 6),
+                            SizedBox(width: 8),
                             Text('Delete'),
                           ],
                         ),
@@ -589,17 +682,29 @@ class PropertyCard extends StatelessWidget {
                 ),
 
                 if (property.isApproved) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
+                  const SizedBox(height: 16),
+                  Container(
                     width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: ElevatedButton(
                       onPressed: onRequestAuction,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: Colors.transparent,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                       child: const Row(
@@ -634,28 +739,29 @@ class PropertyCard extends StatelessWidget {
     final isApproved = property.isApproved;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: isApproved
-            ? Colors.green.withOpacity(0.1)
+            ? AppColors.success.withOpacity(0.1)
             : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             isApproved ? Icons.verified : Icons.schedule,
-            size: 12,
-            color: isApproved ? Colors.green : Colors.orange,
+            size: 14,
+            color: isApproved ? AppColors.success : Colors.orange,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             isApproved ? 'Verified' : 'Pending',
             style: TextStyle(
-              color: isApproved ? Colors.green : Colors.orange,
-              fontSize: 11,
+              color: isApproved ? AppColors.success : Colors.orange,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -665,22 +771,24 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildDetailChip(IconData icon, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.grey[700]),
-          const SizedBox(width: 4),
+          Icon(icon, size: 16, color: Colors.grey[600]),
+          const SizedBox(width: 6),
           Text(
             text,
             style: TextStyle(
               color: Colors.grey[700],
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -696,18 +804,20 @@ class PropertyCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
+              letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
               color: color,
+              letterSpacing: -0.5,
             ),
           ),
         ],
@@ -738,7 +848,6 @@ class AuctionRequestDialog extends StatefulWidget {
 class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
   final _formKey = GlobalKey<FormState>();
   final _startPriceController = TextEditingController();
-  final _buyNowPriceController = TextEditingController();
   final _durationController = TextEditingController();
 
   DateTime _startDate = DateTime.now();
@@ -757,7 +866,6 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
   @override
   void dispose() {
     _startPriceController.dispose();
-    _buyNowPriceController.dispose();
     _durationController.dispose();
     super.dispose();
   }
@@ -811,9 +919,6 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
         startPrice: double.parse(_startPriceController.text),
         startAt: _getFullStartDateTime(),
         duration: int.parse(_durationController.text),
-        buyNowPrice: _buyNowPriceController.text.isNotEmpty
-            ? double.parse(_buyNowPriceController.text)
-            : null,
       );
 
       final response = await AuctionService.requestAuction(request);
@@ -1107,25 +1212,6 @@ class _AuctionRequestDialogState extends State<AuctionRequestDialog> {
                   const SizedBox(height: 16),
 
                   // Buy Now Price (Optional)
-                  TextFormField(
-                    controller: _buyNowPriceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Buy Now Price (Optional)',
-                      prefixText: '\$ ',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value?.isNotEmpty == true) {
-                        if (double.tryParse(value!) == null)
-                          return 'Invalid price';
-                        if (double.parse(value) <= 0)
-                          return 'Price must be greater than 0';
-                      }
-                      return null;
-                    },
-                  ),
-
                   const SizedBox(height: 24),
 
                   // Submit Button

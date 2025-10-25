@@ -11,10 +11,10 @@ namespace PropertyFlipperAPI.Models
     public long AuctionId { get; set; }
 
     [Required]
-    public long PropertyId { get; set; }
+    public int PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public Property Property { get; set; }
+        public ChildProperty Property { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal StartPrice { get; set; }
@@ -26,8 +26,6 @@ namespace PropertyFlipperAPI.Models
 
         public int Duration { get; set; } // hours
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal? BuyNowPrice { get; set; }
 
         public int BidCount { get; set; } = 0;
 

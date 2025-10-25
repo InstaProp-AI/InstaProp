@@ -572,7 +572,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ],
                               ),
                             ),
-                            if (appState.user?.totalPoints != null) ...[
+                            if (appState.user?.totalEarnedPoints != null) ...[
                               const SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () {
@@ -597,7 +597,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        '${appState.user!.totalPoints} pts',
+                                        '${appState.user!.currentPoints} pts',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 12,

@@ -573,7 +573,8 @@ namespace PropertyFlipperAPI.Controllers
                 return NotFound();
 
             // Return account without sensitive PIN data
-            var totalPoints = await _context.UserRewards.Where(r => r.AccountId == account.AccountId).SumAsync(r => r.Points);
+            var totalEarnedPoints = account.TotalEarnedPoints;
+            var currentPoints = account.CurrentPoints;
             var topBadge = await _context.UserBadges.Where(b => b.AccountId == account.AccountId).OrderByDescending(b => b.AwardedAt).FirstOrDefaultAsync();
 
             var accountResponse = new
@@ -594,7 +595,8 @@ namespace PropertyFlipperAPI.Controllers
                 account.LockedUntil,
                 account.CreatedAt,
                 account.UpdatedAt,
-                TotalPoints = totalPoints,
+                TotalEarnedPoints = totalEarnedPoints,
+                CurrentPoints = currentPoints,
                 TopBadgeIcon = topBadge?.BadgeIcon,
                 TopBadgeName = topBadge?.BadgeName
             };
@@ -1055,7 +1057,6 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized();
 
             var account = await _context.Accounts
-                .Include(a => a.Properties)
                 .Include(a => a.Bids)
                 .FirstOrDefaultAsync(a => a.AccountId == accountId);
 
@@ -1081,7 +1082,7 @@ namespace PropertyFlipperAPI.Controllers
                     account.PhoneVerified,
                     account.Status
                 },
-                Properties = account.Properties?.Select(p => new
+                Properties = _context.ChildProperties.Where(p => p.OwnerId == accountId).Select(p => new
                 {
                     p.PropertyId,
                     p.Name,
@@ -1126,7 +1127,6 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized();
 
             var account = await _context.Accounts
-                .Include(a => a.Properties)
                 .Include(a => a.Bids)
                 .FirstOrDefaultAsync(a => a.AccountId == accountId);
 
@@ -1138,8 +1138,10 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Invalid password. Account deletion failed.");
 
             // Check for active auctions or pending transactions
-            var activeProperties = account.Properties?.Where(p => 
-                p.Status == PropertyStatus.Pending || p.Status == PropertyStatus.Approved).ToList();
+            var activeProperties = await _context.ChildProperties
+                .Where(p => p.OwnerId == accountId && 
+                    (p.Status == PropertyStatus.Pending || p.Status == PropertyStatus.Approved))
+                .ToListAsync();
             
             if (activeProperties != null && activeProperties.Any())
             {

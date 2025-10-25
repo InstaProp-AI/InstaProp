@@ -108,6 +108,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("CurrentPoints")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -190,6 +193,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<string>("SuspensionReason")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("TotalEarnedPoints")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
@@ -210,9 +216,6 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<int>("BidCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal?>("BuyNowPrice")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -222,7 +225,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<int>("Duration")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("PropertyId")
+                    b.Property<int>("PropertyId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("StartAt")
@@ -327,7 +330,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<bool>("IsRead")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long?>("PropertyId")
+                    b.Property<int?>("PropertyId")
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("SenderId")
@@ -342,6 +345,172 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("SenderId");
 
                     b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ChildProperty", b =>
+                {
+                    b.Property<int>("PropertyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Bathrooms")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Bedrooms")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("BuyingDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("BuyingPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("CentralAC")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeliveryDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("FloorNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("GardenView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasBalcony")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasDriverRoom")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasGarden")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasGenerator")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasMaidRoom")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasNannyRoom")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasPrivatePool")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasRoofAccess")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasStorageRoom")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("NaturalGas")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("NileView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Orientation")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("OwnerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ParentPropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ParkingSlots")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Phase")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PropertyType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("PyramidView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SeaView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SmartHome")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SquareFeet")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("StreetView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UnitNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ViewType")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("YearBuilt")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("PropertyId");
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("ParentPropertyId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ChildProperties");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
@@ -518,6 +687,40 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Events");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.GoldPrice", b =>
+                {
+                    b.Property<int>("GoldPriceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("PricePerGram")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("GoldPriceId");
+
+                    b.ToTable("GoldPrices");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Notification", b =>
                 {
                     b.Property<long>("NotificationId")
@@ -574,6 +777,73 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ParentProperty", b =>
+                {
+                    b.Property<int>("ParentPropertyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AreaSqm")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Bathrooms")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Bedrooms")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FinishingType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("HasClubhouse")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HasGarden")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HasGym")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HasParking")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HasPlayground")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HasPool")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("HasSecurity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProjectName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PropertyType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ParentPropertyId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ParentProperties");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
@@ -686,70 +956,6 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("ProjectUpdates");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Property", b =>
-                {
-                    b.Property<long>("PropertyId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Bathrooms")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Bedrooms")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Category")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("OwnerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long?>("ProjectId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("SquareFeet")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("YearBuilt")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("PropertyId");
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("Properties");
-                });
-
             modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyDoc", b =>
                 {
                     b.Property<long>("DocId")
@@ -769,7 +975,7 @@ namespace PropertyFlipperAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("PropertyId")
+                    b.Property<int>("PropertyId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("UploadedAt")
@@ -810,7 +1016,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<bool>("IsMainImage")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("PropertyId")
+                    b.Property<int>("PropertyId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("PropertyImageId");
@@ -818,6 +1024,97 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("PropertyId");
 
                     b.ToTable("PropertyImages");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyPriceHistory", b =>
+                {
+                    b.Property<int>("PriceHistoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("AuctionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ChildPropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ParentPropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("PriceDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PriceHistoryId");
+
+                    b.HasIndex("AuctionId");
+
+                    b.HasIndex("ChildPropertyId");
+
+                    b.HasIndex("ParentPropertyId");
+
+                    b.ToTable("PropertyPriceHistories");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyValuation", b =>
+                {
+                    b.Property<int>("ValuationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AIReasoning")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CalculatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ComparablesCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<decimal>("EstimatedValue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("MarketTrends")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("PriceRangeHigh")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("PriceRangeLow")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ValuationSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ValuationId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.ToTable("PropertyValuations");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyView", b =>
@@ -832,7 +1129,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<int>("DurationSeconds")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("PropertyId")
+                    b.Property<int>("PropertyId")
                         .HasColumnType("INTEGER");
 
                     b.Property<long?>("UserId")
@@ -851,6 +1148,44 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("PropertyViews");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Redemption", b =>
+                {
+                    b.Property<long>("RedemptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PointsSpent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PromoCode")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RedeemedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RewardType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("RedemptionId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("Redemptions");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Referral", b =>
@@ -1012,7 +1347,7 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Auction", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
                         .WithMany("Auctions")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1074,7 +1409,7 @@ namespace PropertyFlipperAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1090,6 +1425,31 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Property");
 
                     b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ChildProperty", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PropertyFlipperAPI.Models.ParentProperty", "ParentProperty")
+                        .WithMany("ChildProperties")
+                        .HasForeignKey("ParentPropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Owner");
+
+                    b.Navigation("ParentProperty");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
@@ -1143,6 +1503,16 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ParentProperty", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
                 {
                     b.HasOne("PropertyFlipperAPI.Models.Account", "Developer")
@@ -1176,27 +1546,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Property", b =>
-                {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Owner")
-                        .WithMany("Properties")
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
-                        .WithMany("Properties")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Owner");
-
-                    b.Navigation("Project");
-                });
-
             modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyDoc", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
                         .WithMany("PropertyDocs")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1207,8 +1559,44 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyImage", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
                         .WithMany("PropertyImages")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyPriceHistory", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Auction", "Auction")
+                        .WithMany()
+                        .HasForeignKey("AuctionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "ChildProperty")
+                        .WithMany()
+                        .HasForeignKey("ChildPropertyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PropertyFlipperAPI.Models.ParentProperty", "ParentProperty")
+                        .WithMany("PriceHistories")
+                        .HasForeignKey("ParentPropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Auction");
+
+                    b.Navigation("ChildProperty");
+
+                    b.Navigation("ParentProperty");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyValuation", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
+                        .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1218,7 +1606,7 @@ namespace PropertyFlipperAPI.Migrations
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyView", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Property", "Property")
+                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1232,6 +1620,17 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Property");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Redemption", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Referral", b =>
@@ -1296,8 +1695,6 @@ namespace PropertyFlipperAPI.Migrations
 
                     b.Navigation("Projects");
 
-                    b.Navigation("Properties");
-
                     b.Navigation("UserDocs");
                 });
 
@@ -1311,18 +1708,20 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Messages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
-                {
-                    b.Navigation("Properties");
-                });
-
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Property", b =>
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ChildProperty", b =>
                 {
                     b.Navigation("Auctions");
 
                     b.Navigation("PropertyDocs");
 
                     b.Navigation("PropertyImages");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.ParentProperty", b =>
+                {
+                    b.Navigation("ChildProperties");
+
+                    b.Navigation("PriceHistories");
                 });
 #pragma warning restore 612, 618
         }

@@ -32,10 +32,10 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized();
 
             // Get property details if PropertyId is provided
-            Property? property = null;
+            ChildProperty? property = null;
             if (request.PropertyId.HasValue)
             {
-                property = await _context.Properties
+                property = await _context.ChildProperties
                     .FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
                 
                 if (property == null)
@@ -64,7 +64,7 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized();
 
             // Get user's properties and their valuations
-            var properties = await _context.Properties
+            var properties = await _context.ChildProperties
                 .Where(p => p.OwnerId == accountId)
                 .Select(p => new ValuationHistory
                 {
@@ -79,7 +79,7 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(properties);
         }
 
-        private ValuationResult CalculatePropertyValuation(Property? property, ValuationRequest request)
+        private ValuationResult CalculatePropertyValuation(ChildProperty? property, ValuationRequest request)
         {
             // Simple valuation algorithm (in real app, this would be more sophisticated)
             decimal basePrice = 0;
@@ -206,7 +206,7 @@ namespace PropertyFlipperAPI.Controllers
             var location = request.Location ?? "";
             
             // Query similar properties with their auction data
-            var properties = await _context.Properties
+            var properties = await _context.ChildProperties
                 .Include(p => p.Auctions)
                 .Where(p => 
                     // Same general location

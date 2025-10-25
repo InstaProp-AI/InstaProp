@@ -26,6 +26,15 @@ namespace PropertyFlipperAPI.Services
             };
 
             _context.UserRewards.Add(reward);
+
+            // Update both TotalEarnedPoints and CurrentPoints
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account != null)
+            {
+                account.TotalEarnedPoints += points;
+                account.CurrentPoints += points;
+            }
+
             await _context.SaveChangesAsync();
 
             // Check for badge achievements
@@ -34,9 +43,33 @@ namespace PropertyFlipperAPI.Services
 
         public async Task<int> GetTotalPointsAsync(long accountId)
         {
-            return await _context.UserRewards
-                .Where(r => r.AccountId == accountId)
-                .SumAsync(r => r.Points);
+            var account = await _context.Accounts.FindAsync(accountId);
+            return account?.TotalEarnedPoints ?? 0;
+        }
+
+        public async Task<int> GetCurrentPointsAsync(long accountId)
+        {
+            var account = await _context.Accounts.FindAsync(accountId);
+            return account?.CurrentPoints ?? 0;
+        }
+
+        public async Task<bool> SpendPointsAsync(long accountId, int points)
+        {
+            var account = await _context.Accounts.FindAsync(accountId);
+            if (account == null || account.CurrentPoints < points)
+                return false;
+            
+            account.CurrentPoints -= points;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public string GeneratePromoCode()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, 5)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
         private async Task CheckAndAwardBadgesAsync(long accountId)

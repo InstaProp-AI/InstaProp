@@ -8,7 +8,7 @@ namespace PropertyFlipperAPI.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {}
 
         public DbSet<Account> Accounts { get; set; }
-        public DbSet<Property> Properties { get; set; }
+        // Removed: public DbSet<Property> Properties { get; set; } - Now using ChildProperty
         public DbSet<PropertyDoc> PropertyDocs { get; set; }
         public DbSet<PropertyImage> PropertyImages { get; set; }
         public DbSet<UserDoc> UserDocs { get; set; }
@@ -31,10 +31,18 @@ namespace PropertyFlipperAPI.Data
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<Referral> Referrals { get; set; }
         public DbSet<PropertyView> PropertyViews { get; set; }
+        public DbSet<Redemption> Redemptions { get; set; }
 
         // AI Broker Chat System
         public DbSet<AIChat> AIChats { get; set; }
         public DbSet<AIChatMessage> AIChatMessages { get; set; }
+
+        // Parent-Child Property System
+        public DbSet<ParentProperty> ParentProperties { get; set; }
+        public DbSet<ChildProperty> ChildProperties { get; set; }
+        public DbSet<GoldPrice> GoldPrices { get; set; }
+        public DbSet<PropertyPriceHistory> PropertyPriceHistories { get; set; }
+        public DbSet<PropertyValuation> PropertyValuations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -53,22 +61,27 @@ namespace PropertyFlipperAPI.Data
                 entity.Property(e => e.HashedPassword).HasMaxLength(255); // Nullable for OAuth users
             });
 
-            // Configure Property
-            modelBuilder.Entity<Property>(entity =>
+            // Configure Property (now ChildProperty)
+            modelBuilder.Entity<ChildProperty>(entity =>
             {
                 entity.HasKey(e => e.PropertyId);
                 entity.Property(e => e.PropertyId).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-                entity.Property(e => e.Location).HasMaxLength(255);
+                entity.Property(e => e.Name).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.Location).HasMaxLength(500);
                 entity.Property(e => e.Type).HasConversion<int>();
+                entity.Property(e => e.BuyingPrice).HasColumnType("decimal(18,2)");
                 entity.HasOne(e => e.Owner)
-                    .WithMany(u => u.Properties)
+                    .WithMany()
                     .HasForeignKey(e => e.OwnerId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.SetNull);
                 entity.HasOne(e => e.Project)
-                    .WithMany(p => p.Properties)
+                    .WithMany()
                     .HasForeignKey(e => e.ProjectId)
                     .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(e => e.ParentProperty)
+                    .WithMany(p => p.ChildProperties)
+                    .HasForeignKey(e => e.ParentPropertyId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure Auction
@@ -78,7 +91,6 @@ namespace PropertyFlipperAPI.Data
                 entity.Property(e => e.AuctionId).ValueGeneratedOnAdd();
                 entity.Property(e => e.StartPrice).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.CurrentPrice).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.BuyNowPrice).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Status).HasMaxLength(20);
                 entity.HasOne(e => e.Property)
                     .WithMany(p => p.Auctions)
@@ -302,6 +314,19 @@ namespace PropertyFlipperAPI.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Configure Redemption
+            modelBuilder.Entity<Redemption>(entity =>
+            {
+                entity.HasKey(e => e.RedemptionId);
+                entity.Property(e => e.RedemptionId).ValueGeneratedOnAdd();
+                entity.Property(e => e.RewardType).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.PromoCode).HasMaxLength(5).IsRequired();
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // Removed SavedSearch entity
 
             // Configure Referral
@@ -333,6 +358,52 @@ namespace PropertyFlipperAPI.Data
                 entity.HasOne(e => e.User)
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure ParentProperty
+            modelBuilder.Entity<ParentProperty>(entity =>
+            {
+                entity.HasKey(e => e.ParentPropertyId);
+                entity.Property(e => e.ParentPropertyId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ProjectName).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.PropertyType).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.FinishingType).HasMaxLength(100).IsRequired();
+                entity.HasOne(e => e.Project)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+
+            // Configure GoldPrice
+            modelBuilder.Entity<GoldPrice>(entity =>
+            {
+                entity.HasKey(e => e.GoldPriceId);
+                entity.Property(e => e.GoldPriceId).ValueGeneratedOnAdd();
+                entity.Property(e => e.PricePerGram).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(e => e.Source).HasMaxLength(50).IsRequired();
+            });
+
+            // Configure PropertyPriceHistory
+            modelBuilder.Entity<PropertyPriceHistory>(entity =>
+            {
+                entity.HasKey(e => e.PriceHistoryId);
+                entity.Property(e => e.PriceHistoryId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Price).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(e => e.Source).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.HasOne(e => e.ParentProperty)
+                    .WithMany(p => p.PriceHistories)
+                    .HasForeignKey(e => e.ParentPropertyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Auction)
+                    .WithMany()
+                    .HasForeignKey(e => e.AuctionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(e => e.ChildProperty)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChildPropertyId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
         }

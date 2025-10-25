@@ -278,7 +278,8 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
                             : null,
                         child: _project!.developerProfileImage == null
                             ? Text(
-                                _project!.developerName[0],
+                                (_project!.developerCompany ??
+                                    _project!.developerName)[0],
                                 style: const TextStyle(fontSize: 24),
                               )
                             : null,
@@ -297,20 +298,13 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _project!.developerName,
+                              _project!.developerCompany ??
+                                  _project!.developerName,
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            if (_project!.developerCompany != null)
-                              Text(
-                                _project!.developerCompany!,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.secondary,
-                                ),
-                              ),
                             const SizedBox(height: 4),
                             Row(
                               children: [

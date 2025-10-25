@@ -305,7 +305,7 @@ namespace PropertyFlipperAPI.Controllers
                 return Unauthorized();
 
             // Ensure the property belongs to the user (or allow if events are public)
-            var ownsProperty = await _context.Properties.AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == userId);
+            var ownsProperty = await _context.ChildProperties.AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == userId);
             if (!ownsProperty)
                 return StatusCode(403, new { message = "You can only view events for your own properties" });
 
@@ -473,7 +473,7 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("No image file provided");
 
             // Validate property ownership
-            var property = await _context.Properties.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+            var property = await _context.ChildProperties.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
             if (property == null)
                 return NotFound("Property not found");
             if (property.OwnerId != userId)

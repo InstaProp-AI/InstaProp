@@ -10,11 +10,11 @@ namespace PropertyFlipperAPI.Models
         public long PropertyImageId { get; set; }
 
         [Required]
-        public long PropertyId { get; set; }
+        public int PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         [JsonIgnore]
-        public Property? Property { get; set; }
+        public ChildProperty? Property { get; set; }
 
         [Required]
         public string ImageUrl { get; set; } = string.Empty;

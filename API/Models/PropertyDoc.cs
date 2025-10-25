@@ -10,10 +10,10 @@ namespace PropertyFlipperAPI.Models
     public long DocId { get; set; }
 
     [Required]
-    public long PropertyId { get; set; }
+    public int PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public Property Property { get; set; }
+        public ChildProperty Property { get; set; }
 
         [Required]
         public string DocType { get; set; } // Enum: Ownership, Legal, FloorPlan, etc.

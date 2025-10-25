@@ -16,14 +16,12 @@ class AuctionService {
     required double startPrice,
     required DateTime startAt,
     required int duration,
-    double? buyNowPrice,
   }) async {
     return await ApiClient.post('/api/auction', {
       'propertyId': propertyId,
       'startPrice': startPrice,
       'startAt': startAt.toIso8601String(),
       'duration': duration,
-      'buyNowPrice': buyNowPrice,
     }, Auction.fromJson);
   }
 
@@ -32,14 +30,12 @@ class AuctionService {
     double? startPrice,
     DateTime? startAt,
     int? duration,
-    double? buyNowPrice,
     String? status,
   }) async {
     final body = <String, dynamic>{};
     if (startPrice != null) body['startPrice'] = startPrice;
     if (startAt != null) body['startAt'] = startAt.toIso8601String();
     if (duration != null) body['duration'] = duration;
-    if (buyNowPrice != null) body['buyNowPrice'] = buyNowPrice;
     if (status != null) body['status'] = status;
 
     return await ApiClient.put(

@@ -78,8 +78,12 @@ namespace PropertyFlipperAPI.Models
 
         public DateTime? UpdatedAt { get; set; }
 
+        // Rewards System - Dual Point Tracking
+        public int TotalEarnedPoints { get; set; } = 0;  // Lifetime achievement
+        public int CurrentPoints { get; set; } = 0;      // Spendable balance
+
         // 🔗 Relations
-        public ICollection<Property> Properties { get; set; } = new List<Property>();
+        // Properties navigation removed - using ChildProperty system now
         public ICollection<Bid> Bids { get; set; } = new List<Bid>();
         public ICollection<Project> Projects { get; set; } = new List<Project>();
         public ICollection<UserDoc> UserDocs { get; set; } = new List<UserDoc>();

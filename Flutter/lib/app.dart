@@ -6,6 +6,122 @@ import 'providers/app_state.dart';
 import 'pages/home_page.dart';
 import 'widgets/floating_ai_broker_button.dart';
 
+/// Error boundary widget to catch and handle errors gracefully
+class ErrorBoundary extends StatefulWidget {
+  final Widget child;
+
+  const ErrorBoundary({super.key, required this.child});
+
+  @override
+  State<ErrorBoundary> createState() => _ErrorBoundaryState();
+}
+
+class _ErrorBoundaryState extends State<ErrorBoundary> {
+  bool hasError = false;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Catch Flutter framework errors
+    FlutterError.onError = (FlutterErrorDetails details) {
+      print('🚨 Flutter Error: ${details.exception}');
+      print('🚨 Stack: ${details.stack}');
+
+      // Handle engine disposal errors gracefully
+      if (details.exception.toString().contains('disposed') ||
+          details.exception.toString().contains('EngineFlutterView')) {
+        print('🔄 Engine disposal error detected - ignoring');
+        return;
+      }
+
+      // Only set error state for non-disposal errors
+      if (mounted) {
+        setState(() {
+          hasError = true;
+          errorMessage = details.exception.toString();
+        });
+      }
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Something went wrong',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                errorMessage ?? 'Unknown error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    hasError = false;
+                    errorMessage = null;
+                  });
+                },
+                child: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return widget.child;
+  }
+}
+
+/// Error page shown when app fails to build
+class ErrorPage extends StatelessWidget {
+  const ErrorPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text(
+              'App Initialization Failed',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Please restart the app',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                // This would restart the app in a real scenario
+                print('Restart requested');
+              },
+              child: const Text('Restart App'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Main app widget
 class PropertyFlipperApp extends StatelessWidget {
   const PropertyFlipperApp({super.key});
@@ -15,34 +131,80 @@ class PropertyFlipperApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) {
         final appState = AppState();
-        appState.init(); // Initialize app state
+        // Initialize app state with proper error handling and delays
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          try {
+            appState.init();
+          } catch (e) {
+            print('❌ AppState initialization error: $e');
+          }
+        });
         return appState;
       },
       child: Builder(
         builder: (context) {
-          final appState = Provider.of<AppState>(context, listen: false);
-          return ChangeNotifierProvider.value(
-            value: appState.notificationService,
-            child: MaterialApp(
+          try {
+            final appState = Provider.of<AppState>(context, listen: false);
+            return ChangeNotifierProvider.value(
+              value: appState.notificationService,
+              child: MaterialApp(
+                title: 'Property Flipper',
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.lightTheme,
+                onGenerateRoute: AppRouter.onGenerateRoute,
+                home: const HomePage(),
+                // Add error boundary and floating button
+                builder: (context, child) {
+                  return ErrorBoundary(
+                    child: Stack(
+                      children: [
+                        child ?? const SizedBox.shrink(),
+                        const FloatingAIBrokerButton(),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          } catch (e) {
+            print('❌ Error building app: $e');
+            return MaterialApp(
               title: 'Property Flipper',
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
-              onGenerateRoute: AppRouter.onGenerateRoute,
-              home: const HomePage(),
-              // Add floating button globally to all pages
-              builder: (context, child) {
-                print('🔵 MaterialApp builder called, adding floating button');
-                return Stack(
-                  children: [
-                    child ?? const SizedBox.shrink(),
-                    const FloatingAIBrokerButton(),
-                  ],
-                );
-              },
-            ),
-          );
+              home: const ErrorPage(),
+            );
+          }
         },
       ),
     );
+  }
+}
+
+/// Web-specific wrapper to handle disposal errors
+class WebSafeWidget extends StatefulWidget {
+  final Widget child;
+
+  const WebSafeWidget({super.key, required this.child});
+
+  @override
+  State<WebSafeWidget> createState() => _WebSafeWidgetState();
+}
+
+class _WebSafeWidgetState extends State<WebSafeWidget> {
+  bool _isDisposed = false;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isDisposed) {
+      return const SizedBox.shrink();
+    }
+    return widget.child;
   }
 }

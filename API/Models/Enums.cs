@@ -16,8 +16,21 @@ namespace PropertyFlipperAPI.Models
 
     public enum PropertyType
     {
-        Resale = 0,
-        Primary = 1
+        Apartment = 0,
+        Villa = 1,
+        Townhouse = 2,
+        Duplex = 3,
+        Penthouse = 4,
+        Studio = 5,
+        Loft = 6
+    }
+
+    public enum FinishingType
+    {
+        Finished = 0,
+        SemiFinished = 1,
+        CoreAndShell = 2,
+        SuperLuxury = 3
     }
 
     public enum PropertyStatus
@@ -25,6 +38,16 @@ namespace PropertyFlipperAPI.Models
         NotApproved = 0,
         Pending = 1,
         Approved = 2
+    }
+
+    public enum AuctionStatus
+    {
+        Requested = 0,
+        Approved = 1,
+        Active = 2,
+        Closed = 3,
+        Cancelled = 4,
+        Completed = 5
     }
 }
 
