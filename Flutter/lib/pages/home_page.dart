@@ -1,6 +1,7 @@
 import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
 import '../models/project_model.dart';
@@ -8,10 +9,11 @@ import '../models/developer_profile.dart';
 import '../services/project_service.dart';
 import '../services/developer_service.dart';
 import '../services/api_client.dart';
+import '../services/news_service.dart';
+import '../models/news_article.dart';
 import '../widgets/property_image_carousel.dart';
 import 'profile_page.dart';
 import 'featured_auctions_page.dart';
-import 'auctions_page.dart';
 import 'auction_details_page.dart';
 import 'properties_management_page.dart';
 import 'projects_list_page.dart';
@@ -204,8 +206,8 @@ class _HomePageState extends State<HomePage>
 
                 const SizedBox(height: 32),
 
-                // Points Display Section
-                _buildPointsDisplaySection(context, appState),
+                // News Preview Section
+                _buildNewsPreviewSection(context),
 
                 const SizedBox(height: 32),
 
@@ -976,13 +978,299 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildPointsDisplaySection(BuildContext context, AppState appState) {
-    if (appState.user == null) return const SizedBox.shrink();
-
+  Widget _buildNewsPreviewSection(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // News title with tap to navigate to all news
+          GestureDetector(
+            onTap: () => Navigator.of(context).pushNamed('/all-news'),
+            child: const Text(
+              'Latest News',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: -0.7,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          FutureBuilder<List<NewsArticle>>(
+            future: NewsService(ApiClient.baseUrl).getLatestNews(count: 3),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return _buildMinimalEmptyState(
+                  context,
+                  'No news available',
+                  Icons.article_outlined,
+                );
+              }
+              return _buildNewsCarousel(context, snapshot.data!);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewsCarousel(BuildContext context, List<NewsArticle> news) {
+    return _AutoScrollingNewsCarousel(news: news);
+  }
+}
+
+class _AutoScrollingNewsCarousel extends StatefulWidget {
+  final List<NewsArticle> news;
+
+  const _AutoScrollingNewsCarousel({required this.news});
+
+  @override
+  State<_AutoScrollingNewsCarousel> createState() =>
+      _AutoScrollingNewsCarouselState();
+}
+
+class _AutoScrollingNewsCarouselState
+    extends State<_AutoScrollingNewsCarousel> {
+  late PageController _pageController;
+  late Timer _timer;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _startAutoScroll();
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_pageController.hasClients) {
+        setState(() {
+          _currentIndex = (_currentIndex + 1) % (widget.news.length + 1);
+        });
+        _pageController.animateToPage(
+          _currentIndex,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // News carousel with reduced height
+        SizedBox(
+          height: 150, // Reduced from 200 to 150
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemCount: widget.news.length + 1, // +1 for "Show All" card
+            itemBuilder: (context, index) {
+              if (index == widget.news.length) {
+                // "Show All" card
+                return _buildShowAllNewsCard(context);
+              }
+              return _buildNewsCard(context, widget.news[index]);
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Dots indicator
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            widget.news.length + 1, // +1 for "Show All" card
+            (index) => Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _currentIndex == index
+                    ? Colors.blue[600]
+                    : Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNewsCard(BuildContext context, NewsArticle news) {
+    return GestureDetector(
+      onTap: () =>
+          Navigator.of(context).pushNamed('/news/${news.newsArticleId}'),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Image
+              news.images.isNotEmpty
+                  ? Image.network(
+                      news.firstImageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.article_outlined,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey[200],
+                      child: const Icon(
+                        Icons.article_outlined,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                    ),
+              // Gradient overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.0),
+                      Colors.black.withOpacity(0.7),
+                    ],
+                    stops: const [0.5, 1.0],
+                  ),
+                ),
+              ),
+              // Content
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.0),
+                        Colors.black.withOpacity(0.3),
+                        Colors.black.withOpacity(0.7),
+                      ],
+                      stops: const [0.0, 0.3, 1.0],
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Category badge
+                        if (news.category != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              news.categoryDisplayName,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          news.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.3,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(0, 1),
+                                blurRadius: 2,
+                                color: Colors.black54,
+                              ),
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          news.formattedDate,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                            shadows: const [
+                              Shadow(
+                                offset: Offset(0, 1),
+                                blurRadius: 2,
+                                color: Colors.black54,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShowAllNewsCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pushNamed('/all-news'),
+      child: Container(
+        margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -993,92 +1281,32 @@ class _HomePageState extends State<HomePage>
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF667eea).withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.stars, color: Colors.white, size: 24),
-            ),
-            const SizedBox(width: 16),
-            // Points Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '${appState.user!.currentPoints}',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'pts',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    'Current Points (Spendable)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${appState.user!.totalEarnedPoints} total earned',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Rewards Button
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/rewards');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                ),
-                child: const Text(
-                  'Rewards',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.newspaper, size: 48, color: Colors.white),
+              SizedBox(height: 12),
+              Text(
+                'Show All News',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 4),
+              Text(
+                'View all articles',
+                style: TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+            ],
+          ),
         ),
       ),
     );

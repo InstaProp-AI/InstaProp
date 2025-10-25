@@ -4,6 +4,9 @@ import '../../pages/home_page.dart';
 import '../../pages/auth_page.dart';
 import '../../pages/profile_page.dart';
 import '../../pages/valuate_page.dart';
+import '../../pages/all_news_page.dart';
+import '../../pages/news_detail_page.dart';
+import '../../models/news_article.dart';
 
 /// Centralized app router
 class AppRouter {
@@ -14,6 +17,8 @@ class AppRouter {
   static const String login = '/login';
   static const String profile = '/profile';
   static const String valuate = '/valuate';
+  static const String allNews = '/all-news';
+  static const String newsDetail = '/news';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     // final args = settings.arguments; // reserved for future use
@@ -34,7 +39,27 @@ class AppRouter {
       case valuate:
         return MaterialPageRoute(builder: (_) => const ValuatePage());
 
+      // News routes
+      case allNews:
+        return MaterialPageRoute(builder: (_) => const AllNewsPage());
+
       default:
+        // Handle dynamic news detail route
+        if (settings.name != null && settings.name!.startsWith('/news/')) {
+          final newsId = settings.name!.split('/').last;
+          // For now, we'll create a placeholder news article
+          // In a real app, you'd fetch the news article by ID
+          final news = NewsArticle(
+            newsArticleId: int.tryParse(newsId) ?? 0,
+            title: 'Loading...',
+            content: 'Loading article...',
+            publishedDate: DateTime.now(),
+            createdAt: DateTime.now(),
+            isPublished: true,
+            images: [],
+          );
+          return MaterialPageRoute(builder: (_) => NewsDetailPage(news: news));
+        }
         return MaterialPageRoute(
           builder: (_) => Scaffold(
             body: Center(child: Text('Route not found: ${settings.name}')),

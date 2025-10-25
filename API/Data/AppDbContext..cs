@@ -44,6 +44,10 @@ namespace PropertyFlipperAPI.Data
         public DbSet<PropertyPriceHistory> PropertyPriceHistories { get; set; }
         public DbSet<PropertyValuation> PropertyValuations { get; set; }
 
+        // News System
+        public DbSet<NewsArticle> NewsArticles { get; set; }
+        public DbSet<NewsImage> NewsImages { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -405,6 +409,32 @@ namespace PropertyFlipperAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.ChildPropertyId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure NewsArticle
+            modelBuilder.Entity<NewsArticle>(entity =>
+            {
+                entity.HasKey(e => e.NewsArticleId);
+                entity.Property(e => e.NewsArticleId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Content).IsRequired();
+                entity.Property(e => e.Category).HasMaxLength(50);
+                entity.Property(e => e.PublishedDate).IsRequired();
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.Property(e => e.IsPublished).IsRequired();
+            });
+
+            // Configure NewsImage
+            modelBuilder.Entity<NewsImage>(entity =>
+            {
+                entity.HasKey(e => e.NewsImageId);
+                entity.Property(e => e.NewsImageId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ImageUrl).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.DisplayOrder).IsRequired();
+                entity.HasOne(e => e.NewsArticle)
+                    .WithMany(n => n.Images)
+                    .HasForeignKey(e => e.NewsArticleId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
