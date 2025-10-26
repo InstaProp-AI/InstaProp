@@ -48,6 +48,23 @@ namespace PropertyFlipperAPI.Data
         public DbSet<NewsArticle> NewsArticles { get; set; }
         public DbSet<NewsImage> NewsImages { get; set; }
 
+        // Community System
+        public DbSet<Community> Communities { get; set; }
+        public DbSet<CommunityMember> CommunityMembers { get; set; }
+        public DbSet<CommunityPost> CommunityPosts { get; set; }
+        public DbSet<PostComment> PostComments { get; set; }
+        public DbSet<PostLike> PostLikes { get; set; }
+        public DbSet<CommentLike> CommentLikes { get; set; }
+        public DbSet<PostCategory> PostCategories { get; set; }
+        public DbSet<Poll> Polls { get; set; }
+        public DbSet<PollVote> PollVotes { get; set; }
+        
+        // Enhanced Community Features
+        public DbSet<PostReaction> PostReactions { get; set; }
+        public DbSet<CommentReaction> CommentReactions { get; set; }
+        public DbSet<PostBookmark> PostBookmarks { get; set; }
+        public DbSet<UserAchievement> UserAchievements { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -434,6 +451,208 @@ namespace PropertyFlipperAPI.Data
                 entity.HasOne(e => e.NewsArticle)
                     .WithMany(n => n.Images)
                     .HasForeignKey(e => e.NewsArticleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Community
+            modelBuilder.Entity<Community>(entity =>
+            {
+                entity.HasKey(e => e.CommunityId);
+                entity.Property(e => e.CommunityId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.ScopeType).HasConversion<int>();
+                entity.Property(e => e.AccessType).HasConversion<int>();
+                entity.HasOne(e => e.CreatedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedById)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure CommunityMember
+            modelBuilder.Entity<CommunityMember>(entity =>
+            {
+                entity.HasKey(e => e.MemberId);
+                entity.Property(e => e.MemberId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Role).HasConversion<int>();
+                entity.HasOne(e => e.Community)
+                    .WithMany(c => c.Members)
+                    .HasForeignKey(e => e.CommunityId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.CommunityId, e.AccountId }).IsUnique();
+            });
+
+            // Configure CommunityPost
+            modelBuilder.Entity<CommunityPost>(entity =>
+            {
+                entity.HasKey(e => e.PostId);
+                entity.Property(e => e.PostId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ImageUrl).HasMaxLength(500);
+                entity.Property(e => e.PostType).HasConversion<int>();
+                entity.HasOne(e => e.Community)
+                    .WithMany(c => c.Posts)
+                    .HasForeignKey(e => e.CommunityId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Author)
+                    .WithMany()
+                    .HasForeignKey(e => e.AuthorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure PostComment
+            modelBuilder.Entity<PostComment>(entity =>
+            {
+                entity.HasKey(e => e.CommentId);
+                entity.Property(e => e.CommentId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Comments)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Author)
+                    .WithMany()
+                    .HasForeignKey(e => e.AuthorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ParentComment)
+                    .WithMany(p => p.Replies)
+                    .HasForeignKey(e => e.ParentCommentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure PostLike
+            modelBuilder.Entity<PostLike>(entity =>
+            {
+                entity.HasKey(e => e.LikeId);
+                entity.Property(e => e.LikeId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Likes)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.PostId, e.AccountId }).IsUnique();
+            });
+
+            // Configure CommentLike
+            modelBuilder.Entity<CommentLike>(entity =>
+            {
+                entity.HasKey(e => e.LikeId);
+                entity.Property(e => e.LikeId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Comment)
+                    .WithMany(c => c.Likes)
+                    .HasForeignKey(e => e.CommentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.CommentId, e.AccountId }).IsUnique();
+            });
+
+            // Configure PostCategory
+            modelBuilder.Entity<PostCategory>(entity =>
+            {
+                entity.HasKey(e => e.CategoryId);
+                entity.Property(e => e.CategoryId).ValueGeneratedOnAdd();
+                entity.Property(e => e.CategoryName).HasMaxLength(50).IsRequired();
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Categories)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Poll
+            modelBuilder.Entity<Poll>(entity =>
+            {
+                entity.HasKey(e => e.PollId);
+                entity.Property(e => e.PollId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Post)
+                    .WithOne(p => p.Poll)
+                    .HasForeignKey<Poll>(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure PollVote
+            modelBuilder.Entity<PollVote>(entity =>
+            {
+                entity.HasKey(e => e.VoteId);
+                entity.Property(e => e.VoteId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Poll)
+                    .WithMany(p => p.Votes)
+                    .HasForeignKey(e => e.PollId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.PollId, e.AccountId }).IsUnique();
+            });
+
+            // Configure PostReaction
+            modelBuilder.Entity<PostReaction>(entity =>
+            {
+                entity.HasKey(e => e.ReactionId);
+                entity.Property(e => e.ReactionId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ReactionType).HasConversion<int>();
+                entity.HasOne(e => e.Post)
+                    .WithMany()
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.PostId, e.AccountId, e.ReactionType }).IsUnique();
+            });
+
+            // Configure CommentReaction
+            modelBuilder.Entity<CommentReaction>(entity =>
+            {
+                entity.HasKey(e => e.ReactionId);
+                entity.Property(e => e.ReactionId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ReactionType).HasConversion<int>();
+                entity.HasOne(e => e.Comment)
+                    .WithMany()
+                    .HasForeignKey(e => e.CommentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.CommentId, e.AccountId, e.ReactionType }).IsUnique();
+            });
+
+            // Configure PostBookmark
+            modelBuilder.Entity<PostBookmark>(entity =>
+            {
+                entity.HasKey(e => e.BookmarkId);
+                entity.Property(e => e.BookmarkId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Bookmarks)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Account)
+                    .WithMany(a => a.BookmarkedPosts)
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.PostId, e.AccountId }).IsUnique();
+            });
+
+            // Configure UserAchievement
+            modelBuilder.Entity<UserAchievement>(entity =>
+            {
+                entity.HasKey(e => e.AchievementId);
+                entity.Property(e => e.AchievementId).ValueGeneratedOnAdd();
+                entity.Property(e => e.AchievementType).HasConversion<int>();
+                entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

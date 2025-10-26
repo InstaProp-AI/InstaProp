@@ -22,6 +22,8 @@ import 'developer_profile_page.dart';
 import 'developers_list_page.dart';
 import 'chat_list_page.dart';
 import 'market_hub_page.dart';
+import 'community_feed_page.dart';
+import 'explore_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -121,10 +123,12 @@ class _HomePageState extends State<HomePage>
           case 1:
             return const MarketHubPage();
           case 2:
-            return _buildValuationPage(context, appState);
+            return const ExplorePage();
           case 3:
-            return const ChatListPage();
+            return _buildValuationPage(context, appState);
           case 4:
+            return const ChatListPage();
+          case 5:
             return _buildProfilePage(context, appState);
           default:
             return _buildHomeContent(appState);
@@ -203,6 +207,11 @@ class _HomePageState extends State<HomePage>
                 // Featured Auction
                 if (appState.auctions.isNotEmpty)
                   _buildMinimalHeroSection(context, appState.auctions.first),
+
+                const SizedBox(height: 32),
+
+                // Community Preview Section
+                if (appState.isLoggedIn) _buildCommunityPreviewSection(context),
 
                 const SizedBox(height: 32),
 
@@ -399,6 +408,10 @@ class _HomePageState extends State<HomePage>
           BottomNavigationBarItem(
             icon: Icon(Icons.store_rounded),
             label: 'Market',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.explore_rounded),
+            label: 'Explore',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics_rounded),
@@ -1021,6 +1034,74 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildNewsCarousel(BuildContext context, List<NewsArticle> news) {
     return _AutoScrollingNewsCarousel(news: news);
+  }
+
+  Widget _buildCommunityPreviewSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildMinimalSectionHeader(context, 'Community', () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const CommunityFeedPage(),
+              ),
+            );
+          }),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CommunityFeedPage(),
+                ),
+              );
+            },
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0EA5E9).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.people_alt, size: 48, color: Colors.white),
+                    SizedBox(height: 12),
+                    Text(
+                      'Join the Community',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Connect with property owners',
+                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

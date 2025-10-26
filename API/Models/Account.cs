@@ -82,10 +82,19 @@ namespace PropertyFlipperAPI.Models
         public int TotalEarnedPoints { get; set; } = 0;  // Lifetime achievement
         public int CurrentPoints { get; set; } = 0;      // Spendable balance
 
+        // Community Reputation & Activity
+        public int ReputationPoints { get; set; } = 0;    // Community contribution score
+        public int PostCount { get; set; } = 0;           // Total posts created
+        public int CommentCount { get; set; } = 0;       // Total comments created
+        public int LikesReceived { get; set; } = 0;      // Total likes received on posts/comments
+        public DateTime? LastActiveAt { get; set; }       // Last community activity
+        public bool ShowInDirectory { get; set; } = true; // Allow public profile viewing
+
         // 🔗 Relations
         // Properties navigation removed - using ChildProperty system now
         public ICollection<Bid> Bids { get; set; } = new List<Bid>();
         public ICollection<Project> Projects { get; set; } = new List<Project>();
         public ICollection<UserDoc> UserDocs { get; set; } = new List<UserDoc>();
+        public ICollection<PostBookmark> BookmarkedPosts { get; set; } = new List<PostBookmark>();
     }
 }

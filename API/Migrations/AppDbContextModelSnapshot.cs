@@ -105,6 +105,9 @@ namespace PropertyFlipperAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("CommentCount")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -145,10 +148,16 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<bool>("IsSuspended")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("LastActiveAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("LikesReceived")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("TEXT");
@@ -174,6 +183,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<bool>("PhoneVerified")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("PostCount")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PreviousEmail")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
@@ -181,7 +193,13 @@ namespace PropertyFlipperAPI.Migrations
                     b.Property<string>("PreviousPhoneNumber")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("ReputationPoints")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("RequiresPasswordChange")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("ShowInDirectory")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Status")
@@ -511,6 +529,198 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("ProjectId");
 
                     b.ToTable("ChildProperties");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommentLike", b =>
+                {
+                    b.Property<long>("LikeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CommentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("LikeId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CommentId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("CommentLikes");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommentReaction", b =>
+                {
+                    b.Property<long>("ReactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CommentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ReactionType")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ReactionId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CommentId", "AccountId", "ReactionType")
+                        .IsUnique();
+
+                    b.ToTable("CommentReactions");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Community", b =>
+                {
+                    b.Property<long>("CommunityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AccessType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CoverPhotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedById")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeveloperIds")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MemberCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PostCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProjectIds")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ScopeType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("CommunityId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.ToTable("Communities");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommunityMember", b =>
+                {
+                    b.Property<long>("MemberId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CommunityId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("MemberId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CommunityId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("CommunityMembers");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommunityPost", b =>
+                {
+                    b.Property<long>("PostId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AuthorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CommentCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CommunityId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastActivityAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PostType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("TrendingScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("PostId");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("CommunityId");
+
+                    b.ToTable("CommunityPosts");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
@@ -906,6 +1116,203 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("ParentProperties");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Poll", b =>
+                {
+                    b.Property<long>("PollId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("EndsAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Options")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("PostId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TotalVotes")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("PollId");
+
+                    b.HasIndex("PostId")
+                        .IsUnique();
+
+                    b.ToTable("Polls");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PollVote", b =>
+                {
+                    b.Property<long>("VoteId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OptionIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("PollId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("VoteId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("PollId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("PollVotes");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostBookmark", b =>
+                {
+                    b.Property<long>("BookmarkId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("PostId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("BookmarkId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("PostId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("PostBookmarks");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostCategory", b =>
+                {
+                    b.Property<long>("CategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("PostId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("CategoryId");
+
+                    b.HasIndex("PostId");
+
+                    b.ToTable("PostCategories");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostComment", b =>
+                {
+                    b.Property<long>("CommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AuthorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("ParentCommentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("PostId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("CommentId");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("PostId");
+
+                    b.ToTable("PostComments");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostLike", b =>
+                {
+                    b.Property<long>("LikeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("PostId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("LikeId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("PostId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("PostLikes");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostReaction", b =>
+                {
+                    b.Property<long>("ReactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("PostId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ReactionType")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ReactionId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("PostId", "AccountId", "ReactionType")
+                        .IsUnique();
+
+                    b.ToTable("PostReactions");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
                 {
                     b.Property<long>("ProjectId")
@@ -1286,6 +1693,40 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Referrals");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.UserAchievement", b =>
+                {
+                    b.Property<long>("AchievementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AchievementType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EarnedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PointsAwarded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("AchievementId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("UserAchievements");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>
                 {
                     b.Property<long>("BadgeId")
@@ -1512,6 +1953,93 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommentLike", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.PostComment", "Comment")
+                        .WithMany("Likes")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Comment");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommentReaction", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.PostComment", "Comment")
+                        .WithMany()
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Comment");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Community", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommunityMember", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Community", "Community")
+                        .WithMany("Members")
+                        .HasForeignKey("CommunityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Community");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommunityPost", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Community", "Community")
+                        .WithMany("Posts")
+                        .HasForeignKey("CommunityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Community");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
                 {
                     b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
@@ -1582,6 +2110,130 @@ namespace PropertyFlipperAPI.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Poll", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.CommunityPost", "Post")
+                        .WithOne("Poll")
+                        .HasForeignKey("PropertyFlipperAPI.Models.Poll", "PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PollVote", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.Poll", "Poll")
+                        .WithMany("Votes")
+                        .HasForeignKey("PollId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Poll");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostBookmark", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany("BookmarkedPosts")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.CommunityPost", "Post")
+                        .WithMany("Bookmarks")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostCategory", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.CommunityPost", "Post")
+                        .WithMany("Categories")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostComment", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.PostComment", "ParentComment")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PropertyFlipperAPI.Models.CommunityPost", "Post")
+                        .WithMany("Comments")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("ParentComment");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostLike", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.CommunityPost", "Post")
+                        .WithMany("Likes")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostReaction", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PropertyFlipperAPI.Models.CommunityPost", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Post");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
@@ -1722,6 +2374,17 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Referrer");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.UserAchievement", b =>
+                {
+                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>
                 {
                     b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
@@ -1764,6 +2427,8 @@ namespace PropertyFlipperAPI.Migrations
                 {
                     b.Navigation("Bids");
 
+                    b.Navigation("BookmarkedPosts");
+
                     b.Navigation("Projects");
 
                     b.Navigation("UserDocs");
@@ -1788,6 +2453,26 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("PropertyImages");
                 });
 
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Community", b =>
+                {
+                    b.Navigation("Members");
+
+                    b.Navigation("Posts");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.CommunityPost", b =>
+                {
+                    b.Navigation("Bookmarks");
+
+                    b.Navigation("Categories");
+
+                    b.Navigation("Comments");
+
+                    b.Navigation("Likes");
+
+                    b.Navigation("Poll");
+                });
+
             modelBuilder.Entity("PropertyFlipperAPI.Models.NewsArticle", b =>
                 {
                     b.Navigation("Images");
@@ -1798,6 +2483,18 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("ChildProperties");
 
                     b.Navigation("PriceHistories");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.Poll", b =>
+                {
+                    b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("PropertyFlipperAPI.Models.PostComment", b =>
+                {
+                    b.Navigation("Likes");
+
+                    b.Navigation("Replies");
                 });
 #pragma warning restore 612, 618
         }

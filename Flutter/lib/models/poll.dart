@@ -1,0 +1,73 @@
+class Poll {
+  final int pollId;
+  final String question;
+  final List<PollOption> options;
+  final int totalVotes;
+  final DateTime? endsAt;
+  final bool hasVoted;
+  final int? userVoteOptionIndex;
+
+  Poll({
+    required this.pollId,
+    required this.question,
+    required this.options,
+    this.totalVotes = 0,
+    this.endsAt,
+    this.hasVoted = false,
+    this.userVoteOptionIndex,
+  });
+
+  factory Poll.fromJson(Map<String, dynamic> json) {
+    return Poll(
+      pollId: json['pollId'] ?? 0,
+      question: json['question'] ?? '',
+      options:
+          (json['options'] as List<dynamic>?)
+              ?.map((o) => PollOption.fromJson(o))
+              .toList() ??
+          [],
+      totalVotes: json['totalVotes'] ?? 0,
+      endsAt: json['endsAt'] != null ? DateTime.parse(json['endsAt']) : null,
+      hasVoted: json['hasVoted'] ?? false,
+      userVoteOptionIndex: json['userVoteOptionIndex'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'pollId': pollId,
+      'question': question,
+      'options': options.map((o) => o.toJson()).toList(),
+      'totalVotes': totalVotes,
+      'endsAt': endsAt?.toIso8601String(),
+      'hasVoted': hasVoted,
+      'userVoteOptionIndex': userVoteOptionIndex,
+    };
+  }
+
+  bool get isExpired {
+    if (endsAt == null) return false;
+    return DateTime.now().isAfter(endsAt!);
+  }
+}
+
+class PollOption {
+  final String text;
+  final int voteCount;
+  final double percentage;
+
+  PollOption({required this.text, this.voteCount = 0, this.percentage = 0.0});
+
+  factory PollOption.fromJson(Map<String, dynamic> json) {
+    return PollOption(
+      text: json['text'] ?? '',
+      voteCount: json['voteCount'] ?? 0,
+      percentage: (json['percentage'] ?? 0.0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'text': text, 'voteCount': voteCount, 'percentage': percentage};
+  }
+}
+
