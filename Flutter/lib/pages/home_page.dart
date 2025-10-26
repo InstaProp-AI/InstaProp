@@ -34,7 +34,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  int _selectedIndex = 0; // Start on Home tab
+  int _selectedIndex = 2; // Start on Explore tab
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -119,257 +119,19 @@ class _HomePageState extends State<HomePage>
       builder: (context, appState, child) {
         switch (_selectedIndex) {
           case 0:
-            return _buildHomeContent(appState);
-          case 1:
             return const MarketHubPage();
+          case 1:
+            return _buildValuationPage(context, appState);
           case 2:
             return const ExplorePage();
           case 3:
-            return _buildValuationPage(context, appState);
-          case 4:
             return const ChatListPage();
-          case 5:
+          case 4:
             return _buildProfilePage(context, appState);
           default:
-            return _buildHomeContent(appState);
+            return const ExplorePage();
         }
       },
-    );
-  }
-
-  Widget _buildHomeContent(AppState appState) {
-    return RefreshIndicator(
-      onRefresh: () => _refreshData(appState),
-      color: AppColors.primary,
-      child: CustomScrollView(
-        slivers: [
-          // Minimal Clean Header
-          SliverAppBar(
-            expandedHeight: 120,
-            floating: false,
-            pinned: true,
-            backgroundColor: Colors.white,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: Colors.white,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'Discover',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1A1A),
-                            letterSpacing: -1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Premium Real Estate',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey[600],
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              title: const Text(
-                'Discover',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
-          ),
-
-          // Content
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 32),
-
-                // Featured Auction
-                if (appState.auctions.isNotEmpty)
-                  _buildMinimalHeroSection(context, appState.auctions.first),
-
-                const SizedBox(height: 32),
-
-                // Community Preview Section
-                if (appState.isLoggedIn) _buildCommunityPreviewSection(context),
-
-                const SizedBox(height: 32),
-
-                // News Preview Section
-                _buildNewsPreviewSection(context),
-
-                const SizedBox(height: 32),
-
-                // Live Auctions
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildMinimalSectionHeader(context, 'Live Auctions', () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const FeaturedAuctionsPage(),
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 20),
-                      if (appState.loadingAuctions)
-                        const Center(child: CircularProgressIndicator())
-                      else if (appState.auctions.isEmpty)
-                        _buildMinimalEmptyState(
-                          context,
-                          'No live auctions',
-                          Icons.gavel_outlined,
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: appState.auctions.length > 4
-                              ? 4
-                              : appState.auctions.length,
-                          itemBuilder: (context, index) {
-                            final auction = appState.auctions[index];
-                            return _buildMinimalAuctionCard(context, auction);
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 48),
-
-                // Featured Projects
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildMinimalSectionHeader(context, 'Projects', () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const ProjectsListPage(),
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 20),
-                      FutureBuilder<List<ProjectModel>>(
-                        future: ProjectService(
-                          ApiClient.baseUrl,
-                        ).getTrendingProjects(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                            return _buildMinimalEmptyState(
-                              context,
-                              'No projects available',
-                              Icons.folder_outlined,
-                            );
-                          }
-                          return _buildMinimalProjectsGrid(
-                            context,
-                            snapshot.data!,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 48),
-
-                // Top Developers
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _buildMinimalSectionHeader(
-                        context,
-                        'Developers',
-                        () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const DevelopersListPage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    FutureBuilder<List<FeaturedDeveloper>>(
-                      future: DeveloperService(
-                        ApiClient.baseUrl,
-                      ).getFeaturedDevelopers(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: _buildMinimalEmptyState(
-                              context,
-                              'No developers',
-                              Icons.people_outlined,
-                            ),
-                          );
-                        }
-                        return SizedBox(
-                          height: 140,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: snapshot.data!.length,
-                            itemBuilder: (context, index) {
-                              final developer = snapshot.data![index];
-                              return _buildMinimalDeveloperCard(
-                                context,
-                                developer,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 80),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -402,20 +164,16 @@ class _HomePageState extends State<HomePage>
         ),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.store_rounded),
             label: 'Market',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.explore_rounded),
-            label: 'Explore',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.analytics_rounded),
             label: 'Portfolio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.explore_rounded),
+            label: 'Explore',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_rounded),

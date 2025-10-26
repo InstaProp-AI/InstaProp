@@ -52,18 +52,18 @@ class ApiClient {
     } else if (Platform.isAndroid) {
       // Try to detect if it's emulator or physical device
       // For physical device, use Mac's IP
-      return 'http://192.168.1.16:5284';
+      return 'http://192.168.1.5:5284';
       // For emulator, uncomment: return 'http://10.0.2.2:5284';
     } else if (Platform.isIOS) {
       // For iOS simulator
       return 'http://localhost:5284';
-      // For physical iOS device, use: return 'http://192.168.1.16:5284';
+      // For physical iOS device, use: return 'http://192.168.1.5:5284';
     }
     return 'http://localhost:5284';
   }
 
   // Quick reference:
-  // Physical device (same WiFi): 'http://192.168.1.235:5284'
+  // Physical device (same WiFi): 'http://192.168.1.5:5284'
   // Android emulator:            'http://10.0.2.2:5284'
   // iOS simulator/localhost:     'http://localhost:5284'
 
@@ -157,7 +157,6 @@ class ApiClient {
         final data = jsonDecode(response.body);
 
         if (data is! List) {
-          print('❌ Expected List but got ${data.runtimeType}');
           return ApiResponse.error(
             'Invalid response format: expected array, got ${data.runtimeType}',
             statusCode: response.statusCode,
@@ -171,12 +170,10 @@ class ApiClient {
           try {
             final item = list[i];
             if (item is! Map<String, dynamic>) {
-              print('❌ Item $i is not a Map: ${item.runtimeType}');
               continue;
             }
             items.add(fromJson(item));
           } catch (e) {
-            print('❌ Error parsing item $i: $e');
             // Continue parsing other items
           }
         }
@@ -218,25 +215,17 @@ class ApiClient {
       final uri = Uri.parse('$baseUrl$endpoint');
       final headers = await _getHeaders();
 
-      print('🌐 GET $uri');
-      print('📡 Base URL: $baseUrl');
-
       final response = await http.get(uri, headers: headers).timeout(timeout);
-      print('✅ Response status: ${response.statusCode}');
       return _handleResponse(response, fromJson);
-    } on SocketException catch (e) {
-      print('❌ SocketException: $e');
+    } on SocketException {
       return ApiResponse.error(
         'Cannot connect to server. Please check if backend is running at $baseUrl',
       );
-    } on HttpException catch (e) {
-      print('❌ HttpException: $e');
-      return ApiResponse.error('HTTP error occurred: $e');
-    } on FormatException catch (e) {
-      print('❌ FormatException: $e');
-      return ApiResponse.error('Invalid response format: $e');
+    } on HttpException {
+      return ApiResponse.error('HTTP error occurred');
+    } on FormatException {
+      return ApiResponse.error('Invalid response format');
     } catch (e) {
-      print('❌ Unexpected error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
   }
@@ -249,14 +238,7 @@ class ApiClient {
       final uri = Uri.parse('$baseUrl$endpoint');
       final headers = await _getHeaders();
 
-      print('GET $uri');
-      print('Headers: $headers');
-
       final response = await http.get(uri, headers: headers).timeout(timeout);
-      print('Response status: ${response.statusCode}');
-      print(
-        'Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...',
-      );
 
       return _handleListResponse(response, fromJson);
     } on SocketException {
@@ -279,31 +261,20 @@ class ApiClient {
       final uri = Uri.parse('$baseUrl$endpoint');
       final headers = await _getHeaders();
 
-      print('🌐 POST $uri');
-      print('📡 Base URL: $baseUrl');
-      print('📤 Body: ${jsonEncode(body)}');
-
       final response = await http
           .post(uri, headers: headers, body: jsonEncode(body))
           .timeout(timeout);
 
-      print('✅ Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
-
       return _handleResponse(response, fromJson);
-    } on SocketException catch (e) {
-      print('❌ SocketException: $e');
+    } on SocketException {
       return ApiResponse.error(
         'Cannot connect to server. Please check if backend is running at $baseUrl',
       );
-    } on HttpException catch (e) {
-      print('❌ HttpException: $e');
-      return ApiResponse.error('HTTP error occurred: $e');
-    } on FormatException catch (e) {
-      print('❌ FormatException: $e');
-      return ApiResponse.error('Invalid response format: $e');
+    } on HttpException {
+      return ApiResponse.error('HTTP error occurred');
+    } on FormatException {
+      return ApiResponse.error('Invalid response format');
     } catch (e) {
-      print('❌ Unexpected error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
   }
@@ -322,25 +293,17 @@ class ApiClient {
       );
       final headers = await _getHeaders();
 
-      print('🌐 GET with query $uri');
-      print('📡 Base URL: $baseUrl');
-
       final response = await http.get(uri, headers: headers).timeout(timeout);
-      print('✅ Response status: ${response.statusCode}');
       return _handleResponse(response, fromJson);
-    } on SocketException catch (e) {
-      print('❌ SocketException: $e');
+    } on SocketException {
       return ApiResponse.error(
         'Cannot connect to server. Please check if backend is running at $baseUrl',
       );
-    } on HttpException catch (e) {
-      print('❌ HttpException: $e');
-      return ApiResponse.error('HTTP error occurred: $e');
-    } on FormatException catch (e) {
-      print('❌ FormatException: $e');
-      return ApiResponse.error('Invalid response format: $e');
+    } on HttpException {
+      return ApiResponse.error('HTTP error occurred');
+    } on FormatException {
+      return ApiResponse.error('Invalid response format');
     } catch (e) {
-      print('❌ Unexpected error: $e');
       return ApiResponse.error('Unexpected error: $e');
     }
   }
@@ -359,14 +322,7 @@ class ApiClient {
       );
       final headers = await _getHeaders();
 
-      print('GET list with query $uri');
-      print('Headers: $headers');
-
       final response = await http.get(uri, headers: headers).timeout(timeout);
-      print('Response status: ${response.statusCode}');
-      print(
-        'Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...',
-      );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) {

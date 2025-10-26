@@ -2,6 +2,7 @@ class NewsArticle {
   final int newsArticleId;
   final String title;
   final String content;
+  final String? author;
   final String? category;
   final DateTime publishedDate;
   final DateTime createdAt;
@@ -13,6 +14,7 @@ class NewsArticle {
     required this.newsArticleId,
     required this.title,
     required this.content,
+    this.author,
     this.category,
     required this.publishedDate,
     required this.createdAt,
@@ -23,20 +25,25 @@ class NewsArticle {
 
   factory NewsArticle.fromJson(Map<String, dynamic> json) {
     return NewsArticle(
-      newsArticleId: json['newsArticleId'] ?? 0,
-      title: json['title'] ?? '',
-      content: json['content'] ?? '',
-      category: json['category'],
+      newsArticleId: json['newsArticleId'] ?? json['NewsArticleId'] ?? 0,
+      title: json['title'] ?? json['Title'] ?? '',
+      content: json['content'] ?? json['Content'] ?? '',
+      author: json['author'] ?? json['Author'],
+      category: json['category'] ?? json['Category'],
       publishedDate: DateTime.parse(
-        json['publishedDate'] ?? DateTime.now().toIso8601String(),
+        json['publishedDate'] ??
+            json['PublishedDate'] ??
+            DateTime.now().toIso8601String(),
       ),
       createdAt: DateTime.parse(
-        json['createdAt'] ?? DateTime.now().toIso8601String(),
+        json['createdAt'] ??
+            json['CreatedAt'] ??
+            DateTime.now().toIso8601String(),
       ),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
+      updatedAt: json['updatedAt'] != null || json['UpdatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] ?? json['UpdatedAt'])
           : null,
-      isPublished: json['isPublished'] ?? true,
+      isPublished: json['isPublished'] ?? json['IsPublished'] ?? true,
       images:
           (json['images'] as List<dynamic>?)
               ?.map((image) => image.toString())
@@ -50,6 +57,7 @@ class NewsArticle {
       'newsArticleId': newsArticleId,
       'title': title,
       'content': content,
+      'author': author,
       'category': category,
       'publishedDate': publishedDate.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),

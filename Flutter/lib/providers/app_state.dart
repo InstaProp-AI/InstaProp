@@ -109,57 +109,53 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() async {
     try {
-      // Add a longer delay to ensure Flutter engine is fully ready
-      await Future.delayed(const Duration(milliseconds: 500));
-
       // Initialize auth service with error handling
       try {
         await _authService.init();
         _authService.addListener(_onAuthChanged);
         notifyListeners();
       } catch (e) {
-        print('❌ Error initializing auth service: $e');
+        // Silently handle auth initialization errors
       }
 
-      // Load initial data for freemium experience with delay
-      Future.delayed(const Duration(milliseconds: 1000), () {
+      // Load initial data for freemium experience
+      Future.microtask(() {
         try {
           loadInitialData();
         } catch (e) {
-          print('❌ Error loading initial data: $e');
+          // Silently handle data loading errors
         }
       });
 
-      // Start real-time listeners for Firebase with delay
-      Future.delayed(const Duration(milliseconds: 1500), () {
+      // Start real-time listeners for Firebase
+      Future.microtask(() {
         try {
           _startFirestoreListeners();
         } catch (e) {
-          print('❌ Error starting Firestore listeners: $e');
+          // Silently handle Firestore listener errors
         }
       });
 
-      // Start fallback polling as backup (less frequent now) with delay
-      Future.delayed(const Duration(milliseconds: 2000), () {
+      // Start fallback polling as backup
+      Future.microtask(() {
         try {
           _startFallbackPolling();
         } catch (e) {
-          print('❌ Error starting fallback polling: $e');
+          // Silently handle fallback polling errors
         }
       });
 
-      // Start notification listeners if user is already logged in with delay
-      Future.delayed(const Duration(milliseconds: 2500), () {
+      // Start notification listeners if user is already logged in
+      Future.microtask(() {
         try {
           if (isLoggedIn && user != null) {
             _notificationService.startNotificationListeners(user!.accountId);
           }
         } catch (e) {
-          print('❌ Error starting notification listeners: $e');
+          // Silently handle notification listener errors
         }
       });
     } catch (e) {
-      print('❌ Error in AppState.init(): $e');
       // Continue with basic functionality even if initialization fails
     }
   }
@@ -167,29 +163,24 @@ class AppState extends ChangeNotifier {
   /// Start Firestore real-time listeners for instant updates
   void _startFirestoreListeners() {
     try {
-      print('🔥 Starting Firestore real-time listeners for auctions...');
-
       // Listen to all auctions in real-time
       _auctionsSubscription = FirestoreService.listenToAllAuctions().listen(
         (auctions) {
           try {
             if (auctions.isNotEmpty) {
-              print('🔥 Firestore: Received ${auctions.length} auctions');
               _auctions = auctions;
               notifyListeners();
             }
           } catch (e) {
-            print('❌ Error in Firestore listener: $e');
+            // Silently handle listener errors
           }
         },
         onError: (error) {
-          print('❌ Firestore auction listener error: $error');
-          // Fallback to API if Firestore fails
-          print('⚠️ Falling back to API for auctions');
+          // Silently handle Firestore errors (API fallback will handle)
         },
       );
     } catch (e) {
-      print('❌ Error starting Firestore listeners: $e');
+      // Silently handle listener initialization errors
     }
   }
 
@@ -198,7 +189,6 @@ class AppState extends ChangeNotifier {
     if (_fallbackTimer != null) return;
 
     // Reduced frequency since we have real-time Firestore updates
-    print('Starting fallback polling every 5 minutes (backup)');
     _fallbackTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       _refreshDataFallback();
     });
@@ -239,7 +229,7 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error refreshing bid counts: $e');
+      // Silently handle refresh errors
     }
   }
 
@@ -255,11 +245,10 @@ class AppState extends ChangeNotifier {
         if (newAuctionCount != currentAuctionCount) {
           _auctions = response.data!;
           notifyListeners();
-          print('New auctions detected, refreshed auction list');
         }
       }
     } catch (e) {
-      print('Error checking for new auctions: $e');
+      // Silently handle check errors
     }
   }
 

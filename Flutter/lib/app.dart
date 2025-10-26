@@ -23,30 +23,11 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
   @override
   void initState() {
     super.initState();
-    // Catch Flutter framework errors
-    FlutterError.onError = (FlutterErrorDetails details) {
-      print('🚨 Flutter Error: ${details.exception}');
-      print('🚨 Stack: ${details.stack}');
-
-      // Handle engine disposal errors gracefully
-      if (details.exception.toString().contains('disposed') ||
-          details.exception.toString().contains('EngineFlutterView')) {
-        print('🔄 Engine disposal error detected - ignoring');
-        return;
-      }
-
-      // Only set error state for non-disposal errors
-      if (mounted) {
-        setState(() {
-          hasError = true;
-          errorMessage = details.exception.toString();
-        });
-      }
-    };
   }
 
   @override
   Widget build(BuildContext context) {
+    // Note: ErrorBoundary is now mostly handled globally in main.dart
     if (hasError) {
       return Scaffold(
         body: Center(
@@ -131,12 +112,12 @@ class PropertyFlipperApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) {
         final appState = AppState();
-        // Initialize app state with proper error handling and delays
-        Future.delayed(const Duration(milliseconds: 1000), () {
+        // Initialize app state with proper error handling
+        Future.microtask(() {
           try {
             appState.init();
           } catch (e) {
-            print('❌ AppState initialization error: $e');
+            // Silently handle initialization errors
           }
         });
         return appState;
@@ -167,7 +148,6 @@ class PropertyFlipperApp extends StatelessWidget {
               ),
             );
           } catch (e) {
-            print('❌ Error building app: $e');
             return MaterialApp(
               title: 'Property Flipper',
               debugShowCheckedModeBanner: false,

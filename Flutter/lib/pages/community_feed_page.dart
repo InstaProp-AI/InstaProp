@@ -18,27 +18,20 @@ class _CommunityFeedPageState extends State<CommunityFeedPage>
   late TabController _tabController;
   String _sortOption = 'hot'; // hot, new, top
 
-  // Feeds - Now with Trending
-  List<CommunityPost> _trendingPosts = [];
+  // Simplified feeds - removed Trending tab (moved to Explore)
   List<CommunityPost> _allFeedPosts = [];
   List<CommunityPost> _myFeedPosts = [];
-  bool _isLoadingTrending = false;
   bool _isLoadingAll = false;
   bool _isLoadingMy = false;
-  int _currentPageTrending = 1;
   int _currentPageAll = 1;
   int _currentPageMy = 1;
-  bool _hasMoreTrending = true;
   bool _hasMoreAll = true;
   bool _hasMoreMy = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: 3,
-      vsync: this,
-    ); // Added trending tab
+    _tabController = TabController(length: 2, vsync: this);
     _loadFeeds();
   }
 
@@ -50,39 +43,14 @@ class _CommunityFeedPageState extends State<CommunityFeedPage>
 
   Future<void> _loadFeeds({bool refresh = false}) async {
     if (refresh) {
-      _currentPageTrending = 1;
       _currentPageAll = 1;
       _currentPageMy = 1;
-      _hasMoreTrending = true;
       _hasMoreAll = true;
       _hasMoreMy = true;
     }
 
-    // Load Trending Feed (hottest posts across all communities)
-    if (_hasMoreTrending && _tabController.index == 0) {
-      setState(() => _isLoadingTrending = true);
-      final response = await CommunityPostService.getFeed(
-        sort: 'hot',
-        page: _currentPageTrending,
-        pageSize: 20,
-      );
-
-      if (response.success && response.data != null) {
-        setState(() {
-          if (refresh) {
-            _trendingPosts = response.data!;
-          } else {
-            _trendingPosts.addAll(response.data!);
-          }
-          _currentPageTrending++;
-          _hasMoreTrending = response.data!.length >= 20;
-        });
-      }
-      setState(() => _isLoadingTrending = false);
-    }
-
     // Load All Feed
-    if (_hasMoreAll && _tabController.index == 1) {
+    if (_hasMoreAll && _tabController.index == 0) {
       setState(() => _isLoadingAll = true);
       final response = await CommunityPostService.getFeed(
         sort: _sortOption,
@@ -105,7 +73,7 @@ class _CommunityFeedPageState extends State<CommunityFeedPage>
     }
 
     // Load My Feed
-    if (_hasMoreMy && _tabController.index == 2) {
+    if (_hasMoreMy && _tabController.index == 1) {
       setState(() => _isLoadingMy = true);
       final response = await CommunityPostService.getFeed(
         sort: _sortOption,
@@ -180,7 +148,6 @@ class _CommunityFeedPageState extends State<CommunityFeedPage>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(icon: Icon(Icons.trending_up, size: 20), text: 'Trending'),
             Tab(icon: Icon(Icons.article_outlined, size: 20), text: 'All Feed'),
             Tab(icon: Icon(Icons.person, size: 20), text: 'My Feed'),
           ],
@@ -193,77 +160,9 @@ class _CommunityFeedPageState extends State<CommunityFeedPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildTrendingFeed(),
           _buildFeed(_allFeedPosts, _isLoadingAll, _hasMoreAll),
           _buildFeed(_myFeedPosts, _isLoadingMy, _hasMoreMy),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTrendingFeed() {
-    if (_trendingPosts.isEmpty && !_isLoadingTrending) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.local_fire_department,
-              size: 64,
-              color: AppColors.primary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No trending posts yet',
-              style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Be the first to post something engaging!',
-              style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _loadFeeds(refresh: true),
-      child: ListView.builder(
-        itemCount: _trendingPosts.length + (_hasMoreTrending ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _trendingPosts.length) {
-            _loadFeeds();
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-
-          final post = _trendingPosts[index];
-          return PostCard(
-            post: post,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PostDetailsPage(postId: post.postId),
-                ),
-              );
-            },
-            onLike: () => _toggleLike(post.postId, index),
-            onComment: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PostDetailsPage(postId: post.postId),
-                ),
-              );
-            },
-          );
-        },
       ),
     );
   }
