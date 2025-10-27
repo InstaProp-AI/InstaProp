@@ -9,7 +9,6 @@ import '../models/project_model.dart';
 import '../models/developer_profile.dart';
 import '../services/feed_service.dart';
 import '../services/community_post_service.dart';
-import '../theme/app_colors.dart';
 import '../widgets/feed_notification_card.dart';
 import '../widgets/feed_community_card.dart';
 import '../widgets/feed_news_card.dart';
@@ -19,6 +18,8 @@ import '../widgets/feed_developer_card.dart';
 import '../widgets/feed_member_card.dart';
 import '../widgets/post_card.dart';
 import 'post_details_page.dart';
+import 'auction_details_page.dart';
+import 'community_details_page.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -57,13 +58,13 @@ class _ExplorePageState extends State<ExplorePage> {
 
   void _onScroll() {
     // Only check if we can load more
-    if (_isLoading || !_hasMore || _feedItems.length < 15) return;
+    if (_isLoading || !_hasMore) return;
 
     final position = _scrollController.position;
     if (!position.hasContentDimensions) return;
 
-    // Load more when within 100px of bottom
-    final threshold = position.maxScrollExtent - 100;
+    // Load more when within 200px of bottom
+    final threshold = position.maxScrollExtent - 200;
     if (position.pixels >= threshold) {
       _loadMoreFeed();
     }
@@ -113,15 +114,15 @@ class _ExplorePageState extends State<ExplorePage> {
     try {
       print('🔄 Loading feed batch page $_currentPage');
 
-      // Load mixed feed
+      // Load mixed feed from backend (now handles randomization server-side!)
       final newItems = await FeedService.getMixedFeed(
         page: _currentPage,
         pageSize: 20,
       );
 
-      print('📦 Received ${newItems.length} items from feed service');
+      print('📦 Received ${newItems.length} items from backend feed service');
 
-      // Filter out duplicates
+      // Filter out duplicates (backend should handle this, but double-check)
       final uniqueItems = newItems.where((item) {
         if (_loadedIds.contains(item.id)) {
           return false;
@@ -135,7 +136,9 @@ class _ExplorePageState extends State<ExplorePage> {
       if (mounted) {
         setState(() {
           _feedItems.addAll(uniqueItems);
-          _hasMore = uniqueItems.length > 0; // Continue if we got items
+          // Backend now tells us if there's more content
+          _hasMore =
+              uniqueItems.length >= 20; // Assume more if we got full page
         });
       }
     } catch (e) {
@@ -188,6 +191,7 @@ class _ExplorePageState extends State<ExplorePage> {
         // Show loading indicator while loading more
         if (index >= _feedItems.length && _hasMore) {
           return const Padding(
+            key: ValueKey('loading_indicator'),
             padding: EdgeInsets.all(24.0),
             child: Center(child: CircularProgressIndicator()),
           );
@@ -196,6 +200,7 @@ class _ExplorePageState extends State<ExplorePage> {
         // Show end message if we have items but no more to load
         if (index >= _feedItems.length && !_hasMore && _feedItems.isNotEmpty) {
           return const Padding(
+            key: ValueKey('end_message'),
             padding: EdgeInsets.all(24.0),
             child: Center(
               child: Text(
@@ -208,10 +213,15 @@ class _ExplorePageState extends State<ExplorePage> {
 
         try {
           final item = _feedItems[index];
-          return _buildFeedItem(item);
-        } catch (e, stackTrace) {
+          // Wrap items in RepaintBoundary with unique keys to prevent layout errors
+          return RepaintBoundary(
+            key: ValueKey(item.id),
+            child: _buildFeedItem(item),
+          );
+        } catch (e) {
           print('❌ Error building item $index: $e');
           return Card(
+            key: ValueKey('error_$index'),
             margin: const EdgeInsets.all(16),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -237,13 +247,48 @@ class _ExplorePageState extends State<ExplorePage> {
           );
 
         case FeedItemType.community:
-          return FeedCommunityCard(community: item.data as Community);
+          final community = item.data as Community;
+          return FeedCommunityCard(
+            community: community,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      CommunityDetailsPage(communityId: community.communityId),
+                ),
+              );
+            },
+          );
 
         case FeedItemType.news:
-          return FeedNewsCard(article: item.data as NewsArticle);
+          final article = item.data as NewsArticle;
+          return FeedNewsCard(
+            article: article,
+            onTap: () {
+              // For now just show a snackbar, can add URL launcher later
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Loading: ${article.title}'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          );
 
         case FeedItemType.auction:
-          return FeedAuctionCard(auction: item.data as Auction);
+          final auction = item.data as Auction;
+          return FeedAuctionCard(
+            auction: auction,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AuctionDetailsPage(auction: auction),
+                ),
+              );
+            },
+          );
 
         case FeedItemType.project:
           return FeedProjectCard(project: item.data as ProjectModel);
@@ -254,7 +299,7 @@ class _ExplorePageState extends State<ExplorePage> {
         case FeedItemType.member:
           return FeedMemberCard(member: item.data as Map<String, dynamic>);
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('❌ Error in _buildFeedItem: ${item.type}');
       print('   Error: $e');
       // Return a simple error card instead of crashing

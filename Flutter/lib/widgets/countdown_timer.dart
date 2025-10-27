@@ -25,8 +25,10 @@ class _CountdownTimerState extends State<CountdownTimer> {
   void initState() {
     super.initState();
     _updateRemainingTime();
-    // Update every second
-    Future.delayed(const Duration(seconds: 1), _tick);
+    // Update every second - defer to next frame to avoid layout errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 1), _tick);
+    });
   }
 
   void _updateRemainingTime() {

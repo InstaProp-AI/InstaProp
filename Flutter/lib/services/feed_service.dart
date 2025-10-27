@@ -14,98 +14,167 @@ import 'project_service.dart';
 import 'developer_service.dart';
 import 'api_client.dart';
 
+// Backend response model
+class FeedResponseDto {
+  final List<FeedItem> items;
+  final int page;
+  final bool hasMore;
+
+  FeedResponseDto({
+    required this.items,
+    required this.page,
+    required this.hasMore,
+  });
+
+  factory FeedResponseDto.fromJson(Map<String, dynamic> json) {
+    final items = <FeedItem>[];
+
+    if (json['items'] is List) {
+      for (var item in json['items']) {
+        try {
+          final type = item['type'] as String;
+          final data = item['data'] as Map<String, dynamic>;
+          final id = item['id'] as String;
+
+          FeedItemType? itemType;
+          dynamic itemData;
+
+          switch (type) {
+            case 'post':
+              itemType = FeedItemType.post;
+              itemData = CommunityPost.fromJson(data);
+              break;
+            case 'auction':
+              itemType = FeedItemType.auction;
+              itemData = Auction.fromJson(data);
+              break;
+            case 'community':
+              itemType = FeedItemType.community;
+              itemData = Community.fromJson(data);
+              break;
+            case 'news':
+              itemType = FeedItemType.news;
+              itemData = NewsArticle.fromJson(data);
+              break;
+            case 'project':
+              itemType = FeedItemType.project;
+              itemData = ProjectModel.fromJson(data);
+              break;
+            case 'developer':
+              itemType = FeedItemType.developer;
+              itemData = FeaturedDeveloper.fromJson(data);
+              break;
+          }
+
+          if (itemType != null) {
+            items.add(FeedItem(type: itemType, data: itemData, id: id));
+          }
+        } catch (e) {
+          print('❌ Error parsing feed item: $e');
+        }
+      }
+    }
+
+    return FeedResponseDto(
+      items: items,
+      page: json['page'] ?? 1,
+      hasMore: json['hasMore'] ?? false,
+    );
+  }
+}
+
 class FeedService {
   static final Random _random = Random();
 
-  /// Get mixed feed with 20 items per batch
+  /// Get mixed feed from backend API (now completely randomized server-side!)
   static Future<List<FeedItem>> getMixedFeed({
     required int page,
     int pageSize = 20,
   }) async {
     try {
-      // Fetch all content types in parallel with error handling
+      print('🔄 Fetching feed page $page from backend...');
+
+      // Call the new backend endpoint - it handles everything!
+      final response = await ApiClient.get(
+        '/api/feed/explore?page=$page&pageSize=$pageSize',
+        (json) => _parseFeedResponse(json),
+      );
+
+      if (response.success &&
+          response.data != null &&
+          response.data!.items.isNotEmpty) {
+        print('✅ Received ${response.data!.items.length} items from backend');
+        return response.data!.items;
+      }
+
+      print('⚠️ No feed data received from backend, using fallback...');
+    } catch (e) {
+      print('❌ Error fetching feed from backend: $e');
+    }
+
+    // ALWAYS fallback to ensure content is always available
+    print('📦 Using fallback feed generation');
+    return await _getFallbackFeed(page);
+  }
+
+  static FeedResponseDto _parseFeedResponse(Map<String, dynamic> json) {
+    return FeedResponseDto.fromJson(json);
+  }
+
+  static Future<List<FeedItem>> _getFallbackFeed(int page) async {
+    print('⚠️ Using fallback feed generation - fetching real content');
+
+    try {
+      // Fetch real content as fallback
       final results = await Future.wait([
-        _fetchPosts(page).catchError((e) {
-          print('Error fetching posts: $e');
-          return <CommunityPost>[];
-        }),
-        _fetchCommunities().catchError((e) {
-          print('Error fetching communities: $e');
-          return <Community>[];
-        }),
-        _fetchNews().catchError((e) {
-          print('Error fetching news: $e');
-          return <NewsArticle>[];
-        }),
-        _fetchAuctions().catchError((e) {
-          print('Error fetching auctions: $e');
-          return <Auction>[];
-        }),
-        _fetchProjects().catchError((e) {
-          print('Error fetching projects: $e');
-          return <ProjectModel>[];
-        }),
-        _fetchDevelopers().catchError((e) {
-          print('Error fetching developers: $e');
-          return <FeaturedDeveloper>[];
-        }),
-        _fetchMembers().catchError((e) {
-          print('Error fetching members: $e');
-          return <dynamic>[];
-        }),
+        _fetchPosts(page),
+        _fetchAuctions(),
+        _fetchCommunities(),
+        _fetchNews(),
+        _fetchProjects(),
+        _fetchDevelopers(),
       ]);
 
-      final posts = (results[0] as List).cast<CommunityPost>();
-      final communities = (results[1] as List).cast<Community>();
-      final news = (results[2] as List).cast<NewsArticle>();
-      final auctions = (results[3] as List).cast<Auction>();
-      final projects = (results[4] as List).cast<ProjectModel>();
-      final developers = (results[5] as List).cast<FeaturedDeveloper>();
-      final members = (results[6] as List);
+      final posts = results[0] as List<CommunityPost>;
+      final auctions = results[1] as List<Auction>;
+      final communities = results[2] as List<Community>;
+      final news = results[3] as List<NewsArticle>;
+      final projects = results[4] as List<ProjectModel>;
+      final developers = results[5] as List<FeaturedDeveloper>;
 
-      // Generate notifications
-      final notifications = _generateSmartNotifications(2);
-
-      // Create feed items according to algorithm
       final feedItems = <FeedItem>[];
 
-      // 40% Posts (8 items)
-      final postsToAdd = posts.take(8).toList();
-      if (postsToAdd.isNotEmpty) {
-        feedItems.addAll(
-          _createFeedItems(
-            postsToAdd,
-            FeedItemType.post,
-            (post) => 'post_${post.postId}',
+      // Add diverse content (30% posts, 20% auctions, 20% communities, 10% each for news/projects/developers)
+      for (var post in posts.take(6)) {
+        feedItems.add(
+          FeedItem(
+            type: FeedItemType.post,
+            data: post,
+            id: 'post_${post.postId}',
           ),
         );
       }
 
-      // 15% Communities (3 items)
-      final communitiesToAdd = communities.take(3).toList();
-      if (communitiesToAdd.isNotEmpty) {
-        feedItems.addAll(
-          _createFeedItems(
-            communitiesToAdd,
-            FeedItemType.community,
-            (comm) => 'community_${comm.communityId}',
+      for (var auction in auctions.take(4)) {
+        feedItems.add(
+          FeedItem(
+            type: FeedItemType.auction,
+            data: auction,
+            id: 'auction_${auction.auctionId}',
           ),
         );
       }
 
-      // 15% Auctions (3 items)
-      final auctionsToAdd = auctions.take(3).toList();
-      if (auctionsToAdd.isNotEmpty) {
-        feedItems.addAll(
-          _createFeedItems(
-            auctionsToAdd,
-            FeedItemType.auction,
-            (auction) => 'auction_${auction.auctionId}',
+      for (var community in communities.take(4)) {
+        feedItems.add(
+          FeedItem(
+            type: FeedItemType.community,
+            data: community,
+            id: 'community_${community.communityId}',
           ),
         );
       }
 
-      // 10% News (2 items)
       if (news.isNotEmpty) {
         feedItems.add(
           FeedItem(
@@ -116,30 +185,16 @@ class FeedService {
         );
       }
 
-      // 10% Projects (2 items)
-      final projectsToAdd = projects.take(2).toList();
-      if (projectsToAdd.isNotEmpty) {
-        feedItems.addAll(
-          _createFeedItems(
-            projectsToAdd,
-            FeedItemType.project,
-            (project) => 'project_${project.projectId}',
-          ),
-        );
-      }
-
-      // 5% Notifications (1 item)
-      if (notifications.isNotEmpty) {
+      if (projects.isNotEmpty) {
         feedItems.add(
           FeedItem(
-            type: FeedItemType.notification,
-            data: notifications.first,
-            id: notifications.first.id,
+            type: FeedItemType.project,
+            data: projects.first,
+            id: 'project_${projects.first.projectId}',
           ),
         );
       }
 
-      // 5% Developers/Members (1 item)
       if (developers.isNotEmpty) {
         feedItems.add(
           FeedItem(
@@ -148,26 +203,17 @@ class FeedService {
             id: 'developer_${developers.first.developerId}',
           ),
         );
-      } else if (members.isNotEmpty) {
-        feedItems.add(
-          FeedItem(
-            type: FeedItemType.member,
-            data: members.first,
-            id: 'member_${members.first['accountId']}',
-          ),
-        );
       }
 
-      // For infinite scroll, shuffle and return items
+      // Shuffle for randomness
       feedItems.shuffle(_random);
 
-      // Return all generated items (deduplication handled by explore_page)
+      print('✅ Generated ${feedItems.length} items from fallback');
       return feedItems;
     } catch (e) {
-      print('❌ Error fetching mixed feed: $e');
-      // Return fallback notifications on error
-      final fallbackNotifications = _generateSmartNotifications(4);
-      return fallbackNotifications.map((notif) {
+      print('❌ Error in fallback: $e');
+      // Final fallback - generate smart notifications
+      return _generateSmartNotifications(4).map((notif) {
         return FeedItem(
           type: FeedItemType.notification,
           data: notif,
@@ -301,8 +347,8 @@ class FeedService {
       final developers = results[5];
       final members = results[6];
 
-      // Generate notifications
-      final notifications = _generateNotifications(3);
+      // Generate notifications (not used in new backend implementation)
+      // final notifications = _generateNotifications(3);
 
       // Create feed items according to algorithm
       final feedItems = <FeedItem>[];
