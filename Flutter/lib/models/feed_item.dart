@@ -7,6 +7,9 @@ enum FeedItemType {
   project,
   developer,
   member,
+  livestream,
+  valuationPrompt,
+  paymentReminder,
 }
 
 class FeedItem {

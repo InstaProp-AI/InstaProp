@@ -4,6 +4,9 @@ import '../models/community_post.dart';
 import '../theme/app_colors.dart';
 import 'user_badge_widget.dart';
 import 'like_animation.dart';
+import '../services/reaction_service.dart';
+import 'reaction_picker.dart';
+import 'inline_comments_section.dart';
 
 /// Instagram-style post card with borderless design and rich interactions
 class PostCard extends StatefulWidget {
@@ -30,25 +33,121 @@ class _PostCardState extends State<PostCard> {
   bool _isExpanded = false;
   bool _isLiked = false;
   int _likeCount = 0;
+  ReactionType? _currentReaction;
+  OverlayEntry? _overlayEntry;
+  final GlobalKey _likeButtonKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _isLiked = widget.post.isLiked;
     _likeCount = widget.post.likeCount;
+    _loadReaction();
+  }
+
+  Future<void> _loadReaction() async {
+    // Load user's current reaction if any
+    // This would require a backend endpoint to get user's reaction
+    // For now, just use isLiked
+    if (_isLiked) {
+      _currentReaction = ReactionType.like;
+    }
   }
 
   void _toggleLike() {
-    setState(() {
-      _isLiked = !_isLiked;
-      _likeCount += _isLiked ? 1 : -1;
-    });
+    if (_currentReaction != null) {
+      // Remove reaction
+      ReactionService.removePostReaction(widget.post.postId).then((response) {
+        if (response.success && mounted) {
+          setState(() {
+            _isLiked = false;
+            _currentReaction = null;
+            _likeCount = (_likeCount - 1).clamp(0, double.infinity).toInt();
+          });
+          widget.onLike?.call();
+        }
+      });
+    } else {
+      // Add like reaction
+      ReactionService.addPostReaction(widget.post.postId, ReactionType.like)
+          .then((response) {
+        if (response.success && mounted) {
+          setState(() {
+            _isLiked = true;
+            _currentReaction = ReactionType.like;
+            _likeCount++;
+          });
+          widget.onLike?.call();
+        }
+      });
+    }
     HapticFeedback.lightImpact();
-    widget.onLike?.call();
   }
 
   void _handleLike() {
     _toggleLike();
+  }
+
+  void _showReactionPicker() {
+    if (_overlayEntry != null) return;
+
+    final RenderBox? renderBox =
+        _likeButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final position = renderBox.localToGlobal(Offset.zero);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: position.dx - 100,
+        top: position.dy - 60,
+        child: ReactionPicker(
+          onReactionSelected: (reaction) {
+            _selectReaction(reaction);
+            _hideReactionPicker();
+          },
+          onDismiss: _hideReactionPicker,
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _hideReactionPicker() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  Future<void> _selectReaction(ReactionType reaction) async {
+    // If same reaction, remove it
+    if (_currentReaction == reaction) {
+      await ReactionService.removePostReaction(widget.post.postId);
+      setState(() {
+        _currentReaction = null;
+        _isLiked = false;
+        _likeCount = (_likeCount - 1).clamp(0, double.infinity).toInt();
+      });
+    } else {
+      // Update or add reaction
+      await ReactionService.addPostReaction(widget.post.postId, reaction);
+      setState(() {
+        if (_currentReaction == null) {
+          _likeCount++;
+        }
+        _currentReaction = reaction;
+        _isLiked = true;
+      });
+    }
+    HapticFeedback.mediumImpact();
+    widget.onLike?.call();
+  }
+
+  void _handleShare() {
+    // TODO: Implement share to communities
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Share functionality coming soon')),
+    );
   }
 
   @override
@@ -227,12 +326,39 @@ class _PostCardState extends State<PostCard> {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: Row(
               children: [
-                AnimatedLikeButton(
-                  isLiked: _isLiked,
-                  likes: _likeCount,
+                GestureDetector(
+                  key: _likeButtonKey,
                   onTap: _toggleLike,
-                  iconSize: 26,
+                  onLongPress: _showReactionPicker,
+                  child: Icon(
+                    _currentReaction == ReactionType.love ||
+                            _currentReaction == ReactionType.like
+                        ? Icons.favorite
+                        : _currentReaction == ReactionType.celebrate
+                            ? Icons.celebration
+                            : _currentReaction == ReactionType.insightful
+                                ? Icons.lightbulb
+                                : _currentReaction == ReactionType.helpful
+                                    ? Icons.handshake
+                                    : _currentReaction == ReactionType.thankYou
+                                        ? Icons.volunteer_activism
+                                        : Icons.favorite_border,
+                    size: 26,
+                    color: _isLiked
+                        ? _getReactionColor(_currentReaction)
+                        : Colors.black,
+                  ),
                 ),
+                if (_likeCount > 0) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatLikes(_likeCount),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 12),
                 _buildActionButton(
                   icon: Icons.mode_comment_outlined,
@@ -244,7 +370,7 @@ class _PostCardState extends State<PostCard> {
                 _buildActionButton(
                   icon: Icons.send_outlined,
                   count: 0,
-                  onTap: null,
+                  onTap: _handleShare,
                   iconSize: 26,
                 ),
                 const Spacer(),
@@ -331,25 +457,11 @@ class _PostCardState extends State<PostCard> {
             ),
           ],
 
-          // View comments
-          if (widget.post.commentCount > 0) ...[
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: GestureDetector(
-                onTap: widget.onComment,
-                child: Text(
-                  'View all ${_formatLikes(widget.post.commentCount)} comments',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          // Inline comments section
+          InlineCommentsSection(
+            postId: widget.post.postId,
+            initialCommentCount: widget.post.commentCount,
+          ),
 
           const SizedBox(height: 6),
 
@@ -476,5 +588,29 @@ class _PostCardState extends State<PostCard> {
       default:
         return UserType.owner;
     }
+  }
+
+  Color _getReactionColor(ReactionType? reaction) {
+    if (reaction == null) return Colors.red;
+    switch (reaction) {
+      case ReactionType.like:
+        return Colors.red;
+      case ReactionType.celebrate:
+        return Colors.orange;
+      case ReactionType.insightful:
+        return Colors.amber;
+      case ReactionType.helpful:
+        return Colors.blue;
+      case ReactionType.love:
+        return Colors.pink;
+      case ReactionType.thankYou:
+        return Colors.purple;
+    }
+  }
+
+  @override
+  void dispose() {
+    _hideReactionPicker();
+    super.dispose();
   }
 }

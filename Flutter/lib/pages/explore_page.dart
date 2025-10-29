@@ -17,9 +17,17 @@ import '../widgets/feed_project_card.dart';
 import '../widgets/feed_developer_card.dart';
 import '../widgets/feed_member_card.dart';
 import '../widgets/post_card.dart';
+import '../widgets/feed_live_stream_card.dart';
+import '../widgets/feed_valuation_prompt_card.dart';
+import '../widgets/feed_payment_reminder_card.dart';
 import 'post_details_page.dart';
 import 'auction_details_page.dart';
 import 'community_details_page.dart';
+import 'create_post_page.dart';
+import 'live_stream_player_page.dart';
+import '../models/live_stream.dart';
+import '../models/valuation_prompt.dart';
+import '../models/payment_reminder.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -198,6 +206,25 @@ class _ExplorePageState extends State<ExplorePage> {
         elevation: 0,
       ),
       body: _buildBody(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreatePostPage(),
+            ),
+          );
+          if (result == true) {
+            // Refresh feed after creating post
+            _feedItems.clear();
+            _loadedIds.clear();
+            _currentPage = 1;
+            _loadInitialFeed();
+          }
+        },
+        backgroundColor: const Color(0xFF6200EE),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 
@@ -224,55 +251,65 @@ class _ExplorePageState extends State<ExplorePage> {
       );
     }
 
-    return ListView.builder(
-      key: const ValueKey(
-        'infinite_feed_list',
-      ), // Stable key for efficient rebuilds
-      controller: _scrollController,
-      itemCount: _feedItems.isEmpty
-          ? 0
-          : (_feedItems.length + 1), // +1 for loading indicator
-      itemBuilder: (context, index) {
-        // Show loading indicator only when actually loading
-        if (index >= _feedItems.length && _hasMore) {
-          if (!_isLoading) {
-            return const SizedBox.shrink(); // Don't show anything when not loading
+    return RefreshIndicator(
+      onRefresh: () async {
+        _feedItems.clear();
+        _loadedIds.clear();
+        _currentPage = 1;
+        await _loadInitialFeed();
+      },
+      color: const Color(0xFF6200EE),
+      child: ListView.builder(
+        key: const ValueKey(
+          'infinite_feed_list',
+        ), // Stable key for efficient rebuilds
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh
+        itemCount: _feedItems.isEmpty
+            ? 0
+            : (_feedItems.length + 1), // +1 for loading indicator
+        itemBuilder: (context, index) {
+          // Show loading indicator only when actually loading
+          if (index >= _feedItems.length && _hasMore) {
+            if (!_isLoading) {
+              return const SizedBox.shrink(); // Don't show anything when not loading
+            }
+
+            return const Padding(
+              key: ValueKey('loading_indicator'),
+              padding: EdgeInsets.all(16.0),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
           }
 
-          return const Padding(
-            key: ValueKey('loading_indicator'),
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+          // Never show "end" message - infinite scrolling!
+
+          try {
+            final item = _feedItems[index];
+            // Wrap items in RepaintBoundary with unique keys to prevent layout errors
+            return RepaintBoundary(
+              key: ValueKey(item.id),
+              child: _buildFeedItem(item),
+            );
+          } catch (e) {
+            print('❌ Error building item $index: $e');
+            return Card(
+              key: ValueKey('error_$index'),
+              margin: const EdgeInsets.all(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Error: $e'),
               ),
-            ),
-          );
-        }
-
-        // Never show "end" message - infinite scrolling!
-
-        try {
-          final item = _feedItems[index];
-          // Wrap items in RepaintBoundary with unique keys to prevent layout errors
-          return RepaintBoundary(
-            key: ValueKey(item.id),
-            child: _buildFeedItem(item),
-          );
-        } catch (e) {
-          print('❌ Error building item $index: $e');
-          return Card(
-            key: ValueKey('error_$index'),
-            margin: const EdgeInsets.all(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Error: $e'),
-            ),
-          );
-        }
-      },
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -341,6 +378,59 @@ class _ExplorePageState extends State<ExplorePage> {
 
         case FeedItemType.member:
           return FeedMemberCard(member: item.data as Map<String, dynamic>);
+
+        case FeedItemType.livestream:
+          final stream = item.data as LiveStream;
+          return FeedLiveStreamCard(
+            stream: stream,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LiveStreamPlayerPage(stream: stream),
+                ),
+              );
+            },
+          );
+
+        case FeedItemType.valuationPrompt:
+          final prompt = item.data as ValuationPrompt;
+          return FeedValuationPromptCard(
+            prompt: prompt,
+            onTap: () {
+              // Navigate to valuation page
+              // TODO: Implement navigation to valuation page
+              if (prompt.propertyId != null) {
+                // Navigate to property-specific valuation
+                Navigator.pushNamed(
+                  context,
+                  '/valuation/${prompt.propertyId}',
+                );
+              } else {
+                // Navigate to generic valuation or sign up
+                Navigator.pushNamed(context, '/valuation');
+              }
+            },
+          );
+
+        case FeedItemType.paymentReminder:
+          final reminder = item.data as PaymentReminder;
+          return FeedPaymentReminderCard(
+            reminder: reminder,
+            onTap: () {
+              // Navigate to calendar/events page
+              Navigator.pushNamed(context, '/calendar');
+            },
+            onSetReminder: () {
+              // TODO: Implement set reminder functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Reminder set successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+          );
       }
     } catch (e) {
       print('❌ Error in _buildFeedItem: ${item.type}');
