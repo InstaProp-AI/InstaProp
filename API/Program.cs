@@ -16,7 +16,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // "DefaultConnection": "Host=metro.proxy.rlwy.net;Port=20873;Database=railway;Username=postgres;Password=wXQPZyZfdnrcYMrZCpXEcPJnJXQUUPmv;SslMode=Require"
 // Add Services
 //builder.Services.AddScoped<SeedDataService>();
-//builder.Services.AddScoped<CompleteEgyptianSeedingService>();
+builder.Services.AddScoped<CompleteEgyptianSeedingService>();
 builder.Services.AddSingleton<FirestoreService>();
 builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
 builder.Services.AddScoped<EmailTemplateService>(); // HTML email templates
@@ -177,13 +177,25 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Seed data - Complete Egyptian Real Estate Data
-// Uncomment below to seed the database with comprehensive Egyptian data
-/*using (var scope = app.Services.CreateScope())
+// Seed the database if it's empty
+using (var scope = app.Services.CreateScope())
 {
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var seedService = scope.ServiceProvider.GetRequiredService<CompleteEgyptianSeedingService>();
-    await seedService.SeedAllDataAsync();
+    
+    // Check if database is empty (no accounts)
+    var hasAccounts = await context.Accounts.AnyAsync();
+    if (!hasAccounts)
+    {
+        Console.WriteLine("🌱 Database is empty. Starting seeding process...");
+        await seedService.SeedAllDataAsync();
+        Console.WriteLine("✅ Seeding completed!");
+    }
+    else
+    {
+        Console.WriteLine("ℹ️ Database already contains data. Skipping seeding.");
+    }
 }
-*/
 app.MapControllers();
 
 // Health check endpoint for monitoring
