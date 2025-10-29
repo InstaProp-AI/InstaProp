@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import '../models/feed_item.dart';
 import '../models/feed_notification.dart';
@@ -7,6 +8,7 @@ import '../models/news_article.dart';
 import '../models/auction.dart';
 import '../models/project_model.dart';
 import '../models/developer_profile.dart';
+import '../models/notification.dart';
 import 'community_post_service.dart';
 import 'community_service.dart';
 import 'news_service.dart';
@@ -84,21 +86,46 @@ class FeedResponseDto {
 }
 
 class FeedService {
-  static final Random _random = Random();
+  static Random _random = Random();
+  static int _virtualPage = 0; // Track virtual pages for infinite looping
 
   /// Get mixed feed from backend API (now completely randomized server-side!)
+  /// Uses virtual page counter to enable infinite scrolling
   static Future<List<FeedItem>> getMixedFeed({
     required int page,
     int pageSize = 20,
   }) async {
-    try {
-      print('🔄 Fetching feed page $page from backend...');
+    _virtualPage++; // Always increment virtual page
 
-      // Call the new backend endpoint - it handles everything!
-      final response = await ApiClient.get(
-        '/api/feed/explore?page=$page&pageSize=$pageSize',
-        (json) => _parseFeedResponse(json),
-      );
+    // Don't cycle pages - just keep going forward to prevent scroll jumps
+    // Use virtual page seed for variety instead
+    int actualPage = page;
+
+    // Create a unique seed based on both virtual page and actual page
+    // This ensures variety in content ordering without going backwards
+    final pageSeed = _virtualPage * 1000 + page;
+    _random = Random(pageSeed);
+
+    print(
+      '🔄 Fetching feed virtual page $_virtualPage (actual page $page, seed $pageSeed)...',
+    );
+
+    try {
+      // Try backend first with timeout
+      print('🌐 Calling backend API...');
+      final response =
+          await ApiClient.get(
+            '/api/feed/explore?page=$actualPage&pageSize=$pageSize',
+            (json) => _parseFeedResponse(json),
+          ).timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              print('⏱️ Backend API timeout after 5 seconds');
+              throw TimeoutException('Backend API timeout');
+            },
+          );
+
+      print('📥 Backend response received: success=${response.success}');
 
       if (response.success &&
           response.data != null &&
@@ -107,25 +134,34 @@ class FeedService {
         return response.data!.items;
       }
 
-      print('⚠️ No feed data received from backend, using fallback...');
+      print(
+        '⚠️ No feed data received from backend (empty or null), using fallback...',
+      );
     } catch (e) {
       print('❌ Error fetching feed from backend: $e');
     }
 
     // ALWAYS fallback to ensure content is always available
+    // Pass both virtual and actual page for variety
     print('📦 Using fallback feed generation');
-    return await _getFallbackFeed(page);
+    return await _getFallbackFeed(actualPage, _virtualPage);
   }
 
   static FeedResponseDto _parseFeedResponse(Map<String, dynamic> json) {
     return FeedResponseDto.fromJson(json);
   }
 
-  static Future<List<FeedItem>> _getFallbackFeed(int page) async {
-    print('⚠️ Using fallback feed generation - fetching real content');
+  static Future<List<FeedItem>> _getFallbackFeed(
+    int page,
+    int virtualPage,
+  ) async {
+    print(
+      '⚠️ Using fallback feed generation - fetching real content (virtual page $virtualPage)',
+    );
 
     try {
       // Fetch real content as fallback
+      // Use actual page for fetching, virtual page for randomization seed
       final results = await Future.wait([
         _fetchPosts(page),
         _fetchAuctions(),
@@ -145,70 +181,95 @@ class FeedService {
       final feedItems = <FeedItem>[];
 
       // Add diverse content (30% posts, 20% auctions, 20% communities, 10% each for news/projects/developers)
-      for (var post in posts.take(6)) {
+      // Use virtual page to ensure unique IDs across pages
+      // Use modulo to cycle through items across pages
+      final postOffset = (virtualPage * 6) % posts.length;
+      for (var i = 0; i < 6 && i < posts.length; i++) {
+        final index = (postOffset + i) % posts.length;
         feedItems.add(
           FeedItem(
             type: FeedItemType.post,
-            data: post,
-            id: 'post_${post.postId}',
+            data: posts[index],
+            id: 'post_${posts[index].postId}_p${virtualPage}',
           ),
         );
       }
 
-      for (var auction in auctions.take(4)) {
+      final auctionOffset = (virtualPage * 4) % auctions.length;
+      for (var i = 0; i < 4 && i < auctions.length; i++) {
+        final index = (auctionOffset + i) % auctions.length;
         feedItems.add(
           FeedItem(
             type: FeedItemType.auction,
-            data: auction,
-            id: 'auction_${auction.auctionId}',
+            data: auctions[index],
+            id: 'auction_${auctions[index].auctionId}_p${virtualPage}',
           ),
         );
       }
 
-      for (var community in communities.take(4)) {
+      final communityOffset = (virtualPage * 4) % communities.length;
+      for (var i = 0; i < 4 && i < communities.length; i++) {
+        final index = (communityOffset + i) % communities.length;
         feedItems.add(
           FeedItem(
             type: FeedItemType.community,
-            data: community,
-            id: 'community_${community.communityId}',
+            data: communities[index],
+            id: 'community_${communities[index].communityId}_p${virtualPage}',
           ),
         );
       }
 
       if (news.isNotEmpty) {
+        final newsIndex = (virtualPage) % news.length;
         feedItems.add(
           FeedItem(
             type: FeedItemType.news,
-            data: news.first,
-            id: 'news_${news.first.newsArticleId}',
+            data: news[newsIndex],
+            id: 'news_${news[newsIndex].newsArticleId}_p${virtualPage}',
           ),
         );
       }
 
       if (projects.isNotEmpty) {
+        final projectIndex = (virtualPage) % projects.length;
         feedItems.add(
           FeedItem(
             type: FeedItemType.project,
-            data: projects.first,
-            id: 'project_${projects.first.projectId}',
+            data: projects[projectIndex],
+            id: 'project_${projects[projectIndex].projectId}_p${virtualPage}',
           ),
         );
       }
 
       if (developers.isNotEmpty) {
+        final developerIndex = (virtualPage) % developers.length;
         feedItems.add(
           FeedItem(
             type: FeedItemType.developer,
-            data: developers.first,
-            id: 'developer_${developers.first.developerId}',
+            data: developers[developerIndex],
+            id: 'developer_${developers[developerIndex].developerId}_p${virtualPage}',
           ),
         );
       }
 
+      // Add REAL notifications from database
+      final notifications = await _fetchRealNotifications();
+      final notificationsToAdd = notifications.take(3).map((notif) {
+        // Update ID to include page number for uniqueness
+        return FeedItem(
+          type: FeedItemType.notification,
+          data: notif.data,
+          id: '${notif.id}_p${virtualPage}',
+        );
+      }).toList();
+      feedItems.addAll(notificationsToAdd);
+
       // Shuffle for randomness
       feedItems.shuffle(_random);
 
-      print('✅ Generated ${feedItems.length} items from fallback');
+      print(
+        '✅ Generated ${feedItems.length} items from fallback (including ${notifications.length} notifications)',
+      );
       return feedItems;
     } catch (e) {
       print('❌ Error in fallback: $e');
@@ -220,6 +281,76 @@ class FeedService {
           id: notif.id,
         );
       }).toList();
+    }
+  }
+
+  static Future<List<FeedItem>> _fetchRealNotifications() async {
+    try {
+      final response = await ApiClient.getList(
+        '/api/notification?unreadOnly=false',
+        AppNotification.fromJson,
+      );
+
+      if (response.success && response.data != null) {
+        print(
+          '📧 Fetched ${response.data!.length} real notifications from backend',
+        );
+        // Convert AppNotification to FeedNotification format
+        return response.data!.map((notification) {
+          return FeedItem(
+            type: FeedItemType.notification,
+            data: _convertToFeedNotification(notification),
+            id: 'notification_${notification.notificationId}',
+          );
+        }).toList();
+      }
+      print('⚠️ No notifications received from backend');
+      return [];
+    } catch (e) {
+      print('❌ Error fetching real notifications: $e');
+      return [];
+    }
+  }
+
+  static FeedNotification _convertToFeedNotification(AppNotification appNotif) {
+    return FeedNotification(
+      type: _mapNotificationType(appNotif.type),
+      title: appNotif.title,
+      message: appNotif.message,
+      createdAt: appNotif.createdAt,
+      metadata: {
+        'notificationId': appNotif.notificationId,
+        'auctionId': appNotif.auctionId,
+        'bidId': appNotif.bidId,
+        'propertyId': appNotif.propertyId,
+        'eventId': appNotif.eventId,
+      },
+    );
+  }
+
+  static FeedNotificationType _mapNotificationType(NotificationType type) {
+    switch (type) {
+      case NotificationType.bidPlaced:
+        return FeedNotificationType.bidPlaced;
+      case NotificationType.outbid:
+        return FeedNotificationType.outbid;
+      case NotificationType.auctionStarted:
+        return FeedNotificationType.auctionStarted;
+      case NotificationType.auctionEnding:
+        return FeedNotificationType.auctionEnding;
+      case NotificationType.auctionWon:
+        return FeedNotificationType.auctionWon;
+      case NotificationType.auctionLost:
+        return FeedNotificationType.auctionWon; // Fallback
+      case NotificationType.eventReminder:
+      case NotificationType.publicEvent:
+        return FeedNotificationType.newEvent;
+      case NotificationType.auctionApproved:
+        return FeedNotificationType.auctionApproved;
+      case NotificationType.auctionRejected:
+        return FeedNotificationType.auctionApproved; // Fallback
+      case NotificationType.general:
+        return FeedNotificationType.achievement;
     }
   }
 

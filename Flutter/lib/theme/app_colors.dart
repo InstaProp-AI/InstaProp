@@ -93,6 +93,50 @@ class AppColors {
   static const Color overlay = Color(0x80000000); // Semi-transparent black
   static const Color backdrop = Color(0xB3000000); // Modal backdrop
 
+  // ========================================================================
+  // DARK MODE COLORS (Instagram Style)
+  // ========================================================================
+  static const Color darkBackground = Color(0xFF000000); // Pure Black
+  static const Color darkSurface = Color(0xFF121212); // Surface Black
+  static const Color darkSurfaceVariant = Color(0xFF1E1E1E); // Slightly Lighter
+  static const Color darkBorder = Color(0xFF262626); // Dark Border
+  static const Color darkTextPrimary = Color(0xFFF5F5F5); // Light Gray
+  static const Color darkTextSecondary = Color(0xFFB3B3B3); // Medium Gray
+  static const Color darkTextTertiary = Color(0xFF8E8E8E); // Dimmed Gray
+
+  // Dark mode gradients
+  static const List<Color> darkGradient = [
+    Color(0xFF1E1E1E),
+    Color(0xFF121212),
+    Color(0xFF000000),
+  ];
+
+  // Helper method to get colors based on theme mode
+  static Color getBackground(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? darkBackground : background;
+  }
+
+  static Color getSurface(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? darkSurface : surface;
+  }
+
+  static Color getTextPrimary(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? darkTextPrimary : textPrimary;
+  }
+
+  static Color getTextSecondary(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? darkTextSecondary : textSecondary;
+  }
+
+  static Color getBorder(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? darkBorder : border;
+  }
+
   // Prevent instantiation
   AppColors._();
 }

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/community_post.dart';
 import '../theme/app_colors.dart';
 import 'user_badge_widget.dart';
-import 'trending_badge.dart';
-import 'engagement_stats.dart';
+import 'like_animation.dart';
 
-class PostCard extends StatelessWidget {
+/// Instagram-style post card with borderless design and rich interactions
+class PostCard extends StatefulWidget {
   final CommunityPost post;
   final VoidCallback? onTap;
   final VoidCallback? onLike;
@@ -22,354 +23,422 @@ class PostCard extends StatelessWidget {
   });
 
   @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> {
+  bool _isExpanded = false;
+  bool _isLiked = false;
+  int _likeCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.post.isLiked;
+    _likeCount = widget.post.likeCount;
+  }
+
+  void _toggleLike() {
+    setState(() {
+      _isLiked = !_isLiked;
+      _likeCount += _isLiked ? 1 : -1;
+    });
+    HapticFeedback.lightImpact();
+    widget.onLike?.call();
+  }
+
+  void _handleLike() {
+    _toggleLike();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Community header (if enabled)
-              if (showCommunity) ...[
-                _buildCommunityBanner(),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-              ],
-              // Header with trending indicator
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: Text(
-                      post.authorName.isNotEmpty
-                          ? post.authorName[0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    ),
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+
+    return Container(
+      color: isDark ? AppColors.darkBackground : AppColors.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                // Story ring (if active)
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: _hasActiveContent()
+                        ? const LinearGradient(
+                            colors: [
+                              Color(0xFFFF6F00),
+                              Color(0xFFFFC107),
+                              Color(0xFFE91E63),
+                            ],
+                          )
+                        : null,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                post.authorName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            UserBadgeWidget(type: _getUserType(), size: 14),
-                          ],
+                  padding: const EdgeInsets.all(2),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.surface,
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                      child: Text(
+                        widget.post.authorName.isNotEmpty
+                            ? widget.post.authorName[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                          fontSize: 16,
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              _formatDateTime(post.createdAt),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Show trending badge if engagement is high
-                            if (post.likeCount + post.commentCount >= 10)
-                              TrendingBadge(
-                                score: (post.likeCount + post.commentCount)
-                                    .toDouble(),
-                                size: const Size(50, 20),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (post.isPinned)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Icon(
-                        Icons.push_pin,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Content
-              Text(
-                post.content,
-                style: const TextStyle(fontSize: 15),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-              // Image
-              if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    post.imageUrl!,
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 200,
-                      color: AppColors.border,
-                      child: const Icon(Icons.broken_image),
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                // Username and info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.post.authorName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          UserBadgeWidget(type: _getUserType(), size: 12),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            _formatDateTime(widget.post.createdAt),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                          if (_hasActiveContent()) ...[
+                            Text(
+                              ' • ',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'LIVE',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // More options
+                IconButton(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  onPressed: () {},
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
               ],
-              // Categories
-              if (post.categories.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: post.categories.take(3).map((category) {
+            ),
+          ),
+
+          // Image with double-tap like
+          if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty)
+            LikeAnimation(
+              isLiked: _isLiked,
+              onLike: _handleLike,
+              size: 120,
+              child: GestureDetector(
+                onTap: widget.onTap,
+                child: Image.network(
+                  widget.post.imageUrl!,
+                  width: double.infinity,
+                  fit: BoxFit.fitWidth,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
                     return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '#$category',
-                        style: const TextStyle(
-                          fontSize: 12,
+                      width: double.infinity,
+                      height: 400,
+                      color: isDark ? AppColors.darkSurface : AppColors.border,
+                      child: Center(
+                        child: CircularProgressIndicator(
                           color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                              : null,
                         ),
                       ),
                     );
-                  }).toList(),
-                ),
-              ],
-              // Engagement Stats
-              const SizedBox(height: 12),
-              EngagementStats(
-                likes: post.likeCount,
-                comments: post.commentCount,
-                views: 0, // Update when view tracking is implemented
-              ),
-
-              // Footer actions
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildActionButton(
-                    icon: post.isLiked ? Icons.favorite : Icons.favorite_border,
-                    count: post.likeCount,
-                    onTap: onLike,
-                    isActive: post.isLiked,
-                  ),
-                  const SizedBox(width: 24),
-                  _buildActionButton(
-                    icon: Icons.comment_outlined,
-                    count: post.commentCount,
-                    onTap: onComment,
-                  ),
-                  const SizedBox(width: 24),
-                  _buildActionButton(
-                    icon: Icons.share_outlined,
-                    count: 0,
-                    onTap: null,
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatTime(post.createdAt),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textTertiary,
+                  },
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 200,
+                    color: isDark ? AppColors.darkSurface : AppColors.border,
+                    child: const Center(
+                      child: Icon(Icons.broken_image, size: 48),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCommunityBanner() {
-    return Row(
-      children: [
-        // Cover thumbnail
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child:
-                post.communityCoverPhotoUrl != null &&
-                    post.communityCoverPhotoUrl!.isNotEmpty
-                ? Image.network(
-                    post.communityCoverPhotoUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _buildGradientFallback(),
-                  )
-                : _buildGradientFallback(),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Community name and access badge
-        Expanded(
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  post.communityName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Text(
-                ' • ',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-              _buildAccessBadge(),
-              if (post.isUserJoinedCommunity) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    size: 10,
-                    color: AppColors.success,
-                  ),
+            ),
+
+          // Action bar (Instagram-style)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Row(
+              children: [
+                AnimatedLikeButton(
+                  isLiked: _isLiked,
+                  likes: _likeCount,
+                  onTap: _toggleLike,
+                  iconSize: 26,
+                ),
+                const SizedBox(width: 12),
+                _buildActionButton(
+                  icon: Icons.mode_comment_outlined,
+                  count: widget.post.commentCount,
+                  onTap: widget.onComment,
+                  iconSize: 26,
+                ),
+                const SizedBox(width: 12),
+                _buildActionButton(
+                  icon: Icons.send_outlined,
+                  count: 0,
+                  onTap: null,
+                  iconSize: 26,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: _isSaved()
+                      ? const Icon(Icons.bookmark, size: 26)
+                      : const Icon(Icons.bookmark_border, size: 26),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
-            ],
+            ),
           ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildGradientFallback() {
-    final colors = _getCommunityColors(post.communityName);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          post.communityName.isNotEmpty
-              ? post.communityName[0].toUpperCase()
-              : 'C',
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+          // Likes count
+          if (_likeCount > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                '${_formatLikes(_likeCount)} likes',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+
+          // Caption
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.post.content,
+                        style: const TextStyle(fontSize: 14),
+                        maxLines: _isExpanded ? null : 2,
+                        overflow: _isExpanded ? null : TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                if (!_isExpanded && widget.post.content.length > 100)
+                  GestureDetector(
+                    onTap: () => setState(() => _isExpanded = true),
+                    child: const Text(
+                      'more',
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
+
+          // Categories
+          if (widget.post.categories.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: widget.post.categories.take(3).map((category) {
+                  return InkWell(
+                    onTap: () {},
+                    child: Text(
+                      '#$category',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+
+          // View comments
+          if (widget.post.commentCount > 0) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: GestureDetector(
+                onTap: widget.onComment,
+                child: Text(
+                  'View all ${_formatLikes(widget.post.commentCount)} comments',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 6),
+
+          // Posted time
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              _formatTime(widget.post.createdAt),
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark
+                    ? AppColors.darkTextTertiary
+                    : AppColors.textTertiary,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Divider
+          Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildAccessBadge() {
-    late String text;
-    late Color color;
-
-    switch (post.communityAccessType) {
-      case 'Private':
-        text = 'Private';
-        color = Colors.orange;
-        break;
-      case 'PublicOwners':
-        text = 'Owners';
-        color = Colors.blue;
-        break;
-      case 'PublicAll':
-        text = 'Public';
-        color = Colors.green;
-        break;
-      default:
-        text = 'Private';
-        color = Colors.orange;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+  Widget _buildActionButton({
+    required IconData icon,
+    required int count,
+    required VoidCallback? onTap,
+    required double iconSize,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        if (onTap != null) {
+          HapticFeedback.lightImpact();
+          onTap();
+        }
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: iconSize),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Text(
+              _formatLikes(count),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkTextPrimary
+                    : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  List<Color> _getCommunityColors(String name) {
-    final hash = name.hashCode.abs();
-    final hue = (hash % 360).toDouble();
+  bool _hasActiveContent() {
+    // Check if user has active content (for story ring)
+    return widget.post.createdAt
+            .add(const Duration(days: 1))
+            .isAfter(DateTime.now()) &&
+        widget.post.likeCount + widget.post.commentCount > 5;
+  }
 
-    return [
-      HSLColor.fromAHSL(1.0, hue, 0.7, 0.6).toColor(),
-      HSLColor.fromAHSL(1.0, (hue + 30) % 360, 0.7, 0.5).toColor(),
-    ];
+  bool _isSaved() {
+    // TODO: Implement save state from backend
+    return false;
+  }
+
+  String _formatLikes(int count) {
+    if (count < 1000) return count.toString();
+    if (count < 1000000) return '${(count / 1000).toStringAsFixed(1)}K';
+    return '${(count / 1000000).toStringAsFixed(1)}M';
   }
 
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
-    if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()}mo ago';
+    if (difference.inDays > 7) {
+      return '${dateTime.day}/${dateTime.month}';
     } else if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
@@ -378,53 +447,6 @@ class PostCard extends StatelessWidget {
       return '${difference.inMinutes}m ago';
     } else {
       return 'Just now';
-    }
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required int count,
-    required VoidCallback? onTap,
-    bool isActive = false,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isActive ? AppColors.primary : AppColors.textSecondary,
-            ),
-            if (count > 0) ...[
-              const SizedBox(width: 4),
-              Text(
-                count.toString(),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? AppColors.primary : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  UserType _getUserType() {
-    switch (post.authorType.toLowerCase()) {
-      case 'admin':
-        return UserType.admin;
-      case 'developer':
-        return UserType.developer;
-      default:
-        return UserType.owner;
     }
   }
 
@@ -432,16 +454,27 @@ class PostCard extends StatelessWidget {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
-    if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()}mo ago';
+    if (difference.inDays > 7) {
+      return '${dateTime.day}/${dateTime.month}';
     } else if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
+      return '${difference.inDays}d';
     } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
+      return '${difference.inHours}h';
     } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
+      return '${difference.inMinutes}m';
     } else {
-      return 'Just now';
+      return 'now';
+    }
+  }
+
+  UserType _getUserType() {
+    switch (widget.post.authorType.toLowerCase()) {
+      case 'admin':
+        return UserType.admin;
+      case 'developer':
+        return UserType.developer;
+      default:
+        return UserType.owner;
     }
   }
 }

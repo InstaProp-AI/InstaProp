@@ -86,7 +86,7 @@
 ## 🧪 Testing
 
 Run the app and:
-1. Open Explore tab
+1. Open Explore tab`
 2. Scroll down - see different content on page 2
 3. Scroll more - different content on page 3
 4. All cards should navigate correctly

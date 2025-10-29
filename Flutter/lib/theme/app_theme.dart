@@ -1,181 +1,241 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-class AppTheme {
-  static ThemeData get lightTheme {
-    return ThemeData(
-      primarySwatch: Colors.orange,
-      primaryColor: AppColors.primary,
-      scaffoldBackgroundColor: AppColors.background,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
-        secondary: AppColors.secondary,
-        surface: AppColors.surface,
-        background: AppColors.background,
-        onPrimary: AppColors.onPrimary,
-        onSecondary: AppColors.onSecondary,
-        onSurface: AppColors.textPrimary,
-        onBackground: AppColors.onBackground,
-        brightness: Brightness.light,
-      ),
-      useMaterial3: true,
+/// Theme provider for managing light/dark mode with Instagram-style aesthetics
+class ThemeNotifier extends ChangeNotifier {
+  bool _isDarkMode = false;
 
-      // TEXT THEME - Using default system fonts only
-      textTheme: const TextTheme(
-        headlineLarge: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-          letterSpacing: -1,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-          letterSpacing: -0.5,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
-          letterSpacing: -0.5,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          color: AppColors.textPrimary,
-          letterSpacing: 0,
-        ),
-        bodyMedium: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-        bodySmall: TextStyle(fontSize: 12, color: AppColors.textTertiary),
-      ),
+  bool get isDarkMode => _isDarkMode;
 
-      // APPBAR THEME - Using default Roboto font (simple, clean)
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.onPrimary,
-          letterSpacing: -0.5,
-        ),
-      ),
-
-      // BUTTON THEMES - Using default Roboto font (simple, clean)
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.onPrimary,
-          elevation: 4,
-          shadowColor: AppColors.shadowPrimary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
-      ),
-
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.secondary, width: 2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.3,
-          ),
-        ),
-      ),
-
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.3,
-          ),
-        ),
-      ),
-
-      // CARD THEME
-      cardTheme: CardThemeData(
-        elevation: 4,
-        shadowColor: AppColors.shadowCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(8),
-        color: AppColors.surface,
-      ),
-
-      // INPUT DECORATION THEME - Using default Roboto font (simple, clean)
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: AppColors.borderFocused,
-            width: 2,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error, width: 2),
-        ),
-        filled: true,
-        fillColor: AppColors.background,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-        labelStyle: const TextStyle(color: AppColors.primary, fontSize: 14),
-        hintStyle: const TextStyle(color: AppColors.secondary, fontSize: 14),
-      ),
-
-      // DIVIDER THEME
-      dividerTheme: const DividerThemeData(
-        color: AppColors.border,
-        thickness: 1,
-        space: 1,
-      ),
-
-      // BOTTOM NAVIGATION BAR THEME
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.secondary,
-        elevation: 8,
-        type: BottomNavigationBarType.fixed,
-      ),
-    );
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
   }
 
-  // Prevent instantiation
-  AppTheme._();
+  void setDarkMode(bool isDark) {
+    if (_isDarkMode != isDark) {
+      _isDarkMode = isDark;
+      notifyListeners();
+    }
+  }
+}
+
+/// Instagram-style theme data for the app
+class AppTheme {
+  static ThemeData lightTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: AppColors.background,
+    primaryColor: AppColors.primary,
+    colorScheme: const ColorScheme.light(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      surface: AppColors.surface,
+      error: AppColors.error,
+      onPrimary: AppColors.onPrimary,
+      onSecondary: AppColors.onSecondary,
+      onSurface: AppColors.textPrimary,
+      onError: Colors.white,
+    ),
+
+    // Card theme
+    cardTheme: CardThemeData(
+      color: AppColors.surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+
+    // AppBar theme
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.white,
+      foregroundColor: AppColors.textPrimary,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      titleTextStyle: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+
+    // Icon theme
+    iconTheme: const IconThemeData(color: AppColors.textSecondary, size: 24),
+
+    // Text theme
+    textTheme: const TextTheme(
+      displayLarge: TextStyle(color: AppColors.textPrimary),
+      displayMedium: TextStyle(color: AppColors.textPrimary),
+      displaySmall: TextStyle(color: AppColors.textPrimary),
+      headlineLarge: TextStyle(color: AppColors.textPrimary),
+      headlineMedium: TextStyle(color: AppColors.textPrimary),
+      headlineSmall: TextStyle(color: AppColors.textPrimary),
+      titleLarge: TextStyle(color: AppColors.textPrimary),
+      titleMedium: TextStyle(color: AppColors.textPrimary),
+      titleSmall: TextStyle(color: AppColors.textPrimary),
+      bodyLarge: TextStyle(color: AppColors.textPrimary),
+      bodyMedium: TextStyle(color: AppColors.textSecondary),
+      bodySmall: TextStyle(color: AppColors.textTertiary),
+    ),
+
+    // Elevated button theme
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
+
+    // Input decoration theme
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.surface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+    ),
+
+    // Divider theme
+    dividerTheme: const DividerThemeData(
+      color: AppColors.border,
+      thickness: 0.5,
+    ),
+
+    // Bottom navigation bar theme
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Colors.white,
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: AppColors.textSecondary,
+      elevation: 0,
+    ),
+
+    // Page transitions
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
+  );
+
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: AppColors.darkBackground,
+    primaryColor: AppColors.primary,
+    colorScheme: const ColorScheme.dark(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      surface: AppColors.darkSurface,
+      error: AppColors.error,
+      onPrimary: AppColors.onPrimary,
+      onSecondary: AppColors.onSecondary,
+      onSurface: AppColors.darkTextPrimary,
+      onError: Colors.white,
+    ),
+
+    // Card theme
+    cardTheme: CardThemeData(
+      color: AppColors.darkSurface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+
+    // AppBar theme
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.darkBackground,
+      foregroundColor: AppColors.darkTextPrimary,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      titleTextStyle: TextStyle(
+        color: AppColors.darkTextPrimary,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+
+    // Icon theme
+    iconTheme: const IconThemeData(
+      color: AppColors.darkTextSecondary,
+      size: 24,
+    ),
+
+    // Text theme
+    textTheme: const TextTheme(
+      displayLarge: TextStyle(color: AppColors.darkTextPrimary),
+      displayMedium: TextStyle(color: AppColors.darkTextPrimary),
+      displaySmall: TextStyle(color: AppColors.darkTextPrimary),
+      headlineLarge: TextStyle(color: AppColors.darkTextPrimary),
+      headlineMedium: TextStyle(color: AppColors.darkTextPrimary),
+      headlineSmall: TextStyle(color: AppColors.darkTextPrimary),
+      titleLarge: TextStyle(color: AppColors.darkTextPrimary),
+      titleMedium: TextStyle(color: AppColors.darkTextPrimary),
+      titleSmall: TextStyle(color: AppColors.darkTextPrimary),
+      bodyLarge: TextStyle(color: AppColors.darkTextPrimary),
+      bodyMedium: TextStyle(color: AppColors.darkTextSecondary),
+      bodySmall: TextStyle(color: AppColors.darkTextTertiary),
+    ),
+
+    // Elevated button theme
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
+
+    // Input decoration theme
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.darkSurface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.darkBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.darkBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+    ),
+
+    // Divider theme
+    dividerTheme: const DividerThemeData(
+      color: AppColors.darkBorder,
+      thickness: 0.5,
+    ),
+
+    // Bottom navigation bar theme
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: AppColors.darkSurface,
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: AppColors.darkTextSecondary,
+      elevation: 0,
+    ),
+
+    // Page transitions
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
+  );
 }

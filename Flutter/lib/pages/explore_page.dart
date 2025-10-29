@@ -34,8 +34,11 @@ class _ExplorePageState extends State<ExplorePage> {
   final Set<String> _loadedIds = {};
 
   bool _isLoading = false;
+  bool _isInitialLoading =
+      true; // Track initial load separately from pagination
   bool _hasMore = true;
   int _currentPage = 1;
+  DateTime? _lastScrollCheck; // Debounce scroll checking
 
   @override
   void initState() {
@@ -57,28 +60,39 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   void _onScroll() {
+    // Debounce scroll checking to avoid excessive checks
+    final now = DateTime.now();
+    if (_lastScrollCheck != null &&
+        now.difference(_lastScrollCheck!).inMilliseconds < 100) {
+      return; // Skip this scroll event
+    }
+    _lastScrollCheck = now;
+
     // Only check if we can load more
     if (_isLoading || !_hasMore) return;
 
     final position = _scrollController.position;
     if (!position.hasContentDimensions) return;
 
-    // Load more when within 200px of bottom
-    final threshold = position.maxScrollExtent - 200;
+    // Load more when within 800px of bottom (larger threshold to reduce frequency)
+    final threshold = position.maxScrollExtent - 800;
     if (position.pixels >= threshold) {
+      print(
+        '📍 Triggering load more - position ${position.pixels} / ${position.maxScrollExtent}',
+      );
       _loadMoreFeed();
     }
   }
 
   Future<void> _loadInitialFeed() async {
-    if (_isLoading || _feedItems.isNotEmpty) {
+    if (_isInitialLoading && _feedItems.isNotEmpty) {
       print('⏭️ Skipping initial load - already loading or has items');
       return;
     }
 
     print('✅ Starting initial feed load');
     setState(() {
-      _isLoading = true;
+      _isInitialLoading = true; // Set initial loading state
       _feedItems.clear();
       _loadedIds.clear();
       _currentPage = 1;
@@ -88,22 +102,32 @@ class _ExplorePageState extends State<ExplorePage> {
     await _loadFeedBatch();
 
     if (mounted) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isInitialLoading = false; // Clear initial loading state
+      });
     }
   }
 
   Future<void> _loadMoreFeed() async {
     if (_isLoading || !_hasMore) {
+      print(
+        '⏭️ Skipping load more - _isLoading=$_isLoading, _hasMore=$_hasMore',
+      );
       return;
     }
 
     print('🔄 Loading more feed (page $_currentPage)');
-    setState(() => _isLoading = true);
+
+    setState(() {
+      _isLoading = true; // Update UI immediately to prevent duplicate triggers
+    });
 
     try {
       _currentPage++;
       await _loadFeedBatch();
-    } finally {
+      // setState is called inside _loadFeedBatch, so we don't need it here
+    } catch (e) {
+      print('Error in _loadMoreFeed: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -123,28 +147,43 @@ class _ExplorePageState extends State<ExplorePage> {
       print('📦 Received ${newItems.length} items from backend feed service');
 
       // Filter out duplicates (backend should handle this, but double-check)
+      print('🔍 Checking ${newItems.length} items for duplicates...');
+      print(
+        '🔍 _loadedIds contains ${_loadedIds.length} IDs: ${_loadedIds.take(5).toList()}',
+      );
+
       final uniqueItems = newItems.where((item) {
         if (_loadedIds.contains(item.id)) {
+          print('❌ Duplicate detected: ${item.id}');
           return false;
         }
         _loadedIds.add(item.id);
+        print('✅ New item: ${item.id}');
         return true;
       }).toList();
 
       print('✅ Adding ${uniqueItems.length} unique items to feed');
 
+      // Always add items, even if empty (to clear loading state)
       if (mounted) {
         setState(() {
-          _feedItems.addAll(uniqueItems);
-          // Backend now tells us if there's more content
-          _hasMore =
-              uniqueItems.length >= 20; // Assume more if we got full page
+          if (uniqueItems.isNotEmpty) {
+            _feedItems.addAll(uniqueItems);
+          }
+          _isLoading = false; // Clear loading state
+          _hasMore = true; // Never stop scrolling!
         });
+
+        print('🎯 Feed items now: ${_feedItems.length}');
       }
-    } catch (e) {
-      print('Error loading feed: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error loading feed: $e');
+      print('Stack trace: $stackTrace');
       if (mounted) {
-        setState(() => _hasMore = false);
+        setState(() {
+          _isLoading = false;
+          _hasMore = true; // Keep trying even on error
+        });
       }
     }
   }
@@ -163,11 +202,13 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
+    // Only show full-screen loading spinner on initial load
+    // During pagination, keep content visible and show small indicator at bottom
+    if (_isInitialLoading && _feedItems.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_feedItems.isEmpty) {
+    if (_feedItems.isEmpty && !_isInitialLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -184,32 +225,34 @@ class _ExplorePageState extends State<ExplorePage> {
     }
 
     return ListView.builder(
+      key: const ValueKey(
+        'infinite_feed_list',
+      ), // Stable key for efficient rebuilds
       controller: _scrollController,
-      itemCount:
-          _feedItems.length + (_hasMore ? 1 : (_feedItems.isEmpty ? 0 : 1)),
+      itemCount: _feedItems.isEmpty
+          ? 0
+          : (_feedItems.length + 1), // +1 for loading indicator
       itemBuilder: (context, index) {
-        // Show loading indicator while loading more
+        // Show loading indicator only when actually loading
         if (index >= _feedItems.length && _hasMore) {
+          if (!_isLoading) {
+            return const SizedBox.shrink(); // Don't show anything when not loading
+          }
+
           return const Padding(
             key: ValueKey('loading_indicator'),
-            padding: EdgeInsets.all(24.0),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        // Show end message if we have items but no more to load
-        if (index >= _feedItems.length && !_hasMore && _feedItems.isNotEmpty) {
-          return const Padding(
-            key: ValueKey('end_message'),
-            padding: EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(16.0),
             child: Center(
-              child: Text(
-                'You\'ve reached the end! ✨',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
           );
         }
+
+        // Never show "end" message - infinite scrolling!
 
         try {
           final item = _feedItems[index];
@@ -375,49 +418,40 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   void _handleNotificationAction(FeedNotification notification) {
-    // Handle different notification actions
-    print('Notification action: ${notification.type}');
+    final metadata = notification.metadata;
 
-    switch (notification.type) {
-      case FeedNotificationType.outbid:
-        // Navigate to auction and show bid dialog
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Opening auction...')));
-        break;
-
-      case FeedNotificationType.auctionEnding:
-        // Navigate to auction
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Opening auction...')));
-        break;
-
-      case FeedNotificationType.auctionRequest:
-        // Navigate to auction request page
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Opening auction request...')),
-        );
-        break;
-
-      case FeedNotificationType.achievement:
-        // Navigate to profile
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Opening profile...')));
-        break;
-
-      case FeedNotificationType.communityInvite:
-        // Navigate to community
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Opening community...')));
-        break;
-
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Action: ${notification.actionText}')),
-        );
+    // Navigate based on metadata IDs
+    if (metadata?['auctionId'] != null) {
+      // Navigate to auction details
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AuctionDetailsPage(
+            auction: Auction(
+              auctionId: metadata!['auctionId'] as int,
+              propertyId: 0,
+              startPrice: 0,
+              currentPrice: 0,
+              startAt: DateTime.now(),
+              duration: 0,
+              bidCount: 0,
+              status: 'active',
+              createdAt: DateTime.now(),
+            ),
+          ),
+        ),
+      );
+    } else if (metadata?['propertyId'] != null) {
+      // Navigate to property details
+      Navigator.pushNamed(context, '/property/${metadata!['propertyId']}');
+    } else if (metadata?['eventId'] != null) {
+      // Navigate to calendar
+      Navigator.pushNamed(context, '/calendar');
+    } else {
+      // Show generic message for other types
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(notification.title)));
     }
   }
 }

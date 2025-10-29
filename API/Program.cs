@@ -5,6 +5,7 @@ using PropertyFlipperAPI.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +64,36 @@ builder.Services.AddSwaggerGen(c =>
     });
     
     // Don't apply security globally - only to specific endpoints
+    
+    // Handle circular references by using unique schema IDs based on full name
+    c.CustomSchemaIds(type =>
+    {
+        if (type.IsGenericType)
+        {
+            var name = type.Name.Substring(0, type.Name.IndexOf('`'));
+            var args = type.GetGenericArguments().Select(t => t.Name);
+            return $"{name}Of{string.Join("And", args)}";
+        }
+        return type.FullName?.Replace("+", ".") ?? type.Name;
+    });
+    
+    // Include XML comments if available (optional)
+    try
+    {
+        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        if (File.Exists(xmlPath))
+        {
+            c.IncludeXmlComments(xmlPath);
+        }
+    }
+    catch
+    {
+        // Ignore if XML file doesn't exist
+    }
+    
+    // Ignore obsolete properties
+    c.IgnoreObsoleteProperties();
 });
 
 // CORS - Allow all origins in development, restricted in production
@@ -104,7 +135,8 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = true;
+    // Allow HTTP in development, require HTTPS in production
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -120,16 +152,20 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger in all environments - MUST come before error handling
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Property Flipper API v1");
+    c.RoutePrefix = "swagger"; // Swagger UI will be available at /swagger
+    c.ConfigObject.AdditionalItems.Add("syntaxHighlight", false); // Disable syntax highlighting for better compatibility
+});
 
 app.UseCors("AppCors");
 
 // Production middleware enabled
 // Global error handling middleware (catches all unhandled exceptions)
+// Note: Swagger paths are handled before this, so Swagger errors will show in browser
 app.UseErrorHandling();
 
 // Rate limiting middleware (protects against DDoS and abuse)

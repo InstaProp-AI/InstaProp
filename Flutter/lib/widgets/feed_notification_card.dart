@@ -1,689 +1,215 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/feed_notification.dart';
 import '../theme/app_colors.dart';
-import 'mini_graph.dart';
 
-class FeedNotificationCard extends StatelessWidget {
+/// Instagram Story-style notification card with swipe-to-dismiss
+class FeedNotificationCard extends StatefulWidget {
   final FeedNotification notification;
   final VoidCallback? onAction;
+  final VoidCallback? onDismiss;
 
   const FeedNotificationCard({
     super.key,
     required this.notification,
     this.onAction,
+    this.onDismiss,
   });
 
   @override
+  State<FeedNotificationCard> createState() => _FeedNotificationCardState();
+}
+
+class _FeedNotificationCardState extends State<FeedNotificationCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(1.0, 0),
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeIn));
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleDismiss() async {
+    HapticFeedback.lightImpact();
+    await _slideController.forward();
+    widget.onDismiss?.call();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final config = _getNotificationConfig(notification.type);
+    final config = _getNotificationConfig(widget.notification.type);
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
 
-    // Check if we have metadata with property info
-    final hasPropertyImage = notification.metadata?['propertyImage'] != null;
-    final hasPriceData = notification.metadata?['priceHistory'] != null;
-    final hasPaymentData = notification.metadata?['paymentHistory'] != null;
+    // Check metadata
+    final hasPropertyImage =
+        widget.notification.metadata?['propertyImage'] != null;
+    final propertyImage =
+        widget.notification.metadata?['propertyImage'] as String?;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              config.color.withOpacity(0.1),
-              config.color.withOpacity(0.05),
-            ],
-          ),
-        ),
-        child: _buildCardContent(
-          config,
-          hasPropertyImage,
-          hasPriceData,
-          hasPaymentData,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardContent(
-    _NotificationConfig config,
-    bool hasPropertyImage,
-    bool hasPriceData,
-    bool hasPaymentData,
-  ) {
-    // Outbid notification with property image and price trend
-    if (notification.type == FeedNotificationType.outbid && hasPropertyImage) {
-      return _buildOutbidCard(config);
-    }
-
-    // Payment due with payment history chart
-    if (notification.type == FeedNotificationType.paymentDue &&
-        hasPaymentData) {
-      return _buildPaymentDueCard(config);
-    }
-
-    // Auction ending soon with property image overlay
-    if (notification.type == FeedNotificationType.auctionEnding &&
-        hasPropertyImage) {
-      return _buildAuctionEndingCard(config);
-    }
-
-    // Achievement with large icon
-    if (notification.type == FeedNotificationType.achievement ||
-        notification.type == FeedNotificationType.milestone) {
-      return _buildAchievementCard(config);
-    }
-
-    // Default card for other notifications
-    return _buildDefaultCard(config);
-  }
-
-  Widget _buildOutbidCard(_NotificationConfig config) {
-    final propertyImage = notification.metadata?['propertyImage'] as String?;
-    final currentBid = notification.metadata?['currentBid'] as num?;
-    final yourBid = notification.metadata?['yourBid'] as num?;
-
-    // Safe parsing of price history list
-    List<num>? priceHistory;
-    try {
-      final raw = notification.metadata?['priceHistory'];
-      if (raw is List) {
-        priceHistory = raw.map((e) => e as num).toList();
-      }
-    } catch (e) {
-      print('Error parsing price history: $e');
-      priceHistory = null;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Property thumbnail
-          ClipRRect(
+    return SlideTransition(
+      position: _slideAnimation,
+      child: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null &&
+              details.primaryVelocity! > 200) {
+            _handleDismiss();
+          }
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 120,
-              height: 160,
-              child: propertyImage != null
-                  ? Image.network(
-                      propertyImage,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildPlaceholderImage(),
-                    )
-                  : _buildPlaceholderImage(),
+            border: Border.all(
+              color: config.color.withOpacity(0.3),
+              width: 1.5,
             ),
           ),
-          const SizedBox(width: 16),
-          // Content and graph
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: config.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(config.icon, size: 20, color: config.color),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          notification.title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: config.color,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  notification.message,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (currentBid != null && yourBid != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildPriceLabel('Current', currentBid, config.color),
-                      const SizedBox(width: 12),
-                      _buildPriceLabel(
-                        'Your Bid',
-                        yourBid,
-                        AppColors.textSecondary,
-                      ),
-                    ],
-                  ),
-                ],
-                if (priceHistory != null && priceHistory.length >= 3) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: MiniGraph(
-                        dataPoints: priceHistory,
-                        height: 34,
-                        lineColor: config.color,
-                        areaColor: config.color.withOpacity(0.1),
-                      ),
-                    ),
-                  ),
-                ],
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: onAction,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: config.color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      notification.actionText ?? 'Bid +\$1000',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentDueCard(_NotificationConfig config) {
-    final amount = notification.metadata?['amount'] as num?;
-    final dueDate = notification.metadata?['dueDate'] as String?;
-
-    // Safe parsing of payment history list
-    List<num>? paymentHistory;
-    try {
-      final raw = notification.metadata?['paymentHistory'];
-      if (raw is List) {
-        paymentHistory = raw.map((e) => e as num).toList();
-      }
-    } catch (e) {
-      print('Error parsing payment history: $e');
-      paymentHistory = null;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: config.color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(config.icon, color: config.color, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      notification.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.message,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (amount != null || dueDate != null) ...[
-            Container(
+          child: InkWell(
+            onTap: widget.onAction,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(8),
-              ),
               child: Row(
                 children: [
-                  if (amount != null) ...[
-                    Column(
+                  // Icon with gradient background
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [config.color, config.color.withOpacity(0.7)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(config.icon, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Content
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Amount Due',
+                        Text(
+                          widget.notification.title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.notification.message,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatTime(widget.notification.createdAt),
                           style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '\$${amount.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: config.color,
+                            color: isDark
+                                ? AppColors.darkTextTertiary
+                                : AppColors.textTertiary,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                  if (amount != null && dueDate != null)
-                    Container(
-                      width: 1,
-                      height: 40,
-                      color: AppColors.border,
-                      margin: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  if (dueDate != null) ...[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Due Date',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            dueDate,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (paymentHistory != null && paymentHistory.length >= 3) ...[
-            SizedBox(
-              height: 50,
-              child: MiniGraph(
-                dataPoints: paymentHistory,
-                height: 50,
-                lineColor: config.color,
-                areaColor: config.color.withOpacity(0.1),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onAction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: config.color,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                notification.actionText ?? 'Pay Now',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+                  ),
 
-  Widget _buildAuctionEndingCard(_NotificationConfig config) {
-    final propertyImage = notification.metadata?['propertyImage'] as String?;
-    final timeRemaining = notification.metadata?['timeRemaining'] as String?;
-    final currentBid = notification.metadata?['currentBid'] as num?;
-    final bidCount = notification.metadata?['bidCount'] as int?;
-
-    return Stack(
-      children: [
-        // Property image
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            height: 180,
-            decoration: BoxDecoration(color: config.color.withOpacity(0.1)),
-            child: propertyImage != null
-                ? Image.network(
-                    propertyImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _buildPlaceholderImage(height: 180),
-                  )
-                : _buildPlaceholderImage(height: 180),
-          ),
-        ),
-        // Gradient overlay
-        Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
-              ),
-            ),
-          ),
-        ),
-        // Content overlay
-        Positioned.fill(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: config.color,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    timeRemaining ?? 'Ending Soon',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  notification.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (currentBid != null)
-                  Text(
-                    'Current Bid: \$${currentBid.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 14, color: Colors.white70),
-                  ),
-                if (bidCount != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.people, size: 16, color: Colors.white70),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$bidCount bids',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.white70,
+                  // Property thumbnail or action button
+                  if (hasPropertyImage && propertyImage != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        propertyImage,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 60,
+                          height: 60,
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.border,
+                          child: Icon(
+                            Icons.image,
+                            color: AppColors.textTertiary,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: onAction,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: config.color,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
+                    )
+                  else if (widget.notification.actionText != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: config.color,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                    ),
-                    child: Text(
-                      notification.actionText ?? 'Place Bid',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      child: Text(
+                        widget.notification.actionText!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildAchievementCard(_NotificationConfig config) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Large animated badge
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [config.color, config.color.withOpacity(0.7)],
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(config.icon, size: 40, color: Colors.white),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            notification.title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            notification.message,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: onAction,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: config.color,
-                side: BorderSide(color: config.color),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'View Profile',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildDefaultCard(_NotificationConfig config) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: config.color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(config.icon, color: config.color, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  notification.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  notification.message,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _formatTime(notification.createdAt),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (notification.actionText != null) ...[
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: onAction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: config.color,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                notification.actionText!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+  String _formatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
 
-  Widget _buildPriceLabel(String label, num value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '\$${value.toStringAsFixed(0)}',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlaceholderImage({double height = 160}) {
-    return Container(
-      height: height,
-      color: AppColors.border,
-      child: const Center(
-        child: Icon(Icons.image, size: 48, color: AppColors.textSecondary),
-      ),
-    );
+    if (difference.inDays > 7) {
+      return '${dateTime.day}/${dateTime.month}';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
   }
 
   _NotificationConfig _getNotificationConfig(FeedNotificationType type) {
@@ -767,23 +293,6 @@ class FeedNotificationCard extends StatelessWidget {
           icon: Icons.card_giftcard,
           color: AppColors.success,
         );
-    }
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()}mo ago';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
     }
   }
 }
