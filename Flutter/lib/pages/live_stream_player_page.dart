@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/live_stream.dart';
 import '../services/live_stream_service.dart';
+import '../widgets/live_stream_chat_overlay.dart';
 
 class LiveStreamPlayerPage extends StatefulWidget {
   final LiveStream stream;
@@ -17,6 +18,7 @@ class LiveStreamPlayerPage extends StatefulWidget {
 class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
   bool _isLoading = true;
   bool _isJoined = false;
+  bool _showChat = true;
   int _viewerCount = 0;
 
   @override
@@ -99,6 +101,15 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
               ),
             ),
           ),
+          IconButton(
+            icon: Icon(
+              _showChat ? Icons.chat : Icons.chat_bubble_outline,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              setState(() => _showChat = !_showChat);
+            },
+          ),
         ],
       ),
       body: _isLoading
@@ -129,11 +140,24 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
                           size: 64, color: Colors.white54),
                     ),
                   ),
+                
+                // Chat overlay (right side)
+                if (_showChat && widget.stream.status == 'Live')
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: LiveStreamChatOverlay(
+                      streamId: widget.stream.streamId,
+                      isStreamLive: widget.stream.status == 'Live',
+                    ),
+                  ),
+                
                 // Controls overlay
                 Positioned(
                   bottom: 0,
                   left: 0,
-                  right: 0,
+                  right: _showChat && widget.stream.status == 'Live' ? 320 : 0,
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(

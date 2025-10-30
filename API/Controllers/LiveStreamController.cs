@@ -90,6 +90,94 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(new { message = "Stream ended successfully" });
         }
 
+        // POST: api/livestream/{id}/chat
+        [HttpPost("{id}/chat")]
+        [Authorize]
+        public async Task<ActionResult<StreamChatMessageDto>> SendChatMessage(long id, [FromBody] SendChatMessageRequest request)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var stream = await _context.LiveStreams
+                .FirstOrDefaultAsync(s => s.StreamId == id);
+
+            if (stream == null)
+                return NotFound("Stream not found");
+
+            if (stream.Status != "Live")
+                return BadRequest("Stream is not live");
+
+            // Verify user is viewing the stream
+            var isViewing = await _context.StreamViewers
+                .AnyAsync(v => v.StreamId == id && v.UserId == accountId.Value && v.LeftAt == null);
+
+            if (!isViewing)
+                return BadRequest("You must be viewing the stream to send messages");
+
+            var message = new StreamChatMessage
+            {
+                StreamId = id,
+                UserId = accountId.Value,
+                Message = request.Message,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.StreamChatMessages.Add(message);
+            await _context.SaveChangesAsync();
+
+            // Load user for response
+            await _context.Entry(message)
+                .Reference(m => m.User)
+                .LoadAsync();
+
+            return Ok(new StreamChatMessageDto
+            {
+                MessageId = message.MessageId,
+                StreamId = message.StreamId,
+                UserId = message.UserId,
+                UserName = $"{message.User.FirstName} {message.User.LastName}",
+                UserProfileImageUrl = null, // Account model doesn't have ProfileImageUrl
+                Message = message.Message,
+                CreatedAt = message.CreatedAt
+            });
+        }
+
+        // GET: api/livestream/{id}/chat
+        [HttpGet("{id}/chat")]
+        public async Task<ActionResult<IEnumerable<StreamChatMessageDto>>> GetChatMessages(
+            long id,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50)
+        {
+            var stream = await _context.LiveStreams
+                .FirstOrDefaultAsync(s => s.StreamId == id);
+
+            if (stream == null)
+                return NotFound("Stream not found");
+
+            var messages = await _context.StreamChatMessages
+                .Include(m => m.User)
+                .Where(m => m.StreamId == id)
+                .OrderByDescending(m => m.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var dtos = messages.Select(m => new StreamChatMessageDto
+            {
+                MessageId = m.MessageId,
+                StreamId = m.StreamId,
+                UserId = m.UserId,
+                UserName = $"{m.User.FirstName} {m.User.LastName}",
+                UserProfileImageUrl = null, // Account model doesn't have ProfileImageUrl
+                Message = m.Message,
+                CreatedAt = m.CreatedAt
+            }).ToList();
+
+            return Ok(dtos);
+        }
+
         // GET: api/livestream/active
         [HttpGet("active")]
         public async Task<ActionResult<IEnumerable<LiveStreamDto>>> GetActiveStreams()
@@ -232,6 +320,22 @@ namespace PropertyFlipperAPI.Controllers
         public int ViewerCount { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime? EndTime { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class SendChatMessageRequest
+    {
+        public string Message { get; set; } = string.Empty;
+    }
+
+    public class StreamChatMessageDto
+    {
+        public long MessageId { get; set; }
+        public long StreamId { get; set; }
+        public long UserId { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string? UserProfileImageUrl { get; set; }
+        public string Message { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
     }
 }

@@ -20,10 +20,10 @@ import '../widgets/post_card.dart';
 import '../widgets/feed_live_stream_card.dart';
 import '../widgets/feed_valuation_prompt_card.dart';
 import '../widgets/feed_payment_reminder_card.dart';
+import '../widgets/feed_post_composer.dart';
 import 'post_details_page.dart';
 import 'auction_details_page.dart';
 import 'community_details_page.dart';
-import 'create_post_page.dart';
 import 'live_stream_player_page.dart';
 import '../models/live_stream.dart';
 import '../models/valuation_prompt.dart';
@@ -206,25 +206,6 @@ class _ExplorePageState extends State<ExplorePage> {
         elevation: 0,
       ),
       body: _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CreatePostPage(),
-            ),
-          );
-          if (result == true) {
-            // Refresh feed after creating post
-            _feedItems.clear();
-            _loadedIds.clear();
-            _currentPage = 1;
-            _loadInitialFeed();
-          }
-        },
-        backgroundColor: const Color(0xFF6200EE),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
     );
   }
 
@@ -266,11 +247,27 @@ class _ExplorePageState extends State<ExplorePage> {
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh
         itemCount: _feedItems.isEmpty
-            ? 0
-            : (_feedItems.length + 1), // +1 for loading indicator
+            ? 1 // Composer only
+            : (_feedItems.length + 2), // +1 for composer +1 for loading indicator
         itemBuilder: (context, index) {
+          // Show composer at top
+          if (index == 0) {
+            return FeedPostComposer(
+              onPostCreated: () {
+                // Refresh feed after creating post
+                _feedItems.clear();
+                _loadedIds.clear();
+                _currentPage = 1;
+                _loadInitialFeed();
+              },
+            );
+          }
+          
+          // Adjust index for feed items
+          final itemIndex = index - 1;
+          
           // Show loading indicator only when actually loading
-          if (index >= _feedItems.length && _hasMore) {
+          if (itemIndex >= _feedItems.length && _hasMore) {
             if (!_isLoading) {
               return const SizedBox.shrink(); // Don't show anything when not loading
             }
@@ -291,16 +288,16 @@ class _ExplorePageState extends State<ExplorePage> {
           // Never show "end" message - infinite scrolling!
 
           try {
-            final item = _feedItems[index];
+            final item = _feedItems[itemIndex];
             // Wrap items in RepaintBoundary with unique keys to prevent layout errors
             return RepaintBoundary(
               key: ValueKey(item.id),
               child: _buildFeedItem(item),
             );
-          } catch (e) {
-            print('❌ Error building item $index: $e');
-            return Card(
-              key: ValueKey('error_$index'),
+        } catch (e) {
+          print('❌ Error building item $itemIndex: $e');
+          return Card(
+            key: ValueKey('error_$itemIndex'),
               margin: const EdgeInsets.all(16),
               child: Padding(
                 padding: const EdgeInsets.all(16),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/reaction_service.dart';
+import '../models/reaction_type.dart';
 
 class ReactionPicker extends StatelessWidget {
   final Function(ReactionType) onReactionSelected;

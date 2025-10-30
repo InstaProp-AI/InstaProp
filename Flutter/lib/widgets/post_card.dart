@@ -6,7 +6,15 @@ import 'user_badge_widget.dart';
 import 'like_animation.dart';
 import '../services/reaction_service.dart';
 import 'reaction_picker.dart';
+import '../models/reaction_type.dart' as ReactionTypeModel;
 import 'inline_comments_section.dart';
+import '../services/community_post_service.dart';
+import '../services/community_service.dart';
+import 'select_community_dialog.dart';
+import '../models/community.dart';
+import 'poll_widget.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_state.dart';
 
 /// Instagram-style post card with borderless design and rich interactions
 class PostCard extends StatefulWidget {
@@ -32,25 +40,63 @@ class PostCard extends StatefulWidget {
 class _PostCardState extends State<PostCard> {
   bool _isExpanded = false;
   bool _isLiked = false;
-  int _likeCount = 0;
-  ReactionType? _currentReaction;
+  ReactionTypeModel.ReactionType? _currentReaction;
   OverlayEntry? _overlayEntry;
   final GlobalKey _likeButtonKey = GlobalKey();
+  bool _isBookmarked = false;
+  int _likeCount = 0;
+  int _reactionCount = 0;
+  int _commentCount = 0;
 
   @override
   void initState() {
     super.initState();
     _isLiked = widget.post.isLiked;
     _likeCount = widget.post.likeCount;
+    _reactionCount = widget.post.reactionCount;
+    _commentCount = widget.post.commentCount;
     _loadReaction();
+    _loadBookmarkStatus();
   }
 
   Future<void> _loadReaction() async {
-    // Load user's current reaction if any
-    // This would require a backend endpoint to get user's reaction
-    // For now, just use isLiked
-    if (_isLiked) {
-      _currentReaction = ReactionType.like;
+    // Load user's current reaction from backend data
+    if (widget.post.userReaction != null) {
+      _currentReaction = ReactionTypeModel.ReactionType.fromString(widget.post.userReaction);
+      _isLiked = true; // User has a reaction, so show as liked
+    } else if (_isLiked) {
+      _currentReaction = ReactionTypeModel.ReactionType.like;
+    }
+  }
+
+  Future<void> _loadBookmarkStatus() async {
+    final res = await CommunityPostService.getBookmarkStatus(widget.post.postId);
+    if (!mounted) return;
+    if (res.success && res.data != null) {
+      setState(() {
+        _isBookmarked = res.data!;
+      });
+    }
+  }
+
+  Future<void> _refreshCountsAndReaction() async {
+    final countsRes = await CommunityPostService.getPostCounts(widget.post.postId);
+    if (countsRes.success && countsRes.data != null && mounted) {
+      setState(() {
+        _likeCount = countsRes.data!['likeCount'] ?? _likeCount;
+        _reactionCount = countsRes.data!['reactionCount'] ?? _reactionCount;
+        _commentCount = countsRes.data!['commentCount'] ?? _commentCount;
+      });
+    }
+
+    final reactionRes = await CommunityPostService.getUserReaction(widget.post.postId);
+    if (reactionRes.success && reactionRes.data != null && mounted) {
+      final d = reactionRes.data!;
+      setState(() {
+        _isLiked = (d['isLiked'] as bool?) ?? false;
+        final ur = d['userReaction'] as String?;
+        _currentReaction = ReactionTypeModel.ReactionType.fromString(ur);
+      });
     }
   }
 
@@ -62,21 +108,21 @@ class _PostCardState extends State<PostCard> {
           setState(() {
             _isLiked = false;
             _currentReaction = null;
-            _likeCount = (_likeCount - 1).clamp(0, double.infinity).toInt();
           });
+          _refreshCountsAndReaction();
           widget.onLike?.call();
         }
       });
     } else {
-      // Add like reaction
-      ReactionService.addPostReaction(widget.post.postId, ReactionType.like)
+      // Add like reaction - convert model ReactionType to service ReactionType
+      ReactionService.addPostReaction(widget.post.postId, _convertToServiceReactionType(ReactionTypeModel.ReactionType.like))
           .then((response) {
         if (response.success && mounted) {
           setState(() {
             _isLiked = true;
-            _currentReaction = ReactionType.like;
-            _likeCount++;
+            _currentReaction = ReactionTypeModel.ReactionType.like;
           });
+          _refreshCountsAndReaction();
           widget.onLike?.call();
         }
       });
@@ -119,35 +165,215 @@ class _PostCardState extends State<PostCard> {
     _overlayEntry = null;
   }
 
-  Future<void> _selectReaction(ReactionType reaction) async {
+  Future<void> _selectReaction(ReactionTypeModel.ReactionType reaction) async {
     // If same reaction, remove it
     if (_currentReaction == reaction) {
       await ReactionService.removePostReaction(widget.post.postId);
       setState(() {
         _currentReaction = null;
         _isLiked = false;
-        _likeCount = (_likeCount - 1).clamp(0, double.infinity).toInt();
       });
+      await _refreshCountsAndReaction();
     } else {
-      // Update or add reaction
-      await ReactionService.addPostReaction(widget.post.postId, reaction);
+      // Update or add reaction - convert model ReactionType to service ReactionType
+      await ReactionService.addPostReaction(widget.post.postId, _convertToServiceReactionType(reaction));
       setState(() {
-        if (_currentReaction == null) {
-          _likeCount++;
-        }
         _currentReaction = reaction;
         _isLiked = true;
       });
+      await _refreshCountsAndReaction();
     }
     HapticFeedback.mediumImpact();
     widget.onLike?.call();
   }
 
-  void _handleShare() {
-    // TODO: Implement share to communities
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Share functionality coming soon')),
+  Future<void> _handleShare() async {
+    final myCommunitiesRes = await CommunityService.getMyCommunities();
+    if (!mounted) return;
+    if (!myCommunitiesRes.success || myCommunitiesRes.data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(myCommunitiesRes.error ?? 'Failed to load communities')),
+      );
+      return;
+    }
+
+    final List<Community> communities = myCommunitiesRes.data!;
+    if (communities.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Join a community to share this post')),
+      );
+      return;
+    }
+
+    final selected = await showDialog<Community>(
+      context: context,
+      builder: (ctx) => SelectCommunityDialog(communities: communities),
     );
+    if (selected == null) return;
+
+    final res = await CommunityPostService.sharePost(
+      postId: widget.post.postId,
+      targetCommunityId: selected.communityId,
+    );
+    if (!mounted) return;
+    if (res.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post shared successfully')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res.error ?? 'Failed to share post')),
+      );
+    }
+  }
+
+  void _showThreeDotsMenu() {
+    final isAuthor = _isCurrentUserAuthor();
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isAuthor) ...[
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Navigate to edit page
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDeleteConfirmDialog();
+                },
+              ),
+            ] else ...[
+              ListTile(
+                leading: const Icon(Icons.report, color: Colors.red),
+                title: const Text('Report', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showReportDialog();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.visibility_off),
+                title: const Text('Hide'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Placeholder: local hide only
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Post hidden')),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Post'),
+        content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final res = await CommunityPostService.deletePost(widget.post.postId);
+              if (!mounted) return;
+              if (res.success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Post deleted')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(res.error ?? 'Failed to delete post')),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'Tell us what is wrong with this post',
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final res = await CommunityPostService.reportPost(
+                postId: widget.post.postId,
+                reason: controller.text.isEmpty ? 'Inappropriate' : controller.text,
+              );
+              if (!mounted) return;
+              if (res.success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Report submitted')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(res.error ?? 'Failed to report post')),
+                );
+              }
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _toggleSave() async {
+    HapticFeedback.lightImpact();
+    final res = await CommunityPostService.toggleBookmark(widget.post.postId);
+    if (!mounted) return;
+    if (res.success && res.data != null) {
+      setState(() {
+        _isBookmarked = res.data!;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_isBookmarked ? 'Saved' : 'Removed from saved')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res.error ?? 'Failed to update saved status')),
+      );
+    }
   }
 
   @override
@@ -155,8 +381,24 @@ class _PostCardState extends State<PostCard> {
     final brightness = Theme.of(context).brightness;
     final isDark = brightness == Brightness.dark;
 
+    // Calculate total engagement count
+    final totalLikes = _likeCount + _reactionCount;
+
     return Container(
-      color: isDark ? AppColors.darkBackground : AppColors.background,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 0.5,
+          ),
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 0.5,
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -270,10 +512,10 @@ class _PostCardState extends State<PostCard> {
                     ],
                   ),
                 ),
-                // More options
+                // More options (three dots menu)
                 IconButton(
                   icon: const Icon(Icons.more_vert, size: 20),
-                  onPressed: () {},
+                  onPressed: _showThreeDotsMenu,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -321,89 +563,9 @@ class _PostCardState extends State<PostCard> {
               ),
             ),
 
-          // Action bar (Instagram-style)
+          // Caption (moved up - right after image)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            child: Row(
-              children: [
-                GestureDetector(
-                  key: _likeButtonKey,
-                  onTap: _toggleLike,
-                  onLongPress: _showReactionPicker,
-                  child: Icon(
-                    _currentReaction == ReactionType.love ||
-                            _currentReaction == ReactionType.like
-                        ? Icons.favorite
-                        : _currentReaction == ReactionType.celebrate
-                            ? Icons.celebration
-                            : _currentReaction == ReactionType.insightful
-                                ? Icons.lightbulb
-                                : _currentReaction == ReactionType.helpful
-                                    ? Icons.handshake
-                                    : _currentReaction == ReactionType.thankYou
-                                        ? Icons.volunteer_activism
-                                        : Icons.favorite_border,
-                    size: 26,
-                    color: _isLiked
-                        ? _getReactionColor(_currentReaction)
-                        : Colors.black,
-                  ),
-                ),
-                if (_likeCount > 0) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    _formatLikes(_likeCount),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 12),
-                _buildActionButton(
-                  icon: Icons.mode_comment_outlined,
-                  count: widget.post.commentCount,
-                  onTap: widget.onComment,
-                  iconSize: 26,
-                ),
-                const SizedBox(width: 12),
-                _buildActionButton(
-                  icon: Icons.send_outlined,
-                  count: 0,
-                  onTap: _handleShare,
-                  iconSize: 26,
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: _isSaved()
-                      ? const Icon(Icons.bookmark, size: 26)
-                      : const Icon(Icons.bookmark_border, size: 26),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ),
-
-          // Likes count
-          if (_likeCount > 0)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                '${_formatLikes(_likeCount)} likes',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-
-          // Caption
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -411,11 +573,28 @@ class _PostCardState extends State<PostCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Flexible(
-                      child: Text(
-                        widget.post.content,
-                        style: const TextStyle(fontSize: 14),
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: '${widget.post.authorName} ',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            TextSpan(
+                              text: widget.post.content,
+                            ),
+                          ],
+                        ),
                         maxLines: _isExpanded ? null : 2,
-                        overflow: _isExpanded ? null : TextOverflow.ellipsis,
+                        overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -432,9 +611,8 @@ class _PostCardState extends State<PostCard> {
             ),
           ),
 
-          // Categories
+          // Hashtags/Categories
           if (widget.post.categories.isNotEmpty) ...[
-            const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Wrap(
@@ -445,9 +623,9 @@ class _PostCardState extends State<PostCard> {
                     onTap: () {},
                     child: Text(
                       '#$category',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Colors.blue,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -455,36 +633,108 @@ class _PostCardState extends State<PostCard> {
                 }).toList(),
               ),
             ),
+            const SizedBox(height: 8),
           ],
+
+          // Poll (if this is a poll post)
+          if (widget.post.postType == PostType.poll) ...[
+            const SizedBox(height: 8),
+            PollWidget(postId: widget.post.postId),
+          ],
+
+          // Like count (total of likes + reactions)
+          if (totalLikes > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Text(
+                '${_formatLikes(totalLikes)} likes',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+
+          // Action buttons (moved below like count)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Row(
+              children: [
+                GestureDetector(
+                  key: _likeButtonKey,
+                  onTap: _toggleLike,
+                  onLongPress: _showReactionPicker,
+                  child: Icon(
+                    _currentReaction == ReactionTypeModel.ReactionType.love ||
+                            _currentReaction == ReactionTypeModel.ReactionType.like
+                        ? Icons.favorite
+                        : _currentReaction == ReactionTypeModel.ReactionType.celebrate
+                            ? Icons.celebration
+                            : _currentReaction == ReactionTypeModel.ReactionType.insightful
+                                ? Icons.lightbulb
+                                : _currentReaction == ReactionTypeModel.ReactionType.helpful
+                                    ? Icons.handshake
+                                    : _currentReaction == ReactionTypeModel.ReactionType.thankYou
+                                        ? Icons.volunteer_activism
+                                        : Icons.favorite_border,
+                    size: 26,
+                    color: _isLiked || _currentReaction != null
+                        ? _getReactionColor(_currentReaction)
+                        : Colors.black,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _buildActionButton(
+                  icon: Icons.mode_comment_outlined,
+                  count: 0,
+                  onTap: widget.onComment,
+                  iconSize: 26,
+                ),
+                const SizedBox(width: 12),
+                _buildActionButton(
+                  icon: Icons.send_outlined,
+                  count: 0,
+                  onTap: _handleShare,
+                  iconSize: 26,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: _isSaved()
+                      ? const Icon(Icons.bookmark, size: 26)
+                      : const Icon(Icons.bookmark_border, size: 26),
+                  onPressed: _toggleSave,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
 
           // Inline comments section
           InlineCommentsSection(
             postId: widget.post.postId,
-            initialCommentCount: widget.post.commentCount,
+            initialCommentCount: _commentCount,
+            onCountChanged: (c) {
+              setState(() {
+                _commentCount = c;
+              });
+            },
           ),
 
           const SizedBox(height: 6),
 
-          // Posted time
+          // Posted time (footer)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Text(
               _formatTime(widget.post.createdAt),
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: isDark
                     ? AppColors.darkTextTertiary
                     : AppColors.textTertiary,
               ),
             ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Divider
-          Divider(
-            height: 1,
-            color: isDark ? AppColors.darkBorder : AppColors.border,
           ),
         ],
       ),
@@ -535,8 +785,18 @@ class _PostCardState extends State<PostCard> {
   }
 
   bool _isSaved() {
-    // TODO: Implement save state from backend
-    return false;
+    return _isBookmarked;
+  }
+
+  bool _isCurrentUserAuthor() {
+    try {
+      final appState = context.read<AppState>();
+      final user = appState.user;
+      if (user == null) return false;
+      return user.accountId == widget.post.authorId;
+    } catch (_) {
+      return false;
+    }
   }
 
   String _formatLikes(int count) {
@@ -590,20 +850,37 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  Color _getReactionColor(ReactionType? reaction) {
+  ReactionType _convertToServiceReactionType(ReactionTypeModel.ReactionType modelType) {
+    switch (modelType) {
+      case ReactionTypeModel.ReactionType.like:
+        return ReactionType.like;
+      case ReactionTypeModel.ReactionType.celebrate:
+        return ReactionType.celebrate;
+      case ReactionTypeModel.ReactionType.insightful:
+        return ReactionType.insightful;
+      case ReactionTypeModel.ReactionType.helpful:
+        return ReactionType.helpful;
+      case ReactionTypeModel.ReactionType.love:
+        return ReactionType.love;
+      case ReactionTypeModel.ReactionType.thankYou:
+        return ReactionType.thankYou;
+    }
+  }
+
+  Color _getReactionColor(ReactionTypeModel.ReactionType? reaction) {
     if (reaction == null) return Colors.red;
     switch (reaction) {
-      case ReactionType.like:
+      case ReactionTypeModel.ReactionType.like:
         return Colors.red;
-      case ReactionType.celebrate:
+      case ReactionTypeModel.ReactionType.celebrate:
         return Colors.orange;
-      case ReactionType.insightful:
+      case ReactionTypeModel.ReactionType.insightful:
         return Colors.amber;
-      case ReactionType.helpful:
+      case ReactionTypeModel.ReactionType.helpful:
         return Colors.blue;
-      case ReactionType.love:
+      case ReactionTypeModel.ReactionType.love:
         return Colors.pink;
-      case ReactionType.thankYou:
+      case ReactionTypeModel.ReactionType.thankYou:
         return Colors.purple;
     }
   }

@@ -8,12 +8,14 @@ class InlineCommentsSection extends StatefulWidget {
   final int postId;
   final int initialCommentCount;
   final bool isCollapsed;
+  final ValueChanged<int>? onCountChanged;
 
   const InlineCommentsSection({
     super.key,
     required this.postId,
     required this.initialCommentCount,
     this.isCollapsed = true,
+    this.onCountChanged,
   });
 
   @override
@@ -51,6 +53,8 @@ class _InlineCommentsSectionState extends State<InlineCommentsSection> {
         _comments = response.data!;
         _isLoading = false;
       });
+      // Notify parent with accurate count
+      widget.onCountChanged?.call(_comments.length);
     } else {
       setState(() => _isLoading = false);
     }
@@ -70,6 +74,10 @@ class _InlineCommentsSectionState extends State<InlineCommentsSection> {
       _commentController.clear();
       _replyingToCommentId = null;
       await _loadComments();
+      // If comments aren't expanded, still bump the count
+      if (!_isExpanded) {
+        widget.onCountChanged?.call(widget.initialCommentCount + 1);
+      }
     }
   }
 

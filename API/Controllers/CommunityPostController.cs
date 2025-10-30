@@ -18,6 +18,248 @@ namespace PropertyFlipperAPI.Controllers
             _context = context;
         }
 
+        // GET: api/posts/{id}/counts
+        [HttpGet("~/api/posts/{id}/counts")]
+        public async Task<ActionResult<object>> GetPostCounts(long id)
+        {
+            var exists = await _context.CommunityPosts.AnyAsync(p => p.PostId == id);
+            if (!exists)
+                return NotFound();
+
+            var likeCount = await _context.PostLikes.CountAsync(l => l.PostId == id);
+            var reactionCount = await _context.PostReactions.CountAsync(r => r.PostId == id);
+            var commentCount = await _context.PostComments.CountAsync(c => c.PostId == id);
+
+            return Ok(new { likeCount, reactionCount, commentCount });
+        }
+
+        // GET: api/posts/{id}/user-reaction
+        [HttpGet("~/api/posts/{id}/user-reaction")]
+        public async Task<ActionResult<object>> GetUserReaction(long id)
+        {
+            var accountId = GetCurrentAccountId();
+
+            var exists = await _context.CommunityPosts.AnyAsync(p => p.PostId == id);
+            if (!exists)
+                return NotFound();
+
+            if (!accountId.HasValue)
+            {
+                return Ok(new { isLiked = false, userReaction = (string?)null });
+            }
+
+            var isLiked = await _context.PostLikes
+                .AnyAsync(l => l.PostId == id && l.AccountId == accountId.Value);
+
+            var userReaction = await _context.PostReactions
+                .Where(r => r.PostId == id && r.AccountId == accountId.Value)
+                .Select(r => r.ReactionType.ToString())
+                .FirstOrDefaultAsync();
+
+            return Ok(new { isLiked, userReaction });
+        }
+
+        // POST: api/posts/{id}/bookmark
+        [HttpPost("~/api/posts/{id}/bookmark")]
+        [Authorize]
+        public async Task<ActionResult> ToggleBookmark(long id)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var post = await _context.CommunityPosts.FirstOrDefaultAsync(p => p.PostId == id);
+            if (post == null)
+                return NotFound();
+
+            var existing = await _context.PostBookmarks
+                .FirstOrDefaultAsync(b => b.PostId == id && b.AccountId == accountId.Value);
+
+            var isBookmarked = false;
+            if (existing != null)
+            {
+                _context.PostBookmarks.Remove(existing);
+            }
+            else
+            {
+                _context.PostBookmarks.Add(new PostBookmark
+                {
+                    PostId = id,
+                    AccountId = accountId.Value,
+                    CreatedAt = DateTime.UtcNow
+                });
+                isBookmarked = true;
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { isBookmarked });
+        }
+
+        // GET: api/posts/{id}/bookmark/status
+        [HttpGet("~/api/posts/{id}/bookmark/status")]
+        [Authorize]
+        public async Task<ActionResult> GetBookmarkStatus(long id)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var exists = await _context.PostBookmarks
+                .AnyAsync(b => b.PostId == id && b.AccountId == accountId.Value);
+            return Ok(new { isBookmarked = exists });
+        }
+
+        // GET: api/posts/bookmarked
+        [HttpGet("~/api/posts/bookmarked")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<object>>> GetBookmarkedPosts(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var bookmarkedPostIds = await _context.PostBookmarks
+                .Where(b => b.AccountId == accountId.Value)
+                .OrderByDescending(b => b.CreatedAt)
+                .Select(b => b.PostId)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var posts = await _context.CommunityPosts
+                .Include(p => p.Author)
+                .Include(p => p.Community)
+                .Include(p => p.Likes)
+                .Include(p => p.Categories)
+                .Include(p => p.Poll)
+                    .ThenInclude(poll => poll.Votes)
+                .Where(p => bookmarkedPostIds.Contains(p.PostId))
+                .ToListAsync();
+
+            var reactions = await _context.PostReactions
+                .Where(r => bookmarkedPostIds.Contains(r.PostId))
+                .ToListAsync();
+
+            var result = posts.Select(p => MapToPostResponse(p, accountId, reactions));
+            return Ok(result);
+        }
+
+        // POST: api/posts/{id}/share
+        [HttpPost("~/api/posts/{id}/share")]
+        [Authorize]
+        public async Task<ActionResult> SharePost(long id, [FromBody] SharePostDto dto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var original = await _context.CommunityPosts
+                .Include(p => p.Community)
+                .FirstOrDefaultAsync(p => p.PostId == id);
+
+            if (original == null)
+                return NotFound("Post not found");
+
+            var targetCommunity = await _context.Communities
+                .Include(c => c.Members)
+                .FirstOrDefaultAsync(c => c.CommunityId == dto.TargetCommunityId);
+
+            if (targetCommunity == null)
+                return NotFound("Target community not found");
+
+            if (!targetCommunity.Members.Any(m => m.AccountId == accountId.Value))
+                return Forbid("Must be a member to share into this community");
+
+            var contentPrefix = string.IsNullOrWhiteSpace(dto.Message) ? string.Empty : dto.Message.Trim() + "\n\n";
+            var newPost = new CommunityPost
+            {
+                CommunityId = targetCommunity.CommunityId,
+                AuthorId = accountId.Value,
+                Content = contentPrefix + original.Content,
+                ImageUrl = original.ImageUrl,
+                PostType = original.PostType,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.CommunityPosts.Add(newPost);
+            targetCommunity.PostCount++;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { postId = newPost.PostId });
+        }
+
+        // PUT: api/posts/{id}
+        [HttpPut("~/api/posts/{id}")]
+        [Authorize]
+        public async Task<ActionResult> UpdatePost(long id, [FromBody] UpdatePostDto dto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var post = await _context.CommunityPosts.FindAsync(id);
+            if (post == null)
+                return NotFound();
+
+            if (post.AuthorId != accountId.Value)
+                return Forbid();
+
+            post.Content = dto.Content ?? post.Content;
+            post.ImageUrl = dto.ImageUrl;
+            post.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // DELETE: api/posts/{id}
+        [HttpDelete("~/api/posts/{id}")]
+        [Authorize]
+        public async Task<ActionResult> DeletePost(long id)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var post = await _context.CommunityPosts
+                .Include(p => p.Community)
+                .FirstOrDefaultAsync(p => p.PostId == id);
+            if (post == null)
+                return NotFound();
+
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            var isAdmin = account?.Type == AccountType.Admin;
+            if (post.AuthorId != accountId.Value && !isAdmin)
+                return Forbid();
+
+            if (post.Community != null && post.Community.PostCount > 0)
+            {
+                post.Community.PostCount--;
+            }
+
+            _context.CommunityPosts.Remove(post);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // POST: api/posts/{id}/report
+        [HttpPost("~/api/posts/{id}/report")]
+        [Authorize]
+        public async Task<ActionResult> ReportPost(long id, [FromBody] ReportPostDto dto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (!accountId.HasValue)
+                return Unauthorized();
+
+            var exists = await _context.CommunityPosts.AnyAsync(p => p.PostId == id);
+            if (!exists)
+                return NotFound();
+
+            // Placeholder implementation: accept report and return success
+            return Ok(new { message = "Report received" });
+        }
+
         protected long? GetCurrentAccountId()
         {
             var userIdClaim = User.FindFirst("uid");
@@ -85,6 +327,12 @@ namespace PropertyFlipperAPI.Controllers
                     .ThenInclude(poll => poll.Votes)
                 .Where(p => p.CommunityId == communityId)
                 .ToListAsync();
+            
+            // Load reactions separately
+            var postIds = posts.Select(p => p.PostId).ToList();
+            var reactions = await _context.PostReactions
+                .Where(r => postIds.Contains(r.PostId))
+                .ToListAsync();
 
             // Update trending scores
             foreach (var post in posts)
@@ -110,7 +358,7 @@ namespace PropertyFlipperAPI.Controllers
 
             var paginatedPosts = sortedPosts.Skip((page - 1) * pageSize).Take(pageSize);
 
-            var result = paginatedPosts.Select(p => MapToPostResponse(p, accountId));
+            var result = paginatedPosts.Select(p => MapToPostResponse(p, accountId, reactions));
             return Ok(result);
         }
 
@@ -149,6 +397,12 @@ namespace PropertyFlipperAPI.Controllers
                     .ThenInclude(poll => poll.Votes)
                 .Where(p => allCommunityIds.Contains(p.CommunityId))
                 .ToListAsync();
+            
+            // Load reactions separately
+            var postIds = posts.Select(p => p.PostId).ToList();
+            var reactions = await _context.PostReactions
+                .Where(r => postIds.Contains(r.PostId))
+                .ToListAsync();
 
             // Update trending scores for feed
             foreach (var post in posts)
@@ -173,7 +427,7 @@ namespace PropertyFlipperAPI.Controllers
 
             var paginatedPosts = sortedPosts.Skip((page - 1) * pageSize).Take(pageSize);
 
-            var result = paginatedPosts.Select(p => MapToPostResponse(p, accountId));
+            var result = paginatedPosts.Select(p => MapToPostResponse(p, accountId, reactions));
             return Ok(result);
         }
 
@@ -191,11 +445,16 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(p => p.Poll)
                     .ThenInclude(poll => poll.Votes)
                 .FirstOrDefaultAsync(p => p.PostId == id);
+            
+            // Load reactions separately
+            var reactions = await _context.PostReactions
+                .Where(r => r.PostId == id)
+                .ToListAsync();
 
             if (post == null)
                 return NotFound();
 
-            return Ok(MapToPostResponse(post, accountId));
+            return Ok(MapToPostResponse(post, accountId, reactions));
         }
 
         // POST: api/communities/{communityId}/posts
@@ -224,6 +483,7 @@ namespace PropertyFlipperAPI.Controllers
             request.TryGetValue("imageUrl", out var imageUrlObj);
             request.TryGetValue("postType", out var postTypeObj);
             request.TryGetValue("categories", out var categoriesObj);
+            request.TryGetValue("poll", out var pollObj);
 
             var post = new CommunityPost
             {
@@ -252,6 +512,37 @@ namespace PropertyFlipperAPI.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // Create poll if provided and postType == Poll
+            if (post.PostType == PostType.Poll && pollObj is Dictionary<string, object> pollData)
+            {
+                pollData.TryGetValue("question", out var questionObj);
+                pollData.TryGetValue("options", out var optionsObj);
+                pollData.TryGetValue("endsAt", out var endsAtObj);
+
+                var optionsList = new List<object>();
+                if (optionsObj is IEnumerable<object> optEnum)
+                {
+                    foreach (var o in optEnum)
+                    {
+                        var text = o?.ToString() ?? string.Empty;
+                        optionsList.Add(new { optionText = text, voteCount = 0 });
+                    }
+                }
+
+                var poll = new Poll
+                {
+                    PostId = post.PostId,
+                    Question = questionObj?.ToString() ?? string.Empty,
+                    Options = System.Text.Json.JsonSerializer.Serialize(optionsList),
+                    EndsAt = endsAtObj != null && DateTime.TryParse(endsAtObj.ToString(), out var ends)
+                        ? ends : null,
+                    TotalVotes = 0,
+                    ImageUrl = request.TryGetValue("pollImageUrl", out var pollImageObj) ? pollImageObj?.ToString() : null,
+                };
+                _context.Polls.Add(poll);
+                await _context.SaveChangesAsync();
+            }
 
             // Update author's post count and activity
             var author = await _context.Accounts.FindAsync(accountId.Value);
@@ -333,9 +624,30 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(new { isLiked = existingLike == null });
         }
 
-        private object MapToPostResponse(CommunityPost post, long? accountId)
+        private object MapToPostResponse(CommunityPost post, long? accountId, List<PostReaction>? reactions = null)
         {
-            var isLiked = accountId.HasValue && post.Likes.Any(l => l.AccountId == accountId.Value);
+            // Calculate accurate counts from database
+            var likeCount = post.Likes?.Count ?? 0;
+            
+            // Get reactions for this post
+            var postReactions = reactions?.Where(r => r.PostId == post.PostId).ToList() ?? new List<PostReaction>();
+            var reactionCount = postReactions.Count;
+            
+            // Check if user has liked (PostLikes table)
+            var isLiked = accountId.HasValue && post.Likes?.Any(l => l.AccountId == accountId.Value) == true;
+            
+            // Get user's current reaction (PostReactions table)
+            PostReaction? userReaction = null;
+            string? userReactionType = null;
+            if (accountId.HasValue && postReactions != null)
+            {
+                userReaction = postReactions.FirstOrDefault(r => r.AccountId == accountId.Value);
+                if (userReaction != null)
+                {
+                    userReactionType = userReaction.ReactionType.ToString();
+                }
+            }
+            
             var isUserJoinedCommunity = accountId.HasValue && _context.CommunityMembers
                 .Any(m => m.CommunityId == post.CommunityId && m.AccountId == accountId.Value);
 
@@ -354,7 +666,9 @@ namespace PropertyFlipperAPI.Controllers
                 imageUrl = post.ImageUrl,
                 postType = post.PostType.ToString(),
                 isPinned = post.IsPinned,
-                likeCount = post.LikeCount,
+                likeCount = likeCount, // From PostLikes table
+                reactionCount = reactionCount, // From PostReactions table
+                userReaction = userReactionType, // Current user's reaction type if any
                 commentCount = post.CommentCount,
                 isLiked = isLiked,
                 categories = post.Categories.Select(c => c.CategoryName).ToList(),
@@ -362,6 +676,24 @@ namespace PropertyFlipperAPI.Controllers
             };
 
             return result;
+        }
+
+        public class SharePostDto
+        {
+            public long TargetCommunityId { get; set; }
+            public string? Message { get; set; }
+        }
+
+        public class UpdatePostDto
+        {
+            public string? Content { get; set; }
+            public string? ImageUrl { get; set; }
+        }
+
+        public class ReportPostDto
+        {
+            public string Reason { get; set; } = string.Empty;
+            public string? Details { get; set; }
         }
     }
 }
