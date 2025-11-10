@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'progressive_network_image.dart';
 
 class ActiveMembersCarousel extends StatelessWidget {
   final List<dynamic> members;
@@ -135,21 +136,19 @@ class ActiveMembersCarousel extends StatelessWidget {
                             ],
                           ),
                           child: imageUrl != null && imageUrl.isNotEmpty
-                              ? ClipOval(
-                                  child: Image.network(
-                                    imageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) => Center(
-                                          child: Text(
-                                            firstLetter,
-                                            style: const TextStyle(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
+                              ? ProgressiveNetworkImage(
+                                  imageUrl: imageUrl,
+                                  fit: BoxFit.cover,
+                                  borderRadius: BorderRadius.circular(60),
+                                  placeholder: Center(
+                                    child: Text(
+                                      firstLetter,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
                                 )
                               : Center(

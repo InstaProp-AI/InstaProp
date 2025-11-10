@@ -39,7 +39,7 @@ class ParentPropertyService {
     final response = await ApiClient.getWithQuery(
       '/api/parentproperty',
       queryParams,
-      fromJson: (json) => ParentPropertyListResponse.fromJson(json),
+      (json) => ParentPropertyListResponse.fromJson(json),
     );
 
     if (response.success) {

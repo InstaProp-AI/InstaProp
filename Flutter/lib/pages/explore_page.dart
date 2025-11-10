@@ -7,6 +7,9 @@ import '../models/news_article.dart';
 import '../models/auction.dart';
 import '../models/project_model.dart';
 import '../models/developer_profile.dart';
+import '../models/deal_highlight.dart';
+import '../models/project_story.dart';
+import '../models/investor_milestone.dart';
 import '../services/feed_service.dart';
 import '../services/community_post_service.dart';
 import '../widgets/feed_notification_card.dart';
@@ -16,13 +19,41 @@ import '../widgets/feed_auction_card.dart';
 import '../widgets/feed_project_card.dart';
 import '../widgets/feed_developer_card.dart';
 import '../widgets/feed_member_card.dart';
+import '../widgets/deal_highlight_card.dart';
+import '../widgets/project_story_card.dart';
+import '../widgets/investor_milestone_card.dart';
 import '../widgets/post_card.dart';
 import 'post_details_page.dart';
 import 'auction_details_page.dart';
 import 'community_details_page.dart';
+import 'community_list_page.dart';
+import 'chat_list_page.dart';
+import 'project_details_page.dart';
+import 'news_detail_page.dart';
+
+class ExplorePageController {
+  Future<void> Function()? _refreshCallback;
+
+  Future<void> scrollToTopAndReload() async {
+    final callback = _refreshCallback;
+    if (callback != null) {
+      await callback();
+    }
+  }
+
+  void _attach(Future<void> Function() callback) {
+    _refreshCallback = callback;
+  }
+
+  void _detach() {
+    _refreshCallback = null;
+  }
+}
 
 class ExplorePage extends StatefulWidget {
-  const ExplorePage({super.key});
+  final ExplorePageController? controller;
+
+  const ExplorePage({super.key, this.controller});
 
   @override
   State<ExplorePage> createState() => _ExplorePageState();
@@ -32,6 +63,12 @@ class _ExplorePageState extends State<ExplorePage> {
   final List<FeedItem> _feedItems = [];
   final ScrollController _scrollController = ScrollController();
   final Set<String> _loadedIds = {};
+  static const int _pageSize = 20;
+
+  late final PageController _featuredPageController;
+  late final PageController _storyPageController;
+  int _featuredPageIndex = 0;
+  int _storyPageIndex = 0;
 
   bool _isLoading = false;
   bool _isInitialLoading =
@@ -43,6 +80,9 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   void initState() {
     super.initState();
+    _featuredPageController = PageController(viewportFraction: 0.88);
+    _storyPageController = PageController(viewportFraction: 0.82);
+    widget.controller?._attach(_handleExternalRefresh);
     // Delay initial load to avoid init conflicts
     Future.delayed(Duration.zero, () {
       if (mounted && _feedItems.isEmpty) {
@@ -53,9 +93,383 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   @override
+  void didUpdateWidget(covariant ExplorePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detach();
+      widget.controller?._attach(_handleExternalRefresh);
+    }
+  }
+
+  List<FeedItem> _takeItemsOfType(
+    FeedItemType type,
+    Set<String> consumedIds, {
+    int limit = 3,
+  }) {
+    final selected = <FeedItem>[];
+    for (final item in _feedItems) {
+      if (item.type == type && !consumedIds.contains(item.id)) {
+        selected.add(item);
+        consumedIds.add(item.id);
+        if (selected.length >= limit) break;
+      }
+    }
+    return selected;
+  }
+
+  List<FeedItem> _takeItemsByTypes(
+    Set<FeedItemType> types,
+    Set<String> consumedIds, {
+    int limit = 6,
+  }) {
+    final selected = <FeedItem>[];
+    for (final item in _feedItems) {
+      if (types.contains(item.type) && !consumedIds.contains(item.id)) {
+        selected.add(item);
+        consumedIds.add(item.id);
+        if (selected.length >= limit) break;
+      }
+    }
+    return selected;
+  }
+
+  Future<void> _handleExternalRefresh() async {
+    if (_scrollController.hasClients) {
+      await _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    }
+    await _loadInitialFeed();
+  }
+
+  List<Widget> _buildFeaturedDealsSlivers(List<FeedItem> items) {
+    final highlights = items
+        .map((item) => item.data)
+        .whereType<DealHighlight>()
+        .toList(growable: false);
+    if (highlights.isEmpty) {
+      return const [];
+    }
+
+    return [
+      SliverToBoxAdapter(
+        child: _buildSectionHeader(
+          'Featured Deals',
+          subtitle: 'Hot auctions with serious momentum',
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: SizedBox(
+          height: 320,
+          child: Column(
+            children: [
+              Expanded(
+                child: PageView.builder(
+                  controller: _featuredPageController,
+                  itemCount: highlights.length,
+                  onPageChanged: (index) {
+                    setState(() => _featuredPageIndex = index);
+                  },
+                  itemBuilder: (context, index) {
+                    final highlight = highlights[index];
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? 16 : 8,
+                        right: index == highlights.length - 1 ? 16 : 8,
+                        bottom: 12,
+                      ),
+                      child: DealHighlightCard(
+                        highlight: highlight,
+                        onTap: () => _openHighlight(highlight),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildDotsIndicator(
+                currentIndex: _featuredPageIndex,
+                total: highlights.length,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildProjectStoriesSlivers(List<FeedItem> items) {
+    final stories = items
+        .map((item) => item.data)
+        .whereType<ProjectStory>()
+        .toList(growable: false);
+    if (stories.isEmpty) {
+      return const [];
+    }
+
+    return [
+      SliverToBoxAdapter(
+        child: _buildSectionHeader(
+          'Project Stories',
+          subtitle: 'See how developments are progressing this week',
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: SizedBox(
+          height: 260,
+          child: Column(
+            children: [
+              Expanded(
+                child: PageView.builder(
+                  controller: _storyPageController,
+                  itemCount: stories.length,
+                  onPageChanged: (index) =>
+                      setState(() => _storyPageIndex = index),
+                  itemBuilder: (context, index) {
+                    final story = stories[index];
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? 16 : 12,
+                        right: index == stories.length - 1 ? 16 : 12,
+                        bottom: 12,
+                      ),
+                      child: ProjectStoryCard(
+                        story: story,
+                        onViewProject: () => _openProjectStory(story),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildDotsIndicator(
+                currentIndex: _storyPageIndex,
+                total: stories.length,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildInvestorSpotlightSlivers(List<FeedItem> items) {
+    final milestones = items
+        .map((item) => item.data)
+        .whereType<InvestorMilestone>()
+        .toList(growable: false);
+    if (milestones.isEmpty) {
+      return const [];
+    }
+
+    return [
+      SliverToBoxAdapter(
+        child: _buildSectionHeader(
+          'Investor Spotlight',
+          subtitle: 'Celebrating portfolio wins across the community',
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final milestone = milestones[index];
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == milestones.length - 1 ? 20 : 12,
+                ),
+                child: InvestorMilestoneCard(
+                  milestone: milestone,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Celebrating ${milestone.investorName}\'s achievement!',
+                        ),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+            childCount: milestones.length,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildDiscoverySlivers(List<FeedItem> items) {
+    if (items.isEmpty) {
+      return const [
+        SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ];
+    }
+
+    return [
+      SliverToBoxAdapter(
+        child: _buildSectionHeader(
+          'Endless Discovery',
+          subtitle: 'Keep scrolling for more opportunities',
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final item = items[index];
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == items.length - 1 ? 32 : 16,
+                ),
+                child: RepaintBoundary(
+                  key: ValueKey(item.id),
+                  child: _buildFeedItem(item),
+                ),
+              );
+            },
+            childCount: items.length,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildLoadingSliver() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    String title, {
+    String? subtitle,
+    Widget? trailing,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDotsIndicator({
+    required int currentIndex,
+    required int total,
+  }) {
+    if (total <= 1) return const SizedBox(height: 8);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(total, (index) {
+        final isActive = index == currentIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          height: 6,
+          width: isActive ? 20 : 6,
+          decoration: BoxDecoration(
+            color: isActive
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.primary.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+        );
+      }),
+    );
+  }
+
+  void _openHighlight(DealHighlight highlight) {
+    final placeholderAuction = Auction(
+      auctionId: highlight.auctionId,
+      propertyId: highlight.propertyId,
+      property: null,
+      startPrice: highlight.startPrice,
+      currentPrice: highlight.currentPrice,
+      startAt: highlight.endAt.subtract(const Duration(hours: 2)),
+      duration: 2,
+      bidCount: highlight.bidCount,
+      status: highlight.isEndingSoon ? 'Active' : 'Approved',
+      createdAt: DateTime.now(),
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AuctionDetailsPage(auction: placeholderAuction),
+      ),
+    );
+  }
+
+  void _openProjectStory(ProjectStory story) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProjectDetailsPage(
+          projectId: story.projectId,
+        ),
+      ),
+    );
+  }
+
+  void _openNewsArticle(NewsArticle article) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NewsDetailPage(news: article),
+      ),
+    );
+  }
+
+  @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    widget.controller?._detach();
+    _featuredPageController.dispose();
+    _storyPageController.dispose();
     super.dispose();
   }
 
@@ -95,17 +509,25 @@ class _ExplorePageState extends State<ExplorePage> {
       _isInitialLoading = true; // Set initial loading state
       _feedItems.clear();
       _loadedIds.clear();
-      _currentPage = 1;
+      _currentPage = 0;
       _hasMore = true;
     });
 
-    await _loadFeedBatch();
+    final newItems = await _fetchUniqueFeedItems(page: 1);
 
-    if (mounted) {
-      setState(() {
-        _isInitialLoading = false; // Clear initial loading state
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _isInitialLoading = false; // Clear initial loading state
+      if (newItems.isNotEmpty) {
+        _feedItems.addAll(newItems);
+        _loadedIds.addAll(newItems.map((item) => item.id));
+        _currentPage = 1;
+        _hasMore = true;
+      } else {
+        _hasMore = false;
+      }
+    });
   }
 
   Future<void> _loadMoreFeed() async {
@@ -123,9 +545,22 @@ class _ExplorePageState extends State<ExplorePage> {
     });
 
     try {
-      _currentPage++;
-      await _loadFeedBatch();
-      // setState is called inside _loadFeedBatch, so we don't need it here
+      final nextPage = _currentPage + 1;
+      final newItems = await _fetchUniqueFeedItems(page: nextPage);
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        if (newItems.isNotEmpty) {
+          _feedItems.addAll(newItems);
+          _loadedIds.addAll(newItems.map((item) => item.id));
+          _currentPage = nextPage;
+          _hasMore = true;
+        } else {
+          _hasMore = false;
+        }
+      });
     } catch (e) {
       print('Error in _loadMoreFeed: $e');
       if (mounted) {
@@ -134,14 +569,14 @@ class _ExplorePageState extends State<ExplorePage> {
     }
   }
 
-  Future<void> _loadFeedBatch() async {
+  Future<List<FeedItem>> _fetchUniqueFeedItems({required int page}) async {
     try {
-      print('🔄 Loading feed batch page $_currentPage');
+      print('🔄 Loading feed batch page $page');
 
       // Load mixed feed from backend (now handles randomization server-side!)
       final newItems = await FeedService.getMixedFeed(
-        page: _currentPage,
-        pageSize: 20,
+        page: page,
+        pageSize: _pageSize,
       );
 
       print('📦 Received ${newItems.length} items from backend feed service');
@@ -157,34 +592,32 @@ class _ExplorePageState extends State<ExplorePage> {
           print('❌ Duplicate detected: ${item.id}');
           return false;
         }
-        _loadedIds.add(item.id);
+        return true;
+      }).toList();
+
+      // Guard against duplicate IDs within same batch
+      final seenIds = <String>{};
+      final dedupedItems = uniqueItems.where((item) {
+        if (seenIds.contains(item.id)) {
+          print('❌ Duplicate detected: ${item.id}');
+          return false;
+        }
+        seenIds.add(item.id);
         print('✅ New item: ${item.id}');
         return true;
       }).toList();
 
-      print('✅ Adding ${uniqueItems.length} unique items to feed');
-
-      // Always add items, even if empty (to clear loading state)
-      if (mounted) {
-        setState(() {
-          if (uniqueItems.isNotEmpty) {
-            _feedItems.addAll(uniqueItems);
-          }
-          _isLoading = false; // Clear loading state
-          _hasMore = true; // Never stop scrolling!
-        });
-
-        print('🎯 Feed items now: ${_feedItems.length}');
-      }
+      print('✅ ${dedupedItems.length} unique items ready to add');
+      return dedupedItems;
     } catch (e, stackTrace) {
       print('❌ Error loading feed: $e');
       print('Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _hasMore = true; // Keep trying even on error
         });
       }
+      return [];
     }
   }
 
@@ -196,14 +629,39 @@ class _ExplorePageState extends State<ExplorePage> {
         title: const Text('Explore'),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.groups_2_outlined),
+            tooltip: 'Community',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CommunityListPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Chats',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ChatListPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
-    // Only show full-screen loading spinner on initial load
-    // During pagination, keep content visible and show small indicator at bottom
     if (_isInitialLoading && _feedItems.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -224,74 +682,64 @@ class _ExplorePageState extends State<ExplorePage> {
       );
     }
 
-    return ListView.builder(
-      key: const ValueKey(
-        'infinite_feed_list',
-      ), // Stable key for efficient rebuilds
+    final consumedIds = <String>{};
+
+    final featuredDeals =
+        _takeItemsOfType(FeedItemType.dealHighlight, consumedIds, limit: 5);
+    final projectStories =
+        _takeItemsOfType(FeedItemType.projectStory, consumedIds, limit: 6);
+    final investorSpotlight =
+        _takeItemsOfType(FeedItemType.investorMilestone, consumedIds, limit: 4);
+    final discoveryItems = _feedItems
+        .where((item) => !consumedIds.contains(item.id))
+        .toList(growable: false);
+
+    final slivers = <Widget>[];
+
+    if (featuredDeals.isNotEmpty) {
+      slivers.addAll(_buildFeaturedDealsSlivers(featuredDeals));
+    }
+
+    if (projectStories.isNotEmpty) {
+      slivers.addAll(_buildProjectStoriesSlivers(projectStories));
+    }
+
+    if (investorSpotlight.isNotEmpty) {
+      slivers.addAll(_buildInvestorSpotlightSlivers(investorSpotlight));
+    }
+
+    slivers.addAll(_buildDiscoverySlivers(discoveryItems));
+
+    if (_isLoading && _hasMore) {
+      slivers.add(_buildLoadingSliver());
+    }
+
+    return CustomScrollView(
+      key: const ValueKey('explore_scroll_view'),
       controller: _scrollController,
-      itemCount: _feedItems.isEmpty
-          ? 0
-          : (_feedItems.length + 1), // +1 for loading indicator
-      itemBuilder: (context, index) {
-        // Show loading indicator only when actually loading
-        if (index >= _feedItems.length && _hasMore) {
-          if (!_isLoading) {
-            return const SizedBox.shrink(); // Don't show anything when not loading
-          }
-
-          return const Padding(
-            key: ValueKey('loading_indicator'),
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          );
-        }
-
-        // Never show "end" message - infinite scrolling!
-
-        try {
-          final item = _feedItems[index];
-          // Wrap items in RepaintBoundary with unique keys to prevent layout errors
-          return RepaintBoundary(
-            key: ValueKey(item.id),
-            child: _buildFeedItem(item),
-          );
-        } catch (e) {
-          print('❌ Error building item $index: $e');
-          return Card(
-            key: ValueKey('error_$index'),
-            margin: const EdgeInsets.all(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Error: $e'),
-            ),
-          );
-        }
-      },
+      slivers: slivers,
     );
   }
 
   Widget _buildFeedItem(FeedItem item) {
     try {
+      Widget? card;
       switch (item.type) {
         case FeedItemType.post:
-          return _buildPostItem(item.data as CommunityPost);
+          card = _buildPostItem(item.data as CommunityPost);
+          break;
 
         case FeedItemType.notification:
           final notif = item.data as FeedNotification;
-          return FeedNotificationCard(
+          card = FeedNotificationCard(
             notification: notif,
             onAction: () => _handleNotificationAction(notif),
           );
+          break;
 
         case FeedItemType.community:
           final community = item.data as Community;
-          return FeedCommunityCard(
+          card = FeedCommunityCard(
             community: community,
             onTap: () {
               Navigator.push(
@@ -303,25 +751,19 @@ class _ExplorePageState extends State<ExplorePage> {
               );
             },
           );
+          break;
 
         case FeedItemType.news:
           final article = item.data as NewsArticle;
-          return FeedNewsCard(
+          card = FeedNewsCard(
             article: article,
-            onTap: () {
-              // For now just show a snackbar, can add URL launcher later
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Loading: ${article.title}'),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
+            onTap: () => _openNewsArticle(article),
           );
+          break;
 
         case FeedItemType.auction:
           final auction = item.data as Auction;
-          return FeedAuctionCard(
+          card = FeedAuctionCard(
             auction: auction,
             onTap: () {
               Navigator.push(
@@ -332,16 +774,56 @@ class _ExplorePageState extends State<ExplorePage> {
               );
             },
           );
+          break;
 
         case FeedItemType.project:
-          return FeedProjectCard(project: item.data as ProjectModel);
+          card = FeedProjectCard(project: item.data as ProjectModel);
+          break;
 
         case FeedItemType.developer:
-          return FeedDeveloperCard(developer: item.data as FeaturedDeveloper);
+          card = FeedDeveloperCard(developer: item.data as FeaturedDeveloper);
+          break;
 
         case FeedItemType.member:
-          return FeedMemberCard(member: item.data as Map<String, dynamic>);
+          card = FeedMemberCard(member: item.data as Map<String, dynamic>);
+          break;
+
+        case FeedItemType.dealHighlight:
+          final highlight = item.data as DealHighlight;
+          card = DealHighlightCard(
+            highlight: highlight,
+            onTap: () => _openHighlight(highlight),
+          );
+          break;
+
+        case FeedItemType.projectStory:
+          final story = item.data as ProjectStory;
+          card = ProjectStoryCard(
+            story: story,
+            onViewProject: () => _openProjectStory(story),
+          );
+          break;
+
+        case FeedItemType.investorMilestone:
+          final milestone = item.data as InvestorMilestone;
+          card = InvestorMilestoneCard(
+            milestone: milestone,
+            onTap: () {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Celebrating ${milestone.investorName}\'s achievement!',
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          );
+          break;
       }
+
+      return card ?? const SizedBox.shrink();
     } catch (e) {
       print('❌ Error in _buildFeedItem: ${item.type}');
       print('   Error: $e');

@@ -74,7 +74,7 @@ class GoldPriceService {
     final response = await ApiClient.getWithQuery(
       '/api/goldprice/compare-property',
       queryParams,
-      fromJson: (json) => GoldPropertyComparison.fromJson(json),
+      (json) => GoldPropertyComparison.fromJson(json),
     );
 
     if (response.success) {

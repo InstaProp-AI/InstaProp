@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/analytics_service.dart';
-import '../models/gold_price.dart';
+import 'auctions_page.dart';
+import 'property_search_page.dart';
 
 class MarketAnalysisPage extends StatefulWidget {
   const MarketAnalysisPage({super.key});
@@ -58,7 +59,63 @@ class _MarketAnalysisPageState extends State<MarketAnalysisPage> {
 
   @override
   Widget build(BuildContext context) {
+    Widget content;
+
+    if (_isLoading) {
+      content = const Center(child: CircularProgressIndicator());
+    } else if (_error != null) {
+      content = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Error: $_error'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadMarketData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      content = RefreshIndicator(
+        onRefresh: _loadMarketData,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Market Overview
+              _buildMarketOverview(),
+              const SizedBox(height: 24),
+
+              // Price Trends Chart
+              _buildPriceTrendsChart(),
+              const SizedBox(height: 24),
+
+              // Gold vs Property Comparison
+              _buildGoldComparison(),
+              const SizedBox(height: 24),
+
+              // Developer Rankings
+              _buildDeveloperRankings(),
+              const SizedBox(height: 24),
+
+              // Best Investment Opportunities
+              _buildBestInvestments(),
+              const SizedBox(height: 120),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
         title: const Text('Market Analysis'),
         backgroundColor: Colors.transparent,
@@ -71,53 +128,65 @@ class _MarketAnalysisPageState extends State<MarketAnalysisPage> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text('Error: $_error'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _loadMarketData,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadMarketData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Market Overview
-                    _buildMarketOverview(),
-                    const SizedBox(height: 24),
+      body: Stack(
+        children: [
+          Positioned.fill(child: content),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16 + bottomPadding + 56, // leave room above bottom nav
+            child: _buildBottomActions(),
+          ),
+        ],
+      ),
+    );
+  }
 
-                    // Price Trends Chart
-                    _buildPriceTrendsChart(),
-                    const SizedBox(height: 24),
-
-                    // Gold vs Property Comparison
-                    _buildGoldComparison(),
-                    const SizedBox(height: 24),
-
-                    // Developer Rankings
-                    _buildDeveloperRankings(),
-                    const SizedBox(height: 24),
-
-                    // Best Investment Opportunities
-                    _buildBestInvestments(),
-                  ],
+  Widget _buildBottomActions() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AuctionsPage(),
                 ),
+              );
+            },
+            icon: const Icon(Icons.gavel_rounded),
+            label: const Text('Auctions'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PropertySearchPage(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.home_work_outlined),
+            label: const Text('Properties'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

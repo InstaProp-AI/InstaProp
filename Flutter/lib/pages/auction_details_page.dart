@@ -15,7 +15,6 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
-import 'property_comparison_page.dart';
 import '../widgets/reward_popup.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
@@ -499,29 +498,6 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ),
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (_currentAuction?.property != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PropertyComparisonPage(
-                  preSelectedProperties: [_currentAuction!.property!],
-                ),
-              ),
-            );
-          }
-        },
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.compare_arrows, color: AppColors.surface),
-        label: const Text(
-          'Compare',
-          style: TextStyle(
-            color: AppColors.surface,
-            fontWeight: FontWeight.bold,
           ),
         ),
       ),

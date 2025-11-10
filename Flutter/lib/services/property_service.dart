@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'api_client.dart';
+import 'price_history_service.dart';
 import '../models/property.dart';
 import '../models/child_property.dart';
 import '../models/parent_property.dart';
@@ -406,6 +407,15 @@ class PropertyService {
     );
   }
 
+  static Future<ApiResponse<List<ChildProperty>>> getParentChildProperties(
+    int parentPropertyId,
+  ) async {
+    return await ApiClient.getList(
+      '/api/parentproperty/$parentPropertyId/children',
+      ChildProperty.fromJson,
+    );
+  }
+
   // Find or create parent property based on characteristics
   static Future<ApiResponse<Map<String, dynamic>>> findOrCreateParentProperty({
     required String projectName,
@@ -599,6 +609,78 @@ class PropertyService {
     );
   }
 
+  static Future<ApiResponse<PropertyMarketBundle>> getPropertyMarketBundle(
+    int childPropertyId,
+  ) async {
+    try {
+      final childResponse = await getChildProperty(childPropertyId);
+      if (!childResponse.success || childResponse.data == null) {
+        return ApiResponse<PropertyMarketBundle>(
+          success: false,
+          statusCode: childResponse.statusCode,
+          error: childResponse.error ?? 'Property not found',
+        );
+      }
+
+      final child = childResponse.data!;
+      ParentProperty? parent;
+      List<ChildProperty> siblings = [];
+      PropertyPriceHistoryResponse? priceHistory;
+      PropertyPriceStats? priceStats;
+
+      if (child.parentPropertyId != 0) {
+        final parentResponse = await getParentProperty(child.parentPropertyId);
+        if (parentResponse.success && parentResponse.data != null) {
+          parent = parentResponse.data;
+        }
+
+        final siblingsResponse =
+            await getParentChildProperties(child.parentPropertyId);
+        if (siblingsResponse.success && siblingsResponse.data != null) {
+          siblings = siblingsResponse.data!
+              .where((sibling) => sibling.propertyId != child.propertyId)
+              .toList();
+        }
+
+        try {
+          priceHistory = await PriceHistoryService
+              .getParentPropertyPriceHistory(child.parentPropertyId);
+        } catch (_) {
+          priceHistory = null;
+        }
+
+        try {
+          priceStats = await PriceHistoryService
+              .getParentPropertyPriceStats(child.parentPropertyId);
+        } catch (_) {
+          priceStats = null;
+        }
+      }
+
+      final analytics = (priceHistory != null || priceStats != null)
+          ? PropertyMarketAnalytics(
+              priceHistory: priceHistory,
+              priceStats: priceStats,
+            )
+          : null;
+
+      final bundle = PropertyMarketBundle(
+        property: child,
+        parent: parent,
+        siblings: siblings,
+        marketAnalytics: analytics,
+      );
+
+      return ApiResponse<PropertyMarketBundle>.success(bundle);
+    } catch (e) {
+      return ApiResponse<PropertyMarketBundle>(
+        success: false,
+        statusCode: 500,
+        error: 'Failed to load property market data: $e',
+      );
+    }
+  }
+
   // ===== BACKWARD COMPATIBILITY METHODS =====
 
   // Get properties as ChildProperty and convert to Property for backward compatibility
@@ -657,4 +739,35 @@ class PropertyService {
       statusCode: childPropertyResponse.statusCode,
     );
   }
+}
+
+class PropertyMarketBundle {
+  final ChildProperty property;
+  final ParentProperty? parent;
+  final List<ChildProperty> siblings;
+  final PropertyMarketAnalytics? marketAnalytics;
+
+  const PropertyMarketBundle({
+    required this.property,
+    required this.parent,
+    required this.siblings,
+    required this.marketAnalytics,
+  });
+
+  bool get hasParent => parent != null;
+  bool get hasSiblings => siblings.isNotEmpty;
+  bool get hasAnalytics => marketAnalytics?.hasData ?? false;
+}
+
+class PropertyMarketAnalytics {
+  final PropertyPriceHistoryResponse? priceHistory;
+  final PropertyPriceStats? priceStats;
+
+  const PropertyMarketAnalytics({
+    this.priceHistory,
+    this.priceStats,
+  });
+
+  bool get hasData =>
+      (priceHistory?.priceHistory.isNotEmpty ?? false) || priceStats != null;
 }

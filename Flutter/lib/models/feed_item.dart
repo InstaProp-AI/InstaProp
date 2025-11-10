@@ -7,6 +7,9 @@ enum FeedItemType {
   project,
   developer,
   member,
+  dealHighlight,
+  projectStory,
+  investorMilestone,
 }
 
 class FeedItem {

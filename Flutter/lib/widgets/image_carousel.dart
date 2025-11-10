@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'progressive_network_image.dart';
 
 class ImageCarousel extends StatefulWidget {
   final List<String> images;
@@ -67,31 +68,12 @@ class _ImageCarouselState extends State<ImageCarousel> {
               itemBuilder: (context, index) {
                 return GestureDetector(
                   onTap: widget.onTap,
-                  child: Image.network(
-                    widget.images[index],
+                  child: ProgressiveNetworkImage(
+                    imageUrl: widget.images[index],
                     fit: widget.fit,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: AppColors.border,
-                        child: const Center(
-                          child: Icon(Icons.broken_image, size: 48),
-                        ),
-                      );
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: AppColors.border,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        ),
-                      );
-                    },
+                    height: widget.height,
+                    placeholderColor: AppColors.border,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 );
               },

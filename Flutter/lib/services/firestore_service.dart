@@ -1,11 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../core/firebase_status.dart';
 import '../models/auction.dart';
 import '../models/bid.dart';
 import '../models/notification.dart';
 
 /// Firestore Service for real-time data synchronization
 class FirestoreService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static FirebaseFirestore? _firestoreOrNull() {
+    if (!FirebaseStatus.isReady) {
+      return null;
+    }
+
+    try {
+      return FirebaseFirestore.instance;
+    } catch (e) {
+      print('Firestore instance unavailable: $e');
+      return null;
+    }
+  }
 
   // ============================================
   // AUCTION LISTENERS
@@ -14,7 +27,12 @@ class FirestoreService {
   /// Listen to a specific auction in real-time
   /// Returns a stream that emits auction updates
   static Stream<Auction?> listenToAuction(int auctionId) {
-    return _firestore
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<Auction?>.value(null);
+    }
+
+    return firestore
         .collection('auctions')
         .doc(auctionId.toString())
         .snapshots()
@@ -45,7 +63,12 @@ class FirestoreService {
   /// Listen to all auctions (for home page)
   /// Returns a stream that emits list of auctions
   static Stream<List<Auction>> listenToAllAuctions() {
-    return _firestore.collection('auctions').snapshots().map((snapshot) {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<List<Auction>>.value([]);
+    }
+
+    return firestore.collection('auctions').snapshots().map((snapshot) {
       return snapshot.docs
           .map((doc) {
             try {
@@ -62,7 +85,12 @@ class FirestoreService {
 
   /// Listen to active auctions only
   static Stream<List<Auction>> listenToActiveAuctions() {
-    return _firestore
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<List<Auction>>.value([]);
+    }
+
+    return firestore
         .collection('auctions')
         .where('status', isEqualTo: 'Active')
         .snapshots()
@@ -88,7 +116,12 @@ class FirestoreService {
   /// Listen to bids for a specific auction
   /// Returns a stream that emits list of bids
   static Stream<List<Bid>> listenToAuctionBids(int auctionId) {
-    return _firestore
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<List<Bid>>.value([]);
+    }
+
+    return firestore
         .collection('auctions')
         .doc(auctionId.toString())
         .collection('bids')
@@ -116,8 +149,13 @@ class FirestoreService {
   /// Listen to notifications for a specific user
   /// Returns a stream that emits list of notifications
   static Stream<List<AppNotification>> listenToUserNotifications(int userId) {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<List<AppNotification>>.value([]);
+    }
+
     print('🔥 Setting up Firestore listener for user $userId notifications');
-    return _firestore
+    return firestore
         .collection('users')
         .doc(userId.toString())
         .collection('notifications')
@@ -152,7 +190,12 @@ class FirestoreService {
 
   /// Listen to unread notifications count
   static Stream<int> listenToUnreadNotificationCount(int userId) {
-    return _firestore
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<int>.value(0);
+    }
+
+    return firestore
         .collection('users')
         .doc(userId.toString())
         .collection('notifications')
@@ -171,8 +214,14 @@ class FirestoreService {
     int userId,
     int notificationId,
   ) async {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      print('Firestore unavailable, cannot mark notification as read.');
+      return;
+    }
+
     try {
-      await _firestore
+      await firestore
           .collection('users')
           .doc(userId.toString())
           .collection('notifications')
@@ -190,8 +239,13 @@ class FirestoreService {
 
   /// Get a single auction (one-time read, not real-time)
   static Future<Auction?> getAuction(int auctionId) async {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return null;
+    }
+
     try {
-      final doc = await _firestore
+      final doc = await firestore
           .collection('auctions')
           .doc(auctionId.toString())
           .get();
@@ -209,8 +263,13 @@ class FirestoreService {
 
   /// Check if Firestore is available
   static Future<bool> isAvailable() async {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return false;
+    }
+
     try {
-      await _firestore.collection('_test').limit(1).get();
+      await firestore.collection('_test').limit(1).get();
       return true;
     } catch (e) {
       print('Firestore is not available: $e');

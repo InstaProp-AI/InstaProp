@@ -9,6 +9,7 @@ import '../widgets/developer_comparison_card.dart';
 import '../widgets/property_suggestion_card.dart';
 import '../widgets/notification_message_card.dart';
 import '../pages/auction_details_page.dart';
+import 'progressive_network_image.dart';
 import 'dart:async';
 
 /// Messenger-style floating chat window
@@ -728,18 +729,16 @@ class _FloatingChatWindowState extends State<FloatingChatWindow>
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
-                child: Image.network(
-                  property.imageUrl,
+                child: ProgressiveNetworkImage(
+                  imageUrl: property.imageUrl,
                   height: 200,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 200,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.home, size: 64),
-                    );
-                  },
+                  placeholder: Container(
+                    height: 200,
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.home, size: 64),
+                  ),
                 ),
               ),
             Padding(

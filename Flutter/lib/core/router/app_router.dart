@@ -34,7 +34,7 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const AuthPage());
 
       case profile:
-        return MaterialPageRoute(builder: (_) => const ProfilePage());
+        return MaterialPageRoute(builder: (_) => const SettingsPage());
 
       case valuate:
         return MaterialPageRoute(builder: (_) => const ValuatePage());

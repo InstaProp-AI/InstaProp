@@ -6,22 +6,15 @@ import '../providers/app_state.dart';
 import '../models/auction.dart';
 import '../models/project_model.dart';
 import '../models/developer_profile.dart';
-import '../services/project_service.dart';
-import '../services/developer_service.dart';
 import '../services/api_client.dart';
 import '../services/news_service.dart';
 import '../models/news_article.dart';
 import '../widgets/property_image_carousel.dart';
-import 'profile_page.dart';
-import 'featured_auctions_page.dart';
 import 'auction_details_page.dart';
 import 'properties_management_page.dart';
-import 'projects_list_page.dart';
 import 'project_details_page.dart';
 import 'developer_profile_page.dart';
-import 'developers_list_page.dart';
-import 'chat_list_page.dart';
-import 'market_hub_page.dart';
+import 'market_analysis_page.dart';
 import 'community_feed_page.dart';
 import 'explore_page.dart';
 
@@ -34,7 +27,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  int _selectedIndex = 2; // Start on Explore tab
+  int _selectedIndex = 1; // Start on Explore tab
+  final ExplorePageController _exploreController = ExplorePageController();
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -119,17 +113,13 @@ class _HomePageState extends State<HomePage>
       builder: (context, appState, child) {
         switch (_selectedIndex) {
           case 0:
-            return const MarketHubPage();
+            return const MarketAnalysisPage();
           case 1:
-            return _buildValuationPage(context, appState);
+            return ExplorePage(controller: _exploreController);
           case 2:
-            return const ExplorePage();
-          case 3:
-            return const ChatListPage();
-          case 4:
             return _buildProfilePage(context, appState);
           default:
-            return const ExplorePage();
+            return ExplorePage(controller: _exploreController);
         }
       },
     );
@@ -144,9 +134,22 @@ class _HomePageState extends State<HomePage>
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: (index) {
+          if (index == _selectedIndex) {
+            if (index == 1) {
+              _exploreController.scrollToTopAndReload();
+            }
+            return;
+          }
+
           setState(() {
             _selectedIndex = index;
           });
+
+          if (index == 1) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _exploreController.scrollToTopAndReload();
+            });
+          }
         },
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.secondary,
@@ -168,19 +171,11 @@ class _HomePageState extends State<HomePage>
             label: 'Market',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_rounded),
-            label: 'Portfolio',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.explore_rounded),
             label: 'Explore',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.chat_rounded),
-            label: 'Chats',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
+            icon: Icon(Icons.analytics_rounded),
             label: 'Profile',
           ),
         ],
@@ -192,12 +187,8 @@ class _HomePageState extends State<HomePage>
     await appState.loadAuctions();
   }
 
-  Widget _buildValuationPage(BuildContext context, AppState appState) {
-    return const PropertiesManagementPage();
-  }
-
   Widget _buildProfilePage(BuildContext context, AppState appState) {
-    return const ProfilePage();
+    return const PropertiesManagementPage();
   }
 
   // MINIMAL REDESIGNED WIDGETS

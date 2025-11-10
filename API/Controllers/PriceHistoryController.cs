@@ -44,6 +44,60 @@ namespace PropertyFlipperAPI.Controllers
             }
         }
 
+        [HttpGet("parent/{parentPropertyId}")]
+        public async Task<IActionResult> GetParentPriceHistoryBundle(int parentPropertyId)
+        {
+            var history = await _context.PropertyPriceHistories
+                .Where(ph => ph.ParentPropertyId == parentPropertyId)
+                .OrderBy(ph => ph.PriceDate)
+                .ToListAsync();
+
+            var statistics = BuildPriceStatistics(history);
+
+            var payload = new
+            {
+                ParentPropertyId = parentPropertyId,
+                PriceHistory = history.Select(ph => new
+                {
+                    ph.PriceHistoryId,
+                    ph.ParentPropertyId,
+                    ph.Price,
+                    PriceDate = ph.PriceDate.ToString("o"),
+                    ph.Source,
+                    ph.AuctionId,
+                    ph.ChildPropertyId,
+                    CreatedAt = ph.CreatedAt.ToString("o")
+                }),
+                Statistics = statistics
+            };
+
+            return Ok(payload);
+        }
+
+        [HttpGet("parent/{parentPropertyId}/stats")]
+        public async Task<IActionResult> GetParentPriceStatistics(int parentPropertyId)
+        {
+            var history = await _context.PropertyPriceHistories
+                .Where(ph => ph.ParentPropertyId == parentPropertyId)
+                .OrderBy(ph => ph.PriceDate)
+                .ToListAsync();
+
+            var statistics = BuildPriceStatistics(history);
+            var distribution = BuildPriceDistribution(history);
+            var timeRange = BuildTimeRange(history);
+
+            var payload = new
+            {
+                ParentPropertyId = parentPropertyId,
+                Message = history.Any() ? null : "No price history available",
+                Statistics = statistics,
+                PriceDistribution = distribution,
+                TimeRange = timeRange
+            };
+
+            return Ok(payload);
+        }
+
         // GET: api/pricehistory/child/{childPropertyId}
         [HttpGet("child/{childPropertyId}")]
         public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForChildProperty(int childPropertyId)
@@ -260,6 +314,103 @@ namespace PropertyFlipperAPI.Controllers
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
+        }
+
+        private static object BuildPriceStatistics(List<PropertyPriceHistory> history)
+        {
+            if (!history.Any())
+            {
+                return new
+                {
+                    AveragePrice = 0m,
+                    MinPrice = 0m,
+                    MaxPrice = 0m,
+                    PriceChange = 0m,
+                    PriceChangePercent = 0m,
+                    DataPoints = 0
+                };
+            }
+
+            var prices = history.Select(h => h.Price).ToList();
+            var average = Math.Round(prices.Average(), 2);
+            var min = prices.Min();
+            var max = prices.Max();
+            var first = prices.First();
+            var last = prices.Last();
+            var changeAmount = last - first;
+            var changePercent = first != 0 ? Math.Round((last - first) / first * 100, 2) : 0m;
+
+            return new
+            {
+                AveragePrice = average,
+                MinPrice = min,
+                MaxPrice = max,
+                PriceChange = changeAmount,
+                PriceChangePercent = changePercent,
+                DataPoints = prices.Count
+            };
+        }
+
+        private static IEnumerable<object> BuildPriceDistribution(List<PropertyPriceHistory> history)
+        {
+            if (!history.Any())
+            {
+                return Array.Empty<object>();
+            }
+
+            var min = history.Min(h => h.Price);
+            var max = history.Max(h => h.Price);
+
+            if (min == max)
+            {
+                return new[]
+                {
+                    new { Range = $"{min:0} EGP", Count = history.Count }
+                };
+            }
+
+            var bucketCount = 3;
+            var step = (max - min) / bucketCount;
+            if (step == 0) step = 1;
+
+            var buckets = new List<object>();
+            for (int i = 0; i < bucketCount; i++)
+            {
+                var start = min + step * i;
+                var end = i == bucketCount - 1 ? max : min + step * (i + 1);
+                var count = history.Count(h => h.Price >= start && (i == bucketCount - 1 ? h.Price <= end : h.Price < end));
+                buckets.Add(new
+                {
+                    Range = $"{Math.Round(start, 0):0} - {Math.Round(end, 0):0} EGP",
+                    Count = count
+                });
+            }
+
+            return buckets;
+        }
+
+        private static object BuildTimeRange(List<PropertyPriceHistory> history)
+        {
+            if (!history.Any())
+            {
+                var now = DateTime.UtcNow;
+                return new
+                {
+                    StartDate = now.ToString("o"),
+                    EndDate = now.ToString("o"),
+                    DurationDays = 0
+                };
+            }
+
+            var start = history.First().PriceDate;
+            var end = history.Last().PriceDate;
+
+            return new
+            {
+                StartDate = start.ToString("o"),
+                EndDate = end.ToString("o"),
+                DurationDays = (end - start).Days
+            };
         }
     }
 

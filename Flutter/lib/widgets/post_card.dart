@@ -4,6 +4,7 @@ import '../models/community_post.dart';
 import '../theme/app_colors.dart';
 import 'user_badge_widget.dart';
 import 'like_animation.dart';
+import 'progressive_network_image.dart';
 
 /// Instagram-style post card with borderless design and rich interactions
 class PostCard extends StatefulWidget {
@@ -190,33 +191,15 @@ class _PostCardState extends State<PostCard> {
               size: 120,
               child: GestureDetector(
                 onTap: widget.onTap,
-                child: Image.network(
-                  widget.post.imageUrl!,
+                child: ProgressiveNetworkImage(
+                  imageUrl: widget.post.imageUrl!,
+                  height: 400,
                   width: double.infinity,
-                  fit: BoxFit.fitWidth,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      width: double.infinity,
-                      height: 400,
-                      color: isDark ? AppColors.darkSurface : AppColors.border,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 200,
+                  fit: BoxFit.cover,
+                  placeholder: Container(
+                    height: 400,
+                    width: double.infinity,
                     color: isDark ? AppColors.darkSurface : AppColors.border,
-                    child: const Center(
-                      child: Icon(Icons.broken_image, size: 48),
-                    ),
                   ),
                 ),
               ),

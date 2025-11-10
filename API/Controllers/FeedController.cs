@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using PropertyFlipperAPI.Services;
+using PropertyFlipperAPI.Models.Feed;
 using System.Security.Claims;
 
 namespace PropertyFlipperAPI.Controllers
@@ -59,6 +60,9 @@ namespace PropertyFlipperAPI.Controllers
                 var allNews = await GetAllNews();
                 var allProjects = await GetAllProjects();
                 var allDevelopers = await GetAllDevelopers();
+                var dealHighlights = await GetDealHighlights();
+                var projectStories = await GetProjectStories();
+                var investorMilestones = await GetInvestorMilestones();
 
                 // Create weighted pool with time-based boosting
                 var contentPool = new List<FeedItemDto>();
@@ -153,6 +157,48 @@ namespace PropertyFlipperAPI.Controllers
                     });
                 }
 
+                // Add deal highlights (premium curated entries)
+                foreach (var highlight in dealHighlights)
+                {
+                    for (int i = 0; i < 4; i++)
+                    {
+                        contentPool.Add(new FeedItemDto
+                        {
+                            Type = "deal_highlight",
+                            Data = highlight,
+                            Id = $"deal_highlight_{highlight.AuctionId}"
+                        });
+                    }
+                }
+
+                // Add project stories
+                foreach (var story in projectStories)
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        contentPool.Add(new FeedItemDto
+                        {
+                            Type = "project_story",
+                            Data = story,
+                            Id = $"project_story_{story.ProjectId}"
+                        });
+                    }
+                }
+
+                // Add investor milestones
+                foreach (var milestone in investorMilestones)
+                {
+                    for (int i = 0; i < 2; i++)
+                    {
+                        contentPool.Add(new FeedItemDto
+                        {
+                            Type = "investor_milestone",
+                            Data = milestone,
+                            Id = $"investor_milestone_{milestone.AchievementId}"
+                        });
+                    }
+                }
+
                 // Shuffle entire pool
                 contentPool = contentPool.OrderBy(x => random.Next()).ToList();
 
@@ -209,6 +255,253 @@ namespace PropertyFlipperAPI.Controllers
                 _logger.LogError(ex, "Error generating explore feed");
                 return StatusCode(500, new { error = "Failed to generate feed" });
             }
+        }
+
+        private async Task<List<DealHighlightDto>> GetDealHighlights()
+        {
+            var auctions = await _context.Auctions
+                .AsNoTracking()
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyImages)
+                .Where(a => a.Status == "Approved" || a.Status == "Active" || a.Status == "Ended")
+                .OrderByDescending(a => a.CreatedAt)
+                .Take(30)
+                .ToListAsync();
+
+            if (!auctions.Any())
+            {
+                return new List<DealHighlightDto>();
+            }
+
+            var now = DateTime.UtcNow;
+            var highlights = new List<DealHighlightDto>();
+
+            foreach (var auction in auctions)
+            {
+                if (auction.Property == null)
+                {
+                    continue;
+                }
+
+                var endAt = auction.StartAt.AddHours(auction.Duration);
+                var startPrice = auction.StartPrice <= 0 ? 1 : auction.StartPrice;
+                var gain = auction.CurrentPrice - auction.StartPrice;
+                var roi = (double)(gain / startPrice);
+
+                var primaryImage = auction.Property.PropertyImages?
+                    .OrderByDescending(img => img.IsMainImage)
+                    .ThenBy(img => img.DisplayOrder)
+                    .Select(img => img.ImageUrl)
+                    .FirstOrDefault();
+
+                if (string.IsNullOrWhiteSpace(primaryImage))
+                {
+                    primaryImage = auction.Property.ImageUrl;
+                }
+
+                highlights.Add(new DealHighlightDto
+                {
+                    AuctionId = auction.AuctionId,
+                    PropertyId = auction.PropertyId,
+                    PropertyName = auction.Property?.Name ?? $"Property #{auction.PropertyId}",
+                    Location = auction.Property?.Location,
+                    ImageUrl = primaryImage,
+                    StartPrice = auction.StartPrice,
+                    CurrentPrice = auction.CurrentPrice,
+                    RoiPercentage = Math.Round(roi * 100, 2),
+                    EndAt = endAt,
+                    BidCount = auction.BidCount,
+                    IsEndingSoon = endAt <= now.AddHours(4) && endAt > now
+                });
+            }
+
+            return highlights
+                .OrderByDescending(h => h.RoiPercentage)
+                .ThenBy(h => h.EndAt)
+                .Take(8)
+                .ToList();
+        }
+
+        private async Task<List<ProjectStoryDto>> GetProjectStories()
+        {
+            var projects = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(20)
+                .ToListAsync();
+
+            if (!projects.Any())
+            {
+                return new List<ProjectStoryDto>();
+            }
+
+            var projectIds = projects.Select(p => p.ProjectId).ToList();
+
+            var propertyStats = await _context.ChildProperties
+                .AsNoTracking()
+                .Where(cp => cp.ProjectId != null && projectIds.Contains(cp.ProjectId.Value))
+                .GroupBy(cp => cp.ProjectId!.Value)
+                .Select(g => new
+                {
+                    ProjectId = g.Key,
+                    PropertyCount = g.Count()
+                })
+                .ToListAsync();
+
+            var auctionStats = await _context.Auctions
+                .AsNoTracking()
+                .Join(
+                    _context.ChildProperties.AsNoTracking(),
+                    auction => auction.PropertyId,
+                    property => property.PropertyId,
+                    (auction, property) => new { auction, property })
+                .Where(x => x.property.ProjectId != null && projectIds.Contains(x.property.ProjectId.Value))
+                .Select(x => new
+                {
+                    ProjectId = x.property.ProjectId!.Value,
+                    x.auction.StartPrice,
+                    x.auction.CurrentPrice,
+                    x.auction.Status
+                })
+                .ToListAsync();
+
+            var milestoneData = await _context.ProjectMilestones
+                .AsNoTracking()
+                .Where(m => projectIds.Contains(m.ProjectId))
+                .ToListAsync();
+
+            var stories = new List<ProjectStoryDto>();
+
+            foreach (var project in projects)
+            {
+                var milestones = milestoneData.Where(m => m.ProjectId == project.ProjectId).ToList();
+                var auctionsForProject = auctionStats.Where(a => a.ProjectId == project.ProjectId).ToList();
+
+                var activeAuctionCount = auctionsForProject.Count(a => a.Status == "Approved" || a.Status == "Active");
+
+                var roiSamples = auctionsForProject
+                    .Where(a => a.StartPrice != 0)
+                    .Select(a => (double)((a.CurrentPrice - a.StartPrice) / (a.StartPrice == 0 ? 1 : a.StartPrice)))
+                    .ToList();
+
+                var averageRoi = roiSamples.Any() ? Math.Round(roiSamples.Average() * 100, 2) : 0;
+
+                var latestMilestone = milestones
+                    .OrderByDescending(m => m.TargetDate)
+                    .Select(m => new ProjectStoryMilestoneDto
+                    {
+                        Title = m.Title,
+                        TargetDate = m.TargetDate,
+                        CompletedDate = m.CompletedDate
+                    })
+                    .FirstOrDefault();
+
+                var projectPropertyStats = propertyStats.FirstOrDefault(s => s.ProjectId == project.ProjectId);
+
+                stories.Add(new ProjectStoryDto
+                {
+                    ProjectId = project.ProjectId,
+                    Name = project.Name,
+                    Location = project.Location,
+                    CreatedAt = project.CreatedAt,
+                    PropertyCount = projectPropertyStats?.PropertyCount ?? 0,
+                    ActiveAuctionCount = activeAuctionCount,
+                    CompletedMilestones = milestones.Count(m => m.Status == MilestoneStatus.Completed),
+                    UpcomingMilestones = milestones.Count(m => m.Status != MilestoneStatus.Completed),
+                    AverageRoi = averageRoi,
+                    LatestMilestone = latestMilestone
+                });
+            }
+
+            return stories
+                .OrderByDescending(s => s.ActiveAuctionCount)
+                .ThenByDescending(s => s.PropertyCount)
+                .Take(10)
+                .ToList();
+        }
+
+        private async Task<List<InvestorMilestoneDto>> GetInvestorMilestones()
+        {
+            var achievements = await _context.UserAchievements
+                .AsNoTracking()
+                .Include(a => a.Account)
+                .OrderByDescending(a => a.EarnedAt)
+                .Take(30)
+                .ToListAsync();
+
+            if (!achievements.Any())
+            {
+                return new List<InvestorMilestoneDto>();
+            }
+
+            var accountIds = achievements.Select(a => a.AccountId).Distinct().ToList();
+
+            var portfolioStats = await _context.ChildProperties
+                .AsNoTracking()
+                .Where(cp => cp.OwnerId != null && accountIds.Contains(cp.OwnerId.Value))
+                .GroupBy(cp => cp.OwnerId!.Value)
+                .Select(g => new
+                {
+                    AccountId = g.Key,
+                    PropertyCount = g.Count(),
+                    TotalBuyIn = g.Sum(cp => cp.BuyingPrice ?? 0)
+                })
+                .ToListAsync();
+
+            var reputationLookup = await _context.Accounts
+                .AsNoTracking()
+                .Where(a => accountIds.Contains(a.AccountId))
+                .Select(a => new { a.AccountId, a.ReputationPoints })
+                .ToListAsync();
+
+            var reputationMap = reputationLookup.ToDictionary(r => r.AccountId, r => r.ReputationPoints);
+
+            var milestones = new List<InvestorMilestoneDto>();
+
+            foreach (var achievement in achievements)
+            {
+                var name = $"{achievement.Account.FirstName} {achievement.Account.LastName}".Trim();
+                var initialsSource = string.IsNullOrWhiteSpace(name)
+                    ? achievement.Account.Email
+                    : name;
+
+                string initials = string.Empty;
+                if (!string.IsNullOrWhiteSpace(initialsSource))
+                {
+                    var parts = initialsSource
+                        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p[0]);
+                    initials = string.Concat(parts).ToUpperInvariant();
+                    if (initials.Length > 2)
+                    {
+                        initials = initials.Substring(0, 2);
+                    }
+                }
+
+                var portfolio = portfolioStats.FirstOrDefault(p => p.AccountId == achievement.AccountId);
+
+                milestones.Add(new InvestorMilestoneDto
+                {
+                    AchievementId = achievement.AchievementId,
+                    AccountId = achievement.AccountId,
+                    InvestorName = string.IsNullOrWhiteSpace(name) ? achievement.Account.Email : name,
+                    Title = achievement.Title,
+                    Description = achievement.Description,
+                    EarnedAt = achievement.EarnedAt,
+                    PointsAwarded = achievement.PointsAwarded,
+                    PortfolioCount = portfolio?.PropertyCount ?? 0,
+                    TotalBuyInValue = portfolio?.TotalBuyIn ?? 0,
+                    ReputationPoints = reputationMap.TryGetValue(achievement.AccountId, out var rep) ? rep : 0,
+                    Initials = initials
+                });
+            }
+
+            return milestones
+                .OrderByDescending(m => m.PointsAwarded)
+                .ThenByDescending(m => m.EarnedAt)
+                .Take(10)
+                .ToList();
         }
 
         private async Task<List<CommunityPost>> GetAllPosts(long? userId)

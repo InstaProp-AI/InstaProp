@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/ai_broker_service.dart';
+import 'progressive_network_image.dart';
 
 class PropertySuggestionCard extends StatelessWidget {
   final PropertySuggestion property;
@@ -28,18 +29,16 @@ class PropertySuggestionCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(12),
               ),
-              child: Image.network(
-                property.imageUrl,
+              child: ProgressiveNetworkImage(
+                imageUrl: property.imageUrl,
                 height: 150,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 150,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.home, size: 48),
-                  );
-                },
+                placeholder: Container(
+                  height: 150,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.home, size: 48),
+                ),
               ),
             ),
 

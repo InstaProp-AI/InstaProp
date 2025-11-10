@@ -7,8 +7,6 @@ import '../models/property.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
 import 'auction_details_page.dart';
-import 'property_comparison_page.dart';
-import 'property_search_page.dart';
 import 'vip_auctions_page.dart';
 
 class AuctionsPage extends StatefulWidget {
@@ -514,62 +512,6 @@ class _AuctionsPageState extends State<AuctionsPage> {
             ],
           );
         },
-      ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PropertySearchPage(),
-                ),
-              );
-            },
-            backgroundColor: Colors.grey[100],
-            icon: Icon(Icons.home_work, color: AppColors.primary),
-            label: Text(
-              'Properties',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            heroTag: 'properties_button',
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton(
-            onPressed: () {
-              final properties = _filteredAuctions
-                  .where((a) => a.property != null)
-                  .map((a) => a.property!)
-                  .toList();
-
-              if (properties.isNotEmpty) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PropertyComparisonPage(
-                      preSelectedProperties: properties.take(5).toList(),
-                    ),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('No properties available to compare'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.compare_arrows, color: Colors.white),
-            heroTag: 'compare_button',
-          ),
-        ],
       ),
     );
   }

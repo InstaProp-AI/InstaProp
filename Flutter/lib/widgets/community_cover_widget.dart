@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/community.dart';
 import '../theme/app_colors.dart';
+import 'progressive_network_image.dart';
 
 class CommunityCoverWidget extends StatelessWidget {
   final Community community;
@@ -16,21 +17,15 @@ class CommunityCoverWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: height,
       width: double.infinity,
-      child:
-          community.coverPhotoUrl != null && community.coverPhotoUrl!.isNotEmpty
-          ? Image.network(
-              community.coverPhotoUrl!,
+      child: community.coverPhotoUrl != null &&
+              community.coverPhotoUrl!.isNotEmpty
+          ? ProgressiveNetworkImage(
+              imageUrl: community.coverPhotoUrl!,
               fit: fit,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return _buildGradientFallback();
-              },
-              errorBuilder: (context, error, stackTrace) {
-                return _buildGradientFallback();
-              },
+              placeholder: _buildGradientFallback(),
             )
           : _buildGradientFallback(),
     );

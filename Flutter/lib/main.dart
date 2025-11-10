@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'app.dart';
-import 'core/config/firebase_options.dart' as firebase_options;
+import 'core/firebase_status.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized first
@@ -158,19 +157,9 @@ void main() async {
     }
   }
 
-  // Initialize Firebase for real-time updates
+  // Initialize Firebase for real-time updates (gracefully handle unsupported platforms)
   try {
-    await Firebase.initializeApp(
-      options: firebase_options.DefaultFirebaseOptions.currentPlatform,
-    );
-
-    // CRITICAL: Sign in anonymously BEFORE any Firestore listeners start
-    // This satisfies Firestore rules requiring request.auth != null
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-    } catch (authError) {
-      // Silently handle auth errors (API fallback will handle)
-    }
+    await FirebaseStatus.ensureInitialized();
   } catch (e) {
     // Silently handle Firebase initialization errors (API fallback will handle)
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/community.dart';
 import '../theme/app_colors.dart';
+import 'progressive_network_image.dart';
 
 class CommunityHeaderWidget extends StatelessWidget {
   final Community community;
@@ -70,14 +71,12 @@ class CommunityHeaderWidget extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        child:
-            community.coverPhotoUrl != null &&
+        child: community.coverPhotoUrl != null &&
                 community.coverPhotoUrl!.isNotEmpty
-            ? Image.network(
-                community.coverPhotoUrl!,
+            ? ProgressiveNetworkImage(
+                imageUrl: community.coverPhotoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _buildGradientFallback(),
+                placeholder: _buildGradientFallback(),
               )
             : _buildGradientFallback(),
       ),

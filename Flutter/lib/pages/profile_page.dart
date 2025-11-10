@@ -1,6 +1,6 @@
-import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../theme/app_colors.dart';
 import '../providers/app_state.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_text_field.dart';
@@ -9,17 +9,18 @@ import '../models/user.dart';
 import 'kyc_verification_page.dart';
 import 'email_verification_page.dart';
 import 'phone_verification_page.dart';
-import 'rewards_page.dart';
+import 'properties_management_page.dart';
+// Rewards access moved to profile dashboard
 // removed: saved searches feature
 
-class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _SettingsPageState extends State<SettingsPage> {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -432,17 +433,36 @@ class _ProfilePageState extends State<ProfilePage> {
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    padding: const EdgeInsets.fromLTRB(12, 16, 20, 24),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Profile',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1A1A),
-                            letterSpacing: -1,
+                        IconButton(
+                          onPressed: () {
+                            if (Navigator.canPop(context)) {
+                              Navigator.of(context).pop();
+                            } else {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (_) => const PropertiesManagementPage(),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey[100],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Settings',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1A1A1A),
+                              letterSpacing: -1,
+                            ),
                           ),
                         ),
                         if (!_isEditing)
@@ -572,43 +592,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ],
                               ),
                             ),
-                            if (appState.user?.totalEarnedPoints != null) ...[
-                              const SizedBox(width: 12),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.pushNamed(context, '/rewards');
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.stars,
-                                        size: 14,
-                                        color: Colors.amber,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${appState.user!.currentPoints} pts',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                          color: Color(0xFF1A1A1A),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
+                            // Rewards access handled from profile dashboard
                           ],
                         ),
 
@@ -618,25 +602,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         if (!_isEditing) ...[
                           Row(
                             children: [
-                              Expanded(
-                                child: _buildFeatureCard(
-                                  context,
-                                  icon: Icons.card_giftcard,
-                                  title: 'Rewards',
-                                  subtitle: 'Points & Badges',
-                                  color: Colors.orange,
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const RewardsPage(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
                               Expanded(
                                 child: _buildFeatureCard(
                                   context,

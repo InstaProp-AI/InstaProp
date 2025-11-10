@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/news_article.dart';
 import '../theme/app_colors.dart';
+import 'progressive_network_image.dart';
 
 class FeedNewsCard extends StatelessWidget {
   final NewsArticle article;
@@ -23,23 +24,16 @@ class FeedNewsCard extends StatelessWidget {
             // Featured Image
             Stack(
               children: [
-                ClipRRect(
+                ProgressiveNetworkImage(
+                  imageUrl: article.firstImageUrl,
+                  height: 220,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
                   ),
-                  child: SizedBox(
-                    height: 220,
-                    width: double.infinity,
-                    child: article.firstImageUrl.isNotEmpty
-                        ? Image.network(
-                            article.firstImageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildPlaceholder(),
-                          )
-                        : _buildPlaceholder(),
-                  ),
+                  placeholder: _buildPlaceholder(),
                 ),
                 // Category Badge
                 if (article.category != null)
@@ -152,6 +146,8 @@ class FeedNewsCard extends StatelessWidget {
 
   Widget _buildPlaceholder() {
     return Container(
+      height: 220,
+      width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,

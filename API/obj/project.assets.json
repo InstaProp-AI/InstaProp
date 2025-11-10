@@ -6137,19 +6137,19 @@
     ]
   },
   "packageFolders": {
-    "/Users/s/.nuget/packages/": {}
+    "/home/abraam/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/s/Desktop/Business/Real estate/Proerty Flipper/API/PropertyFlipperAPI.csproj",
+      "projectUniqueName": "/home/abraam/Desktop/Business/Proerty Flipper/API/PropertyFlipperAPI.csproj",
       "projectName": "PropertyFlipperAPI",
-      "projectPath": "/Users/s/Desktop/Business/Real estate/Proerty Flipper/API/PropertyFlipperAPI.csproj",
-      "packagesPath": "/Users/s/.nuget/packages/",
-      "outputPath": "/Users/s/Desktop/Business/Real estate/Proerty Flipper/API/obj/",
+      "projectPath": "/home/abraam/Desktop/Business/Proerty Flipper/API/PropertyFlipperAPI.csproj",
+      "packagesPath": "/home/abraam/.nuget/packages/",
+      "outputPath": "/home/abraam/Desktop/Business/Proerty Flipper/API/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/s/.nuget/NuGet/NuGet.Config"
+        "/home/abraam/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -6248,7 +6248,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.408/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.415/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

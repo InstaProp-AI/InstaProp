@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/chat.dart';
 import '../models/chat_message.dart';
 import '../models/property.dart';
@@ -10,6 +9,7 @@ import '../services/property_service.dart';
 import '../services/api_client.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../core/firebase_status.dart';
 
 class ChatPage extends StatefulWidget {
   final Chat chat;
@@ -24,55 +24,92 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatFirestoreService _firestoreService = ChatFirestoreService();
+  late ChatService _chatService;
 
   List<ChatMessage> _messages = [];
   bool _loading = true;
   bool _sending = false;
   Property? _selectedProperty;
   bool _firebaseReady = false;
+  FirebaseAvailability _firebaseAvailability = FirebaseAvailability.unknown;
+  Stream<List<ChatMessage>>? _messageStream;
+  bool _usingFirebaseStream = false;
+  VoidCallback? _firebaseListener;
 
   @override
   void initState() {
     super.initState();
+    final appState = Provider.of<AppState>(context, listen: false);
+    _chatService = ChatService(ApiClient.baseUrl, token: appState.token);
+
+    _firebaseAvailability = FirebaseStatus.availability;
+    _firebaseReady = FirebaseStatus.isReady;
+    _updateMessageStream();
+
+    _firebaseListener = () {
+      final availability = FirebaseStatus.availability;
+      final isReady = FirebaseStatus.isReady;
+      if (!mounted) return;
+      if (_firebaseAvailability != availability || _firebaseReady != isReady) {
+        setState(() {
+          _firebaseAvailability = availability;
+          _firebaseReady = isReady;
+          _updateMessageStream();
+        });
+      }
+    };
+
+    FirebaseStatus.availabilityNotifier.addListener(_firebaseListener!);
+
+    _initializeFirebaseStatus();
     _loadInitialMessages();
     _markAsRead();
-    _ensureFirebaseAuth();
   }
 
-  Future<void> _ensureFirebaseAuth() async {
-    // Ensure Firebase Auth is ready before Firestore listeners start
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print('⏳ Waiting for Firebase auth...');
-      // Wait for auth state to be ready
-      await Future.delayed(const Duration(milliseconds: 1000));
-      final retryUser = FirebaseAuth.instance.currentUser;
-      if (retryUser != null) {
-        print('✅ Firebase auth ready: ${retryUser.uid}');
-        setState(() => _firebaseReady = true);
-      } else {
-        print('⚠️ Firebase auth still not ready - Firestore may fail');
-        setState(() => _firebaseReady = false);
-      }
+  Future<void> _initializeFirebaseStatus() async {
+    await FirebaseStatus.ensureInitialized();
+    if (!mounted) return;
+    setState(() {
+      _firebaseAvailability = FirebaseStatus.availability;
+      _firebaseReady = FirebaseStatus.isReady;
+      _updateMessageStream();
+    });
+  }
+
+  void _updateMessageStream() {
+    final shouldUseFirebase =
+        FirebaseStatus.isReady &&
+        _firebaseAvailability == FirebaseAvailability.ready;
+
+    if (_usingFirebaseStream == shouldUseFirebase && _messageStream != null) {
+      return;
+    }
+
+    _usingFirebaseStream = shouldUseFirebase;
+
+    if (shouldUseFirebase) {
+      _messageStream =
+          _firestoreService.streamChatMessages(widget.chat.chatId);
     } else {
-      print('✅ Firebase auth already ready: ${user.uid}');
-      setState(() => _firebaseReady = true);
+      _messageStream = _chatService.streamChatMessagesViaApi(
+        chatId: widget.chat.chatId,
+      );
     }
   }
 
   @override
   void dispose() {
+    if (_firebaseListener != null) {
+      FirebaseStatus.availabilityNotifier.removeListener(_firebaseListener!);
+    }
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _loadInitialMessages() async {
-    final appState = Provider.of<AppState>(context, listen: false);
-    final chatService = ChatService(ApiClient.baseUrl, token: appState.token);
-
     try {
-      final chatDetails = await chatService.getChatDetails(widget.chat.chatId);
+      final chatDetails = await _chatService.getChatDetails(widget.chat.chatId);
       setState(() {
         _messages = chatDetails.messages;
         _loading = false;
@@ -85,11 +122,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _markAsRead() async {
-    final appState = Provider.of<AppState>(context, listen: false);
-    final chatService = ChatService(ApiClient.baseUrl, token: appState.token);
-
     try {
-      await chatService.markAsRead(widget.chat.chatId);
+      await _chatService.markAsRead(widget.chat.chatId);
     } catch (e) {
       print('Error marking as read: $e');
     }
@@ -98,13 +132,10 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
-    final appState = Provider.of<AppState>(context, listen: false);
-    final chatService = ChatService(ApiClient.baseUrl, token: appState.token);
-
     setState(() => _sending = true);
 
     try {
-      final message = await chatService.sendMessage(
+      final message = await _chatService.sendMessage(
         chatId: widget.chat.chatId,
         content: _messageController.text.trim(),
         propertyId: _selectedProperty?.propertyId,
@@ -218,19 +249,29 @@ class _ChatPageState extends State<ChatPage> {
       ),
       body: Column(
         children: [
+          _buildRealtimeStatusBanner(),
           // Messages list
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : !_firebaseReady
-                ? const Center(child: CircularProgressIndicator())
                 : StreamBuilder<List<ChatMessage>>(
-                    stream: _firestoreService.streamChatMessages(
-                      widget.chat.chatId,
-                    ),
+                    stream: _messageStream,
                     initialData: _messages,
                     builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        print(
+                          'Error streaming chat messages: ${snapshot.error}',
+                        );
+                      }
+
                       final messages = snapshot.data ?? _messages;
+
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          messages.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
                       if (messages.isEmpty) {
                         return const Center(
@@ -346,6 +387,40 @@ class _ChatPageState extends State<ChatPage> {
                         ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRealtimeStatusBanner() {
+    if (_loading || _usingFirebaseStream) {
+      return const SizedBox.shrink();
+    }
+
+    final isUnsupported =
+        _firebaseAvailability == FirebaseAvailability.unsupported;
+    final message = isUnsupported
+        ? 'Real-time chat is unavailable on this platform. Using backup sync.'
+        : 'Real-time chat temporarily unavailable. Switching to backup sync.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: AppColors.secondary.withOpacity(0.1),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off, size: 18, color: AppColors.secondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.secondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

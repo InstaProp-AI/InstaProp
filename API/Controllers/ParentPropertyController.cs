@@ -154,6 +154,7 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(new
             {
                 parentProperty.ParentPropertyId,
+                parentProperty.ProjectName,
                 parentProperty.PropertyType,
                 parentProperty.Bedrooms,
                 parentProperty.Bathrooms,
@@ -215,6 +216,84 @@ namespace PropertyFlipperAPI.Controllers
                     ImageCount = c.PropertyImages.Count
                 })
             });
+        }
+
+        [HttpGet("{id}/children")]
+        public async Task<IActionResult> GetParentChildren(int id)
+        {
+            var children = await _context.ChildProperties
+                .Where(c => c.ParentPropertyId == id)
+                .Include(c => c.PropertyImages)
+                .OrderBy(c => c.CreatedAt)
+                .ToListAsync();
+
+            if (!children.Any())
+            {
+                return Ok(Array.Empty<object>());
+            }
+
+            var result = children.Select(c => new
+            {
+                c.PropertyId,
+                c.ParentPropertyId,
+                c.OwnerId,
+                c.Phase,
+                c.FloorNumber,
+                c.UnitNumber,
+                c.ViewType,
+                c.Orientation,
+                DeliveryDate = c.DeliveryDate?.ToString("o"),
+                c.ParkingSlots,
+                c.HasStorageRoom,
+                c.BuyingPrice,
+                BuyingDate = c.BuyingDate?.ToString("o"),
+                c.Quantity,
+                c.HasNannyRoom,
+                c.HasDriverRoom,
+                c.HasMaidRoom,
+                c.HasPrivatePool,
+                c.HasRoofAccess,
+                c.HasBalcony,
+                c.HasGarden,
+                c.SmartHome,
+                c.CentralAC,
+                c.NaturalGas,
+                c.HasGenerator,
+                c.SeaView,
+                c.NileView,
+                c.PyramidView,
+                c.GardenView,
+                c.StreetView,
+                c.Name,
+                c.Description,
+                c.Location,
+                c.Category,
+                c.ImageUrl,
+                c.SquareFeet,
+                c.YearBuilt,
+                c.IsApproved,
+                CreatedAt = c.CreatedAt.ToString("o"),
+                UpdatedAt = c.UpdatedAt.ToString("o"),
+                c.Bedrooms,
+                c.Bathrooms,
+                c.PropertyType,
+                Type = (int)c.Type,
+                Status = (int)c.Status,
+                c.ProjectId,
+                PropertyImages = c.PropertyImages.Select(img => new
+                {
+                    img.PropertyImageId,
+                    img.PropertyId,
+                    img.ImageUrl,
+                    img.ImageType,
+                    img.IsMainImage,
+                    img.DisplayOrder,
+                    img.DeleteUrl,
+                    CreatedAt = img.CreatedAt.ToString("o")
+                })
+            });
+
+            return Ok(result);
         }
 
         [HttpPost("find-or-create")]

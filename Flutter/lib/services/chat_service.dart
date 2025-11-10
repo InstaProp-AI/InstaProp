@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/chat.dart';
@@ -147,5 +148,70 @@ class ChatService {
       print('Error getting unread count: $e');
       return 0;
     }
+  }
+
+  Stream<List<ChatMessage>> streamChatMessagesViaApi({
+    required int chatId,
+    Duration pollInterval = const Duration(seconds: 6),
+  }) {
+    if (pollInterval <= Duration.zero) {
+      throw ArgumentError.value(
+        pollInterval,
+        'pollInterval',
+        'Must be greater than zero',
+      );
+    }
+
+    final controller = StreamController<List<ChatMessage>>();
+    Timer? timer;
+    var fetching = false;
+
+    Future<void> emitLatest() async {
+      if (fetching) return;
+      fetching = true;
+
+      try {
+        final chatDetails = await getChatDetails(chatId);
+        if (!controller.isClosed) {
+          controller.add(chatDetails.messages);
+        }
+      } catch (error) {
+        if (!controller.isClosed) {
+          controller.addError(error);
+        }
+      } finally {
+        fetching = false;
+      }
+    }
+
+    void startTimer() {
+      timer = Timer.periodic(pollInterval, (_) => emitLatest());
+    }
+
+    controller.onListen = () {
+      emitLatest();
+      startTimer();
+    };
+
+    controller.onPause = () {
+      timer?.cancel();
+      timer = null;
+    };
+
+    controller.onResume = () {
+      if (timer == null) {
+        startTimer();
+      }
+    };
+
+    controller.onCancel = () async {
+      timer?.cancel();
+      timer = null;
+      if (!controller.isClosed) {
+        await controller.close();
+      }
+    };
+
+    return controller.stream;
   }
 }

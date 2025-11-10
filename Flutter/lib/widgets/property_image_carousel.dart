@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/property_image.dart';
 import '../../theme/app_colors.dart';
+import 'progressive_network_image.dart';
 
 class PropertyImageCarousel extends StatefulWidget {
   final List<PropertyImage> images;
@@ -160,14 +161,12 @@ class _PropertyImageCarouselState extends State<PropertyImageCarousel> {
   Widget _buildSingleImage(String url) {
     return ClipRRect(
       borderRadius: widget.borderRadius ?? BorderRadius.zero,
-      child: Image.network(
-        url,
+      child: ProgressiveNetworkImage(
+        imageUrl: url,
         height: widget.height,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholder();
-        },
+        placeholder: _buildPlaceholder(),
       ),
     );
   }
@@ -175,13 +174,11 @@ class _PropertyImageCarouselState extends State<PropertyImageCarousel> {
   Widget _buildImageItem(String url) {
     return ClipRRect(
       borderRadius: widget.borderRadius ?? BorderRadius.zero,
-      child: Image.network(
-        url,
+      child: ProgressiveNetworkImage(
+        imageUrl: url,
         fit: BoxFit.cover,
         width: double.infinity,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholder();
-        },
+        placeholder: _buildPlaceholder(),
       ),
     );
   }

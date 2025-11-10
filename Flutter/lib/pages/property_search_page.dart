@@ -6,6 +6,7 @@ import '../services/property_service.dart';
 import '../services/auction_service.dart';
 import '../widgets/property_image_carousel.dart';
 import 'property_comparison_page.dart';
+import 'property_details_page.dart';
 import 'auction_details_page.dart';
 import 'projects_list_page.dart';
 import 'developers_list_page.dart';
@@ -112,8 +113,8 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
         _filteredProperties = _allProperties.where((property) {
           final searchLower = query.toLowerCase();
           return property.name.toLowerCase().contains(searchLower) ||
-              (property.location ?? '').toLowerCase().contains(searchLower) ||
-              (property.category ?? '').toLowerCase().contains(searchLower) ||
+              property.location.toLowerCase().contains(searchLower) ||
+              property.category.toLowerCase().contains(searchLower) ||
               (property.project ?? '').toLowerCase().contains(searchLower);
         }).toList();
       }
@@ -131,18 +132,11 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
 
         if (filters.containsKey('location')) {
           matches =
-              matches &&
-              (property.location ?? '').contains(filters['location']);
+              matches && property.location.contains(filters['location']);
         }
 
         if (filters.containsKey('status')) {
           matches = matches && property.status == filters['status'];
-        }
-
-        if (filters.containsKey('priceMax')) {
-          // For auction properties, we'd need to check auction price
-          // For now, we'll just include them in results
-          matches = matches;
         }
 
         return matches;
@@ -645,7 +639,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                     top: Radius.circular(20),
                   ),
                   child: PropertyImageCarousel(
-                    images: property.propertyImages ?? [],
+                    images: property.propertyImages,
                     fallbackImageUrl: property.imageUrl,
                     height: 160,
                     showIndicators: true,
@@ -737,7 +731,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                       const SizedBox(width: 8),
 
                       // Category Tag
-                      if (property.category != null)
+                      if (property.category.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -761,7 +755,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  if (property.location != null)
+                  if (property.location.isNotEmpty)
                     Row(
                       children: [
                         Icon(
@@ -930,6 +924,33 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
+                      builder: (context) => PropertyDetailsPage(
+                        propertyId: property.propertyId,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.insights),
+                label: const Text('View Details'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
                       builder: (context) => PropertyComparisonPage(
                         preSelectedProperties: [property],
                       ),
@@ -938,10 +959,10 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                 },
                 icon: const Icon(Icons.add_chart),
                 label: const Text('Add to Compare'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: AppColors.primary, width: 2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -977,7 +998,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: AppColors.primary!, width: 2),
+                    side: const BorderSide(color: AppColors.primary, width: 2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

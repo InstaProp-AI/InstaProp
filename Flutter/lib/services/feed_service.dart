@@ -8,6 +8,9 @@ import '../models/news_article.dart';
 import '../models/auction.dart';
 import '../models/project_model.dart';
 import '../models/developer_profile.dart';
+import '../models/deal_highlight.dart';
+import '../models/project_story.dart';
+import '../models/investor_milestone.dart';
 import '../models/notification.dart';
 import 'community_post_service.dart';
 import 'community_service.dart';
@@ -66,6 +69,18 @@ class FeedResponseDto {
               itemType = FeedItemType.developer;
               itemData = FeaturedDeveloper.fromJson(data);
               break;
+            case 'deal_highlight':
+              itemType = FeedItemType.dealHighlight;
+              itemData = DealHighlight.fromJson(data);
+              break;
+            case 'project_story':
+              itemType = FeedItemType.projectStory;
+              itemData = ProjectStory.fromJson(data);
+              break;
+            case 'investor_milestone':
+              itemType = FeedItemType.investorMilestone;
+              itemData = InvestorMilestone.fromJson(data);
+              break;
           }
 
           if (itemType != null) {
@@ -88,6 +103,22 @@ class FeedResponseDto {
 class FeedService {
   static Random _random = Random();
   static int _virtualPage = 0; // Track virtual pages for infinite looping
+
+  // Cache latest non-empty datasets to keep fallback balanced
+  static List<CommunityPost> _cachedPosts = [];
+  static List<Auction> _cachedAuctions = [];
+  static List<Community> _cachedCommunities = [];
+  static List<NewsArticle> _cachedNews = [];
+  static List<ProjectModel> _cachedProjects = [];
+  static List<FeaturedDeveloper> _cachedDevelopers = [];
+
+  static const int _fallbackPostTarget = 6;
+  static const int _fallbackAuctionTarget = 4;
+  static const int _fallbackCommunityTarget = 4;
+  static const int _fallbackNewsTarget = 1;
+  static const int _fallbackProjectTarget = 1;
+  static const int _fallbackDeveloperTarget = 1;
+  static const int _fallbackNotificationCap = 2;
 
   /// Get mixed feed from backend API (now completely randomized server-side!)
   /// Uses virtual page counter to enable infinite scrolling
@@ -171,90 +202,141 @@ class FeedService {
         _fetchDevelopers(),
       ]);
 
-      final posts = results[0] as List<CommunityPost>;
-      final auctions = results[1] as List<Auction>;
-      final communities = results[2] as List<Community>;
-      final news = results[3] as List<NewsArticle>;
-      final projects = results[4] as List<ProjectModel>;
-      final developers = results[5] as List<FeaturedDeveloper>;
+      var posts = List<CommunityPost>.from(results[0] as List<CommunityPost>);
+      var auctions = List<Auction>.from(results[1] as List<Auction>);
+      var communities = List<Community>.from(results[2] as List<Community>);
+      var news = List<NewsArticle>.from(results[3] as List<NewsArticle>);
+      var projects = List<ProjectModel>.from(results[4] as List<ProjectModel>);
+      var developers =
+          List<FeaturedDeveloper>.from(results[5] as List<FeaturedDeveloper>);
 
-      final feedItems = <FeedItem>[];
-
-      // Add diverse content (30% posts, 20% auctions, 20% communities, 10% each for news/projects/developers)
-      // Use virtual page to ensure unique IDs across pages
-      // Use modulo to cycle through items across pages
-      final postOffset = (virtualPage * 6) % posts.length;
-      for (var i = 0; i < 6 && i < posts.length; i++) {
-        final index = (postOffset + i) % posts.length;
-        feedItems.add(
-          FeedItem(
-            type: FeedItemType.post,
-            data: posts[index],
-            id: 'post_${posts[index].postId}_p${virtualPage}',
-          ),
-        );
+      if (posts.isNotEmpty) {
+        _cachedPosts = posts;
+      } else if (_cachedPosts.isNotEmpty) {
+        posts = _cachedPosts;
       }
 
-      final auctionOffset = (virtualPage * 4) % auctions.length;
-      for (var i = 0; i < 4 && i < auctions.length; i++) {
-        final index = (auctionOffset + i) % auctions.length;
-        feedItems.add(
-          FeedItem(
-            type: FeedItemType.auction,
-            data: auctions[index],
-            id: 'auction_${auctions[index].auctionId}_p${virtualPage}',
-          ),
-        );
+      if (auctions.isNotEmpty) {
+        _cachedAuctions = auctions;
+      } else if (_cachedAuctions.isNotEmpty) {
+        auctions = _cachedAuctions;
       }
 
-      final communityOffset = (virtualPage * 4) % communities.length;
-      for (var i = 0; i < 4 && i < communities.length; i++) {
-        final index = (communityOffset + i) % communities.length;
-        feedItems.add(
-          FeedItem(
-            type: FeedItemType.community,
-            data: communities[index],
-            id: 'community_${communities[index].communityId}_p${virtualPage}',
-          ),
-        );
+      if (communities.isNotEmpty) {
+        _cachedCommunities = communities;
+      } else if (_cachedCommunities.isNotEmpty) {
+        communities = _cachedCommunities;
       }
 
       if (news.isNotEmpty) {
-        final newsIndex = (virtualPage) % news.length;
-        feedItems.add(
-          FeedItem(
-            type: FeedItemType.news,
-            data: news[newsIndex],
-            id: 'news_${news[newsIndex].newsArticleId}_p${virtualPage}',
-          ),
-        );
+        _cachedNews = news;
+      } else if (_cachedNews.isNotEmpty) {
+        news = _cachedNews;
       }
 
       if (projects.isNotEmpty) {
-        final projectIndex = (virtualPage) % projects.length;
-        feedItems.add(
-          FeedItem(
-            type: FeedItemType.project,
-            data: projects[projectIndex],
-            id: 'project_${projects[projectIndex].projectId}_p${virtualPage}',
-          ),
-        );
+        _cachedProjects = projects;
+      } else if (_cachedProjects.isNotEmpty) {
+        projects = _cachedProjects;
       }
 
       if (developers.isNotEmpty) {
-        final developerIndex = (virtualPage) % developers.length;
-        feedItems.add(
-          FeedItem(
-            type: FeedItemType.developer,
-            data: developers[developerIndex],
-            id: 'developer_${developers[developerIndex].developerId}_p${virtualPage}',
-          ),
-        );
+        _cachedDevelopers = developers;
+      } else if (_cachedDevelopers.isNotEmpty) {
+        developers = _cachedDevelopers;
       }
 
-      // Add REAL notifications from database
+      final feedItems = <FeedItem>[];
+
+      void appendContent<T>({
+        required List<T> source,
+        required int desiredCount,
+        required FeedItemType type,
+        required String Function(T item, int index) idBuilder,
+      }) {
+        if (source.isEmpty || desiredCount <= 0) {
+          return;
+        }
+
+        final safeCount = desiredCount >= source.length
+            ? source.length
+            : desiredCount;
+
+        final indices = List<int>.generate(source.length, (i) => i);
+        indices.shuffle(_random);
+
+        for (var i = 0; i < safeCount; i++) {
+          final index = indices[(virtualPage + i) % source.length];
+          final item = source[index];
+          feedItems.add(
+            FeedItem(
+              type: type,
+              data: item,
+              id: idBuilder(item, i),
+            ),
+          );
+        }
+      }
+
+      appendContent<CommunityPost>(
+        source: posts,
+        desiredCount: _fallbackPostTarget,
+        type: FeedItemType.post,
+        idBuilder: (post, index) =>
+            'post_${post.postId}_vp${virtualPage}_$index',
+      );
+
+      appendContent<Auction>(
+        source: auctions,
+        desiredCount: _fallbackAuctionTarget,
+        type: FeedItemType.auction,
+        idBuilder: (auction, index) =>
+            'auction_${auction.auctionId}_vp${virtualPage}_$index',
+      );
+
+      appendContent<Community>(
+        source: communities,
+        desiredCount: _fallbackCommunityTarget,
+        type: FeedItemType.community,
+        idBuilder: (community, index) =>
+            'community_${community.communityId}_vp${virtualPage}_$index',
+      );
+
+      appendContent<NewsArticle>(
+        source: news,
+        desiredCount: _fallbackNewsTarget,
+        type: FeedItemType.news,
+        idBuilder: (article, index) =>
+            'news_${article.newsArticleId}_vp${virtualPage}_$index',
+      );
+
+      appendContent<ProjectModel>(
+        source: projects,
+        desiredCount: _fallbackProjectTarget,
+        type: FeedItemType.project,
+        idBuilder: (project, index) =>
+            'project_${project.projectId}_vp${virtualPage}_$index',
+      );
+
+      appendContent<FeaturedDeveloper>(
+        source: developers,
+        desiredCount: _fallbackDeveloperTarget,
+        type: FeedItemType.developer,
+        idBuilder: (developer, index) =>
+            'developer_${developer.developerId}_vp${virtualPage}_$index',
+      );
+
+      // Add REAL notifications from database with sensible limits
       final notifications = await _fetchRealNotifications();
-      final notificationsToAdd = notifications.take(3).map((notif) {
+      var notificationLimit = 0;
+      if (feedItems.isEmpty) {
+        notificationLimit = 1;
+      } else {
+        notificationLimit = (feedItems.length / 4).round();
+        notificationLimit = notificationLimit.clamp(1, _fallbackNotificationCap);
+      }
+
+      final notificationsToAdd = notifications.take(notificationLimit).map((notif) {
         // Update ID to include page number for uniqueness
         return FeedItem(
           type: FeedItemType.notification,
@@ -267,8 +349,9 @@ class FeedService {
       // Shuffle for randomness
       feedItems.shuffle(_random);
 
+      final notificationCount = notificationsToAdd.length;
       print(
-        '✅ Generated ${feedItems.length} items from fallback (including ${notifications.length} notifications)',
+        '✅ Generated ${feedItems.length} items from fallback (including $notificationCount notifications)',
       );
       return feedItems;
     } catch (e) {
@@ -667,261 +750,6 @@ class FeedService {
     } catch (e) {
       print('Error fetching members: $e');
       return [];
-    }
-  }
-
-  static List<FeedNotification> _generateNotifications(int count) {
-    final notifications = <FeedNotification>[];
-    final types = List<FeedNotificationType>.from(FeedNotificationType.values);
-    // Web doesn't support shuffle - just use all types in order
-
-    for (int i = 0; i < count && i < types.length; i++) {
-      notifications.add(_createNotification(types[i]));
-    }
-
-    return notifications;
-  }
-
-  static FeedNotification _createNotification(FeedNotificationType type) {
-    switch (type) {
-      case FeedNotificationType.outbid:
-        return FeedNotification(
-          type: type,
-          title: 'You\'ve been outbid!',
-          message: 'Someone placed a higher bid on Luxury Villa',
-          actionText: 'Bid +\$1000',
-          createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(60)),
-          ),
-          metadata: {'auctionId': 123, 'currentBid': 500000},
-        );
-
-      case FeedNotificationType.auctionEnding:
-        return FeedNotification(
-          type: type,
-          title: 'Auction ending soon!',
-          message: 'Modern Apartment auction ends in 2 hours',
-          actionText: 'Place Bid',
-          createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(120)),
-          ),
-          metadata: {'auctionId': 456},
-        );
-
-      case FeedNotificationType.auctionRequest:
-        return FeedNotification(
-          type: type,
-          title: 'Request an auction',
-          message: 'Get the best price for your property',
-          actionText: 'Request Now',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(24)),
-          ),
-        );
-
-      case FeedNotificationType.bidPlaced:
-        return FeedNotification(
-          type: type,
-          title: 'New bid on your auction',
-          message: 'Someone bid \$450,000 on your property',
-          actionText: 'View Auction',
-          createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(30)),
-          ),
-          metadata: {'auctionId': 789, 'bidAmount': 450000},
-        );
-
-      case FeedNotificationType.auctionWon:
-        return FeedNotification(
-          type: type,
-          title: 'Congratulations! 🎉',
-          message: 'You won the auction for Beachfront Villa',
-          actionText: 'View Details',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(12)),
-          ),
-          metadata: {'auctionId': 321, 'winningBid': 1200000},
-        );
-
-      case FeedNotificationType.auctionApproved:
-        return FeedNotification(
-          type: type,
-          title: 'Auction approved!',
-          message: 'Your auction request has been approved',
-          actionText: 'View Auction',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(6)),
-          ),
-          metadata: {'auctionId': 654},
-        );
-
-      case FeedNotificationType.propertyInspection:
-        return FeedNotification(
-          type: type,
-          title: 'Schedule property inspection',
-          message: 'Book a viewing for Downtown Penthouse',
-          actionText: 'Book Now',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(48)),
-          ),
-          metadata: {'propertyId': 111},
-        );
-
-      case FeedNotificationType.paymentDue:
-        return FeedNotification(
-          type: type,
-          title: 'Payment reminder',
-          message: 'Installment of \$5,000 due in 3 days',
-          actionText: 'Pay Now',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(24)),
-          ),
-          metadata: {'amount': 5000, 'dueDate': '2025-11-01'},
-        );
-
-      case FeedNotificationType.newEvent:
-        return FeedNotification(
-          type: type,
-          title: 'New property event',
-          message: 'Open house this Saturday at 2 PM',
-          actionText: 'Add to Calendar',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(12)),
-          ),
-          metadata: {'eventId': 222},
-        );
-
-      case FeedNotificationType.achievement:
-        return FeedNotification(
-          type: type,
-          title: 'Achievement unlocked! 🏆',
-          message: 'You earned the "Active Bidder" badge',
-          actionText: 'View Profile',
-          createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(60)),
-          ),
-          metadata: {'badgeId': 'active_bidder'},
-        );
-
-      case FeedNotificationType.communityInvite:
-        return FeedNotification(
-          type: type,
-          title: 'Community invitation',
-          message: 'Join "Downtown Property Owners" community',
-          actionText: 'Accept',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(24)),
-          ),
-          metadata: {'communityId': 333},
-        );
-
-      case FeedNotificationType.newFollower:
-        return FeedNotification(
-          type: type,
-          title: 'New follower',
-          message: 'John Smith started following you',
-          actionText: 'Follow Back',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(12)),
-          ),
-          metadata: {'userId': 444},
-        );
-
-      case FeedNotificationType.postLiked:
-        return FeedNotification(
-          type: type,
-          title: 'Your post is popular!',
-          message: 'Your post got 100 likes',
-          actionText: 'View Post',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(6)),
-          ),
-          metadata: {'postId': 555, 'likeCount': 100},
-        );
-
-      case FeedNotificationType.commentReply:
-        return FeedNotification(
-          type: type,
-          title: 'New reply',
-          message: 'Sarah replied to your comment',
-          actionText: 'View Comment',
-          createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(120)),
-          ),
-          metadata: {'commentId': 666},
-        );
-
-      case FeedNotificationType.auctionStarted:
-        return FeedNotification(
-          type: type,
-          title: 'New auction nearby',
-          message: 'Luxury Condo auction just started in your area',
-          actionText: 'View',
-          createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(30)),
-          ),
-          metadata: {'auctionId': 777},
-        );
-
-      case FeedNotificationType.priceDrop:
-        return FeedNotification(
-          type: type,
-          title: 'Price drop alert! 💰',
-          message: 'Garden Villa reduced by \$50,000',
-          actionText: 'View Deal',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(12)),
-          ),
-          metadata: {'propertyId': 888, 'discount': 50000},
-        );
-
-      case FeedNotificationType.trendingPost:
-        return FeedNotification(
-          type: type,
-          title: 'Your post is trending! 🔥',
-          message: 'Your post is getting lots of attention',
-          actionText: 'Share',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(6)),
-          ),
-          metadata: {'postId': 999},
-        );
-
-      case FeedNotificationType.milestone:
-        return FeedNotification(
-          type: type,
-          title: 'Milestone reached! 🎯',
-          message: 'You reached 1,000 reputation points',
-          actionText: 'Claim Reward',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(24)),
-          ),
-          metadata: {'reputation': 1000},
-        );
-
-      case FeedNotificationType.aiSuggestion:
-        return FeedNotification(
-          type: type,
-          title: 'AI found a match',
-          message: 'Property matching your preferences available',
-          actionText: 'View',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(12)),
-          ),
-          metadata: {'propertyId': 1010},
-        );
-
-      case FeedNotificationType.referral:
-        return FeedNotification(
-          type: type,
-          title: 'Earn rewards! 💵',
-          message: 'Invite friends and earn \$50 per referral',
-          actionText: 'Invite Friends',
-          createdAt: DateTime.now().subtract(
-            Duration(hours: _random.nextInt(48)),
-          ),
-          metadata: {'rewardAmount': 50},
-        );
     }
   }
 

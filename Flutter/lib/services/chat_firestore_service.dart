@@ -1,13 +1,31 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../core/firebase_status.dart';
 import '../models/chat_message.dart';
 
 class ChatFirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore? _firestoreOrNull() {
+    if (!FirebaseStatus.isReady) {
+      return null;
+    }
+
+    try {
+      return FirebaseFirestore.instance;
+    } catch (e) {
+      print('Firestore instance unavailable: $e');
+      return null;
+    }
+  }
 
   // Stream messages for a specific chat (real-time)
   Stream<List<ChatMessage>> streamChatMessages(int chatId) {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<List<ChatMessage>>.value([]);
+    }
+
     try {
-      return _firestore
+      return firestore
           .collection('chats')
           .doc(chatId.toString())
           .collection('messages')
@@ -38,8 +56,13 @@ class ChatFirestoreService {
 
   // Get unread count for a specific chat
   Stream<int> streamUnreadCount(int chatId, int currentUserId) {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<int>.value(0);
+    }
+
     try {
-      return _firestore
+      return firestore
           .collection('chats')
           .doc(chatId.toString())
           .collection('messages')
@@ -55,8 +78,13 @@ class ChatFirestoreService {
 
   // Listen to chat updates (for chat list)
   Stream<Map<String, dynamic>?> streamChatUpdates(int chatId) {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return Stream<Map<String, dynamic>?>.value(null);
+    }
+
     try {
-      return _firestore
+      return firestore
           .collection('chats')
           .doc(chatId.toString())
           .snapshots()
@@ -88,8 +116,13 @@ class ChatFirestoreService {
 
   // Check if Firestore is available
   Future<bool> isAvailable() async {
+    final firestore = _firestoreOrNull();
+    if (firestore == null) {
+      return false;
+    }
+
     try {
-      await _firestore.collection('test').limit(1).get();
+      await firestore.collection('test').limit(1).get();
       return true;
     } catch (e) {
       print('Firestore not available: $e');

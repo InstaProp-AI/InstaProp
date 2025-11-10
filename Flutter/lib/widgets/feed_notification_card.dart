@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/feed_notification.dart';
 import '../theme/app_colors.dart';
+import 'progressive_network_image.dart';
 
 /// Instagram Story-style notification card with swipe-to-dismiss
 class FeedNotificationCard extends StatefulWidget {
@@ -147,23 +148,24 @@ class _FeedNotificationCardState extends State<FeedNotificationCard>
 
                   // Property thumbnail or action button
                   if (hasPropertyImage && propertyImage != null)
-                    ClipRRect(
+                    ProgressiveNetworkImage(
+                      imageUrl: propertyImage,
+                      height: 60,
+                      width: 60,
+                      fit: BoxFit.cover,
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        propertyImage,
+                      placeholder: Container(
                         width: 60,
                         height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 60,
-                          height: 60,
+                        decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.darkBorder
                               : AppColors.border,
-                          child: Icon(
-                            Icons.image,
-                            color: AppColors.textTertiary,
-                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.image,
+                          color: AppColors.textTertiary,
                         ),
                       ),
                     )

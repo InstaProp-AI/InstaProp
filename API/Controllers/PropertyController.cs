@@ -93,6 +93,7 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(new
             {
                 property.PropertyId,
+                property.ParentPropertyId,
                 property.OwnerId,
                 property.ProjectId,
                 property.Name,

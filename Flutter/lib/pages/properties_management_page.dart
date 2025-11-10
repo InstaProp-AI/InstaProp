@@ -4,12 +4,16 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/property_financials_service.dart';
 import '../services/analytics_service.dart';
+import '../models/user.dart';
 import 'add_property_page.dart';
 import 'valuate_page.dart';
 import 'my_properties_page.dart';
 import 'portfolio_analytics_page.dart';
 import 'auction_activity_page.dart';
 import 'calendar_page.dart';
+import 'profile_page.dart' show SettingsPage;
+import 'help_page.dart';
+import 'rewards_page.dart';
 
 class PropertiesManagementPage extends StatefulWidget {
   const PropertiesManagementPage({super.key});
@@ -147,6 +151,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           pinned: true,
           backgroundColor: Colors.white,
           elevation: 0,
+          actions: _buildHeaderActions(context),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
               color: Colors.white,
@@ -200,6 +205,14 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 32),
+
+              if (appState.isLoggedIn && appState.user != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildProfileOverview(appState),
+                ),
+                const SizedBox(height: 24),
+              ],
 
               // Financial Dashboard
               if (appState.isLoggedIn &&
@@ -411,6 +424,230 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
         ),
       ],
     );
+  }
+
+  List<Widget> _buildHeaderActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.settings_outlined),
+        color: const Color(0xFF1A1A1A),
+        tooltip: 'Settings',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsPage()),
+          );
+        },
+      ),
+      IconButton(
+        icon: const Icon(Icons.help_outline),
+        color: const Color(0xFF1A1A1A),
+        tooltip: 'Help',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HelpPage()),
+          );
+        },
+      ),
+      IconButton(
+        icon: const Icon(Icons.card_giftcard_outlined),
+        color: const Color(0xFF1A1A1A),
+        tooltip: 'Rewards',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const RewardsPage()),
+          );
+        },
+      ),
+      const SizedBox(width: 8),
+    ];
+  }
+
+  Widget _buildProfileOverview(AppState appState) {
+    final user = appState.user!;
+    final rawName = user.fullName.trim();
+    final displayName = rawName.isNotEmpty ? rawName : 'Guest User';
+    final email = user.email.trim().isNotEmpty ? user.email : 'No email on file';
+    final initialSource = user.firstName.trim().isNotEmpty
+        ? user.firstName
+        : (email.isNotEmpty ? email : 'U');
+    final initials = initialSource.trim().isNotEmpty
+        ? initialSource.trim().substring(0, 1).toUpperCase()
+        : 'U';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: Colors.grey[200],
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1A),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildInfoChip(
+                icon: _statusIcon(user.status),
+                label: _statusText(user.status),
+                background: _statusBackground(user.status),
+                foreground: _statusForeground(user.status),
+              ),
+              _buildInfoChip(
+                icon: Icons.stars,
+                label: '${user.currentPoints ?? 0} pts',
+                background: Colors.amber.withOpacity(0.15),
+                foreground: Colors.amber.shade800,
+              ),
+              if (user.totalEarnedPoints != null)
+                _buildInfoChip(
+                  icon: Icons.emoji_events_outlined,
+                  label: 'Lifetime ${user.totalEarnedPoints}',
+                  background: Colors.indigo.withOpacity(0.12),
+                  foreground: Colors.indigo.shade600,
+                ),
+              _buildInfoChip(
+                icon: Icons.calendar_today,
+                label: 'Member since ${_formatMemberSince(user.createdAt)}',
+                background: Colors.grey[100]!,
+                foreground: const Color(0xFF1A1A1A),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required Color background,
+    required Color foreground,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: foreground),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _statusBackground(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return Colors.green.withOpacity(0.12);
+      case VerificationStatus.pending:
+        return Colors.blue.withOpacity(0.12);
+      case VerificationStatus.notVerified:
+        return Colors.orange.withOpacity(0.12);
+    }
+  }
+
+  Color _statusForeground(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return Colors.green;
+      case VerificationStatus.pending:
+        return Colors.blue;
+      case VerificationStatus.notVerified:
+        return Colors.orange;
+    }
+  }
+
+  IconData _statusIcon(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return Icons.verified;
+      case VerificationStatus.pending:
+        return Icons.hourglass_empty;
+      case VerificationStatus.notVerified:
+        return Icons.warning_amber_rounded;
+    }
+  }
+
+  String _statusText(VerificationStatus status) {
+    switch (status) {
+      case VerificationStatus.verified:
+        return 'Verified';
+      case VerificationStatus.pending:
+        return 'Pending';
+      case VerificationStatus.notVerified:
+        return 'Not Verified';
+    }
+  }
+
+  String _formatMemberSince(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   Widget _buildFinancialDashboard() {

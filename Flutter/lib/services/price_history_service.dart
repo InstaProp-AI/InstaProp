@@ -37,7 +37,7 @@ class PriceHistoryService {
     final response = await ApiClient.getWithQuery(
       '/api/pricehistory/trends',
       queryParams,
-      fromJson: (json) => PriceTrendsResponse.fromJson(json),
+      (json) => PriceTrendsResponse.fromJson(json),
     );
 
     if (response.success) {
