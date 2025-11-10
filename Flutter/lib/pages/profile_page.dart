@@ -443,7 +443,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             } else {
                               Navigator.of(context).pushReplacement(
                                 MaterialPageRoute(
-                                  builder: (_) => const PropertiesManagementPage(),
+                                  builder: (_) =>
+                                      const PropertiesManagementPage(),
                                 ),
                               );
                             }

@@ -143,24 +143,11 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                     onComment: null,
                   ),
                   // Poll
-                  if (_post!.poll != null) ...[
+                  if (_post!.poll != null)
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
-                      child: PollWidget(
-                        poll: _post!.poll!,
-                        onVote: (optionIndex) async {
-                          final response =
-                              await CommunityPostService.voteOnPoll(
-                                _post!.poll!.pollId,
-                                optionIndex,
-                              );
-                          if (response.success) {
-                            _loadPost();
-                          }
-                        },
-                      ),
+                      child: PollWidget(postId: _post!.postId),
                     ),
-                  ],
                   // Comments section
                   Padding(
                     padding: const EdgeInsets.all(16),

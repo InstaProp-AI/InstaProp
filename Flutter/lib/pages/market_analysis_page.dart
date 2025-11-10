@@ -150,9 +150,7 @@ class _MarketAnalysisPageState extends State<MarketAnalysisPage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const AuctionsPage(),
-                ),
+                MaterialPageRoute(builder: (_) => const AuctionsPage()),
               );
             },
             icon: const Icon(Icons.gavel_rounded),
@@ -171,9 +169,7 @@ class _MarketAnalysisPageState extends State<MarketAnalysisPage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const PropertySearchPage(),
-                ),
+                MaterialPageRoute(builder: (_) => const PropertySearchPage()),
               );
             },
             icon: const Icon(Icons.home_work_outlined),

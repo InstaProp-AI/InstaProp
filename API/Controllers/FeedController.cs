@@ -199,6 +199,8 @@ namespace PropertyFlipperAPI.Controllers
                             Id = $"investor_milestone_{milestone.AchievementId}"
                         });
                     }
+                }
+
                 // Add valuation prompts (7% weight = 1 copy per prompt)
                 foreach (var prompt in valuationPrompts)
                 {
