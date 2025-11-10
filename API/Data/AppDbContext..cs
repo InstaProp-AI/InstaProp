@@ -64,6 +64,11 @@ namespace PropertyFlipperAPI.Data
         public DbSet<CommentReaction> CommentReactions { get; set; }
         public DbSet<PostBookmark> PostBookmarks { get; set; }
         public DbSet<UserAchievement> UserAchievements { get; set; }
+        
+        // Live Streaming
+        public DbSet<LiveStream> LiveStreams { get; set; }
+        public DbSet<StreamViewer> StreamViewers { get; set; }
+        public DbSet<StreamChatMessage> StreamChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -589,7 +594,8 @@ namespace PropertyFlipperAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.AccountId)
                     .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.PollId, e.AccountId }).IsUnique();
+                // Allow multiple selections by same user across options
+                entity.HasIndex(e => new { e.PollId, e.AccountId, e.OptionIndex }).IsUnique();
             });
 
             // Configure PostReaction
@@ -654,6 +660,55 @@ namespace PropertyFlipperAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.AccountId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure LiveStream
+            modelBuilder.Entity<LiveStream>(entity =>
+            {
+                entity.HasKey(e => e.StreamId);
+                entity.Property(e => e.StreamId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.StreamUrl).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.ThumbnailUrl).HasMaxLength(500);
+                entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+                entity.HasOne(e => e.Developer)
+                    .WithMany()
+                    .HasForeignKey(e => e.DeveloperId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure StreamViewer
+            modelBuilder.Entity<StreamViewer>(entity =>
+            {
+                entity.HasKey(e => e.ViewerId);
+                entity.Property(e => e.ViewerId).ValueGeneratedOnAdd();
+                entity.HasOne(e => e.Stream)
+                    .WithMany(s => s.Viewers)
+                    .HasForeignKey(e => e.StreamId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.StreamId, e.UserId }).IsUnique();
+            });
+
+            // Configure StreamChatMessage
+            modelBuilder.Entity<StreamChatMessage>(entity =>
+            {
+                entity.HasKey(e => e.MessageId);
+                entity.Property(e => e.MessageId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Message).HasMaxLength(500).IsRequired();
+                entity.HasOne(e => e.Stream)
+                    .WithMany()
+                    .HasForeignKey(e => e.StreamId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(e => e.StreamId);
+                entity.HasIndex(e => e.CreatedAt);
             });
         }
     }

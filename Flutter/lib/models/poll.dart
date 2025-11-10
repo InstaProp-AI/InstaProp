@@ -5,7 +5,11 @@ class Poll {
   final int totalVotes;
   final DateTime? endsAt;
   final bool hasVoted;
-  final int? userVoteOptionIndex;
+  final List<int>? userVoteOptionIndexes;
+  final bool isMultipleChoice;
+  final bool allowChangeVote;
+  final bool showResultsBeforeVote;
+  final String? imageUrl;
 
   Poll({
     required this.pollId,
@@ -14,7 +18,11 @@ class Poll {
     this.totalVotes = 0,
     this.endsAt,
     this.hasVoted = false,
-    this.userVoteOptionIndex,
+    this.userVoteOptionIndexes,
+    this.isMultipleChoice = false,
+    this.allowChangeVote = true,
+    this.showResultsBeforeVote = true,
+    this.imageUrl,
   });
 
   factory Poll.fromJson(Map<String, dynamic> json) {
@@ -28,8 +36,12 @@ class Poll {
           [],
       totalVotes: json['totalVotes'] ?? 0,
       endsAt: json['endsAt'] != null ? DateTime.parse(json['endsAt']) : null,
-      hasVoted: json['hasVoted'] ?? false,
-      userVoteOptionIndex: json['userVoteOptionIndex'],
+      hasVoted: (json['userSelections'] != null) && ((json['userSelections'] as List).isNotEmpty),
+      userVoteOptionIndexes: (json['userSelections'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
+      isMultipleChoice: json['isMultipleChoice'] ?? false,
+      allowChangeVote: json['allowChangeVote'] ?? true,
+      showResultsBeforeVote: json['showResultsBeforeVote'] ?? true,
+      imageUrl: json['imageUrl'],
     );
   }
 
@@ -41,7 +53,11 @@ class Poll {
       'totalVotes': totalVotes,
       'endsAt': endsAt?.toIso8601String(),
       'hasVoted': hasVoted,
-      'userVoteOptionIndex': userVoteOptionIndex,
+      'userSelections': userVoteOptionIndexes,
+      'isMultipleChoice': isMultipleChoice,
+      'allowChangeVote': allowChangeVote,
+      'showResultsBeforeVote': showResultsBeforeVote,
+      'imageUrl': imageUrl,
     };
   }
 
@@ -60,7 +76,7 @@ class PollOption {
 
   factory PollOption.fromJson(Map<String, dynamic> json) {
     return PollOption(
-      text: json['text'] ?? '',
+      text: json['text'] ?? json['optionText'] ?? '',
       voteCount: json['voteCount'] ?? 0,
       percentage: (json['percentage'] ?? 0.0).toDouble(),
     );

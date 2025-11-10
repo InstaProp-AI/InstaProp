@@ -23,6 +23,10 @@ import '../widgets/deal_highlight_card.dart';
 import '../widgets/project_story_card.dart';
 import '../widgets/investor_milestone_card.dart';
 import '../widgets/post_card.dart';
+import '../widgets/feed_live_stream_card.dart';
+import '../widgets/feed_valuation_prompt_card.dart';
+import '../widgets/feed_payment_reminder_card.dart';
+import '../widgets/feed_post_composer.dart';
 import 'post_details_page.dart';
 import 'auction_details_page.dart';
 import 'community_details_page.dart';
@@ -30,6 +34,10 @@ import 'community_list_page.dart';
 import 'chat_list_page.dart';
 import 'project_details_page.dart';
 import 'news_detail_page.dart';
+import 'live_stream_player_page.dart';
+import '../models/live_stream.dart';
+import '../models/valuation_prompt.dart';
+import '../models/payment_reminder.dart';
 
 class ExplorePageController {
   Future<void> Function()? _refreshCallback;
@@ -696,6 +704,21 @@ class _ExplorePageState extends State<ExplorePage> {
 
     final slivers = <Widget>[];
 
+    slivers.add(
+      SliverToBoxAdapter(
+        child: FeedPostComposer(
+          onPostCreated: () {
+            _feedItems.clear();
+            _loadedIds.clear();
+            _currentPage = 1;
+            _loadInitialFeed();
+          },
+        ),
+      ),
+    );
+
+    slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 12)));
+
     if (featuredDeals.isNotEmpty) {
       slivers.addAll(_buildFeaturedDealsSlivers(featuredDeals));
     }
@@ -714,10 +737,20 @@ class _ExplorePageState extends State<ExplorePage> {
       slivers.add(_buildLoadingSliver());
     }
 
-    return CustomScrollView(
-      key: const ValueKey('explore_scroll_view'),
-      controller: _scrollController,
-      slivers: slivers,
+    return RefreshIndicator(
+      onRefresh: () async {
+        _feedItems.clear();
+        _loadedIds.clear();
+        _currentPage = 1;
+        await _loadInitialFeed();
+      },
+      color: const Color(0xFF6200EE),
+      child: CustomScrollView(
+        key: const ValueKey('explore_scroll_view'),
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: slivers,
+      ),
     );
   }
 
@@ -816,6 +849,56 @@ class _ExplorePageState extends State<ExplorePage> {
                     'Celebrating ${milestone.investorName}\'s achievement!',
                   ),
                   duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          );
+          break;
+
+        case FeedItemType.livestream:
+          final stream = item.data as LiveStream;
+          card = FeedLiveStreamCard(
+            stream: stream,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LiveStreamPlayerPage(stream: stream),
+                ),
+              );
+            },
+          );
+          break;
+
+        case FeedItemType.valuationPrompt:
+          final prompt = item.data as ValuationPrompt;
+          card = FeedValuationPromptCard(
+            prompt: prompt,
+            onTap: () {
+              if (prompt.propertyId != null) {
+                Navigator.pushNamed(
+                  context,
+                  '/valuation/${prompt.propertyId}',
+                );
+              } else {
+                Navigator.pushNamed(context, '/valuation');
+              }
+            },
+          );
+          break;
+
+        case FeedItemType.paymentReminder:
+          final reminder = item.data as PaymentReminder;
+          card = FeedPaymentReminderCard(
+            reminder: reminder,
+            onTap: () {
+              Navigator.pushNamed(context, '/calendar');
+            },
+            onSetReminder: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Reminder set successfully'),
+                  backgroundColor: Colors.green,
                 ),
               );
             },

@@ -90,7 +90,10 @@ namespace PropertyFlipperAPI.Controllers
                 .FirstOrDefaultAsync(r => r.PostId == postId && r.AccountId == accountId.Value);
 
             if (reaction == null)
-                return NotFound("Reaction not found");
+            {
+                // Idempotent remove: treat as success if no reaction exists
+                return Ok(new { message = "No reaction to remove" });
+            }
 
             var post = await _context.CommunityPosts
                 .Include(p => p.Author)

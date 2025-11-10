@@ -1,165 +1,150 @@
 import 'package:flutter/material.dart';
 import '../models/poll.dart';
-import '../theme/app_colors.dart';
+import '../services/community_post_service.dart';
 
 class PollWidget extends StatefulWidget {
-  final Poll poll;
-  final Function(int)? onVote;
-
-  const PollWidget({super.key, required this.poll, this.onVote});
+  final int postId;
+  const PollWidget({super.key, required this.postId});
 
   @override
   State<PollWidget> createState() => _PollWidgetState();
 }
 
 class _PollWidgetState extends State<PollWidget> {
+  Poll? _poll;
+  bool _loading = true;
+  bool _submitting = false;
+  final Set<int> _selected = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final res = await CommunityPostService.getPollByPost(widget.postId);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (res.success) _poll = res.data;
+    });
+  }
+
+  Future<void> _vote(int optionIndex) async {
+    if (_poll == null || _poll!.isExpired || _submitting) return;
+    setState(() => _submitting = true);
+    final payload = _poll!.isMultipleChoice ? _selected.toList() : optionIndex;
+    final res = await CommunityPostService.voteOnPoll(_poll!.pollId, payload);
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (res.success) {
+      await _load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res.error ?? 'Failed to vote')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: LinearProgressIndicator(),
+      );
+    }
+    if (_poll == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.poll.question,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            _poll!.question,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
           ),
-          const SizedBox(height: 12),
-          ...widget.poll.options.asMap().entries.map((entry) {
-            final index = entry.key;
-            final option = entry.value;
-            final isVotedOption =
-                widget.poll.hasVoted &&
-                widget.poll.userVoteOptionIndex == index;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: InkWell(
-                onTap: widget.poll.hasVoted || widget.onVote == null
-                    ? null
-                    : () => widget.onVote!(index),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isVotedOption
-                        ? AppColors.primary.withOpacity(0.1)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isVotedOption
-                          ? AppColors.primary
-                          : AppColors.border,
-                      width: isVotedOption ? 2 : 1,
-                    ),
+          if (_poll!.imageUrl != null && _poll!.imageUrl!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                _poll!.imageUrl!,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          ...List.generate(_poll!.options.length, (i) {
+            final opt = _poll!.options[i];
+            final userSelections = _poll!.userVoteOptionIndexes ?? [];
+            final isSelected = _poll!.isMultipleChoice
+                ? _selected.contains(i)
+                : (userSelections.contains(i));
+            return InkWell(
+              onTap: _submitting
+                  ? null
+                  : () {
+                      if (_poll!.isMultipleChoice) {
+                        setState(() {
+                          if (_selected.contains(i)) {
+                            _selected.remove(i);
+                          } else {
+                            _selected.add(i);
+                          }
+                        });
+                      } else {
+                        _vote(i);
+                      }
+                    },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isSelected ? Colors.blue : Colors.grey.shade300,
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          option.text,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: widget.poll.hasVoted
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            color: isVotedOption
-                                ? AppColors.primary
-                                : AppColors.textPrimary,
-                          ),
-                        ),
+                ),
+                child: Row(
+                  children: [
+                    if (_poll!.isMultipleChoice) ...[
+                      Icon(
+                        isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                        color: isSelected ? Colors.blue : Colors.grey,
                       ),
-                      if (widget.poll.hasVoted) ...[
-                        const SizedBox(width: 12),
-                        Text(
-                          '${option.percentage.toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 60,
-                          child: LinearProgressIndicator(
-                            value: option.percentage / 100,
-                            backgroundColor: AppColors.border,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ] else if (!widget.poll.hasVoted && widget.onVote != null)
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
+                      const SizedBox(width: 8),
                     ],
-                  ),
+                    Expanded(child: Text(opt.text)),
+                    if ((_poll!.showResultsBeforeVote) || _poll!.hasVoted) ...[
+                      Text('${opt.percentage.toStringAsFixed(0)}%'),
+                    ],
+                  ],
                 ),
               ),
             );
-          }).toList(),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              if (widget.poll.hasVoted)
-                const Icon(
-                  Icons.check_circle,
-                  size: 16,
-                  color: AppColors.success,
-                ),
-              const SizedBox(width: 4),
-              Text(
-                widget.poll.hasVoted
-                    ? 'You voted'
-                    : '${widget.poll.totalVotes} votes',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textTertiary,
-                ),
-              ),
-              const Spacer(),
-              if (widget.poll.endsAt != null) ...[
-                const Icon(
-                  Icons.access_time,
-                  size: 14,
-                  color: AppColors.textTertiary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Ends ${_formatTime(widget.poll.endsAt!)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ],
-            ],
+          }),
+          const SizedBox(height: 4),
+          Text(
+            '${_poll!.totalVotes} votes',
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
+          if (_poll!.isMultipleChoice)
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _submitting || _selected.isEmpty ? null : () => _vote(-1),
+                child: const Text('Submit'),
+              ),
+            ),
         ],
       ),
     );
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = dateTime.difference(now);
-
-    if (difference.inDays > 0) {
-      return 'in ${difference.inDays}d';
-    } else if (difference.inHours > 0) {
-      return 'in ${difference.inHours}h';
-    } else {
-      return 'soon';
-    }
   }
 }
 

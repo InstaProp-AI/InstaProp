@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BCrypt.Net;
+using System.Text.Json;
 
 namespace PropertyFlipperAPI.Services
 {
@@ -150,6 +151,19 @@ namespace PropertyFlipperAPI.Services
             // Step 26: Seed User Documents
             await SeedUserDocumentsAsync(accounts);
 
+            // Step 27: Seed News Articles
+            await SeedNewsArticlesAsync();
+
+            // Step 28: Seed Communities (includes members, posts, comments, reactions, polls)
+            var communities = await SeedCommunitiesAsync(accounts, projects);
+            await SeedCommunityPostsAsync(communities, accounts);
+
+            // Step 29: Seed Property Valuations
+            await SeedPropertyValuationsAsync(childProperties);
+
+            // Step 30: Seed User Achievements
+            await SeedUserAchievementsAsync(accounts);
+
             await _context.SaveChangesAsync();
             Console.WriteLine("✅ Complete Egyptian Real Estate Data Seeding Finished!");
         }
@@ -159,30 +173,67 @@ namespace PropertyFlipperAPI.Services
             Console.WriteLine("🗑️ Clearing existing data...");
             
             // Clear in reverse order to avoid foreign key constraints
+            // Community-related entities
+            _context.PollVotes.RemoveRange(_context.PollVotes);
+            _context.Polls.RemoveRange(_context.Polls);
+            _context.CommentReactions.RemoveRange(_context.CommentReactions);
+            _context.PostReactions.RemoveRange(_context.PostReactions);
+            _context.CommentLikes.RemoveRange(_context.CommentLikes);
+            _context.PostLikes.RemoveRange(_context.PostLikes);
+            _context.PostBookmarks.RemoveRange(_context.PostBookmarks);
+            _context.PostComments.RemoveRange(_context.PostComments);
+            _context.PostCategories.RemoveRange(_context.PostCategories);
+            _context.CommunityPosts.RemoveRange(_context.CommunityPosts);
+            _context.CommunityMembers.RemoveRange(_context.CommunityMembers);
+            _context.Communities.RemoveRange(_context.Communities);
+            _context.UserAchievements.RemoveRange(_context.UserAchievements);
+            
+            // News entities
+            _context.NewsImages.RemoveRange(_context.NewsImages);
+            _context.NewsArticles.RemoveRange(_context.NewsArticles);
+            
+            // Property valuations
+            _context.PropertyValuations.RemoveRange(_context.PropertyValuations);
+            
+            // AI Chat entities
             _context.AIChatMessages.RemoveRange(_context.AIChatMessages);
             _context.AIChats.RemoveRange(_context.AIChats);
+            
+            // Chat entities
             _context.ChatMessages.RemoveRange(_context.ChatMessages);
             _context.Chats.RemoveRange(_context.Chats);
+            
+            // Auction and bidding entities
             _context.Bids.RemoveRange(_context.Bids);
             _context.Auctions.RemoveRange(_context.Auctions);
+            
+            // Property-related entities
             _context.PropertyViews.RemoveRange(_context.PropertyViews);
-            _context.Referrals.RemoveRange(_context.Referrals);
-            _context.UserBadges.RemoveRange(_context.UserBadges);
-            _context.UserRewards.RemoveRange(_context.UserRewards);
-            _context.ProjectUpdates.RemoveRange(_context.ProjectUpdates);
-            _context.ProjectMilestones.RemoveRange(_context.ProjectMilestones);
-            _context.DeveloperRatings.RemoveRange(_context.DeveloperRatings);
             _context.PropertyPriceHistories.RemoveRange(_context.PropertyPriceHistories);
             _context.PropertyDocs.RemoveRange(_context.PropertyDocs);
             _context.PropertyImages.RemoveRange(_context.PropertyImages);
             _context.ChildProperties.RemoveRange(_context.ChildProperties);
             _context.ParentProperties.RemoveRange(_context.ParentProperties);
+            
+            // Project entities
+            _context.ProjectUpdates.RemoveRange(_context.ProjectUpdates);
+            _context.ProjectMilestones.RemoveRange(_context.ProjectMilestones);
             _context.Events.RemoveRange(_context.Events);
-            _context.Notifications.RemoveRange(_context.Notifications);
-            _context.UserDocs.RemoveRange(_context.UserDocs);
-            _context.DeveloperProfiles.RemoveRange(_context.DeveloperProfiles);
             _context.Projects.RemoveRange(_context.Projects);
+            
+            // User-related entities
+            _context.Referrals.RemoveRange(_context.Referrals);
+            _context.UserBadges.RemoveRange(_context.UserBadges);
+            _context.UserRewards.RemoveRange(_context.UserRewards);
+            _context.DeveloperRatings.RemoveRange(_context.DeveloperRatings);
+            _context.UserDocs.RemoveRange(_context.UserDocs);
+            _context.Notifications.RemoveRange(_context.Notifications);
+            
+            // Developer and account entities
+            _context.DeveloperProfiles.RemoveRange(_context.DeveloperProfiles);
             _context.Accounts.RemoveRange(_context.Accounts);
+            
+            // Market data
             _context.GoldPrices.RemoveRange(_context.GoldPrices);
 
             await _context.SaveChangesAsync();
@@ -1146,6 +1197,786 @@ namespace PropertyFlipperAPI.Services
             }
 
             _context.UserDocs.AddRange(userDocs);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedNewsArticlesAsync()
+        {
+            Console.WriteLine("📰 Seeding News Articles...");
+            
+            var newsArticles = new List<NewsArticle>();
+            var categories = new[] { "Market News", "Project Updates", "Investment Tips", "Developer News", "Government Policies" };
+            
+            var newsTitles = new[]
+            {
+                "Egypt's Real Estate Market Shows Strong Growth in 2024",
+                "New Administrative Capital Announces New Residential Phase",
+                "Investment Opportunities in New Cairo Districts",
+                "Mortgage Rates Drop to Historic Lows",
+                "New Regulations Impact Property Buyers",
+                "Luxury Projects See High Demand",
+                "Affordable Housing Initiative Launches",
+                "Market Analysis: Best Areas to Invest",
+                "Developer Announces Mega Project",
+                "Property Prices Stabilize After Recent Fluctuations",
+                "Experts Predict Market Growth",
+                "New Payment Plans Available for Buyers",
+                "Government Unveils New Urban Development Plan",
+                "Residential Projects Near Completion",
+                "Investment Guide: First-Time Buyers",
+                "Market Trends: What to Expect",
+                "Developer Ratings and Reviews",
+                "Property Auction Results Show High Activity",
+                "New Amenities Enhance Living Standards",
+                "Sustainable Building Practices on the Rise"
+            };
+            
+            var newsContents = new[]
+            {
+                "The Egyptian real estate market continues to show resilience and growth despite global economic challenges. Key indicators point to sustained demand, particularly in New Cairo and the New Administrative Capital.",
+                "Developers are reporting strong sales figures, with many projects reaching full occupancy ahead of schedule. The market is particularly active in luxury residential developments.",
+                "Investors are taking notice of emerging opportunities in well-planned communities with comprehensive amenities and infrastructure.",
+                "Financial institutions are introducing more flexible mortgage products to meet growing demand from first-time buyers and investors alike.",
+                "Recent policy changes aim to streamline property registration processes and provide better protection for buyers and investors."
+            };
+            
+            for (int i = 0; i < 25; i++)
+            {
+                var publishedDate = DateTime.UtcNow.AddDays(-_random.Next(0, 180));
+                var isPublished = _random.Next(10) != 0; // 90% published
+                
+                newsArticles.Add(new NewsArticle
+                {
+                    Title = newsTitles[_random.Next(newsTitles.Length)],
+                    Content = newsContents[_random.Next(newsContents.Length)] + " " + 
+                             "The market analysis suggests continued growth in key areas. Experts recommend thorough research before making investment decisions.",
+                    Category = categories[_random.Next(categories.Length)],
+                    PublishedDate = publishedDate,
+                    CreatedAt = publishedDate.AddDays(-_random.Next(0, 7)),
+                    UpdatedAt = _random.Next(3) == 0 ? publishedDate.AddDays(_random.Next(1, 30)) : null,
+                    IsPublished = isPublished
+                });
+            }
+            
+            _context.NewsArticles.AddRange(newsArticles);
+            await _context.SaveChangesAsync();
+            
+            // Seed images for news articles
+            await SeedNewsImagesAsync(newsArticles);
+        }
+
+        private async Task SeedNewsImagesAsync(List<NewsArticle> newsArticles)
+        {
+            Console.WriteLine("🖼️ Seeding News Images...");
+            
+            var newsImages = new List<NewsImage>();
+            
+            foreach (var article in newsArticles.Where(a => a.IsPublished))
+            {
+                // Add 1-3 images per article
+                var imageCount = _random.Next(1, 4);
+                
+                for (int i = 0; i < imageCount; i++)
+                {
+                    newsImages.Add(new NewsImage
+                    {
+                        NewsArticleId = article.NewsArticleId,
+                        ImageUrl = $"https://images.unsplash.com/photo-{2200000000000 + newsImages.Count}?w=1200&h=800&fit=crop",
+                        DisplayOrder = i
+                    });
+                }
+            }
+            
+            _context.NewsImages.AddRange(newsImages);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPropertyValuationsAsync(List<ChildProperty> childProperties)
+        {
+            Console.WriteLine("💰 Seeding Property Valuations...");
+            
+            var valuations = new List<PropertyValuation>();
+            var valuationSources = new[] { "AI", "Manual" };
+            
+            // Create valuations for 30-40% of properties
+            var propertiesToValuate = childProperties.Where(p => _random.Next(10) < 4).ToList();
+            
+            foreach (var property in propertiesToValuate)
+            {
+                var source = valuationSources[_random.Next(valuationSources.Length)];
+                var basePrice = property.BuyingPrice ?? _random.Next(500000, 5000000);
+                
+                // Valuation can vary by ±15% from buying price
+                var priceVariation = (decimal)(_random.NextDouble() * 0.3 - 0.15); // -15% to +15%
+                var estimatedValue = basePrice * (1 + priceVariation);
+                var confidence = source == "AI" ? (decimal?)(85 + _random.NextDouble() * 15) : (decimal?)(70 + _random.NextDouble() * 25);
+                
+                valuations.Add(new PropertyValuation
+                {
+                    PropertyId = property.PropertyId,
+                    EstimatedValue = estimatedValue,
+                    Confidence = confidence,
+                    CalculatedAt = DateTime.UtcNow.AddDays(-_random.Next(0, 90)),
+                    ValuationSource = source,
+                    AIReasoning = source == "AI" ? 
+                        $"Based on comparable properties in the area, market trends, and property features, the estimated value is {estimatedValue:N0} EGP." : null,
+                    ComparablesCount = _random.Next(3, 15),
+                    PriceRangeLow = estimatedValue * 0.85m,
+                    PriceRangeHigh = estimatedValue * 1.15m,
+                    MarketTrends = source == "AI" ? 
+                        "Market shows steady growth. Similar properties in the area have appreciated 5-10% over the past year." : null
+                });
+            }
+            
+            _context.PropertyValuations.AddRange(valuations);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task<List<Community>> SeedCommunitiesAsync(List<Account> accounts, List<Project> projects)
+        {
+            Console.WriteLine("👥 Seeding Communities...");
+            
+            var communities = new List<Community>();
+            var communityNames = new[]
+            {
+                "New Cairo Property Owners",
+                "Madinaty Community",
+                "New Administrative Capital Residents",
+                "Investment Discussions",
+                "Property Buyers Network",
+                "Real Estate Investors Egypt",
+                "Luxury Property Enthusiasts",
+                "First-Time Buyers Support",
+                "Property Flipping Community",
+                "Cairo Real Estate Chat"
+            };
+            
+            var descriptions = new[]
+            {
+                "Connect with other property owners in New Cairo",
+                "Discussion forum for Madinaty residents and investors",
+                "Community for those investing in the New Administrative Capital",
+                "Share investment strategies and market insights",
+                "Network with fellow property buyers and sellers"
+            };
+            
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User || a.Type == AccountType.Developer).ToList();
+            
+            for (int i = 0; i < 8; i++)
+            {
+                var creator = userAccounts[_random.Next(userAccounts.Count)];
+                var scopeType = _random.Next(2) == 0 ? CommunityScopeType.ProjectBased : CommunityScopeType.DeveloperBased;
+                var accessType = (CommunityAccessType)_random.Next(0, 3);
+                
+                // Create project/developer IDs JSON arrays
+                string? projectIds = null;
+                string? developerIds = null;
+                
+                if (scopeType == CommunityScopeType.ProjectBased && projects.Any())
+                {
+                    var selectedProjects = projects.OrderBy(x => _random.Next()).Take(_random.Next(1, 4)).Select(p => p.ProjectId).ToList();
+                    projectIds = JsonSerializer.Serialize(selectedProjects);
+                }
+                else if (scopeType == CommunityScopeType.DeveloperBased)
+                {
+                    var developerAccounts = accounts.Where(a => a.Type == AccountType.Developer).ToList();
+                    if (developerAccounts.Any())
+                    {
+                        var selectedDevelopers = developerAccounts.OrderBy(x => _random.Next()).Take(_random.Next(1, 3)).Select(d => d.AccountId).ToList();
+                        developerIds = JsonSerializer.Serialize(selectedDevelopers);
+                    }
+                }
+                
+                communities.Add(new Community
+                {
+                    Name = communityNames[i],
+                    Description = descriptions[_random.Next(descriptions.Length)],
+                    CreatedById = creator.AccountId,
+                    ScopeType = scopeType,
+                    AccessType = accessType,
+                    ProjectIds = projectIds,
+                    DeveloperIds = developerIds,
+                    CoverPhotoUrl = $"https://images.unsplash.com/photo-{2300000000000 + i}?w=1200&h=600&fit=crop",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow.AddMonths(-_random.Next(1, 12)),
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            
+            _context.Communities.AddRange(communities);
+            await _context.SaveChangesAsync();
+            
+            // Seed members for each community
+            await SeedCommunityMembersAsync(communities, accounts);
+            
+            return communities;
+        }
+
+        private async Task SeedCommunityMembersAsync(List<Community> communities, List<Account> accounts)
+        {
+            Console.WriteLine("👤 Seeding Community Members...");
+            
+            var members = new List<CommunityMember>();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User || a.Type == AccountType.Developer).ToList();
+            
+            foreach (var community in communities)
+            {
+                // Add creator as Creator role
+                members.Add(new CommunityMember
+                {
+                    CommunityId = community.CommunityId,
+                    AccountId = community.CreatedById,
+                    Role = CommunityMemberRole.Creator,
+                    JoinedAt = community.CreatedAt
+                });
+                
+                // Add 10-25 additional members
+                var memberCount = _random.Next(10, 26);
+                var availableAccounts = userAccounts.Where(a => a.AccountId != community.CreatedById).OrderBy(x => _random.Next()).Take(memberCount).ToList();
+                
+                foreach (var account in availableAccounts)
+                {
+                    var role = _random.Next(10) == 0 ? CommunityMemberRole.Moderator : CommunityMemberRole.Member;
+                    
+                    members.Add(new CommunityMember
+                    {
+                        CommunityId = community.CommunityId,
+                        AccountId = account.AccountId,
+                        Role = role,
+                        JoinedAt = community.CreatedAt.AddDays(_random.Next(0, 180))
+                    });
+                }
+            }
+            
+            _context.CommunityMembers.AddRange(members);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedCommunityPostsAsync(List<Community> communities, List<Account> accounts)
+        {
+            Console.WriteLine("📝 Seeding Community Posts...");
+            
+            var posts = new List<CommunityPost>();
+            var postContents = new[]
+            {
+                "Has anyone heard about the new project launching next month?",
+                "What do you think about the current market prices?",
+                "I'm looking for advice on my first property purchase.",
+                "Great experience with this developer! Highly recommend.",
+                "Market analysis shows interesting trends this quarter.",
+                "Any tips for property flipping in New Cairo?",
+                "Sharing some photos from my recent property visit.",
+                "Discussion about payment plans and financing options.",
+                "What amenities are most important to you?",
+                "Investment opportunities in emerging areas."
+            };
+            
+            var categories = new[] { "General", "Investment", "Q&A", "Market Analysis", "Tips & Advice" };
+            
+            foreach (var community in communities)
+            {
+                // Get community members
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == community.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                // Create 5-15 posts per community
+                var postCount = _random.Next(5, 16);
+                
+                for (int i = 0; i < postCount; i++)
+                {
+                    var author = accounts.FirstOrDefault(a => communityMemberIds.Contains(a.AccountId));
+                    if (author == null) continue;
+                    
+                    var postType = _random.Next(10) < 2 ? PostType.Poll : (_random.Next(10) < 1 ? PostType.Announcement : PostType.Regular);
+                    var createdAt = community.CreatedAt.AddDays(_random.Next(0, 180));
+                    
+                    var post = new CommunityPost
+                    {
+                        CommunityId = community.CommunityId,
+                        AuthorId = author.AccountId,
+                        Content = postContents[_random.Next(postContents.Length)],
+                        ImageUrl = _random.Next(4) == 0 ? $"https://images.unsplash.com/photo-{2400000000000 + posts.Count}?w=800&h=600&fit=crop" : null,
+                        PostType = postType,
+                        IsPinned = _random.Next(20) == 0,
+                        CreatedAt = createdAt,
+                        UpdatedAt = _random.Next(5) == 0 ? createdAt.AddDays(_random.Next(1, 30)) : null,
+                        LastActivityAt = createdAt
+                    };
+                    
+                    posts.Add(post);
+                }
+            }
+            
+            _context.CommunityPosts.AddRange(posts);
+            await _context.SaveChangesAsync();
+            
+            // Seed post categories
+            await SeedPostCategoriesAsync(posts, categories);
+            
+            // Seed post likes
+            await SeedPostLikesAsync(posts, accounts);
+            
+            // Seed post reactions
+            await SeedPostReactionsAsync(posts, accounts);
+            
+            // Seed post bookmarks
+            await SeedPostBookmarksAsync(posts, accounts);
+            
+            // Seed comments and comment interactions
+            await SeedPostCommentsAsync(posts, accounts);
+            
+            // Seed polls
+            await SeedPollsAsync(posts, accounts);
+            
+            // Update post counts
+            foreach (var post in posts)
+            {
+                post.CalculateTrendingScore();
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPostCategoriesAsync(List<CommunityPost> posts, string[] categories)
+        {
+            var postCategories = new List<PostCategory>();
+            
+            foreach (var post in posts.Where(p => _random.Next(3) != 0)) // 67% have categories
+            {
+                var categoryCount = _random.Next(1, 3);
+                var selectedCategories = categories.OrderBy(x => _random.Next()).Take(categoryCount).ToList();
+                
+                foreach (var category in selectedCategories)
+                {
+                    postCategories.Add(new PostCategory
+                    {
+                        PostId = post.PostId,
+                        CategoryName = category
+                    });
+                }
+            }
+            
+            _context.PostCategories.AddRange(postCategories);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPostLikesAsync(List<CommunityPost> posts, List<Account> accounts)
+        {
+            var likes = new List<PostLike>();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var post in posts)
+            {
+                // Get community members who can like
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                var likers = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId) && a.AccountId != post.AuthorId)
+                    .OrderBy(x => _random.Next())
+                    .Take(_random.Next(0, 20))
+                    .ToList();
+                
+                foreach (var liker in likers)
+                {
+                    likes.Add(new PostLike
+                    {
+                        PostId = post.PostId,
+                        AccountId = liker.AccountId,
+                        CreatedAt = post.CreatedAt.AddMinutes(_random.Next(0, 1440))
+                    });
+                }
+                
+                post.LikeCount = likes.Count(l => l.PostId == post.PostId);
+            }
+            
+            _context.PostLikes.AddRange(likes);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPostReactionsAsync(List<CommunityPost> posts, List<Account> accounts)
+        {
+            var reactions = new List<PostReaction>();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var post in posts.Where(p => _random.Next(3) != 0)) // 67% have reactions
+            {
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                var reactors = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId) && a.AccountId != post.AuthorId)
+                    .OrderBy(x => _random.Next())
+                    .Take(_random.Next(1, 10))
+                    .ToList();
+                
+                foreach (var reactor in reactors)
+                {
+                    reactions.Add(new PostReaction
+                    {
+                        PostId = post.PostId,
+                        AccountId = reactor.AccountId,
+                        ReactionType = (ReactionType)_random.Next(0, 6),
+                        CreatedAt = post.CreatedAt.AddMinutes(_random.Next(0, 1440))
+                    });
+                }
+            }
+            
+            _context.PostReactions.AddRange(reactions);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPostBookmarksAsync(List<CommunityPost> posts, List<Account> accounts)
+        {
+            var bookmarks = new List<PostBookmark>();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var post in posts.Where(p => _random.Next(5) == 0)) // 20% are bookmarked
+            {
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                var bookmarkedBy = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId) && a.AccountId != post.AuthorId)
+                    .OrderBy(x => _random.Next())
+                    .Take(_random.Next(1, 5))
+                    .ToList();
+                
+                foreach (var user in bookmarkedBy)
+                {
+                    bookmarks.Add(new PostBookmark
+                    {
+                        PostId = post.PostId,
+                        AccountId = user.AccountId,
+                        CreatedAt = post.CreatedAt.AddDays(_random.Next(0, 30))
+                    });
+                }
+            }
+            
+            _context.PostBookmarks.AddRange(bookmarks);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPostCommentsAsync(List<CommunityPost> posts, List<Account> accounts)
+        {
+            Console.WriteLine("💬 Seeding Post Comments...");
+            
+            var parentComments = new List<PostComment>();
+            var replyComments = new List<PostComment>();
+            var commentTexts = new[]
+            {
+                "Great post! Thanks for sharing.",
+                "I have a similar experience.",
+                "Can you provide more details?",
+                "I disagree with this perspective.",
+                "Very helpful information!",
+                "Has anyone else tried this?",
+                "What do you think about...",
+                "I'll look into this more.",
+                "Agreed! This is important.",
+                "Thanks for the advice."
+            };
+            
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            // First phase: Create parent comments (no ParentCommentId)
+            foreach (var post in posts)
+            {
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                // Create 2-8 parent comments per post
+                var commentCount = _random.Next(2, 9);
+                var commenters = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId) && a.AccountId != post.AuthorId)
+                    .OrderBy(x => _random.Next())
+                    .Take(commentCount)
+                    .ToList();
+                
+                foreach (var commenter in commenters)
+                {
+                    var comment = new PostComment
+                    {
+                        PostId = post.PostId,
+                        AuthorId = commenter.AccountId,
+                        Content = commentTexts[_random.Next(commentTexts.Length)],
+                        CreatedAt = post.CreatedAt.AddMinutes(_random.Next(0, 2880)) // Within 2 days
+                    };
+                    
+                    parentComments.Add(comment);
+                }
+            }
+            
+            // Save parent comments first to get their CommentIds
+            _context.PostComments.AddRange(parentComments);
+            await _context.SaveChangesAsync();
+            
+            // Second phase: Create reply comments that reference saved parent comments
+            foreach (var post in posts)
+            {
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                // Get saved parent comments for this post
+                var savedParentComments = parentComments.Where(c => c.PostId == post.PostId).ToList();
+                if (savedParentComments.Any())
+                {
+                    var replyCount = _random.Next(0, Math.Min(5, savedParentComments.Count));
+                    var parentsToReply = savedParentComments.OrderBy(x => _random.Next()).Take(replyCount).ToList();
+                    
+                    foreach (var parent in parentsToReply)
+                    {
+                        var replier = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId) && a.AccountId != parent.AuthorId)
+                            .OrderBy(x => _random.Next())
+                            .FirstOrDefault();
+                        
+                        if (replier != null)
+                        {
+                            replyComments.Add(new PostComment
+                            {
+                                PostId = post.PostId,
+                                AuthorId = replier.AccountId,
+                                Content = commentTexts[_random.Next(commentTexts.Length)],
+                                ParentCommentId = parent.CommentId, // Now this ID exists in the database
+                                CreatedAt = parent.CreatedAt.AddMinutes(_random.Next(1, 1440))
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // Save reply comments
+            if (replyComments.Any())
+            {
+                _context.PostComments.AddRange(replyComments);
+                await _context.SaveChangesAsync();
+            }
+            
+            // Combine all comments for likes and reactions
+            var allComments = parentComments.Concat(replyComments).ToList();
+            
+            // Seed comment likes
+            await SeedCommentLikesAsync(allComments, accounts);
+            
+            // Seed comment reactions
+            await SeedCommentReactionsAsync(allComments, accounts);
+            
+            // Update comment counts on posts
+            foreach (var post in posts)
+            {
+                post.CommentCount = allComments.Count(c => c.PostId == post.PostId);
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedCommentLikesAsync(List<PostComment> comments, List<Account> accounts)
+        {
+            var commentLikes = new List<CommentLike>();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var comment in comments.Where(c => _random.Next(3) != 0)) // 67% get likes
+            {
+                var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == comment.PostId);
+                if (post == null) continue;
+                
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                var likers = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId) && a.AccountId != comment.AuthorId)
+                    .OrderBy(x => _random.Next())
+                    .Take(_random.Next(0, 8))
+                    .ToList();
+                
+                foreach (var liker in likers)
+                {
+                    commentLikes.Add(new CommentLike
+                    {
+                        CommentId = comment.CommentId,
+                        AccountId = liker.AccountId,
+                        CreatedAt = comment.CreatedAt.AddMinutes(_random.Next(0, 1440))
+                    });
+                }
+                
+                comment.LikeCount = commentLikes.Count(cl => cl.CommentId == comment.CommentId);
+            }
+            
+            _context.CommentLikes.AddRange(commentLikes);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedCommentReactionsAsync(List<PostComment> comments, List<Account> accounts)
+        {
+            var reactions = new List<CommentReaction>();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var comment in comments.Where(c => _random.Next(4) == 0)) // 25% get reactions
+            {
+                var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == comment.PostId);
+                if (post == null) continue;
+                
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                var reactors = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId) && a.AccountId != comment.AuthorId)
+                    .OrderBy(x => _random.Next())
+                    .Take(_random.Next(1, 5))
+                    .ToList();
+                
+                foreach (var reactor in reactors)
+                {
+                    reactions.Add(new CommentReaction
+                    {
+                        CommentId = comment.CommentId,
+                        AccountId = reactor.AccountId,
+                        ReactionType = (ReactionType)_random.Next(0, 6),
+                        CreatedAt = comment.CreatedAt.AddMinutes(_random.Next(0, 1440))
+                    });
+                }
+            }
+            
+            _context.CommentReactions.AddRange(reactions);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPollsAsync(List<CommunityPost> posts, List<Account> accounts)
+        {
+            var polls = new List<Poll>();
+            var pollPosts = posts.Where(p => p.PostType == PostType.Poll).ToList();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var post in pollPosts)
+            {
+                var options = new[]
+                {
+                    new { optionText = "Option A", voteCount = 0 },
+                    new { optionText = "Option B", voteCount = 0 },
+                    new { optionText = "Option C", voteCount = 0 },
+                    new { optionText = "Option D", voteCount = 0 }
+                }.OrderBy(x => _random.Next()).Take(_random.Next(2, 5)).ToList();
+                
+                var poll = new Poll
+                {
+                    PostId = post.PostId,
+                    Question = "What is your opinion on this topic?",
+                    Options = JsonSerializer.Serialize(options),
+                    EndsAt = post.CreatedAt.AddDays(_random.Next(7, 30)),
+                    TotalVotes = 0
+                };
+                
+                polls.Add(poll);
+            }
+            
+            _context.Polls.AddRange(polls);
+            await _context.SaveChangesAsync();
+            
+            // Seed poll votes
+            await SeedPollVotesAsync(polls, accounts);
+        }
+
+        private async Task SeedPollVotesAsync(List<Poll> polls, List<Account> accounts)
+        {
+            var pollVotes = new List<PollVote>();
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var poll in polls)
+            {
+                var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == poll.PostId);
+                if (post == null) continue;
+                
+                var communityMemberIds = _context.CommunityMembers
+                    .Where(cm => cm.CommunityId == post.CommunityId)
+                    .Select(cm => cm.AccountId)
+                    .ToList();
+                
+                var voters = userAccounts.Where(a => communityMemberIds.Contains(a.AccountId))
+                    .OrderBy(x => _random.Next())
+                    .Take(_random.Next(5, 25))
+                    .ToList();
+                
+                var options = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(poll.Options);
+                if (options == null || !options.Any()) continue;
+                
+                foreach (var voter in voters)
+                {
+                    var optionIndex = _random.Next(0, options.Count);
+                    
+                    pollVotes.Add(new PollVote
+                    {
+                        PollId = poll.PollId,
+                        AccountId = voter.AccountId,
+                        OptionIndex = optionIndex,
+                        CreatedAt = post.CreatedAt.AddMinutes(_random.Next(0, 4320))
+                    });
+                    
+                    // Update vote count in options JSON
+                    if (options[optionIndex].ContainsKey("voteCount"))
+                    {
+                        options[optionIndex]["voteCount"] = Convert.ToInt32(options[optionIndex]["voteCount"]) + 1;
+                    }
+                }
+                
+                poll.Options = JsonSerializer.Serialize(options);
+                poll.TotalVotes = pollVotes.Count(pv => pv.PollId == poll.PollId);
+            }
+            
+            _context.PollVotes.AddRange(pollVotes);
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedUserAchievementsAsync(List<Account> accounts)
+        {
+            Console.WriteLine("🏅 Seeding User Achievements...");
+            
+            var achievements = new List<UserAchievement>();
+            var achievementTypes = Enum.GetValues(typeof(AchievementType)).Cast<AchievementType>().ToArray();
+            var achievementTitles = new Dictionary<AchievementType, string>
+            {
+                { AchievementType.FirstPost, "First Post" },
+                { AchievementType.TenPosts, "Active Contributor" },
+                { AchievementType.HundredLikes, "Popular Author" },
+                { AchievementType.HelpfulMember, "Helpful Member" },
+                { AchievementType.PopularPost, "Viral Content" },
+                { AchievementType.CommunityContributor, "Community Leader" },
+                { AchievementType.TopRated, "Top Rated" },
+                { AchievementType.PropertyExpert, "Property Expert" },
+                { AchievementType.ActiveMember, "Active Member" },
+                { AchievementType.ValuableInsight, "Valuable Insight" }
+            };
+            
+            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            
+            foreach (var account in userAccounts)
+            {
+                // Award 1-4 random achievements per user
+                var achievementCount = _random.Next(1, 5);
+                var awardedTypes = achievementTypes.OrderBy(x => _random.Next()).Take(achievementCount).ToList();
+                
+                foreach (var achievementType in awardedTypes)
+                {
+                    achievements.Add(new UserAchievement
+                    {
+                        AccountId = account.AccountId,
+                        AchievementType = achievementType,
+                        Title = achievementTitles.GetValueOrDefault(achievementType, "Achievement"),
+                        Description = $"Earned for {achievementTitles.GetValueOrDefault(achievementType, "achievement")}",
+                        PointsAwarded = _random.Next(10, 100),
+                        EarnedAt = DateTime.UtcNow.AddDays(-_random.Next(0, 180))
+                    });
+                }
+            }
+            
+            _context.UserAchievements.AddRange(achievements);
             await _context.SaveChangesAsync();
         }
     }

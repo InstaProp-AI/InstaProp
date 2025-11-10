@@ -10,6 +10,9 @@ enum FeedItemType {
   dealHighlight,
   projectStory,
   investorMilestone,
+  livestream,
+  valuationPrompt,
+  paymentReminder,
 }
 
 class FeedItem {

@@ -88,6 +88,7 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
     }
 
     final bool isLive = widget.auction.isActive;
+    final bool isEnded = widget.auction.status == "Ended" || widget.auction.isEnded;
 
     return Container(
       color: isDark ? AppColors.darkBackground : AppColors.background,
@@ -116,14 +117,14 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withOpacity(isEnded ? 0.8 : 0.7),
                       ],
                     ),
                   ),
                 ),
               ),
 
-              // Floating Status Badge with pulse animation
+              // Floating Status Badge - LIVE (with pulse animation)
               if (isLive)
                 AnimatedBuilder(
                   animation: _pulseController,
@@ -173,6 +174,47 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                   },
                 ),
 
+              // Floating Status Badge - ENDED
+              if (isEnded)
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade800,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.block,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'ENDED',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               // Save Button (top right)
               Positioned(
                 top: 12,
@@ -200,7 +242,7 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                 ),
               ),
 
-              // Countdown Timer (bottom left)
+              // Countdown Timer (bottom left) - only show for live auctions
               if (isLive)
                 Positioned(
                   bottom: 12,
@@ -208,6 +250,30 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                   child: CountdownTimer(
                     endTime: widget.auction.endAt,
                     accentColor: statusColor,
+                  ),
+                )
+              // Show "Ended" text for ended auctions
+              else if (isEnded)
+                Positioned(
+                  bottom: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Auction Ended',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
 

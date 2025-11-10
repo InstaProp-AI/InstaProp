@@ -17,6 +17,8 @@ class CommunityPost {
   final PostType postType;
   final bool isPinned;
   int likeCount;
+  int reactionCount; // From PostReactions table
+  String? userReaction; // Current user's reaction type (e.g., "Love", "Celebrate")
   int commentCount;
   bool isLiked;
   final List<String> categories;
@@ -39,6 +41,8 @@ class CommunityPost {
     required this.postType,
     this.isPinned = false,
     this.likeCount = 0,
+    this.reactionCount = 0,
+    this.userReaction,
     this.commentCount = 0,
     this.isLiked = false,
     this.categories = const [],
@@ -68,6 +72,8 @@ class CommunityPost {
       ),
       isPinned: json['isPinned'] ?? false,
       likeCount: json['likeCount'] ?? 0,
+      reactionCount: json['reactionCount'] ?? 0,
+      userReaction: json['userReaction'],
       commentCount: json['commentCount'] ?? 0,
       isLiked: json['isLiked'] ?? false,
       categories:
@@ -99,6 +105,8 @@ class CommunityPost {
       'postType': postType.toString().split('.').last,
       'isPinned': isPinned,
       'likeCount': likeCount,
+      'reactionCount': reactionCount,
+      'userReaction': userReaction,
       'commentCount': commentCount,
       'isLiked': isLiked,
       'categories': categories,

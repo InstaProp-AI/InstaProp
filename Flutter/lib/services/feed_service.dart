@@ -12,6 +12,9 @@ import '../models/deal_highlight.dart';
 import '../models/project_story.dart';
 import '../models/investor_milestone.dart';
 import '../models/notification.dart';
+import '../models/live_stream.dart';
+import '../models/valuation_prompt.dart';
+import '../models/payment_reminder.dart';
 import 'community_post_service.dart';
 import 'community_service.dart';
 import 'news_service.dart';
@@ -80,6 +83,18 @@ class FeedResponseDto {
             case 'investor_milestone':
               itemType = FeedItemType.investorMilestone;
               itemData = InvestorMilestone.fromJson(data);
+              break;
+            case 'livestream':
+              itemType = FeedItemType.livestream;
+              itemData = LiveStream.fromJson(data);
+              break;
+            case 'valuationPrompt':
+              itemType = FeedItemType.valuationPrompt;
+              itemData = ValuationPrompt.fromJson(data);
+              break;
+            case 'paymentReminder':
+              itemType = FeedItemType.paymentReminder;
+              itemData = PaymentReminder.fromJson(data);
               break;
           }
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PropertyFlipperAPI.Data;
 
@@ -10,9 +11,11 @@ using PropertyFlipperAPI.Data;
 namespace PropertyFlipperAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251029204955_AddLiveStreamFeature")]
+    partial class AddLiveStreamFeature
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
@@ -1186,19 +1189,6 @@ namespace PropertyFlipperAPI.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("AllowChangeVote")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsMultipleChoice")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("ShowResultsBeforeVote")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("TotalVotes")
                         .HasColumnType("INTEGER");
 
@@ -1232,7 +1222,7 @@ namespace PropertyFlipperAPI.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.HasIndex("PollId", "AccountId", "OptionIndex")
+                    b.HasIndex("PollId", "AccountId")
                         .IsUnique();
 
                     b.ToTable("PollVotes");
@@ -1754,37 +1744,6 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("ReferrerId");
 
                     b.ToTable("Referrals");
-                });
-
-            modelBuilder.Entity("PropertyFlipperAPI.Models.StreamChatMessage", b =>
-                {
-                    b.Property<long>("MessageId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("StreamId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("MessageId");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("StreamId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("StreamChatMessages");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.StreamViewer", b =>
@@ -2505,25 +2464,6 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("ReferredUser");
 
                     b.Navigation("Referrer");
-                });
-
-            modelBuilder.Entity("PropertyFlipperAPI.Models.StreamChatMessage", b =>
-                {
-                    b.HasOne("PropertyFlipperAPI.Models.LiveStream", "Stream")
-                        .WithMany()
-                        .HasForeignKey("StreamId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Stream");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.StreamViewer", b =>

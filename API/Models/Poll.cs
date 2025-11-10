@@ -28,6 +28,15 @@ namespace PropertyFlipperAPI.Models
 
         public int TotalVotes { get; set; } = 0;
 
+        // Flags
+        public bool IsMultipleChoice { get; set; } = false;
+        public bool AllowChangeVote { get; set; } = true;
+        public bool ShowResultsBeforeVote { get; set; } = true;
+
+        // Optional image for the poll question
+        [MaxLength(500)]
+        public string? ImageUrl { get; set; }
+
         // Relations
         public ICollection<PollVote> Votes { get; set; } = new List<PollVote>();
     }

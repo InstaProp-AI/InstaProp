@@ -7,7 +7,7 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
-x64/
+mydbx64/
 x86/
 [Ww][Ii][Nn]32/
 [Aa][Rr][Mm]/
@@ -542,13 +542,6 @@ dist
 # ===========================================
 # Database
 # ===========================================
-
-# SQLite
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
 
 # PostgreSQL
 *.pgsql

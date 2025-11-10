@@ -56,20 +56,22 @@ namespace PropertyFlipperAPI.Controllers
                 // Fetch all available content
                 var allPosts = await GetAllPosts(userId);
                 var allAuctions = await GetAllAuctions();
-                var allCommunities = await GetAllCommunities(userId);
+                var allLiveStreams = await GetActiveLiveStreams();
                 var allNews = await GetAllNews();
                 var allProjects = await GetAllProjects();
                 var allDevelopers = await GetAllDevelopers();
                 var dealHighlights = await GetDealHighlights();
                 var projectStories = await GetProjectStories();
                 var investorMilestones = await GetInvestorMilestones();
+                var valuationPrompts = await GetValuationPrompts(userId);
+                var paymentReminders = await GetPaymentReminders(userId);
 
                 // Create weighted pool with time-based boosting
                 var contentPool = new List<FeedItemDto>();
                 var random = new Random(page * DateTime.Now.Millisecond + (int)(userId ?? 0));
                 
-                // Time-based boost multipliers
-                var (postWeight, auctionWeight, communityWeight, newsWeight, projectWeight) = GetTimeBasedWeights();
+                // Time-based boost multipliers (removed communityWeight)
+                var (postWeight, auctionWeight, livestreamWeight, newsWeight, projectWeight) = GetTimeBasedWeights();
 
                 // Add posts (40% weight = 8 copies per post, boosted by time)
                 foreach (var post in allPosts)
@@ -101,17 +103,17 @@ namespace PropertyFlipperAPI.Controllers
                     }
                 }
 
-                // Add communities (15% weight = 3 copies, boosted by time)
-                foreach (var community in allCommunities)
+                // Add live streams (10% weight = 2 copies per stream, boosted by time)
+                foreach (var stream in allLiveStreams)
                 {
-                    var copies = (int)(3 * communityWeight);
+                    var copies = (int)(2 * livestreamWeight);
                     for (int i = 0; i < copies; i++)
                     {
                         contentPool.Add(new FeedItemDto
                         {
-                            Type = "community",
-                            Data = community,
-                            Id = $"community_{community.CommunityId}"
+                            Type = "livestream",
+                            Data = stream,
+                            Id = $"livestream_{stream.StreamId}"
                         });
                     }
                 }
@@ -131,7 +133,7 @@ namespace PropertyFlipperAPI.Controllers
                     }
                 }
 
-                // Add projects (10% weight = 2 copies, boosted by time)
+                // Add projects (8% weight = 2 copies, boosted by time)
                 foreach (var project in allProjects)
                 {
                     var copies = (int)(2 * projectWeight);
@@ -197,6 +199,26 @@ namespace PropertyFlipperAPI.Controllers
                             Id = $"investor_milestone_{milestone.AchievementId}"
                         });
                     }
+                // Add valuation prompts (7% weight = 1 copy per prompt)
+                foreach (var prompt in valuationPrompts)
+                {
+                    contentPool.Add(new FeedItemDto
+                    {
+                        Type = "valuationPrompt",
+                        Data = prompt,
+                        Id = $"valuationPrompt_{prompt.PropertyId ?? 0}_{userId ?? 0}"
+                    });
+                }
+
+                // Add payment reminders (5% weight = 1 copy per reminder)
+                foreach (var reminder in paymentReminders)
+                {
+                    contentPool.Add(new FeedItemDto
+                    {
+                        Type = "paymentReminder",
+                        Data = reminder,
+                        Id = $"paymentReminder_{reminder.EventId}"
+                    });
                 }
 
                 // Shuffle entire pool
@@ -548,16 +570,117 @@ namespace PropertyFlipperAPI.Controllers
                 .ToListAsync();
         }
 
-        private async Task<List<Community>> GetAllCommunities(long? userId)
+        private async Task<List<LiveStreamDto>> GetActiveLiveStreams()
         {
-            var query = _context.Communities
-                .Where(c => c.IsActive)
-                .AsQueryable();
-
-            return await query
-                .OrderByDescending(c => c.PostCount)
-                .Take(30)
+            var streams = await _context.LiveStreams
+                .Include(s => s.Developer)
+                .Where(s => s.Status == "Live")
+                .OrderByDescending(s => s.StartTime)
+                .Take(20)
                 .ToListAsync();
+
+            return streams.Select(s => new LiveStreamDto
+            {
+                StreamId = s.StreamId,
+                DeveloperId = s.DeveloperId,
+                DeveloperName = $"{s.Developer?.FirstName} {s.Developer?.LastName}",
+                DeveloperProfileImageUrl = null,
+                Title = s.Title,
+                Description = s.Description,
+                StreamUrl = s.StreamUrl,
+                ThumbnailUrl = s.ThumbnailUrl,
+                Status = s.Status,
+                ViewerCount = s.ViewerCount,
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+                CreatedAt = s.CreatedAt
+            }).ToList();
+        }
+
+        private async Task<List<ValuationPromptDto>> GetValuationPrompts(long? userId)
+        {
+            if (!userId.HasValue)
+            {
+                // For non-logged-in users, return generic prompt
+                return new List<ValuationPromptDto>
+                {
+                    new ValuationPromptDto
+                    {
+                        PropertyId = null,
+                        PropertyName = null,
+                        PropertyImageUrl = null,
+                        IsGeneric = true
+                    }
+                };
+            }
+
+            // Get user's properties without recent valuations (last 30 days)
+            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+            var propertiesWithRecentValuations = await _context.PropertyValuations
+                .Where(v => v.CalculatedAt >= thirtyDaysAgo)
+                .Select(v => v.PropertyId)
+                .ToListAsync();
+
+            var properties = await _context.ChildProperties
+                .Include(p => p.PropertyImages)
+                .Where(p => p.OwnerId == userId.Value && p.IsApproved)
+                .Where(p => !propertiesWithRecentValuations.Contains(p.PropertyId))
+                .Take(5)
+                .ToListAsync();
+
+            return properties.Select(p => new ValuationPromptDto
+            {
+                PropertyId = p.PropertyId,
+                PropertyName = p.Name,
+                PropertyImageUrl = p.PropertyImages.FirstOrDefault()?.ImageUrl ?? (p.ImageUrl ?? null),
+                IsGeneric = false
+            }).ToList();
+        }
+
+        private async Task<List<PaymentReminderDto>> GetPaymentReminders(long? userId)
+        {
+            if (!userId.HasValue)
+                return new List<PaymentReminderDto>();
+
+            var now = DateTime.UtcNow;
+            var sevenDaysFromNow = now.AddDays(7);
+
+            var reminders = await _context.Events
+                .Include(e => e.User)
+                .Where(e => e.UserId == userId.Value)
+                .Where(e => e.Type == EventType.Installment)
+                .Where(e => e.EventDate >= now && e.EventDate <= sevenDaysFromNow)
+                .Where(e => !e.IsCompleted)
+                .OrderBy(e => e.EventDate)
+                .Take(5)
+                .ToListAsync();
+
+            var reminderDtos = new List<PaymentReminderDto>();
+            foreach (var e in reminders)
+            {
+                string? propertyName = null;
+                if (e.PropertyId.HasValue)
+                {
+                    var property = await _context.ChildProperties
+                        .Where(p => p.PropertyId == (int)e.PropertyId.Value)
+                        .Select(p => p.Name)
+                        .FirstOrDefaultAsync();
+                    propertyName = property;
+                }
+
+                reminderDtos.Add(new PaymentReminderDto
+                {
+                    EventId = e.EventId,
+                    PropertyId = e.PropertyId.HasValue ? (int)e.PropertyId.Value : null,
+                    PropertyName = propertyName,
+                    Amount = e.Amount,
+                    EventDate = e.EventDate,
+                    DaysUntilDue = (int)(e.EventDate - now).TotalDays,
+                    IsReminderSet = e.IsReminderSet
+                });
+            }
+
+            return reminderDtos;
         }
 
         private async Task<List<NewsArticle>> GetAllNews()
@@ -645,7 +768,7 @@ namespace PropertyFlipperAPI.Controllers
         }
 
         // Time-based boosting: Different content for different times of day
-        private (double post, double auction, double community, double news, double project) GetTimeBasedWeights()
+        private (double post, double auction, double livestream, double news, double project) GetTimeBasedWeights()
         {
             var hour = DateTime.Now.Hour;
             
@@ -654,20 +777,20 @@ namespace PropertyFlipperAPI.Controllers
             {
                 return (1.0, 0.8, 1.0, 1.5, 1.5);
             }
-            // Afternoon (12pm-6pm): Boost auctions (shopping time)
+            // Afternoon (12pm-6pm): Boost auctions and livestreams (shopping/engagement time)
             else if (hour >= 12 && hour < 18)
             {
-                return (1.2, 1.8, 1.0, 1.0, 1.0);
+                return (1.2, 1.8, 1.5, 1.0, 1.0);
             }
-            // Evening (6pm-12am): Boost posts and communities (engagement time)
+            // Evening (6pm-12am): Boost posts and livestreams (engagement time)
             else if (hour >= 18 && hour < 24)
             {
-                return (1.5, 1.2, 1.5, 0.8, 0.8);
+                return (1.5, 1.2, 1.8, 0.8, 0.8);
             }
             // Night (12am-6am): Boost everything slightly, varied content
             else
             {
-                return (1.2, 1.2, 1.2, 1.2, 1.2);
+                return (1.2, 1.2, 1.3, 1.2, 1.2);
             }
         }
 
@@ -771,5 +894,24 @@ namespace PropertyFlipperAPI.Controllers
         public string CompanyName { get; set; } = "";
         public string? ProfileImageUrl { get; set; }
         public double Rating { get; set; }
+    }
+
+    public class ValuationPromptDto
+    {
+        public int? PropertyId { get; set; }
+        public string? PropertyName { get; set; }
+        public string? PropertyImageUrl { get; set; }
+        public bool IsGeneric { get; set; }
+    }
+
+    public class PaymentReminderDto
+    {
+        public long EventId { get; set; }
+        public int? PropertyId { get; set; }
+        public string? PropertyName { get; set; }
+        public decimal? Amount { get; set; }
+        public DateTime EventDate { get; set; }
+        public int DaysUntilDue { get; set; }
+        public bool IsReminderSet { get; set; }
     }
 }
