@@ -30,6 +30,8 @@ namespace PropertyFlipperAPI.Data
         // Phase 4: Gamification & Engagement
         public DbSet<UserReward> UserRewards { get; set; }
         public DbSet<UserBadge> UserBadges { get; set; }
+        public DbSet<WeeklyLeaderboardSnapshot> WeeklyLeaderboardSnapshots { get; set; }
+        public DbSet<LeaderboardStanding> LeaderboardStandings { get; set; }
         public DbSet<Referral> Referrals { get; set; }
         public DbSet<PropertyView> PropertyViews { get; set; }
         public DbSet<Redemption> Redemptions { get; set; }
@@ -367,6 +369,47 @@ namespace PropertyFlipperAPI.Data
                 entity.HasOne(e => e.Account)
                     .WithMany()
                     .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<WeeklyLeaderboardSnapshot>(entity =>
+            {
+                entity.HasKey(e => e.SnapshotId);
+                entity.Property(e => e.SnapshotId).ValueGeneratedOnAdd();
+                entity.Property(e => e.HighlightHeadline).HasMaxLength(250);
+                entity.Property(e => e.HighlightSummary).HasMaxLength(500);
+                entity.HasIndex(e => new { e.WeekStart, e.WeekEnd }).IsUnique();
+                entity.HasIndex(e => e.PayoutProcessed);
+                entity.HasOne(e => e.WinnerAccount)
+                    .WithMany()
+                    .HasForeignKey(e => e.WinnerAccountId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(e => e.SecondPlaceAccount)
+                    .WithMany()
+                    .HasForeignKey(e => e.SecondPlaceAccountId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(e => e.ThirdPlaceAccount)
+                    .WithMany()
+                    .HasForeignKey(e => e.ThirdPlaceAccountId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<LeaderboardStanding>(entity =>
+            {
+                entity.HasKey(e => e.StandingId);
+                entity.Property(e => e.StandingId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Period).HasConversion<int>();
+                entity.Property(e => e.CashbackAwarded).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.RewardSummary).HasMaxLength(250);
+                entity.HasIndex(e => new { e.Period, e.Rank });
+                entity.HasIndex(e => new { e.AccountId, e.Period });
+                entity.HasOne(e => e.Account)
+                    .WithMany()
+                    .HasForeignKey(e => e.AccountId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Snapshot)
+                    .WithMany(s => s.Standings)
+                    .HasForeignKey(e => e.SnapshotId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

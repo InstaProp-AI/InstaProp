@@ -13,6 +13,7 @@ import '../../pages/add_property_page.dart';
 import '../../pages/add_property_financial_page.dart';
 import '../../pages/properties_management_page.dart';
 import '../../models/news_article.dart';
+import '../../pages/leaderboard_page.dart';
 
 /// Centralized app router
 class AppRouter {
@@ -28,6 +29,7 @@ class AppRouter {
   static const String explore = '/explore';
   static const String market = '/market';
   static const String auctions = '/auctions';
+  static const String leaderboard = '/leaderboard';
   static const String propertyManagement = '/properties';
   static const String addProperty = '/add-property';
   static const String addPropertyFinancial = '/add-property/financial';
@@ -60,6 +62,9 @@ class AppRouter {
 
       case market:
         return MaterialPageRoute(builder: (_) => const MarketPage());
+
+      case leaderboard:
+        return MaterialPageRoute(builder: (_) => const LeaderboardPage());
 
       case auctions:
         return MaterialPageRoute(builder: (_) => const AuctionsPage());

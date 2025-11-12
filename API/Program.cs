@@ -30,6 +30,7 @@ builder.Services.AddScoped<FcmPushNotificationService>();
 builder.Services.AddScoped<FileValidationService>();
 builder.Services.AddScoped<ImgBBService>(); // ImgBB image upload service
 builder.Services.AddScoped<RewardService>(); // Gamification rewards
+builder.Services.AddScoped<LeaderboardService>(); // Leaderboard + cashback engine
 builder.Services.AddScoped<OpenAIService>(); // OpenAI Vision API for payment schedule scanning
 builder.Services.AddScoped<InstallmentSummaryService>();
 

@@ -107,6 +107,15 @@ class _MarketPageState extends State<MarketPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         titleSpacing: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.emoji_events_outlined),
+            tooltip: 'Weekly leaderboard',
+            onPressed: () =>
+                AppRouter.navigateTo(context, AppRouter.leaderboard),
+          ),
+          const SizedBox(width: 8),
+        ],
         title: Padding(
           padding: const EdgeInsets.only(left: 16),
           child: Column(
