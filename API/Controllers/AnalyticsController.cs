@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
@@ -138,6 +141,38 @@ namespace PropertyFlipperAPI.Controllers
             }
         }
 
+        // GET: api/analytics/dashboard
+        [HttpGet("dashboard")]
+        [AllowAnonymous]
+        public async Task<ActionResult<MarketDashboardResponse>> GetMarketDashboard([FromQuery] int months = 12)
+        {
+            try
+            {
+                var hero = await CalculateHeroMetricsAsync();
+                var pulse = await CalculateMarketPulseAsync();
+                var priceMomentum = await CalculatePriceMomentumAsync(months);
+                var developers = await LoadDeveloperRankingsAsync(limit: 5);
+                var opportunities = await LoadBestInvestmentsAsync(limit: 6);
+                var goldComparison = await CalculateGoldComparisonAsync(months);
+
+                var response = new MarketDashboardResponse
+                {
+                    Hero = hero,
+                    Pulse = pulse,
+                    PriceMomentum = priceMomentum,
+                    DeveloperLeaderboard = developers,
+                    Opportunities = opportunities,
+                    GoldComparison = goldComparison
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
         // GET: api/analytics/gold-comparison
         [HttpGet("gold-comparison")]
         public async Task<ActionResult<GoldComparisonResponse>> GetGoldComparison(
@@ -145,50 +180,8 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var startDate = DateTime.UtcNow.AddMonths(-months);
-                
-                // Get property price trends
-                var propertyPrices = await _context.PropertyPriceHistories
-                    .Where(ph => ph.PriceDate >= startDate)
-                    .OrderBy(ph => ph.PriceDate)
-                    .Select(ph => new { ph.PriceDate, ph.Price })
-                    .ToListAsync();
-
-                // Get gold price trends
-                var goldPrices = await _context.GoldPrices
-                    .Where(gp => gp.Date >= startDate)
-                    .OrderBy(gp => gp.Date)
-                    .Select(gp => new { gp.Date, gp.PricePerGram })
-                    .ToListAsync();
-
-                // Calculate returns
-                var propertyReturn = 0.0;
-                var goldReturn = 0.0;
-
-                if (propertyPrices.Count >= 2)
-                {
-                    var firstPropertyPrice = propertyPrices.First().Price;
-                    var lastPropertyPrice = propertyPrices.Last().Price;
-                    propertyReturn = (double)((lastPropertyPrice - firstPropertyPrice) / firstPropertyPrice * 100);
-                }
-
-                if (goldPrices.Count >= 2)
-                {
-                    var firstGoldPrice = goldPrices.First().PricePerGram;
-                    var lastGoldPrice = goldPrices.Last().PricePerGram;
-                    goldReturn = (double)((lastGoldPrice - firstGoldPrice) / firstGoldPrice * 100);
-                }
-
-                return Ok(new GoldComparisonResponse
-                {
-                    PeriodMonths = months,
-                    PropertyReturnPercentage = propertyReturn,
-                    GoldReturnPercentage = goldReturn,
-                    BetterInvestment = propertyReturn > goldReturn ? "Property" : "Gold",
-                    ReturnDifference = Math.Abs(propertyReturn - goldReturn),
-                    PropertyDataPoints = propertyPrices.Count,
-                    GoldDataPoints = goldPrices.Count
-                });
+                var comparison = await CalculateGoldComparisonAsync(months);
+                return Ok(comparison);
             }
             catch (Exception ex)
             {
@@ -202,26 +195,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var rankings = await _context.Accounts
-                    .Where(a => a.Type == Models.AccountType.Developer)
-                    .Select(developer => new DeveloperRankingResponse
-                    {
-                        DeveloperId = developer.AccountId,
-                        DeveloperName = "Unknown Developer", // Will be updated to use company name
-                        ProjectCount = _context.Projects.Count(p => p.DeveloperId == developer.AccountId),
-                        TotalProperties = _context.ChildProperties.Count(p => p.Project.DeveloperId == developer.AccountId),
-                        AveragePropertyPrice = _context.ChildProperties
-                            .Where(p => p.Project.DeveloperId == developer.AccountId && p.Auctions.Any())
-                            .Average(p => p.Auctions.First().CurrentPrice),
-                        AverageRating = _context.DeveloperRatings
-                            .Where(r => r.DeveloperId == developer.AccountId)
-                            .Average(r => r.Rating)
-                    })
-                    .OrderByDescending(d => d.ProjectCount)
-                    .ThenByDescending(d => d.AverageRating)
-                    .Take(10)
-                    .ToListAsync();
-
+                var rankings = await LoadDeveloperRankingsAsync();
                 return Ok(rankings);
             }
             catch (Exception ex)
@@ -237,48 +211,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var investments = await _context.ChildProperties
-                    .Where(p => p.Auctions.Any())
-                    .Include(p => p.ParentProperty)
-                    .Include(p => p.Auctions)
-                    .Select(property => new BestInvestmentResponse
-                    {
-                        PropertyId = property.PropertyId,
-                        PropertyName = property.Name,
-                        Location = property.Location,
-                        PropertyType = PropertyTypeHelper.ToDisplayName(property.Type),
-                        CurrentPrice = property.Auctions.First().CurrentPrice,
-                        PricePerSqm = property.Auctions.First().CurrentPrice / property.SquareFeet,
-                        ProjectName = property.ParentProperty != null
-                            ? (string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName) ? "N/A" : property.ParentProperty.ProjectName)
-                            : "N/A",
-                        Bedrooms = property.Bedrooms,
-                        Bathrooms = property.Bathrooms,
-                        SquareFeet = property.SquareFeet,
-                        PriceHistoryCount = property.ParentPropertyId != null
-                            ? _context.PropertyPriceHistories.Count(ph => ph.ParentPropertyId == property.ParentPropertyId)
-                            : 0,
-                        AveragePriceHistory = property.ParentPropertyId != null
-                            ? _context.PropertyPriceHistories
-                                .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
-                                .Select(ph => (decimal?)ph.Price)
-                                .DefaultIfEmpty()
-                                .Average() ?? 0
-                            : 0,
-                        PriceTrend = property.ParentPropertyId != null
-                            ? _context.PropertyPriceHistories
-                                .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
-                                .OrderBy(ph => ph.PriceDate)
-                                .Select(ph => ph.Price)
-                                .ToList()
-                            : new List<decimal>()
-                    })
-                    .OrderByDescending(p => p.PriceHistoryCount)
-                    .ThenByDescending(p => p.PriceTrend.Count > 1 ? 
-                        (p.PriceTrend.Last() - p.PriceTrend.First()) / p.PriceTrend.First() * 100 : 0)
-                    .Take(limit)
-                    .ToListAsync();
-
+                var investments = await LoadBestInvestmentsAsync(limit);
                 return Ok(investments);
             }
             catch (Exception ex)
@@ -377,9 +310,316 @@ namespace PropertyFlipperAPI.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+        private async Task<HeroMetrics> CalculateHeroMetricsAsync()
+        {
+            var marketRoi = await CalculateMarketRoiAsync();
+            var capRate = await CalculateCapRateAsync();
+            var dataPoints = await _context.PropertyPriceHistories
+                .CountAsync(ph => ph.PriceDate >= DateTime.UtcNow.AddDays(-30));
+
+            return new HeroMetrics
+            {
+                MarketRoi30Days = Math.Round(marketRoi, 2),
+                AverageCapRate = Math.Round(capRate, 2),
+                DataPoints = dataPoints
+            };
+        }
+
+        private async Task<MarketPulseMetrics> CalculateMarketPulseAsync()
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-30);
+            var auctions = await _context.Auctions
+                .Where(a => a.StartAt >= cutoff)
+                .Select(a => new { a.CurrentPrice, a.Duration })
+                .ToListAsync();
+
+            decimal avgSalePrice = 0;
+            var pricedAuctions = auctions.Where(a => a.CurrentPrice > 0).ToList();
+            if (pricedAuctions.Any())
+            {
+                avgSalePrice = pricedAuctions.Average(a => a.CurrentPrice);
+            }
+
+            var transactionVolume = auctions.Count;
+            var liquidityDays = auctions.Any()
+                ? auctions.Average(a => a.Duration / 24.0)
+                : 0;
+
+            var roi30 = await CalculateMarketRoiAsync();
+
+            return new MarketPulseMetrics
+            {
+                AverageSalePrice = Math.Round(avgSalePrice, 2),
+                TransactionVolume = transactionVolume,
+                LiquidityDays = Math.Round(liquidityDays, 2),
+                Sentiment = DetermineSentiment(roi30)
+            };
+        }
+
+        private async Task<List<MonthlyPricePoint>> CalculatePriceMomentumAsync(int months)
+        {
+            var cutoff = DateTime.UtcNow.AddMonths(-months);
+
+            var monthly = await _context.PropertyPriceHistories
+                .Where(ph => ph.PriceDate >= cutoff)
+                .GroupBy(ph => new { ph.PriceDate.Year, ph.PriceDate.Month })
+                .Select(g => new MonthlyPricePoint
+                {
+                    Month = new DateTime(g.Key.Year, g.Key.Month, 1),
+                    AveragePrice = g.Average(ph => ph.Price),
+                    TransactionCount = g.Count()
+                })
+                .OrderBy(point => point.Month)
+                .ToListAsync();
+
+            return monthly;
+        }
+
+        private async Task<double> CalculateMarketRoiAsync(int days = 30)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-days);
+            var prices = await _context.PropertyPriceHistories
+                .Where(ph => ph.PriceDate >= cutoff)
+                .OrderBy(ph => ph.PriceDate)
+                .Select(ph => ph.Price)
+                .ToListAsync();
+
+            if (prices.Count < 2)
+            {
+                return 0;
+            }
+
+            var first = prices.First();
+            var last = prices.Last();
+            if (first <= 0)
+            {
+                return 0;
+            }
+
+            return (double)((last - first) / first * 100);
+        }
+
+        private async Task<double> CalculateCapRateAsync(int months = 12)
+        {
+            var cutoff = DateTime.UtcNow.AddMonths(-months);
+
+            var grouped = await _context.PropertyPriceHistories
+                .Where(ph => ph.PriceDate >= cutoff && ph.ParentPropertyId != null)
+                .GroupBy(ph => ph.ParentPropertyId)
+                .Select(g => new
+                {
+                    FirstPrice = g.OrderBy(ph => ph.PriceDate).Select(ph => ph.Price).FirstOrDefault(),
+                    LastPrice = g.OrderByDescending(ph => ph.PriceDate).Select(ph => ph.Price).FirstOrDefault()
+                })
+                .ToListAsync();
+
+            var rois = grouped
+                .Where(g => g.FirstPrice > 0 && g.LastPrice > 0)
+                .Select(g => (double)((g.LastPrice - g.FirstPrice) / g.FirstPrice * 100))
+                .ToList();
+
+            if (!rois.Any())
+            {
+                return 0;
+            }
+
+            return rois.Average();
+        }
+
+        private async Task<List<DeveloperRankingResponse>> LoadDeveloperRankingsAsync(int limit = 10)
+        {
+            var developerStats = await _context.Accounts
+                .Where(a => a.Type == Models.AccountType.Developer)
+                .Select(a => new
+                {
+                    a.AccountId,
+                    a.FirstName,
+                    a.LastName,
+                    Profile = _context.DeveloperProfiles.FirstOrDefault(dp => dp.AccountId == a.AccountId),
+                    ProjectCount = a.Projects.Count(),
+                    TotalProperties = _context.ChildProperties.Count(p =>
+                        p.Project != null && p.Project.DeveloperId == a.AccountId),
+                    AveragePropertyPrice = _context.Auctions
+                        .Where(ac => ac.Property.Project != null && ac.Property.Project.DeveloperId == a.AccountId)
+                        .Select(ac => (decimal?)ac.CurrentPrice)
+                        .DefaultIfEmpty(0)
+                        .Average() ?? 0,
+                    AverageRating = _context.DeveloperRatings
+                        .Where(r => r.DeveloperId == a.AccountId)
+                        .Select(r => (double?)r.Rating)
+                        .DefaultIfEmpty(0)
+                        .Average() ?? 0
+                })
+                .ToListAsync();
+
+            var rankings = developerStats
+                .Select(stat =>
+                {
+                    var companyName = stat.Profile?.CompanyName?.Trim();
+                    var fullName = $"{stat.FirstName} {stat.LastName}".Trim();
+                    var displayName = !string.IsNullOrWhiteSpace(companyName)
+                        ? companyName!
+                        : !string.IsNullOrWhiteSpace(fullName)
+                            ? fullName
+                            : $"Developer #{stat.AccountId}";
+
+                    return new DeveloperRankingResponse
+                    {
+                        DeveloperId = stat.AccountId,
+                        DeveloperName = displayName,
+                        ProjectCount = stat.ProjectCount,
+                        TotalProperties = stat.TotalProperties,
+                        AveragePropertyPrice = stat.AveragePropertyPrice,
+                        AverageRating = stat.AverageRating
+                    };
+                })
+                .OrderByDescending(d => d.ProjectCount)
+                .ThenByDescending(d => d.AverageRating)
+                .ThenBy(d => d.DeveloperName)
+                .Take(limit)
+                .ToList();
+
+            return rankings;
+        }
+
+        private async Task<List<BestInvestmentResponse>> LoadBestInvestmentsAsync(int limit = 10)
+        {
+            var investments = await _context.ChildProperties
+                .Where(p => p.Auctions.Any())
+                .Include(p => p.ParentProperty)
+                .Include(p => p.Auctions)
+                .Select(property => new BestInvestmentResponse
+                {
+                    PropertyId = property.PropertyId,
+                    PropertyName = property.Name,
+                    Location = property.Location,
+                    PropertyType = PropertyTypeHelper.ToDisplayName(property.Type),
+                    CurrentPrice = property.Auctions.First().CurrentPrice,
+                    PricePerSqm = property.SquareFeet > 0
+                        ? property.Auctions.First().CurrentPrice / property.SquareFeet
+                        : 0,
+                    ProjectName = property.ParentProperty != null
+                        ? (string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName)
+                            ? "N/A"
+                            : property.ParentProperty.ProjectName)
+                        : "N/A",
+                    Bedrooms = property.Bedrooms,
+                    Bathrooms = property.Bathrooms,
+                    SquareFeet = property.SquareFeet,
+                    PriceHistoryCount = property.ParentPropertyId != null
+                        ? _context.PropertyPriceHistories.Count(ph => ph.ParentPropertyId == property.ParentPropertyId)
+                        : 0,
+                    AveragePriceHistory = property.ParentPropertyId != null
+                        ? _context.PropertyPriceHistories
+                            .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
+                            .Select(ph => (decimal?)ph.Price)
+                            .DefaultIfEmpty()
+                            .Average() ?? 0
+                        : 0,
+                    PriceTrend = property.ParentPropertyId != null
+                        ? _context.PropertyPriceHistories
+                            .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
+                            .OrderBy(ph => ph.PriceDate)
+                            .Select(ph => ph.Price)
+                            .ToList()
+                        : new List<decimal>()
+                })
+                .OrderByDescending(p => p.PriceHistoryCount)
+                .ThenByDescending(p =>
+                    p.PriceTrend.Count > 1 && p.PriceTrend.First() > 0
+                        ? (p.PriceTrend.Last() - p.PriceTrend.First()) / p.PriceTrend.First() * 100
+                        : 0)
+                .Take(limit)
+                .ToListAsync();
+
+            return investments;
+        }
+
+        private async Task<GoldComparisonResponse> CalculateGoldComparisonAsync(int months)
+        {
+            var startDate = DateTime.UtcNow.AddMonths(-months);
+
+            var propertyPrices = await _context.PropertyPriceHistories
+                .Where(ph => ph.PriceDate >= startDate)
+                .OrderBy(ph => ph.PriceDate)
+                .Select(ph => ph.Price)
+                .ToListAsync();
+
+            var goldPrices = await _context.GoldPrices
+                .Where(gp => gp.Date >= startDate)
+                .OrderBy(gp => gp.Date)
+                .Select(gp => gp.PricePerGram)
+                .ToListAsync();
+
+            var propertyReturn = 0.0;
+            var goldReturn = 0.0;
+
+            if (propertyPrices.Count >= 2 && propertyPrices.First() > 0)
+            {
+                propertyReturn = (double)((propertyPrices.Last() - propertyPrices.First()) / propertyPrices.First() * 100);
+            }
+
+            if (goldPrices.Count >= 2 && goldPrices.First() > 0)
+            {
+                goldReturn = (double)((goldPrices.Last() - goldPrices.First()) / goldPrices.First() * 100);
+            }
+
+            return new GoldComparisonResponse
+            {
+                PeriodMonths = months,
+                PropertyReturnPercentage = Math.Round(propertyReturn, 2),
+                GoldReturnPercentage = Math.Round(goldReturn, 2),
+                BetterInvestment = propertyReturn > goldReturn ? "Property" : "Gold",
+                ReturnDifference = Math.Round(Math.Abs(propertyReturn - goldReturn), 2),
+                PropertyDataPoints = propertyPrices.Count,
+                GoldDataPoints = goldPrices.Count
+            };
+        }
+
+        private string DetermineSentiment(double roiValue)
+        {
+            if (roiValue >= 12) return "Bullish";
+            if (roiValue >= 2) return "Positive";
+            if (roiValue <= -8) return "Bearish";
+            if (roiValue < 0) return "Cooling";
+            return "Neutral";
+        }
+
     }
 
-    // Response Models
+    public class MarketDashboardResponse
+    {
+        public HeroMetrics Hero { get; set; } = new();
+        public MarketPulseMetrics Pulse { get; set; } = new();
+        public List<MonthlyPricePoint> PriceMomentum { get; set; } = new();
+        public List<DeveloperRankingResponse> DeveloperLeaderboard { get; set; } = new();
+        public List<BestInvestmentResponse> Opportunities { get; set; } = new();
+        public GoldComparisonResponse? GoldComparison { get; set; }
+    }
+
+    public class HeroMetrics
+    {
+        public double MarketRoi30Days { get; set; }
+        public double AverageCapRate { get; set; }
+        public int DataPoints { get; set; }
+    }
+
+    public class MarketPulseMetrics
+    {
+        public decimal AverageSalePrice { get; set; }
+        public int TransactionVolume { get; set; }
+        public double LiquidityDays { get; set; }
+        public string Sentiment { get; set; } = string.Empty;
+    }
+
+    public class MonthlyPricePoint
+    {
+        public DateTime Month { get; set; }
+        public decimal AveragePrice { get; set; }
+        public int TransactionCount { get; set; }
+    }
+
+// Response Models
     public class MarketOverviewResponse
     {
         public int TotalProperties { get; set; }

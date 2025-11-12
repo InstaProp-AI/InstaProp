@@ -14,7 +14,7 @@ import 'auction_details_page.dart';
 import 'properties_management_page.dart';
 import 'project_details_page.dart';
 import 'developer_profile_page.dart';
-import 'market_analysis_page.dart';
+import 'market_page.dart';
 import 'community_feed_page.dart';
 import 'explore_page.dart';
 
@@ -113,7 +113,7 @@ class _HomePageState extends State<HomePage>
       builder: (context, appState, child) {
         switch (_selectedIndex) {
           case 0:
-            return const MarketAnalysisPage();
+            return const MarketPage();
           case 1:
             return ExplorePage(controller: _exploreController);
           case 2:
