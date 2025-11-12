@@ -59,6 +59,7 @@ namespace PropertyFlipperAPI.Data
         public DbSet<PostLike> PostLikes { get; set; }
         public DbSet<CommentLike> CommentLikes { get; set; }
         public DbSet<PostCategory> PostCategories { get; set; }
+        public DbSet<InstallmentSummary> InstallmentSummaries { get; set; }
         public DbSet<Poll> Polls { get; set; }
         public DbSet<PollVote> PollVotes { get; set; }
         
@@ -117,6 +118,24 @@ namespace PropertyFlipperAPI.Data
                     .WithMany(p => p.ChildProperties)
                     .HasForeignKey(e => e.ParentPropertyId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<InstallmentSummary>(entity =>
+            {
+                entity.HasKey(e => e.SummaryId);
+                entity.Property(e => e.SummaryId).ValueGeneratedOnAdd();
+                entity.Property(e => e.ContractedPrice).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.TotalPaid).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.DownPaymentPercent).HasColumnType("decimal(5,2)");
+                entity.Property(e => e.RemainingBalance).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.IsFullyPaid).HasDefaultValue(false);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.Property)
+                    .WithOne(p => p.InstallmentSummary)
+                    .HasForeignKey<InstallmentSummary>(e => e.PropertyId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure Auction

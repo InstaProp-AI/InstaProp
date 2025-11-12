@@ -1,15 +1,19 @@
-import '../theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../models/event.dart';
 import '../services/event_service.dart';
+import '../models/installment_summary.dart';
+import '../core/router/app_router.dart';
 
 class PropertyInstallmentsCard extends StatefulWidget {
   final int propertyId;
+  final InstallmentSummary? summary;
   final VoidCallback? onPaymentMade;
 
   const PropertyInstallmentsCard({
     super.key,
     required this.propertyId,
+    this.summary,
     this.onPaymentMade,
   });
 
@@ -139,7 +143,10 @@ class _PropertyInstallmentsCardState extends State<PropertyInstallmentsCard> {
       );
     }
 
-    if (_installments.isEmpty) {
+    final hasInstallmentEvents = _installments.isNotEmpty;
+    final summary = widget.summary;
+
+    if (!hasInstallmentEvents && summary == null) {
       return const SizedBox.shrink();
     }
 
@@ -168,6 +175,17 @@ class _PropertyInstallmentsCardState extends State<PropertyInstallmentsCard> {
                   ),
                 ),
                 const Spacer(),
+                TextButton(
+                  onPressed: () => AppRouter.navigateTo(
+                    context,
+                    AppRouter.addPropertyFinancial,
+                    arguments: {'propertyId': widget.propertyId},
+                  ),
+                  child: const Text(
+                    'Manage',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
                 if (unpaidInstallments.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -192,6 +210,11 @@ class _PropertyInstallmentsCardState extends State<PropertyInstallmentsCard> {
             ),
             const SizedBox(height: 16),
 
+            if (summary != null) ...[
+              _buildSummaryHeader(summary),
+              const SizedBox(height: 16),
+            ],
+
             // Summary
             Container(
               padding: const EdgeInsets.all(12),
@@ -203,7 +226,7 @@ class _PropertyInstallmentsCardState extends State<PropertyInstallmentsCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildSummaryItem(
-                    'Total',
+                    'Events',
                     _installments.length.toString(),
                     Icons.list,
                     Colors.blue,
@@ -299,9 +322,103 @@ class _PropertyInstallmentsCardState extends State<PropertyInstallmentsCard> {
     );
   }
 
+  Widget _buildSummaryHeader(InstallmentSummary summary) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildSummaryItem(
+                'Contract',
+                '${_formatCurrency(summary.contractedPrice)}',
+                Icons.description_outlined,
+                Colors.blueAccent,
+              ),
+              _buildSummaryItem(
+                'Paid',
+                '${_formatCurrency(summary.totalPaid)}',
+                Icons.payments_outlined,
+                Colors.green,
+              ),
+              _buildSummaryItem(
+                'Remaining',
+                '${_formatCurrency(summary.remainingBalance)}',
+                Icons.account_balance_wallet_outlined,
+                Colors.orange,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (summary.downPaymentPercent > 0)
+                _buildInfoChip(
+                  Icons.trending_up,
+                  'Down ${summary.downPaymentPercent.toStringAsFixed(1)}%',
+                ),
+              if (summary.termYears != null)
+                _buildInfoChip(
+                  Icons.schedule,
+                  '${summary.termYears} year plan',
+                ),
+              if (summary.installmentEndDate != null)
+                _buildInfoChip(
+                  Icons.event,
+                  'Ends ${summary.installmentEndDate!.year}',
+                ),
+              _buildInfoChip(
+                summary.isFullyPaid ? Icons.verified : Icons.timelapse,
+                summary.isFullyPaid ? 'Fully paid' : 'Outstanding',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCurrency(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M EGP';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K EGP';
+    }
+    return '${value.toStringAsFixed(0)} EGP';
+  }
+
+  Widget _buildInfoChip(IconData icon, String label) {
+    final accent = AppColors.primary;
+    return Chip(
+      avatar: Icon(icon, size: 16, color: accent),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: accent,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      backgroundColor: accent.withOpacity(0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
   Widget _buildInstallmentItem(Event event, bool isPaid) {
     final daysUntil = event.eventDate.difference(DateTime.now()).inDays;
     final isOverdue = daysUntil < 0 && !isPaid;
+    final amount = event.amount;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -345,7 +462,7 @@ class _PropertyInstallmentsCardState extends State<PropertyInstallmentsCard> {
                         fontSize: 13,
                       ),
                     ),
-                    if (event.amount != null) ...[
+                    if (amount != null) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -357,7 +474,7 @@ class _PropertyInstallmentsCardState extends State<PropertyInstallmentsCard> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          '\$${event.amount!.toStringAsFixed(0)}',
+                          '\$${amount.toStringAsFixed(0)}',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,

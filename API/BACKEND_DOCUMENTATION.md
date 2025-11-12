@@ -17,6 +17,15 @@ The Property Flipper backend is built with **.NET Core 8.0** using a **RESTful A
 
 ### Project Structure
 ```
+
+### Analytics & Insights (`/api/Analytics`)
+
+- **Caching:** Market overview, price trends, best investments, developer rankings, and gold comparison results are cached for 3–30 minutes using `IMemoryCache`. This keeps dashboards responsive without hammering the database.
+- **Fallback messaging:** When the data lake is empty, responses now include human-readable hints instead of silent empty arrays.
+  - `MarketOverviewResponse` adds `hasData`, `message`, and `generatedAtUtc`.
+  - `GoldComparisonResponse` adds `message` and `generatedAtUtc` (and returns `betterInvestment = "Tied"` when neither asset has enough history).
+- **Client guidance:** Callers should respect the `hasData` flag and surface the supplied `message` strings in their empty states. The Flutter market dashboard already does this.
+- **Cache keys:** Parameterised calls (e.g. `/price-trends?parentPropertyId=42`) are cached independently from the aggregated view, so filtered views stay accurate without cross-talk.
 API/
 ├── Controllers/          # API endpoints (15 controllers)
 ├── Services/            # Business logic (17 services)
@@ -426,6 +435,11 @@ PropertyView:
 
 **DELETE /{id}** 🔒
 - Delete event (creator only)
+
+**Installment Sync Notes**
+- Installment events automatically update the linked property's `InstallmentSummary`, keeping contract totals, paid-to-date, and remaining balance in sync.
+- Imports created via `POST /scan-payment-schedule` seed the summary using `scheduleBuyingPrice` when no contract price exists.
+- Marking an installment as paid (or undoing/deleting it) immediately recalculates the summary so dashboards and auctions reflect the latest financing state.
 
 ### Documents & KYC
 

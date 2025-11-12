@@ -112,6 +112,7 @@ namespace PropertyFlipperAPI.Models
         public virtual ICollection<PropertyDoc> PropertyDocs { get; set; } = new List<PropertyDoc>();
         public virtual ICollection<Auction> Auctions { get; set; } = new List<Auction>();
         public virtual Project? Project { get; set; } // Optional link to Project table
+        public virtual InstallmentSummary? InstallmentSummary { get; set; }
     }
 }
 

@@ -1,8 +1,10 @@
 import 'user.dart';
 import 'property_image.dart';
-import 'child_property.dart';
 import 'parent_property.dart';
+import 'child_property.dart';
 import 'property_type.dart';
+import 'installment_summary.dart';
+import 'property_doc.dart';
 
 enum ListingType { resale, primary }
 
@@ -29,6 +31,8 @@ class Property {
   final DateTime? updatedAt;
   final bool hasActiveAuction;
   final List<PropertyImage> propertyImages;
+  final InstallmentSummary? installmentSummary;
+  final List<PropertyDoc> propertyDocs;
 
   Property({
     required this.propertyId,
@@ -51,6 +55,8 @@ class Property {
     this.updatedAt,
     this.hasActiveAuction = false,
     this.propertyImages = const [],
+    this.installmentSummary,
+    this.propertyDocs = const [],
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -202,6 +208,12 @@ class Property {
       propertyImages: (json['propertyImages'] ?? json['PropertyImages'] ?? [])
           .map<PropertyImage>((img) => PropertyImage.fromJson(img))
           .toList(),
+      installmentSummary: json['installmentSummary'] != null
+          ? InstallmentSummary.fromJson(json['installmentSummary'])
+          : null,
+      propertyDocs: (json['propertyDocs'] ?? json['PropertyDocs'] ?? [])
+          .map<PropertyDoc>((doc) => PropertyDoc.fromJson(doc))
+          .toList(),
     );
   }
 
@@ -226,6 +238,9 @@ class Property {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'propertyImages': propertyImages.map((img) => img.toJson()).toList(),
+      if (installmentSummary != null)
+        'installmentSummary': installmentSummary!.toJson(),
+      'propertyDocs': propertyDocs.map((doc) => doc.toJson()).toList(),
     };
   }
 
@@ -260,6 +275,7 @@ class Property {
       updatedAt: childProperty.updatedAt,
       hasActiveAuction: childProperty.hasActiveAuction,
       propertyImages: childProperty.propertyImages ?? [],
+      installmentSummary: childProperty.installmentSummary,
     );
   }
 
@@ -287,6 +303,7 @@ class Property {
       updatedAt: parentProperty.updatedAt,
       hasActiveAuction: false, // ParentProperty doesn't have auctions directly
       propertyImages: [],
+      installmentSummary: null,
     );
   }
 
@@ -304,3 +321,4 @@ class Property {
     }
   }
 }
+

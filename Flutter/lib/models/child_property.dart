@@ -3,6 +3,7 @@ import 'property_image.dart';
 import 'property_doc.dart';
 import 'auction.dart';
 import 'property_type.dart';
+import 'installment_summary.dart';
 
 class ChildProperty {
   final int propertyId; // Keep same name for compatibility
@@ -80,6 +81,7 @@ class ChildProperty {
   final List<PropertyImage>? propertyImages;
   final List<PropertyDoc>? propertyDocs;
   final List<Auction>? auctions;
+  final InstallmentSummary? installmentSummary;
 
   String get typeLabel => type.displayName;
   String get propertyType => type.displayName;
@@ -145,6 +147,7 @@ class ChildProperty {
     this.propertyImages,
     this.propertyDocs,
     this.auctions,
+    this.installmentSummary,
   });
 
   factory ChildProperty.fromJson(Map<String, dynamic> json) {
@@ -234,6 +237,9 @@ class ChildProperty {
       auctions: (json['auctions'] as List<dynamic>?)
           ?.map((e) => Auction.fromJson(e))
           .toList(),
+      installmentSummary: json['installmentSummary'] != null
+          ? InstallmentSummary.fromJson(json['installmentSummary'])
+          : null,
     );
   }
 
@@ -298,6 +304,8 @@ class ChildProperty {
       'propertyImages': propertyImages?.map((e) => e.toJson()).toList(),
       'propertyDocs': propertyDocs?.map((e) => e.toJson()).toList(),
       'auctions': auctions?.map((e) => e.toJson()).toList(),
+      if (installmentSummary != null)
+        'installmentSummary': installmentSummary!.toJson(),
     };
   }
 

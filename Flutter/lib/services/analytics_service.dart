@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/gold_price.dart';
 import 'api_client.dart';
 
 class AnalyticsService {
@@ -163,6 +162,9 @@ class MarketOverviewResponse {
   final List<AreaPriceData> areaPrices;
   final List<PropertyTypeDistribution> propertyTypeDistribution;
   final List<PriceTrendData> recentPriceTrends;
+  final bool hasData;
+  final String? message;
+  final DateTime? generatedAt;
 
   MarketOverviewResponse({
     required this.totalProperties,
@@ -171,6 +173,9 @@ class MarketOverviewResponse {
     required this.areaPrices,
     required this.propertyTypeDistribution,
     required this.recentPriceTrends,
+    required this.hasData,
+    this.message,
+    this.generatedAt,
   });
 
   factory MarketOverviewResponse.fromJson(Map<String, dynamic> json) {
@@ -193,6 +198,11 @@ class MarketOverviewResponse {
               ?.map((e) => PriceTrendData.fromJson(e))
               .toList() ??
           [],
+      hasData: json['hasData'] ?? true,
+      message: json['message'],
+      generatedAt: json['generatedAtUtc'] != null
+          ? DateTime.tryParse(json['generatedAtUtc'])
+          : null,
     );
   }
 }
@@ -294,6 +304,8 @@ class GoldComparisonResponse {
   final double returnDifference;
   final int propertyDataPoints;
   final int goldDataPoints;
+  final String? message;
+  final DateTime? generatedAt;
 
   GoldComparisonResponse({
     required this.periodMonths,
@@ -303,6 +315,8 @@ class GoldComparisonResponse {
     required this.returnDifference,
     required this.propertyDataPoints,
     required this.goldDataPoints,
+    this.message,
+    this.generatedAt,
   });
 
   factory GoldComparisonResponse.fromJson(Map<String, dynamic> json) {
@@ -315,6 +329,10 @@ class GoldComparisonResponse {
       returnDifference: (json['returnDifference'] ?? 0).toDouble(),
       propertyDataPoints: json['propertyDataPoints'] ?? 0,
       goldDataPoints: json['goldDataPoints'] ?? 0,
+      message: json['message'],
+      generatedAt: json['generatedAtUtc'] != null
+          ? DateTime.tryParse(json['generatedAtUtc'])
+          : null,
     );
   }
 }

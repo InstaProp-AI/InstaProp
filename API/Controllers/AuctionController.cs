@@ -36,6 +36,10 @@ namespace PropertyFlipperAPI.Controllers
             var auctions = await _context.Auctions
                 .Include(a => a.Property)
                     .ThenInclude(p => p.PropertyImages)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyDocs)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.InstallmentSummary)
                 .Where(a => a.Status == "Approved" || 
                            a.Status == "Active" || 
                            a.Status == "Closed" || 
@@ -57,6 +61,10 @@ namespace PropertyFlipperAPI.Controllers
             var auction = await _context.Auctions
                 .Include(a => a.Property)
                     .ThenInclude(p => p.PropertyImages)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyDocs)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.InstallmentSummary)
                 .FirstOrDefaultAsync(a => a.AuctionId == id);
 
             if (auction == null)
@@ -142,6 +150,10 @@ namespace PropertyFlipperAPI.Controllers
             var auctions = await _context.Auctions
                 .Include(a => a.Property)
                     .ThenInclude(p => p.PropertyImages)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyDocs)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.InstallmentSummary)
                 .ToListAsync();
 
             // Filter active auctions (must have started and not ended)
@@ -211,6 +223,12 @@ namespace PropertyFlipperAPI.Controllers
 
             // Load the property for the response
             await _context.Entry(auction).Reference(a => a.Property).LoadAsync();
+            if (auction.Property != null)
+            {
+                await _context.Entry(auction.Property).Collection(p => p.PropertyImages).LoadAsync();
+                await _context.Entry(auction.Property).Collection(p => p.PropertyDocs).LoadAsync();
+                await _context.Entry(auction.Property).Reference(p => p.InstallmentSummary).LoadAsync();
+            }
 
             // Notify all users about the new auction
             await _notificationService.NotifyNewAuction(auction.AuctionId);
@@ -323,6 +341,10 @@ namespace PropertyFlipperAPI.Controllers
                 .Where(a => a.Status == "Requested")
                 .Include(a => a.Property)
                     .ThenInclude(p => p.PropertyImages)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyDocs)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.InstallmentSummary)
                 .ToListAsync();
 
             var auctionDtos = auctions.Select(AuctionDto.FromAuction).ToList();
@@ -338,6 +360,10 @@ namespace PropertyFlipperAPI.Controllers
             var auction = await _context.Auctions
                 .Include(a => a.Property)
                     .ThenInclude(p => p.PropertyImages)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.PropertyDocs)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.InstallmentSummary)
                 .FirstOrDefaultAsync(a => a.AuctionId == id);
             
             if (auction == null)

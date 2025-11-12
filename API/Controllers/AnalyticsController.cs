@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -14,10 +15,36 @@ namespace PropertyFlipperAPI.Controllers
     public class AnalyticsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IMemoryCache _cache;
+        private static readonly TimeSpan DefaultCacheDuration = TimeSpan.FromMinutes(10);
+        private static readonly TimeSpan ShortCacheDuration = TimeSpan.FromMinutes(3);
+        private static readonly TimeSpan LongCacheDuration = TimeSpan.FromMinutes(30);
 
-        public AnalyticsController(AppDbContext context)
+        public AnalyticsController(AppDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
+        }
+
+        private static class CacheKeys
+        {
+            public const string MarketOverview = "analytics:market-overview";
+            public const string DeveloperRankings = "analytics:developer-rankings";
+            public static string BestInvestments(int limit) => $"analytics:best-investments:{limit}";
+            public static string GoldComparison(int months) => $"analytics:gold-comparison:{months}";
+            public static string PriceTrends(int? parentPropertyId, string? propertyType, string? location, int months) =>
+                $"analytics:price-trends:{parentPropertyId?.ToString() ?? "any"}:{propertyType ?? "any"}:{location ?? "any"}:{months}";
+        }
+
+        private Task<T> GetOrCreateAsync<T>(string cacheKey, Func<Task<T>> factory, TimeSpan? duration = null)
+        {
+            return _cache.GetOrCreateAsync(cacheKey, async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = duration ?? DefaultCacheDuration;
+                entry.SlidingExpiration = duration ?? DefaultCacheDuration;
+                entry.Priority = CacheItemPriority.High;
+                return await factory();
+            });
         }
 
         // GET: api/analytics/market-overview
@@ -26,65 +53,88 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var totalProperties = await _context.ChildProperties.CountAsync();
-                var activeAuctions = await _context.Auctions.CountAsync(a => a.Status == "Active");
-                var totalDevelopers = await _context.Accounts.CountAsync(a => a.Type == Models.AccountType.Developer);
+                var overview = await GetOrCreateAsync(
+                    CacheKeys.MarketOverview,
+                    BuildMarketOverviewAsync,
+                    ShortCacheDuration);
 
-                // Average prices by area
-                var areaPrices = await _context.ChildProperties
-                    .Where(p => p.Auctions.Any())
-                    .GroupBy(p => p.Location)
-                    .Select(g => new AreaPriceData
-                    {
-                        Area = g.Key,
-                        AveragePrice = g.Average(p => p.Auctions.First().CurrentPrice),
-                        PropertyCount = g.Count()
-                    })
-                    .OrderByDescending(a => a.AveragePrice)
-                    .Take(10)
-                    .ToListAsync();
-
-                // Property type distribution
-                var typeDistribution = await _context.ChildProperties
-                    .Where(p => p.Auctions.Any())
-                    .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
-                    .Select(g => new PropertyTypeDistribution
-                    {
-                        PropertyType = g.Key,
-                        Count = g.Count(),
-                        Percentage = (double)g.Count() / totalProperties * 100
-                    })
-                    .OrderByDescending(t => t.Count)
-                    .ToListAsync();
-
-                // Recent price trends (last 6 months)
-                var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
-                var recentPriceHistory = await _context.PropertyPriceHistories
-                    .Where(ph => ph.PriceDate >= sixMonthsAgo)
-                    .GroupBy(ph => ph.PriceDate.Month)
-                    .Select(g => new PriceTrendData
-                    {
-                        Month = g.Key,
-                        AveragePrice = g.Average(ph => ph.Price),
-                        TransactionCount = g.Count()
-                    })
-                    .OrderBy(p => p.Month)
-                    .ToListAsync();
-
-                return Ok(new MarketOverviewResponse
-                {
-                    TotalProperties = totalProperties,
-                    ActiveAuctions = activeAuctions,
-                    TotalDevelopers = totalDevelopers,
-                    AreaPrices = areaPrices,
-                    PropertyTypeDistribution = typeDistribution,
-                    RecentPriceTrends = recentPriceHistory
-                });
+                return Ok(overview);
             }
             catch (Exception ex)
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
+        }
+
+        private async Task<MarketOverviewResponse> BuildMarketOverviewAsync()
+        {
+            var totalProperties = await _context.ChildProperties.CountAsync();
+            var activeAuctions = await _context.Auctions.CountAsync(a => a.Status == "Active");
+            var totalDevelopers = await _context.Accounts.CountAsync(a => a.Type == Models.AccountType.Developer);
+
+            var areaPrices = await _context.ChildProperties
+                .Where(p => p.Auctions.Any())
+                .GroupBy(p => p.Location)
+                .Select(g => new AreaPriceData
+                {
+                    Area = g.Key,
+                    AveragePrice = g.Average(p => p.Auctions.First().CurrentPrice),
+                    PropertyCount = g.Count()
+                })
+                .OrderByDescending(a => a.AveragePrice)
+                .Take(10)
+                .ToListAsync();
+
+            var safeTotalProperties = Math.Max(totalProperties, 1);
+
+            var typeDistribution = await _context.ChildProperties
+                .Where(p => p.Auctions.Any())
+                .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
+                .Select(g => new PropertyTypeDistribution
+                {
+                    PropertyType = g.Key,
+                    Count = g.Count(),
+                    Percentage = safeTotalProperties > 0
+                        ? Math.Round((double)g.Count() / safeTotalProperties * 100, 2)
+                        : 0
+                })
+                .OrderByDescending(t => t.Count)
+                .ToListAsync();
+
+            var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
+            var recentPriceHistory = await _context.PropertyPriceHistories
+                .Where(ph => ph.PriceDate >= sixMonthsAgo)
+                .GroupBy(ph => ph.PriceDate.Month)
+                .Select(g => new PriceTrendData
+                {
+                    Month = g.Key,
+                    AveragePrice = Math.Round(g.Average(ph => ph.Price), 2),
+                    TransactionCount = g.Count()
+                })
+                .OrderBy(p => p.Month)
+                .ToListAsync();
+
+            var overview = new MarketOverviewResponse
+            {
+                TotalProperties = totalProperties,
+                ActiveAuctions = activeAuctions,
+                TotalDevelopers = totalDevelopers,
+                AreaPrices = areaPrices,
+                PropertyTypeDistribution = typeDistribution,
+                RecentPriceTrends = recentPriceHistory,
+                GeneratedAtUtc = DateTime.UtcNow
+            };
+
+            overview.HasData = totalProperties > 0 &&
+                (areaPrices.Any() || typeDistribution.Any() || recentPriceHistory.Any());
+
+            if (!overview.HasData)
+            {
+                overview.Message =
+                    "We need a few live transactions before we can build the market overview. Check back soon!";
+            }
+
+            return overview;
         }
 
         // GET: api/analytics/price-trends
@@ -97,41 +147,11 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var startDate = DateTime.UtcNow.AddMonths(-months);
-                var query = _context.PropertyPriceHistories
-                    .Where(ph => ph.PriceDate >= startDate);
-
-                if (parentPropertyId.HasValue)
-                {
-                    query = query.Where(ph => ph.ParentPropertyId == parentPropertyId.Value);
-                }
-
-                if (!string.IsNullOrEmpty(propertyType))
-                {
-                    query = query.Where(ph => ph.ParentProperty != null && ph.ParentProperty.Type == propertyType);
-                }
-
-                if (!string.IsNullOrEmpty(location))
-                {
-                    query = query.Where(ph => ph.ParentProperty != null && ph.ParentProperty.ProjectName != null && ph.ParentProperty.ProjectName.Contains(location));
-                }
-
-                var priceHistory = await query
-                    .OrderBy(ph => ph.PriceDate)
-                    .Select(ph => new PriceTrendResponse
-                    {
-                        Date = ph.PriceDate,
-                        Price = ph.Price,
-                        Source = ph.Source,
-                        ParentPropertyId = ph.ParentPropertyId,
-                        ProjectName = ph.ParentProperty != null
-                            ? (string.IsNullOrWhiteSpace(ph.ParentProperty.ProjectName) ? "N/A" : ph.ParentProperty.ProjectName)
-                            : "N/A",
-                        PropertyType = ph.ParentProperty != null
-                            ? (string.IsNullOrWhiteSpace(ph.ParentProperty.Type) ? PropertyTypeHelper.ToDisplayName(PropertyType.Other) : ph.ParentProperty.Type)
-                            : PropertyTypeHelper.ToDisplayName(PropertyType.Other)
-                    })
-                    .ToListAsync();
+                var cacheKey = CacheKeys.PriceTrends(parentPropertyId, propertyType, location, months);
+                var priceHistory = await GetOrCreateAsync(
+                    cacheKey,
+                    () => BuildPriceTrendsAsync(parentPropertyId, propertyType, location, months),
+                    ShortCacheDuration);
 
                 return Ok(priceHistory);
             }
@@ -139,6 +159,57 @@ namespace PropertyFlipperAPI.Controllers
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
+        }
+
+        private async Task<List<PriceTrendResponse>> BuildPriceTrendsAsync(
+            int? parentPropertyId,
+            string? propertyType,
+            string? location,
+            int months)
+        {
+            var startDate = DateTime.UtcNow.AddMonths(-months);
+            var query = _context.PropertyPriceHistories
+                .Where(ph => ph.PriceDate >= startDate);
+
+            if (parentPropertyId.HasValue)
+            {
+                query = query.Where(ph => ph.ParentPropertyId == parentPropertyId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(propertyType))
+            {
+                query = query.Where(ph =>
+                    ph.ParentProperty != null &&
+                    ph.ParentProperty.Type != null &&
+                    ph.ParentProperty.Type.Equals(propertyType, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(location))
+            {
+                query = query.Where(ph =>
+                    ph.ParentProperty != null &&
+                    ph.ParentProperty.ProjectName != null &&
+                    ph.ParentProperty.ProjectName.Contains(location));
+            }
+
+            var priceHistory = await query
+                .OrderBy(ph => ph.PriceDate)
+                .Select(ph => new PriceTrendResponse
+                {
+                    Date = ph.PriceDate,
+                    Price = ph.Price,
+                    Source = ph.Source,
+                    ParentPropertyId = ph.ParentPropertyId,
+                    ProjectName = ph.ParentProperty != null
+                        ? (string.IsNullOrWhiteSpace(ph.ParentProperty.ProjectName) ? "N/A" : ph.ParentProperty.ProjectName)
+                        : "N/A",
+                    PropertyType = ph.ParentProperty != null
+                        ? (string.IsNullOrWhiteSpace(ph.ParentProperty.Type) ? PropertyTypeHelper.ToDisplayName(PropertyType.Other) : ph.ParentProperty.Type)
+                        : PropertyTypeHelper.ToDisplayName(PropertyType.Other)
+                })
+                .ToListAsync();
+
+            return priceHistory;
         }
 
         // GET: api/analytics/dashboard
@@ -180,7 +251,11 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var comparison = await CalculateGoldComparisonAsync(months);
+                var comparison = await GetOrCreateAsync(
+                    CacheKeys.GoldComparison(months),
+                    () => CalculateGoldComparisonAsync(months),
+                    LongCacheDuration);
+
                 return Ok(comparison);
             }
             catch (Exception ex)
@@ -195,7 +270,10 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var rankings = await LoadDeveloperRankingsAsync();
+                var rankings = await GetOrCreateAsync(
+                    CacheKeys.DeveloperRankings,
+                    () => LoadDeveloperRankingsAsync(),
+                    LongCacheDuration);
                 return Ok(rankings);
             }
             catch (Exception ex)
@@ -211,7 +289,10 @@ namespace PropertyFlipperAPI.Controllers
         {
             try
             {
-                var investments = await LoadBestInvestmentsAsync(limit);
+                var investments = await GetOrCreateAsync(
+                    CacheKeys.BestInvestments(limit),
+                    () => LoadBestInvestmentsAsync(limit),
+                    TimeSpan.FromMinutes(15));
                 return Ok(investments);
             }
             catch (Exception ex)
@@ -564,15 +645,41 @@ namespace PropertyFlipperAPI.Controllers
                 goldReturn = (double)((goldPrices.Last() - goldPrices.First()) / goldPrices.First() * 100);
             }
 
+            var notices = new List<string>();
+            if (propertyPrices.Count < 2)
+            {
+                notices.Add("We need at least two tracked property prices to calculate real estate ROI.");
+            }
+            if (goldPrices.Count < 2)
+            {
+                notices.Add("We need more gold price snapshots to compare performance.");
+            }
+
+            string betterInvestment;
+            if (propertyPrices.Count < 2 && goldPrices.Count < 2)
+            {
+                betterInvestment = "Tied";
+            }
+            else if (Math.Abs(propertyReturn - goldReturn) < 0.01)
+            {
+                betterInvestment = "Tied";
+            }
+            else
+            {
+                betterInvestment = propertyReturn > goldReturn ? "Property" : "Gold";
+            }
+
             return new GoldComparisonResponse
             {
                 PeriodMonths = months,
                 PropertyReturnPercentage = Math.Round(propertyReturn, 2),
                 GoldReturnPercentage = Math.Round(goldReturn, 2),
-                BetterInvestment = propertyReturn > goldReturn ? "Property" : "Gold",
+                BetterInvestment = betterInvestment,
                 ReturnDifference = Math.Round(Math.Abs(propertyReturn - goldReturn), 2),
                 PropertyDataPoints = propertyPrices.Count,
-                GoldDataPoints = goldPrices.Count
+                GoldDataPoints = goldPrices.Count,
+                Message = notices.Count > 0 ? string.Join(" ", notices) : null,
+                GeneratedAtUtc = DateTime.UtcNow
             };
         }
 
@@ -628,6 +735,9 @@ namespace PropertyFlipperAPI.Controllers
         public List<AreaPriceData> AreaPrices { get; set; } = new();
         public List<PropertyTypeDistribution> PropertyTypeDistribution { get; set; } = new();
         public List<PriceTrendData> RecentPriceTrends { get; set; } = new();
+        public bool HasData { get; set; }
+        public string? Message { get; set; }
+        public DateTime GeneratedAtUtc { get; set; }
     }
 
     public class AreaPriceData
@@ -670,6 +780,8 @@ namespace PropertyFlipperAPI.Controllers
         public double ReturnDifference { get; set; }
         public int PropertyDataPoints { get; set; }
         public int GoldDataPoints { get; set; }
+        public string? Message { get; set; }
+        public DateTime GeneratedAtUtc { get; set; }
     }
 
     public class DeveloperRankingResponse

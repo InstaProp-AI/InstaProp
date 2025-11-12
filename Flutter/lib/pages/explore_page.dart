@@ -27,6 +27,8 @@ import '../widgets/feed_live_stream_card.dart';
 import '../widgets/feed_valuation_prompt_card.dart';
 import '../widgets/feed_payment_reminder_card.dart';
 import '../widgets/feed_post_composer.dart';
+import '../theme/app_colors.dart';
+import '../core/router/app_router.dart';
 import 'post_details_page.dart';
 import 'auction_details_page.dart';
 import 'community_details_page.dart';
@@ -117,22 +119,6 @@ class _ExplorePageState extends State<ExplorePage> {
     final selected = <FeedItem>[];
     for (final item in _feedItems) {
       if (item.type == type && !consumedIds.contains(item.id)) {
-        selected.add(item);
-        consumedIds.add(item.id);
-        if (selected.length >= limit) break;
-      }
-    }
-    return selected;
-  }
-
-  List<FeedItem> _takeItemsByTypes(
-    Set<FeedItemType> types,
-    Set<String> consumedIds, {
-    int limit = 6,
-  }) {
-    final selected = <FeedItem>[];
-    for (final item in _feedItems) {
-      if (types.contains(item.type) && !consumedIds.contains(item.id)) {
         selected.add(item);
         consumedIds.add(item.id);
         if (selected.length >= limit) break;
@@ -719,6 +705,8 @@ class _ExplorePageState extends State<ExplorePage> {
 
     slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 12)));
 
+    slivers.addAll(_buildQuickActionSlivers(context));
+
     if (featuredDeals.isNotEmpty) {
       slivers.addAll(_buildFeaturedDealsSlivers(featuredDeals));
     }
@@ -754,9 +742,67 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
+  List<Widget> _buildQuickActionSlivers(BuildContext context) {
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _buildQuickActionChip(
+                context,
+                label: 'Explore Auctions',
+                icon: Icons.gavel_outlined,
+                routeName: AppRouter.auctions,
+              ),
+              _buildQuickActionChip(
+                context,
+                label: 'Add Property',
+                icon: Icons.add_home_work_outlined,
+                routeName: AppRouter.addProperty,
+              ),
+              _buildQuickActionChip(
+                context,
+                label: 'Market Insights',
+                icon: Icons.show_chart_outlined,
+                routeName: AppRouter.market,
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+    ];
+  }
+
+  Widget _buildQuickActionChip(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required String routeName,
+  }) {
+    return ActionChip(
+      avatar: Icon(icon, size: 18, color: AppColors.primary),
+      label: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      onPressed: () => AppRouter.navigateTo(context, routeName),
+      backgroundColor: AppColors.background,
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.secondary),
+      ),
+    );
+  }
+
   Widget _buildFeedItem(FeedItem item) {
     try {
-      Widget? card;
+      late Widget card;
       switch (item.type) {
         case FeedItemType.post:
           card = _buildPostItem(item.data as CommunityPost);
@@ -905,8 +951,7 @@ class _ExplorePageState extends State<ExplorePage> {
           );
           break;
       }
-
-      return card ?? const SizedBox.shrink();
+      return card;
     } catch (e) {
       print('❌ Error in _buildFeedItem: ${item.type}');
       print('   Error: $e');

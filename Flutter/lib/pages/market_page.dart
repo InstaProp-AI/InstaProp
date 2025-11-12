@@ -8,9 +8,8 @@ import '../providers/app_state.dart';
 import '../services/analytics_service.dart';
 import '../services/api_client.dart';
 import '../services/developer_service.dart';
-import 'auctions_page.dart';
+import '../core/router/app_router.dart';
 import 'developer_profile_page.dart';
-import 'properties_management_page.dart';
 import 'property_search_page.dart';
 
 class MarketPage extends StatefulWidget {
@@ -188,6 +187,8 @@ class _MarketPageState extends State<MarketPage> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
             sliver: SliverList.list(children: [
+              _buildQuickActions(context),
+              const SizedBox(height: 16),
               _buildHeroMetrics(),
               const SizedBox(height: 16),
               _buildMacroPulse(),
@@ -208,6 +209,56 @@ class _MarketPageState extends State<MarketPage> {
             ]),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: [
+        _buildQuickActionChip(
+          context,
+          label: 'Live Auctions',
+          icon: Icons.gavel_outlined,
+          routeName: AppRouter.auctions,
+        ),
+        _buildQuickActionChip(
+          context,
+          label: 'Add Property',
+          icon: Icons.add_home_work_outlined,
+          routeName: AppRouter.addProperty,
+        ),
+        _buildQuickActionChip(
+          context,
+          label: 'Manage Portfolio',
+          icon: Icons.account_balance_wallet_outlined,
+          routeName: AppRouter.propertyManagement,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionChip(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required String routeName,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ActionChip(
+      avatar: Icon(icon, size: 18, color: colorScheme.primary),
+      label: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      onPressed: () => AppRouter.navigateTo(context, routeName),
+      backgroundColor: colorScheme.surfaceVariant.withOpacity(0.6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
       ),
     );
   }
@@ -255,12 +306,7 @@ class _MarketPageState extends State<MarketPage> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PropertiesManagementPage(),
-                      ),
-                    );
+                    AppRouter.navigateTo(context, AppRouter.propertyManagement);
                   },
                   child: _buildHeroBadge(
                     icon: Icons.link,
@@ -270,17 +316,42 @@ class _MarketPageState extends State<MarketPage> {
               ),
             ],
           ),
+          _buildUpdatedStamp(_marketOverview?.generatedAt),
         ],
       ),
     );
   }
 
   Widget _buildMacroPulse() {
-    final averagePrice = _marketOverview?.areaPrices.isNotEmpty == true
-        ? _marketOverview!.areaPrices
+    final overview = _marketOverview;
+
+    if (overview == null) {
+      return _buildAnalyticsPlaceholder(
+        icon: Icons.pie_chart_outline,
+        title: 'Market pulse is warming up',
+        description:
+            'We’re still collecting enough recent transactions to surface pulse insights. Check back shortly.',
+        actionLabel: 'Refresh',
+        onAction: _loadDashboardData,
+      );
+    }
+
+    if (!overview.hasData) {
+      return _buildAnalyticsPlaceholder(
+        icon: Icons.pie_chart_outline,
+        title: 'Market pulse is warming up',
+        description: overview.message ??
+            'We need a few verified sales before we can plot the market pulse.',
+        actionLabel: 'Refresh',
+        onAction: _loadDashboardData,
+      );
+    }
+
+    final averagePrice = overview.areaPrices.isNotEmpty
+        ? overview.areaPrices
                 .map((e) => e.averagePrice)
                 .reduce((a, b) => a + b) /
-            _marketOverview!.areaPrices.length
+            overview.areaPrices.length
         : null;
     final priceTrendDelta = _priceTrends != null && _priceTrends!.length > 1
         ? ((_priceTrends!.last.price - _priceTrends!.first.price) /
@@ -295,9 +366,9 @@ class _MarketPageState extends State<MarketPage> {
             .clamp(10, 90)
         : null;
 
-    final transactions = _marketOverview?.recentPriceTrends;
-    final transactionCount = transactions?.length ?? 0;
-    final lastTransactionCount = (transactions != null && transactions.isNotEmpty)
+    final transactions = overview.recentPriceTrends;
+    final transactionCount = transactions.length;
+    final lastTransactionCount = transactions.isNotEmpty
         ? transactions.last.transactionCount
         : null;
 
@@ -341,6 +412,7 @@ class _MarketPageState extends State<MarketPage> {
             title: 'Market Pulse',
             subtitle: 'Macro indicators updated in real-time',
           ),
+          _buildUpdatedStamp(overview.generatedAt),
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -439,11 +511,9 @@ class _MarketPageState extends State<MarketPage> {
                 ? null
                 : TextButton.icon(
                     onPressed: () {
-                      Navigator.push(
+                      AppRouter.navigateTo(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const PropertiesManagementPage(),
-                        ),
+                        AppRouter.propertyManagement,
                       );
                     },
                     icon: const Icon(Icons.login),
@@ -519,10 +589,13 @@ class _MarketPageState extends State<MarketPage> {
     final aggregatedTrends = _aggregateMonthlyTrends();
 
     if (aggregatedTrends.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: _cardDecoration(),
-        child: const Text('No price trend data available'),
+      return _buildAnalyticsPlaceholder(
+        icon: Icons.timeline_outlined,
+        title: 'Price momentum coming soon',
+        description:
+            'As soon as we log a few consecutive transactions, we’ll chart price momentum here.',
+        actionLabel: 'Refresh',
+        onAction: _loadDashboardData,
       );
     }
 
@@ -648,10 +721,18 @@ class _MarketPageState extends State<MarketPage> {
 
   Widget _buildOpportunityDeck() {
     if (_bestInvestments == null || _bestInvestments!.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: _cardDecoration(),
-        child: const Text('No standout opportunities available right now.'),
+      return _buildAnalyticsPlaceholder(
+        icon: Icons.lightbulb_outline,
+        title: 'No standout opportunities yet',
+        description:
+            'We highlight listings once they show exceptional yield, growth, or momentum. In the meantime, browse the marketplace.',
+        actionLabel: 'Browse listings',
+        onAction: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PropertySearchPage()),
+          );
+        },
       );
     }
 
@@ -775,10 +856,13 @@ class _MarketPageState extends State<MarketPage> {
 
   Widget _buildDeveloperLeaderboard() {
     if (_developerRankings == null || _developerRankings!.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: _cardDecoration(),
-        child: const Text('Developer performance data is still syncing.'),
+      return _buildAnalyticsPlaceholder(
+        icon: Icons.emoji_events_outlined,
+        title: 'Developer stats syncing',
+        description:
+            'Once developers start closing deals on the platform we’ll surface rankings and performance insights here.',
+        actionLabel: 'Refresh',
+        onAction: _loadDashboardData,
       );
     }
 
@@ -807,7 +891,35 @@ class _MarketPageState extends State<MarketPage> {
 
   Widget _buildGoldComparison() {
     final data = _goldComparison;
-    if (data == null) return const SizedBox.shrink();
+    if (data == null) {
+      return _buildAnalyticsPlaceholder(
+        icon: Icons.compare_arrows,
+        title: 'Asset comparison unavailable',
+        description:
+            'We need more historical sales and gold price data to generate this comparison. Check back soon.',
+        actionLabel: 'Refresh',
+        onAction: _loadDashboardData,
+      );
+    }
+
+    final bool isPropertyWinner = data.betterInvestment == 'Property';
+    final bool isGoldWinner = data.betterInvestment == 'Gold';
+    final bool isTied =
+        !isPropertyWinner && !isGoldWinner; // handles "Tied" or empty
+
+    final Color baseColor = isPropertyWinner
+        ? Colors.green
+        : isGoldWinner
+            ? (Colors.amber[800] ?? Colors.amber)
+            : Colors.blueGrey;
+    final IconData summaryIcon = isPropertyWinner
+        ? Icons.trending_up
+        : isGoldWinner
+            ? Icons.trending_flat
+            : Icons.horizontal_rule;
+    final String summaryText = isTied
+        ? 'Property and gold are moving in lockstep over the last ${data.periodMonths} months.'
+        : '${data.betterInvestment} is outperforming by ${data.returnDifference.toStringAsFixed(1)}%';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -820,6 +932,7 @@ class _MarketPageState extends State<MarketPage> {
             title: 'Asset Class Showdown',
             subtitle: 'Real estate vs gold performance over ${data.periodMonths} months',
           ),
+          _buildUpdatedStamp(data.generatedAt),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -848,36 +961,36 @@ class _MarketPageState extends State<MarketPage> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: data.betterInvestment == 'Property'
-                  ? Colors.green.withValues(alpha: 0.08)
-                  : Colors.amber.withValues(alpha: 0.15),
+              color: baseColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
                 Icon(
-                  data.betterInvestment == 'Property'
-                      ? Icons.trending_up
-                      : Icons.trending_flat,
-                  color: data.betterInvestment == 'Property'
-                      ? Colors.green
-                      : Colors.amber[800],
+                  summaryIcon,
+                  color: baseColor,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${data.betterInvestment} is outperforming by ${data.returnDifference.toStringAsFixed(1)}%',
+                    summaryText,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: data.betterInvestment == 'Property'
-                          ? Colors.green[800]
-                          : Colors.amber[900],
+                      color: baseColor,
                     ),
                   ),
                 ),
               ],
             ),
           ),
+          if (data.message != null && data.message!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildInlineNotice(
+              data.message!,
+              icon: Icons.info_outline,
+              color: Colors.blueGrey,
+            ),
+          ],
         ],
       ),
     );
@@ -1159,10 +1272,7 @@ class _MarketPageState extends State<MarketPage> {
           FloatingActionButton.extended(
             heroTag: 'auctions_fab',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AuctionsPage()),
-              );
+              AppRouter.navigateTo(context, AppRouter.auctions);
             },
             backgroundColor: Colors.orange[600],
             icon: const Icon(Icons.gavel_outlined),
@@ -1360,11 +1470,9 @@ class _MarketPageState extends State<MarketPage> {
           const SizedBox(width: 12),
           ElevatedButton(
             onPressed: () {
-              Navigator.push(
+              AppRouter.navigateTo(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const PropertiesManagementPage(),
-                ),
+                AppRouter.propertyManagement,
               );
             },
             child: const Text('Connect'),
@@ -1475,6 +1583,127 @@ class _MarketPageState extends State<MarketPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildAnalyticsPlaceholder({
+    required IconData icon,
+    required String title,
+    required String description,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: colorScheme.primary.withOpacity(0.08),
+                child: Icon(icon, color: colorScheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              height: 1.45,
+            ),
+          ),
+          if (onAction != null) ...[
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: onAction,
+              icon: const Icon(Icons.refresh),
+              label: Text(actionLabel ?? 'Refresh data'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInlineNotice(
+    String message, {
+    IconData icon = Icons.info_outline,
+    Color? color,
+  }) {
+    final resolvedColor = color ?? Colors.blue;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: resolvedColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: resolvedColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: resolvedColor.withOpacity(0.9),
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpdatedStamp(DateTime? timestamp) {
+    if (timestamp == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        'Updated ${_formatRelativeTime(timestamp)}',
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.grey[500],
+        ),
+      ),
+    );
+  }
+
+  String _formatRelativeTime(DateTime? timestamp) {
+    if (timestamp == null) {
+      return 'moments ago';
+    }
+    final localTime = timestamp.toLocal();
+    final diff = DateTime.now().difference(localTime);
+
+    if (diff.inMinutes < 1) return 'moments ago';
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes} min${diff.inMinutes == 1 ? '' : 's'} ago';
+    }
+    if (diff.inHours < 24) {
+      return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
+    }
+    if (diff.inDays < 7) {
+      return '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
+    }
+    return '${localTime.day}/${localTime.month}/${localTime.year}';
   }
 
   BoxDecoration _cardDecoration() {

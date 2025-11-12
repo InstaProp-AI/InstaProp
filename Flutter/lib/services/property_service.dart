@@ -7,6 +7,7 @@ import '../models/child_property.dart';
 import '../models/parent_property.dart';
 import '../models/property_image.dart';
 import '../models/property_type.dart';
+import '../models/installment_summary.dart';
 
 class PropertyService {
   static Future<ApiResponse<List<Property>>> getProperties() async {
@@ -17,6 +18,27 @@ class PropertyService {
   static Future<ApiResponse<Property>> getProperty(int propertyId) async {
     // Use the new parent/child property system
     return await getPropertyAsChildProperty(propertyId);
+  }
+
+  static Future<ApiResponse<InstallmentSummary>> getPropertyInstallmentSummary(
+    int propertyId,
+  ) async {
+    return await ApiClient.get(
+      '/api/property/$propertyId/installment-summary',
+      InstallmentSummary.fromJson,
+    );
+  }
+
+  static Future<ApiResponse<InstallmentSummary>>
+      upsertPropertyInstallmentSummary(
+    int propertyId,
+    InstallmentSummaryPayload payload,
+  ) async {
+    return await ApiClient.put(
+      '/api/property/$propertyId/installment-summary',
+      payload.toJson(),
+      InstallmentSummary.fromJson,
+    );
   }
 
   static Future<ApiResponse<Property>> createProperty({
@@ -77,6 +99,7 @@ class PropertyService {
     bool? pyramidView,
     bool? gardenView,
     bool? streetView,
+    InstallmentSummaryPayload? installmentSummary,
   }) async {
     try {
       final projectNameToUse =
@@ -175,6 +198,18 @@ class PropertyService {
 
       final property = Property.fromChildProperty(childResponse.data!);
 
+      await _attemptSyncInstallmentSummary(
+        property.propertyId,
+        installmentSummary,
+      );
+
+      if (installmentSummary != null && installmentSummary.hasRequiredData) {
+        final refreshed = await getProperty(property.propertyId);
+        if (refreshed.success && refreshed.data != null) {
+          return refreshed;
+        }
+      }
+
       return ApiResponse<Property>(
         success: true,
         data: property,
@@ -202,6 +237,7 @@ class PropertyService {
     required String name,
     required String description,
     required String location,
+    InstallmentSummaryPayload? installmentSummary,
   }) async {
     // Use the new parent/child property system
     final childPropertyResponse = await updateChildProperty(
@@ -212,9 +248,17 @@ class PropertyService {
     );
 
     if (childPropertyResponse.success && childPropertyResponse.data != null) {
+      final property = Property.fromChildProperty(childPropertyResponse.data!);
+      await _attemptSyncInstallmentSummary(propertyId, installmentSummary);
+      if (installmentSummary != null && installmentSummary.hasRequiredData) {
+        final refreshed = await getProperty(propertyId);
+        if (refreshed.success && refreshed.data != null) {
+          return refreshed;
+        }
+      }
       return ApiResponse<Property>(
         success: true,
-        data: Property.fromChildProperty(childPropertyResponse.data!),
+        data: property,
         statusCode: childPropertyResponse.statusCode,
       );
     } else {
@@ -250,8 +294,9 @@ class PropertyService {
     required int yearBuilt,
     required PropertyType type,
     String? imageUrl,
+    InstallmentSummaryPayload? installmentSummary,
   }) async {
-    return await ApiClient.post('/api/property/skip-documents', {
+    final response = await ApiClient.post('/api/property/skip-documents', {
       'name': name,
       'description': description,
       'location': location,
@@ -262,6 +307,18 @@ class PropertyService {
       'type': type.displayName,
       'imageUrl': imageUrl ?? '',
     }, Property.fromJson);
+
+    if (response.success && response.data != null) {
+      await _attemptSyncInstallmentSummary(
+        response.data!.propertyId,
+        installmentSummary,
+      );
+      if (installmentSummary != null && installmentSummary.hasRequiredData) {
+        return await getProperty(response.data!.propertyId);
+      }
+    }
+
+    return response;
   }
 
   // Get all child properties (public endpoint - only properties with auctions)
@@ -580,6 +637,17 @@ class PropertyService {
       'description': description,
       'location': location,
     }, ChildProperty.fromJson);
+  }
+
+  static Future<void> _attemptSyncInstallmentSummary(
+    int propertyId,
+    InstallmentSummaryPayload? payload,
+  ) async {
+    if (payload == null || !payload.hasRequiredData) {
+      return;
+    }
+
+    await upsertPropertyInstallmentSummary(propertyId, payload);
   }
 
   // Delete a child property

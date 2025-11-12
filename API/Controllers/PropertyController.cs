@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
@@ -17,14 +18,22 @@ namespace PropertyFlipperAPI.Controllers
         private readonly FileValidationService _fileValidationService;
         private readonly RewardService _rewardService;
         private readonly OpenAIService _openAIService;
+        private readonly InstallmentSummaryService _installmentSummaryService;
 
-        public PropertyController(AppDbContext context, ImgBBService imgBBService, FileValidationService fileValidationService, RewardService rewardService, OpenAIService openAIService)
+        public PropertyController(
+            AppDbContext context,
+            ImgBBService imgBBService,
+            FileValidationService fileValidationService,
+            RewardService rewardService,
+            OpenAIService openAIService,
+            InstallmentSummaryService installmentSummaryService)
         {
             _context = context;
             _imgBBService = imgBBService;
             _fileValidationService = fileValidationService;
             _rewardService = rewardService;
             _openAIService = openAIService;
+            _installmentSummaryService = installmentSummaryService;
         }
 
         // GET: api/Property (Public - only properties with auctions)
@@ -34,6 +43,7 @@ namespace PropertyFlipperAPI.Controllers
             return await _context.ChildProperties
                 .Where(p => p.Auctions.Any()) // Only properties that have auctions
                 .Include(p => p.Owner)
+                .Include(p => p.InstallmentSummary)
                 .Include(p => p.Auctions.Where(a => a.Status == "Active")) // Only active auctions
                 .Include(p => p.PropertyImages)
                 .ToListAsync();
@@ -50,6 +60,7 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
                 .Include(p => p.PropertyImages)
+                .Include(p => p.InstallmentSummary)
                 .ToListAsync();
         }
 
@@ -69,6 +80,7 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
                 .Include(p => p.PropertyImages)
+                .Include(p => p.InstallmentSummary)
                 .ToListAsync();
         }
 
@@ -83,6 +95,7 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(p => p.Project)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.PropertyImages)
+                .Include(p => p.InstallmentSummary)
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
 
             if (property == null)
@@ -184,7 +197,24 @@ namespace PropertyFlipperAPI.Controllers
                     img.DisplayOrder,
                     img.DeleteUrl,
                     img.CreatedAt
-                }).ToList()
+                }).ToList(),
+                InstallmentSummary = property.InstallmentSummary != null ? new
+                {
+                    property.InstallmentSummary.SummaryId,
+                    property.InstallmentSummary.PropertyId,
+                    property.InstallmentSummary.ContractedPrice,
+                    property.InstallmentSummary.TotalPaid,
+                    property.InstallmentSummary.DownPaymentPercent,
+                    DownPaymentAmount = InstallmentSummaryService.CalculateDownPaymentAmount(
+                        property.InstallmentSummary.ContractedPrice,
+                        property.InstallmentSummary.DownPaymentPercent),
+                    property.InstallmentSummary.TermYears,
+                    property.InstallmentSummary.InstallmentEndDate,
+                    property.InstallmentSummary.IsFullyPaid,
+                    property.InstallmentSummary.RemainingBalance,
+                    property.InstallmentSummary.CreatedAt,
+                    property.InstallmentSummary.UpdatedAt
+                } : null
             });
         }
 
@@ -269,6 +299,79 @@ namespace PropertyFlipperAPI.Controllers
             });
         }
 
+        // GET: api/Property/{id}/installment-summary
+        [HttpGet("{id}/installment-summary")]
+        [Authorize]
+        public async Task<ActionResult<object>> GetInstallmentSummary(int id)
+        {
+            var property = await _context.ChildProperties
+                .Include(p => p.InstallmentSummary)
+                .FirstOrDefaultAsync(p => p.PropertyId == id);
+
+            if (property == null)
+            {
+                return NotFound(new { message = "Property not found" });
+            }
+
+            var accountId = GetCurrentAccountId();
+            var accountType = GetCurrentAccountType();
+
+            if (accountType != "Admin" && property.OwnerId != accountId)
+            {
+                return StatusCode(403, new { message = "You can only view installment data for your own properties" });
+            }
+
+            if (property.InstallmentSummary == null)
+            {
+                return NotFound(new { message = "Installment summary not available for this property" });
+            }
+
+            return Ok(ToInstallmentSummaryResponse(property.InstallmentSummary));
+        }
+
+        // PUT: api/Property/{id}/installment-summary
+        [HttpPut("{id}/installment-summary")]
+        [Authorize]
+        public async Task<ActionResult<object>> UpsertInstallmentSummary(int id, [FromBody] InstallmentSummaryInputDto summaryDto)
+        {
+            var property = await _context.ChildProperties
+                .FirstOrDefaultAsync(p => p.PropertyId == id);
+
+            if (property == null)
+            {
+                return NotFound(new { message = "Property not found" });
+            }
+
+            var accountId = GetCurrentAccountId();
+            var accountType = GetCurrentAccountType();
+
+            if (accountId == null)
+            {
+                return Unauthorized();
+            }
+
+            if (accountType != "Admin" && property.OwnerId != accountId)
+            {
+                return StatusCode(403, new { message = "You can only update installment data for your own properties" });
+            }
+
+            if (summaryDto == null || !summaryDto.ContractedPrice.HasValue)
+            {
+                return BadRequest(new { message = "Contracted price is required to update installment summary" });
+            }
+
+            var summary = await _installmentSummaryService.UpsertSummaryAsync(
+                property.PropertyId,
+                Math.Max(0, summaryDto.ContractedPrice.Value),
+                Math.Max(0, summaryDto.TotalPaid ?? 0),
+                ClampPercent(summaryDto.DownPaymentPercent),
+                summaryDto.TermYears,
+                summaryDto.InstallmentEndDate,
+                summaryDto.IsFullyPaid);
+
+            return Ok(ToInstallmentSummaryResponse(summary));
+        }
+
         // POST: api/Property 
         [HttpPost]
         [Authorize]
@@ -339,6 +442,8 @@ namespace PropertyFlipperAPI.Controllers
 
             _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();
+
+            await HandleInstallmentSummaryAsync(property.PropertyId, propertyDto.InstallmentSummary);
 
             // Award rewards to property owner for creating a property
             await _rewardService.AwardPointsAsync(userId, "PropertyCreate", RewardPoints.AddProperty, $"Created property '{property.Name}'", property.PropertyId);
@@ -417,6 +522,8 @@ namespace PropertyFlipperAPI.Controllers
             _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();
 
+            await HandleInstallmentSummaryAsync(property.PropertyId, propertyDto.InstallmentSummary);
+
             return CreatedAtAction("GetProperty", new { id = property.PropertyId }, property);
         }
 
@@ -456,6 +563,7 @@ namespace PropertyFlipperAPI.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                await HandleInstallmentSummaryAsync(existingProperty.PropertyId, updateDto.InstallmentSummary);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -882,6 +990,59 @@ namespace PropertyFlipperAPI.Controllers
         {
             // Redirect to ApproveProperty method
             return await ApproveProperty((int)id);
+        }
+
+        private async Task HandleInstallmentSummaryAsync(int propertyId, InstallmentSummaryInputDto? summaryDto)
+        {
+            if (summaryDto == null || !summaryDto.ContractedPrice.HasValue)
+            {
+                return;
+            }
+
+            var contractedPrice = Math.Max(0, summaryDto.ContractedPrice.Value);
+            var totalPaid = Math.Max(0, summaryDto.TotalPaid ?? 0);
+            var downPaymentPercent = ClampPercent(summaryDto.DownPaymentPercent);
+
+            await _installmentSummaryService.UpsertSummaryAsync(
+                propertyId,
+                contractedPrice,
+                totalPaid,
+                downPaymentPercent,
+                summaryDto.TermYears,
+                summaryDto.InstallmentEndDate,
+                summaryDto.IsFullyPaid);
+        }
+
+        private decimal ClampPercent(decimal? value)
+        {
+            if (!value.HasValue)
+            {
+                return 0;
+            }
+
+            var percent = value.Value;
+            if (percent < 0) percent = 0;
+            if (percent > 100) percent = 100;
+            return Math.Round(percent, 2);
+        }
+
+        private object ToInstallmentSummaryResponse(InstallmentSummary summary)
+        {
+            return new
+            {
+                summary.SummaryId,
+                summary.PropertyId,
+                summary.ContractedPrice,
+                summary.TotalPaid,
+                summary.DownPaymentPercent,
+                DownPaymentAmount = InstallmentSummaryService.CalculateDownPaymentAmount(summary.ContractedPrice, summary.DownPaymentPercent),
+                summary.TermYears,
+                summary.InstallmentEndDate,
+                summary.IsFullyPaid,
+                summary.RemainingBalance,
+                summary.CreatedAt,
+                summary.UpdatedAt
+            };
         }
 
         private bool PropertyExists(int id)

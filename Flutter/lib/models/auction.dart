@@ -13,6 +13,8 @@ class Auction {
   final String status;
   final DateTime createdAt;
   final List<Bid> bids;
+  final double? cashToClose;
+  final String? masterPlanUrl;
 
   Auction({
     required this.auctionId,
@@ -26,6 +28,8 @@ class Auction {
     required this.status,
     required this.createdAt,
     this.bids = const [],
+    this.cashToClose,
+    this.masterPlanUrl,
   });
 
   // Calculated property: EndAt = StartAt + Duration
@@ -74,6 +78,8 @@ class Auction {
         }
         return <Bid>[];
       })(),
+      cashToClose: _parseOptionalNumber(json['cashToClose'] ?? json['CashToClose']),
+      masterPlanUrl: json['masterPlanUrl'] ?? json['MasterPlanUrl'],
     );
   }
 
@@ -90,6 +96,8 @@ class Auction {
       'status': status,
       'createdAt': createdAt.toIso8601String(),
       'bids': bids.map((bid) => bid.toJson()).toList(),
+      if (cashToClose != null) 'cashToClose': cashToClose,
+      if (masterPlanUrl != null) 'masterPlanUrl': masterPlanUrl,
     };
   }
 
@@ -149,6 +157,8 @@ class Auction {
     String? status,
     DateTime? createdAt,
     List<Bid>? bids,
+    double? cashToClose,
+    String? masterPlanUrl,
   }) {
     return Auction(
       auctionId: auctionId ?? this.auctionId,
@@ -162,6 +172,18 @@ class Auction {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       bids: bids ?? this.bids,
+      cashToClose: cashToClose ?? this.cashToClose,
+      masterPlanUrl: masterPlanUrl ?? this.masterPlanUrl,
     );
+  }
+
+  static double? _parseOptionalNumber(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      return parsed;
+    }
+    return null;
   }
 }

@@ -7,6 +7,7 @@ import '../services/property_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import 'property_docs_upload_page.dart';
+import '../models/installment_summary.dart';
 
 class EditPropertyPage extends StatefulWidget {
   final Property property;
@@ -27,6 +28,13 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
   late final TextEditingController _squareFeetController;
   late final TextEditingController _yearBuiltController;
   late final TextEditingController _imageUrlController;
+  late final TextEditingController _contractedPriceController;
+  late final TextEditingController _totalPaidController;
+  late final TextEditingController _downPaymentPercentController;
+  late final TextEditingController _termYearsController;
+  late final TextEditingController _installmentEndYearController;
+
+  bool _isFullyPaid = false;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -54,6 +62,28 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
       text: widget.property.yearBuilt.toString(),
     );
     _imageUrlController = TextEditingController(text: widget.property.imageUrl);
+
+    final summary = widget.property.installmentSummary;
+    _contractedPriceController = TextEditingController(
+      text: summary != null
+          ? summary.contractedPrice.toStringAsFixed(0)
+          : '',
+    );
+    _totalPaidController = TextEditingController(
+      text: summary != null ? summary.totalPaid.toStringAsFixed(0) : '',
+    );
+    _downPaymentPercentController = TextEditingController(
+      text: summary != null
+          ? summary.downPaymentPercent.toStringAsFixed(2)
+          : '',
+    );
+    _termYearsController = TextEditingController(
+      text: summary?.termYears?.toString() ?? '',
+    );
+    _installmentEndYearController = TextEditingController(
+      text: summary?.installmentEndDate?.year.toString() ?? '',
+    );
+    _isFullyPaid = summary?.isFullyPaid ?? false;
   }
 
   @override
@@ -66,7 +96,31 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
     _squareFeetController.dispose();
     _yearBuiltController.dispose();
     _imageUrlController.dispose();
+    _contractedPriceController.dispose();
+    _totalPaidController.dispose();
+    _downPaymentPercentController.dispose();
+    _termYearsController.dispose();
+    _installmentEndYearController.dispose();
     super.dispose();
+  }
+
+  double? _parseNumber(String value) {
+    final normalized = value.trim().replaceAll(',', '');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
+  }
+
+  int? _parseIntValue(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    return int.tryParse(trimmed);
+  }
+
+  DateTime? _parseInstallmentEndDate(String value) {
+    final year = _parseIntValue(value);
+    if (year == null) return null;
+    if (year < 1900) return null;
+    return DateTime(year, 1, 1);
   }
 
   Future<void> _updateProperty() async {
@@ -79,11 +133,23 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
     });
 
     try {
+      final summaryPayload = InstallmentSummaryPayload(
+        contractedPrice: _parseNumber(_contractedPriceController.text),
+        totalPaid: _parseNumber(_totalPaidController.text),
+        downPaymentPercent:
+            _parseNumber(_downPaymentPercentController.text),
+        termYears: _parseIntValue(_termYearsController.text),
+        installmentEndDate:
+            _parseInstallmentEndDate(_installmentEndYearController.text),
+        isFullyPaid: _isFullyPaid ? true : null,
+      );
+
       final response = await PropertyService.updateProperty(
         propertyId: widget.property.propertyId,
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         location: _locationController.text.trim(),
+        installmentSummary: summaryPayload,
       );
 
       if (response.success) {
@@ -385,6 +451,10 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
 
               const SizedBox(height: 24),
 
+              _buildInstallmentSummarySection(context),
+
+              const SizedBox(height: 24),
+
               // Info message about limited editing
               Container(
                 padding: const EdgeInsets.all(12),
@@ -489,6 +559,86 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInstallmentSummarySection(BuildContext context) {
+    final summaryStyle = Theme.of(context)
+        .textTheme
+        .titleLarge
+        ?.copyWith(fontWeight: FontWeight.bold);
+
+    final noteStyle = Theme.of(context)
+        .textTheme
+        .bodyMedium
+        ?.copyWith(color: AppColors.primary);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Financing Snapshot', style: summaryStyle),
+        const SizedBox(height: 8),
+        Text(
+          'Keep your installment plan up to date so dashboards can show remaining balance and equity.',
+          style: noteStyle,
+        ),
+        const SizedBox(height: 16),
+        CustomTextField(
+          controller: _contractedPriceController,
+          labelText: 'Contract Price (EGP)',
+          hintText: 'e.g., 5,500,000',
+          keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 16),
+        CustomTextField(
+          controller: _totalPaidController,
+          labelText: 'Total Paid So Far (EGP)',
+          hintText: 'e.g., 1,200,000',
+          keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 16),
+        CustomTextField(
+          controller: _downPaymentPercentController,
+          labelText: 'Down Payment (%)',
+          hintText: 'e.g., 10',
+          keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: CustomTextField(
+                controller: _termYearsController,
+                labelText: 'Installment Term (years)',
+                hintText: 'e.g., 10',
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: CustomTextField(
+                controller: _installmentEndYearController,
+                labelText: 'Installment End Year',
+                hintText: 'e.g., 2033',
+                keyboardType: TextInputType.number,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SwitchListTile(
+          value: _isFullyPaid,
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Mark as fully paid'),
+          subtitle: const Text(
+            'Enable if the contract is fully settled and no further payments are due.',
+          ),
+          onChanged: (value) => setState(() => _isFullyPaid = value),
+        ),
+      ],
     );
   }
 }

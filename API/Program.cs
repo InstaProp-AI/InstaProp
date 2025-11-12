@@ -31,6 +31,7 @@ builder.Services.AddScoped<FileValidationService>();
 builder.Services.AddScoped<ImgBBService>(); // ImgBB image upload service
 builder.Services.AddScoped<RewardService>(); // Gamification rewards
 builder.Services.AddScoped<OpenAIService>(); // OpenAI Vision API for payment schedule scanning
+builder.Services.AddScoped<InstallmentSummaryService>();
 
 // Add HttpClient for FCM and ImgBB
 builder.Services.AddHttpClient();
@@ -126,6 +127,8 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddMemoryCache();
+
 // JWT Auth
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"] ?? "insecure"));
@@ -182,6 +185,18 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var seedService = scope.ServiceProvider.GetRequiredService<CompleteEgyptianSeedingService>();
+
+    try
+    {
+        Console.WriteLine("📦 Applying pending migrations (if any)...");
+        await context.Database.MigrateAsync();
+        Console.WriteLine("✅ Database schema up to date.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Failed to apply migrations: {ex.Message}");
+        throw;
+    }
     
     // Check if database is empty (no accounts)
     var hasAccounts = await context.Accounts.AnyAsync();

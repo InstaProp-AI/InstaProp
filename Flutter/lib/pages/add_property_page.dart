@@ -10,8 +10,8 @@ import '../models/project_model.dart';
 import '../models/property_type.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
-import 'property_docs_upload_page.dart';
 import '../widgets/reward_popup.dart';
+import '../core/router/app_router.dart';
 
 class AddPropertyPage extends StatefulWidget {
   const AddPropertyPage({super.key});
@@ -228,6 +228,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         hasBicycleLanes: _hasBicycleLanes,
         hasJoggingTrail: _hasJoggingTrail,
         deliveryDate: deliveryDate,
+        installmentSummary: null,
       );
 
       if (response.success && response.data != null) {
@@ -250,10 +251,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
             return;
           }
         }
-
-        setState(() {
-          _successMessage = 'Property added successfully!';
-        });
 
         final appState = context.read<AppState>();
         await appState.refreshUserProfile();
@@ -300,27 +297,14 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         context.read<AppState>().loadProperties();
 
         if (mounted) {
-          Navigator.pushReplacement(
+          Navigator.pushReplacementNamed(
             context,
-            MaterialPageRoute(
-              builder: (context) => PropertyDocsUploadPage(
-                propertyId: propertyId,
-                propertyName: propertyName,
-              ),
-            ),
-          ).then((_) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Property "$propertyName" added successfully! 🎉',
-                  ),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-            }
-          });
+            AppRouter.addPropertyFinancial,
+            arguments: {
+              'propertyId': propertyId,
+              'propertyName': propertyName,
+            },
+          );
         }
       } else {
         setState(() {
@@ -389,7 +373,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                               decoration: BoxDecoration(
                                 color: AppColors.background,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.secondary!),
+                                border: Border.all(color: AppColors.secondary),
                               ),
                               child: Text(
                                 _errorMessage!,
@@ -495,7 +479,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           const SizedBox(height: 24),
 
                           _buildAmenitiesSection(context),
-
                           const SizedBox(height: 24),
 
                           // Property Images Section
@@ -525,7 +508,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                 horizontal: 24,
                                 vertical: 16,
                               ),
-                              side: BorderSide(color: AppColors.primary!),
+                              side: const BorderSide(color: AppColors.primary),
                               foregroundColor: AppColors.primary,
                             ),
                           ),
@@ -539,7 +522,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                               decoration: BoxDecoration(
                                 color: AppColors.background,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.secondary!),
+                                border: Border.all(color: AppColors.secondary),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,7 +680,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.green[400]!,
-                                      AppColors.primary!,
+                                      AppColors.primary,
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,

@@ -6,6 +6,12 @@ import '../../pages/profile_page.dart';
 import '../../pages/valuate_page.dart';
 import '../../pages/all_news_page.dart';
 import '../../pages/news_detail_page.dart';
+import '../../pages/explore_page.dart';
+import '../../pages/market_page.dart';
+import '../../pages/auctions_page.dart';
+import '../../pages/add_property_page.dart';
+import '../../pages/add_property_financial_page.dart';
+import '../../pages/properties_management_page.dart';
 import '../../models/news_article.dart';
 
 /// Centralized app router
@@ -19,6 +25,12 @@ class AppRouter {
   static const String valuate = '/valuate';
   static const String allNews = '/all-news';
   static const String newsDetail = '/news';
+  static const String explore = '/explore';
+  static const String market = '/market';
+  static const String auctions = '/auctions';
+  static const String propertyManagement = '/properties';
+  static const String addProperty = '/add-property';
+  static const String addPropertyFinancial = '/add-property/financial';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     // final args = settings.arguments; // reserved for future use
@@ -42,6 +54,38 @@ class AppRouter {
       // News routes
       case allNews:
         return MaterialPageRoute(builder: (_) => const AllNewsPage());
+
+      case explore:
+        return MaterialPageRoute(builder: (_) => const ExplorePage());
+
+      case market:
+        return MaterialPageRoute(builder: (_) => const MarketPage());
+
+      case auctions:
+        return MaterialPageRoute(builder: (_) => const AuctionsPage());
+
+      case propertyManagement:
+        return MaterialPageRoute(builder: (_) => const PropertiesManagementPage());
+
+      case addProperty:
+        return MaterialPageRoute(builder: (_) => const AddPropertyPage());
+
+      case addPropertyFinancial:
+        final args = settings.arguments;
+        int? propertyId;
+        String? propertyName;
+        if (args is Map<String, dynamic>) {
+          propertyId = args['propertyId'] as int?;
+          propertyName = args['propertyName'] as String?;
+        } else if (args is int) {
+          propertyId = args;
+        }
+        return MaterialPageRoute(
+          builder: (_) => AddPropertyFinancialPage(
+            propertyId: propertyId,
+            propertyName: propertyName,
+          ),
+        );
 
       default:
         // Handle dynamic news detail route

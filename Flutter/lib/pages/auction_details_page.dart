@@ -16,8 +16,8 @@ import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
 import '../widgets/reward_popup.dart';
-import '../models/child_property.dart';
-import '../models/property_image.dart';
+import '../models/installment_summary.dart';
+import '../models/property_doc.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
   final Auction auction;
@@ -37,6 +37,163 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   String? _errorMessage;
   String? _successMessage;
   List<Bid> _bids = [];
+
+  InstallmentSummary? get _installmentSummary =>
+      _currentAuction?.property?.installmentSummary;
+
+  double? get _cashToClose {
+    final explicit = _currentAuction?.cashToClose;
+    if (explicit != null && explicit > 0) {
+      return explicit;
+    }
+    final summary = _installmentSummary;
+    if (summary == null) return null;
+    if (summary.remainingBalance <= 0) return null;
+    return summary.remainingBalance;
+  }
+
+  bool get _hasFinancialSummary {
+    if (_installmentSummary != null) return true;
+    if (_cashToClose != null) return true;
+    if (_getMasterPlanUrl() != null) return true;
+    return false;
+  }
+
+  String? _getMasterPlanUrl() {
+    final direct = _currentAuction?.masterPlanUrl;
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+
+    final docs = _currentAuction?.property?.propertyDocs;
+    if (docs == null || docs.isEmpty) return null;
+
+    PropertyDoc? exactPlan;
+    try {
+      exactPlan =
+          docs.firstWhere((doc) => _isMasterPlanType(doc.docType, strict: true));
+    } catch (_) {
+      exactPlan = null;
+    }
+
+    if (exactPlan != null && exactPlan.imgUrl.isNotEmpty) {
+      return exactPlan.imgUrl;
+    }
+
+    PropertyDoc? fallback;
+    try {
+      fallback = docs.firstWhere((doc) => _isMasterPlanType(doc.docType));
+    } catch (_) {
+      fallback = null;
+    }
+
+    return fallback?.imgUrl;
+  }
+
+  bool _isMasterPlanType(String? docType, {bool strict = false}) {
+    if (docType == null) return false;
+    final normalized = docType.toLowerCase();
+    if (strict) {
+      return normalized == 'master plan' ||
+          normalized == 'masterplan' ||
+          normalized == 'master-plan';
+    }
+    return normalized.contains('master') ||
+        normalized.contains('plan') ||
+        normalized.contains('layout') ||
+        normalized.contains('site');
+  }
+
+  Future<void> _openMasterPlan([String? url]) async {
+    final planUrl = url ?? _getMasterPlanUrl();
+    if (planUrl == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Master plan is not available for this property yet.'),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        final size = MediaQuery.of(context).size;
+        return Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(16),
+          child: Stack(
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  SizedBox(
+                    height: size.height * 0.6,
+                    width: size.width * 0.9,
+                    child: InteractiveViewer(
+                      minScale: 0.9,
+                      maxScale: 4,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          planUrl,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'Unable to load master plan image.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Master Plan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Auction? _currentAuction;
   double? _previousPrice; // Track previous price to detect changes
@@ -400,7 +557,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.primary!),
+                      border: Border.all(color: AppColors.primary),
                     ),
                     child: Row(
                       children: [
@@ -492,6 +649,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             child: CustomScrollView(
               slivers: [
                 _buildModernAppBar(),
+                if (_hasFinancialSummary) _buildFinancialSummary(),
                 _buildPropertyDetails(),
                 _buildBiddingSection(),
                 _buildLeaderboard(),
@@ -512,6 +670,28 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       floating: false,
       pinned: true,
       backgroundColor: AppColors.primary,
+      actions: [
+        if (_getMasterPlanUrl() != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 8, top: 4),
+            child: TextButton.icon(
+              onPressed: () => _openMasterPlan(),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.white.withOpacity(0.12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: const Text(
+                'Master Plan',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              ),
+            ),
+          ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -601,6 +781,121 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinancialSummary() {
+    final summary = _installmentSummary;
+    final cashToClose = _cashToClose ?? summary?.remainingBalance;
+    final textTheme = Theme.of(context).textTheme;
+
+    final String cashHeadline;
+    final String cashSubtitle;
+    if (cashToClose != null) {
+      cashHeadline = _formatCurrency(cashToClose);
+      cashSubtitle = 'Remaining balance after recorded payments';
+    } else {
+      cashHeadline = 'Cash to close not provided';
+      cashSubtitle =
+          'Financing details haven\'t been shared yet. Ask the seller to add contract and payment data so bidders know what\'s outstanding.';
+    }
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Card(
+          elevation: 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Financing & Cash to Close',
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withOpacity(0.15),
+                        AppColors.primary.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cash to Close',
+                        style: textTheme.titleMedium?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        cashHeadline,
+                        style: textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        cashSubtitle,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (summary != null)
+                  ..._buildSummaryDetailWidgets(summary, textTheme)
+                else ...[
+                  Text(
+                    'Financial summary not yet shared for this property.',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Encourage the seller or developer to add the contract price, paid-to-date amount, and payment schedule so bidders can see the remaining exposure.',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (_getMasterPlanUrl() != null) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => _openMasterPlan(),
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('View Master Plan'),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -721,6 +1016,183 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         ),
       ],
     );
+  }
+
+  Widget _buildFinancialMetric({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: iconColor, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildSummaryDetailWidgets(
+    InstallmentSummary summary,
+    TextTheme textTheme,
+  ) {
+    final endDate = summary.installmentEndDate;
+
+    return [
+      Row(
+        children: [
+          _buildFinancialMetric(
+            label: 'Contract Price',
+            value: _formatCurrency(summary.contractedPrice),
+            icon: Icons.description_outlined,
+            iconColor: Colors.blueAccent,
+          ),
+          const SizedBox(width: 12),
+          _buildFinancialMetric(
+            label: 'Total Paid',
+            value: _formatCurrency(summary.totalPaid),
+            icon: Icons.payments_outlined,
+            iconColor: Colors.green,
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          _buildFinancialMetric(
+            label: 'Down Payment',
+            value:
+                '${_formatCurrency(summary.downPaymentAmount)} (${_formatPercent(summary.downPaymentPercent)})',
+            icon: Icons.savings_outlined,
+            iconColor: Colors.orange,
+          ),
+          const SizedBox(width: 12),
+          _buildFinancialMetric(
+            label: 'Balance Outstanding',
+            value: _formatCurrency(summary.remainingBalance),
+            icon: Icons.account_balance_wallet_outlined,
+            iconColor: Colors.deepPurple,
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (summary.termYears != null && summary.termYears! > 0)
+            _buildInfoChip(
+              icon: Icons.schedule_outlined,
+              label: '${summary.termYears} year plan',
+            ),
+          if (endDate != null)
+            _buildInfoChip(
+              icon: Icons.event_outlined,
+              label: 'Ends ${endDate.year}',
+            ),
+          _buildInfoChip(
+            icon: summary.isFullyPaid ? Icons.verified : Icons.timelapse,
+            label: summary.isFullyPaid ? 'Fully paid' : 'Outstanding',
+            color: summary.isFullyPaid ? Colors.green : Colors.orange,
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.calendar_month_outlined,
+            color: AppColors.primary,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Installment events added via calendar scans update these figures automatically so bidders always see fresh financials.',
+              style: textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    Color? color,
+  }) {
+    final chipColor = color ?? AppColors.primary;
+    return Chip(
+      avatar: Icon(icon, size: 16, color: chipColor),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: chipColor.withOpacity(0.3)),
+      ),
+      backgroundColor: chipColor.withOpacity(0.08),
+    );
+  }
+
+  String _formatCurrency(double? value) {
+    if (value == null) return '--';
+    final amount = value.abs();
+    String formatted;
+    if (amount >= 1000000) {
+      formatted = '${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount >= 1000) {
+      formatted = '${(amount / 1000).toStringAsFixed(0)}K';
+    } else {
+      formatted = amount.toStringAsFixed(0);
+    }
+    final prefix = value < 0 ? '- ' : '';
+    return '${prefix}EGP $formatted';
+  }
+
+  String _formatPercent(double? value) {
+    if (value == null) return '--';
+    return '${value.toStringAsFixed(1)}%';
   }
 
   Widget _buildBiddingSection() {
@@ -917,7 +1389,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.secondary!),
+                        border: Border.all(color: AppColors.secondary),
                       ),
                       child: Text(
                         _errorMessage!,
@@ -950,7 +1422,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                           decoration: BoxDecoration(
                             color: AppColors.background,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.secondary!),
+                            border: Border.all(color: AppColors.secondary),
                           ),
                           child: Column(
                             children: [
@@ -997,7 +1469,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                           decoration: BoxDecoration(
                             color: AppColors.background,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.secondary!),
+                            border: Border.all(color: AppColors.secondary),
                           ),
                           child: Column(
                             children: [
@@ -1053,7 +1525,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                           decoration: BoxDecoration(
                             color: AppColors.background,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.secondary!),
+                            border: Border.all(color: AppColors.secondary),
                           ),
                           child: Column(
                             children: [
@@ -1189,7 +1661,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           drawVerticalLine: false,
           horizontalInterval: maxY / 5,
           getDrawingHorizontalLine: (value) {
-            return FlLine(color: AppColors.secondary!, strokeWidth: 1);
+            return FlLine(color: AppColors.secondary, strokeWidth: 1);
           },
         ),
         titlesData: FlTitlesData(
@@ -1255,8 +1727,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         borderData: FlBorderData(
           show: true,
           border: Border(
-            bottom: BorderSide(color: AppColors.secondary!, width: 1),
-            left: BorderSide(color: AppColors.secondary!, width: 1),
+            bottom: BorderSide(color: AppColors.secondary, width: 1),
+            left: BorderSide(color: AppColors.secondary, width: 1),
           ),
         ),
         lineTouchData: LineTouchData(
@@ -1363,11 +1835,11 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         case 1:
           return Colors.amber;
         case 2:
-          return AppColors.secondary!;
+          return AppColors.secondary;
         case 3:
-          return AppColors.primary!;
+          return AppColors.primary;
         default:
-          return AppColors.secondary!;
+          return AppColors.secondary;
       }
     }
 
@@ -1382,7 +1854,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         border: Border.all(
           color: position <= 3
               ? getPositionColor(position)
-              : AppColors.background!,
+              : AppColors.background,
           width: position <= 3 ? 2 : 1,
         ),
       ),
@@ -1647,7 +2119,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.background!),
+        border: Border.all(color: AppColors.background),
       ),
       child: Row(
         children: [
@@ -1701,7 +2173,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           decoration: BoxDecoration(
             color: AppColors.background,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.background!),
+            border: Border.all(color: AppColors.background),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1759,7 +2231,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppColors.background!, AppColors.background!],
+              colors: [AppColors.background, AppColors.background],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),

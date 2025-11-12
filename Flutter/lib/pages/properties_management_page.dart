@@ -5,7 +5,6 @@ import '../providers/app_state.dart';
 import '../services/property_financials_service.dart';
 import '../services/analytics_service.dart';
 import '../models/user.dart';
-import 'add_property_page.dart';
 import 'valuate_page.dart';
 import 'my_properties_page.dart';
 import 'portfolio_analytics_page.dart';
@@ -14,6 +13,7 @@ import 'calendar_page.dart';
 import 'profile_page.dart' show SettingsPage;
 import 'help_page.dart';
 import 'rewards_page.dart';
+import '../core/router/app_router.dart';
 
 class PropertiesManagementPage extends StatefulWidget {
   const PropertiesManagementPage({super.key});
@@ -255,12 +255,10 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                             icon: Icons.add_home_work,
                             title: 'Add Property',
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const AddPropertyPage(),
-                                ),
-                              );
+                          AppRouter.navigateTo(
+                            context,
+                            AppRouter.addProperty,
+                          );
                             },
                           ),
                         ),
@@ -933,11 +931,9 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             ),
             child: ElevatedButton(
               onPressed: () {
-                Navigator.push(
+                AppRouter.navigateTo(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddPropertyPage(),
-                  ),
+                  AppRouter.addProperty,
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -1142,7 +1138,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    // Navigate to login
+                    Navigator.of(context).pushNamed(AppRouter.auth);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -1194,7 +1190,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Navigate to login
+                Navigator.of(context).pushNamed(AppRouter.auth);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,

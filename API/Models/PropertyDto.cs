@@ -46,6 +46,8 @@ namespace PropertyFlipperAPI.Models
         public bool? HasOutdoorPools { get; set; }
         public bool? HasBicycleLanes { get; set; }
         public bool? HasJoggingTrail { get; set; }
+
+        public InstallmentSummaryInputDto? InstallmentSummary { get; set; }
     }
 
     public class PropertyUpdateDto
@@ -59,5 +61,26 @@ namespace PropertyFlipperAPI.Models
 
         [Required]
         public string Location { get; set; } = string.Empty;
+
+        public InstallmentSummaryInputDto? InstallmentSummary { get; set; }
+    }
+
+    public class InstallmentSummaryInputDto
+    {
+        [Range(0, double.MaxValue)]
+        public decimal? ContractedPrice { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? TotalPaid { get; set; }
+
+        [Range(0, 100)]
+        public decimal? DownPaymentPercent { get; set; }
+
+        [Range(0, 100)]
+        public int? TermYears { get; set; }
+
+        public DateTime? InstallmentEndDate { get; set; }
+
+        public bool? IsFullyPaid { get; set; }
     }
 }

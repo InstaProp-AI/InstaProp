@@ -17,14 +17,22 @@ namespace PropertyFlipperAPI.Controllers
         private readonly OpenAIService _openAIService;
         private readonly RewardService _rewardService;
         private readonly ImgBBService _imgBBService;
+        private readonly InstallmentSummaryService _installmentSummaryService;
 
-        public EventController(AppDbContext context, NotificationService notificationService, OpenAIService openAIService, ImgBBService imgBBService, RewardService rewardService)
+        public EventController(
+            AppDbContext context,
+            NotificationService notificationService,
+            OpenAIService openAIService,
+            ImgBBService imgBBService,
+            RewardService rewardService,
+            InstallmentSummaryService installmentSummaryService)
         {
             _context = context;
             _notificationService = notificationService;
             _openAIService = openAIService;
             _imgBBService = imgBBService;
             _rewardService = rewardService;
+            _installmentSummaryService = installmentSummaryService;
         }
 
         // Helper method to get current user ID
@@ -207,6 +215,11 @@ namespace PropertyFlipperAPI.Controllers
                 }
             }
 
+            if (eventDto.Type == EventType.Installment && eventDto.PropertyId.HasValue)
+            {
+                await SyncInstallmentSummaryAsync(eventDto.PropertyId.Value);
+            }
+
             return CreatedAtAction("GetEvent", new { id = eventEntity.EventId }, EventDto.FromEvent(eventEntity));
         }
 
@@ -224,6 +237,8 @@ namespace PropertyFlipperAPI.Controllers
 
             if (eventEntity == null)
                 return NotFound();
+
+            var wasInstallment = eventEntity.Type == EventType.Installment;
 
             eventEntity.Title = eventDto.Title;
             eventEntity.Description = eventDto.Description;
@@ -249,6 +264,12 @@ namespace PropertyFlipperAPI.Controllers
                 throw;
             }
 
+            if (eventEntity.PropertyId.HasValue &&
+                (wasInstallment || eventDto.Type == EventType.Installment))
+            {
+                await SyncInstallmentSummaryAsync(eventEntity.PropertyId.Value);
+            }
+
             return NoContent();
         }
 
@@ -271,6 +292,12 @@ namespace PropertyFlipperAPI.Controllers
             eventEntity.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            if (eventEntity.PropertyId.HasValue && eventEntity.Type == EventType.Installment)
+            {
+                await SyncInstallmentSummaryAsync(eventEntity.PropertyId.Value);
+            }
+
             return NoContent();
         }
 
@@ -289,8 +316,16 @@ namespace PropertyFlipperAPI.Controllers
             if (eventEntity == null)
                 return NotFound();
 
+            var propertyId = eventEntity.PropertyId;
+            var wasInstallment = eventEntity.Type == EventType.Installment;
+
             _context.Events.Remove(eventEntity);
             await _context.SaveChangesAsync();
+
+            if (propertyId.HasValue && wasInstallment)
+            {
+                await SyncInstallmentSummaryAsync(propertyId.Value);
+            }
 
             return NoContent();
         }
@@ -590,6 +625,8 @@ namespace PropertyFlipperAPI.Controllers
                 // Award rewards for importing payment schedule
                 await _rewardService.AwardPointsAsync(userId.Value, "ScheduleImport", RewardPoints.ScheduleImport, $"Imported {createdEvents.Count} payment events", propertyId);
 
+                await SyncInstallmentSummaryAsync(propertyId);
+
                 return Ok(new PaymentScheduleScanResult
                 {
                     Success = true,
@@ -612,6 +649,81 @@ namespace PropertyFlipperAPI.Controllers
         private bool EventExists(long id)
         {
             return _context.Events.Any(e => e.EventId == id);
+        }
+
+        private async Task SyncInstallmentSummaryAsync(long propertyIdLong)
+        {
+            if (propertyIdLong <= 0) return;
+
+            var property = await _context.ChildProperties
+                .Include(p => p.InstallmentSummary)
+                .FirstOrDefaultAsync(p => p.PropertyId == propertyIdLong);
+
+            if (property == null)
+                return;
+
+            var installmentEvents = await _context.Events
+                .Where(e => e.PropertyId == propertyIdLong && e.Type == EventType.Installment)
+                .ToListAsync();
+
+            if (property.InstallmentSummary == null && installmentEvents.Count == 0)
+                return;
+
+            var totalPaid = installmentEvents
+                .Where(e => e.IsCompleted && e.Amount.HasValue)
+                .Sum(e => e.Amount!.Value);
+
+            var schedulePrice = installmentEvents
+                .Where(e => e.ScheduleBuyingPrice.HasValue && e.ScheduleBuyingPrice.Value > 0)
+                .Select(e => e.ScheduleBuyingPrice!.Value)
+                .DefaultIfEmpty(0m)
+                .Max();
+
+            var existingSummary = property.InstallmentSummary;
+            var contractedPrice = existingSummary?.ContractedPrice ?? 0m;
+
+            if (contractedPrice <= 0 && schedulePrice > 0)
+            {
+                contractedPrice = schedulePrice;
+            }
+
+            if (contractedPrice <= 0 && existingSummary == null)
+            {
+                var totalScheduled = installmentEvents
+                    .Where(e => e.Amount.HasValue && e.Amount.Value > 0)
+                    .Sum(e => e.Amount!.Value);
+
+                if (totalScheduled > 0)
+                {
+                    contractedPrice = totalScheduled;
+                }
+            }
+
+            if (contractedPrice <= 0 && existingSummary == null)
+            {
+                return;
+            }
+
+            var downPaymentPercent = existingSummary?.DownPaymentPercent ?? 0m;
+            var termYears = existingSummary?.TermYears;
+
+            var installmentEndDate = existingSummary?.InstallmentEndDate;
+            if (installmentEndDate == null && installmentEvents.Count > 0)
+            {
+                installmentEndDate = installmentEvents
+                    .Select(e => (DateTime?)e.EventDate)
+                    .Where(d => d.HasValue)
+                    .Max();
+            }
+
+            await _installmentSummaryService.UpsertSummaryAsync(
+                (int)propertyIdLong,
+                contractedPrice,
+                totalPaid,
+                downPaymentPercent,
+                termYears,
+                installmentEndDate,
+                existingSummary?.IsFullyPaid);
         }
 
         private List<Event> GenerateRecurringEvents(Event parentEvent, EventCreateDto dto, long userId)

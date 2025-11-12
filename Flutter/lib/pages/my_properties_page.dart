@@ -568,6 +568,11 @@ class PropertyCard extends StatelessWidget {
                   ],
                 ),
 
+              if (property.installmentSummary != null) ...[
+                const SizedBox(height: 16),
+                _buildInstallmentSnapshotSection(),
+              ],
+
                 const SizedBox(height: 20),
 
                 // Financials Summary
@@ -723,12 +728,84 @@ class PropertyCard extends StatelessWidget {
                 const SizedBox(height: 16),
                 PropertyInstallmentsCard(
                   propertyId: property.propertyId,
+                  summary: property.installmentSummary,
                   onPaymentMade: () {
                     context.read<AppState>().loadProperties();
                   },
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstallmentSnapshotSection() {
+    final summary = property.installmentSummary!;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Installment Snapshot',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildFinancialStat(
+                'Contract',
+                '\$${_formatNumber(summary.contractedPrice)}',
+                AppColors.primary ?? Colors.blueAccent,
+              ),
+              _buildFinancialStat(
+                'Paid',
+                '\$${_formatNumber(summary.totalPaid)}',
+                Colors.green,
+              ),
+              _buildFinancialStat(
+                'Remaining',
+                '\$${_formatNumber(summary.remainingBalance)}',
+                Colors.orange,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (summary.downPaymentPercent > 0)
+                _buildDetailChip(
+                  Icons.payments_outlined,
+                  'Down ${summary.downPaymentPercent.toStringAsFixed(1)}%',
+                ),
+              if (summary.termYears != null)
+                _buildDetailChip(
+                  Icons.schedule,
+                  '${summary.termYears} year plan',
+                ),
+              if (summary.installmentEndDate != null)
+                _buildDetailChip(
+                  Icons.event,
+                  'Ends ${summary.installmentEndDate!.year}',
+                ),
+              _buildDetailChip(
+                summary.isFullyPaid ? Icons.verified : Icons.timelapse,
+                summary.isFullyPaid ? 'Fully paid' : 'Outstanding',
+              ),
+            ],
           ),
         ],
       ),

@@ -613,7 +613,7 @@ namespace PropertyFlipperAPI.Services
             Console.WriteLine("📄 Seeding Property Documents...");
             
             var propertyDocs = new List<PropertyDoc>();
-            var docTypes = new[] { "Floor Plan", "Legal Document", "Ownership Certificate", "Building Permit", "Insurance" };
+            var docTypes = new[] { "Master Plan", "Floor Plan", "Legal Document", "Ownership Certificate", "Building Permit", "Insurance" };
             
             foreach (var property in childProperties.Where(p => p.OwnerId != null))
             {

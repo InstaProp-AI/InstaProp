@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/auction.dart';
 import '../models/property.dart';
+import '../models/property_doc.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
 import 'auction_details_page.dart';
@@ -891,6 +892,18 @@ class _AuctionsPageState extends State<AuctionsPage>
                       ),
                       const SizedBox(width: 8),
                       SizedBox(
+                        width: 110, // Cash to close column
+                        child: Text(
+                          'Cash to Close',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
                         width: 50, // Fixed width for bids
                         child: Text(
                           'Bids',
@@ -920,6 +933,18 @@ class _AuctionsPageState extends State<AuctionsPage>
                         width: 100, // Fixed width for type
                         child: Text(
                           'Type',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 70, // Master plan/docs shortcut
+                        child: Text(
+                          'Docs',
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -975,7 +1000,7 @@ class _AuctionsPageState extends State<AuctionsPage>
             ? Colors.yellow.withOpacity(0.15) // Light yellow highlight
             : AppColors.surface,
         border: Border(
-          bottom: BorderSide(color: AppColors.background!),
+          bottom: BorderSide(color: AppColors.background),
           left: isHighlighted
               ? BorderSide(
                   color: Colors.amber,
@@ -1003,7 +1028,7 @@ class _AuctionsPageState extends State<AuctionsPage>
                       height: 40,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.secondary!),
+                        border: Border.all(color: AppColors.secondary),
                       ),
                       child: PropertyImageCarousel(
                         images: auction.property?.propertyImages ?? [],
@@ -1070,7 +1095,7 @@ class _AuctionsPageState extends State<AuctionsPage>
               SizedBox(
                 width: 90, // Fixed width for start price
                 child: Text(
-                  '\$${auction.startPrice.toStringAsFixed(0)}',
+                  _formatCurrency(auction.startPrice),
                   style: const TextStyle(
                     fontWeight: FontWeight.w500,
                     fontSize: 11,
@@ -1086,7 +1111,7 @@ class _AuctionsPageState extends State<AuctionsPage>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '\$${auction.currentPrice.toStringAsFixed(0)}',
+                      _formatCurrency(auction.currentPrice),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: isHighlighted
@@ -1116,6 +1141,18 @@ class _AuctionsPageState extends State<AuctionsPage>
                         ),
                       ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 110,
+                child: Text(
+                  _formatCurrency(_resolveCashToClose(auction)),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1159,6 +1196,11 @@ class _AuctionsPageState extends State<AuctionsPage>
                 width: 100, // Fixed width for type
                 child: _buildPropertyTypeTag(auction.property?.listingType),
               ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 70,
+                child: _buildDocsCell(auction),
+              ),
             ],
           ),
         ),
@@ -1188,6 +1230,192 @@ class _AuctionsPageState extends State<AuctionsPage>
         color: AppColors.primary,
         fontSize: 10,
       ),
+    );
+  }
+
+  Widget _buildDocsCell(Auction auction) {
+    final masterPlanUrl = _getMasterPlanUrl(auction);
+    if (masterPlanUrl == null) {
+      return const Center(
+        child: Text(
+          '—',
+          style: TextStyle(color: Colors.grey, fontSize: 11),
+        ),
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () => _openMasterPlanForAuction(auction),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        icon: const Icon(Icons.map_outlined, size: 14),
+        label: const Text(
+          'View',
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  double? _resolveCashToClose(Auction auction) {
+    final explicit = auction.cashToClose;
+    if (explicit != null && explicit > 0) {
+      return explicit;
+    }
+    final summary = auction.property?.installmentSummary;
+    if (summary == null) return null;
+    if (summary.remainingBalance > 0) return summary.remainingBalance;
+    if (summary.isFullyPaid) return 0;
+    return null;
+  }
+
+  String _formatCurrency(double? value) {
+    if (value == null) return '--';
+    final amount = value.abs();
+    String formatted;
+    if (amount >= 1000000) {
+      formatted = '${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount >= 1000) {
+      formatted = '${(amount / 1000).toStringAsFixed(0)}K';
+    } else {
+      formatted = amount.toStringAsFixed(0);
+    }
+    final prefix = value < 0 ? '- ' : '';
+    return '${prefix}EGP $formatted';
+  }
+
+  String? _getMasterPlanUrl(Auction auction) {
+    final direct = auction.masterPlanUrl;
+    if (direct != null && direct.isNotEmpty) return direct;
+    final docs = auction.property?.propertyDocs;
+    if (docs == null || docs.isEmpty) return null;
+
+    PropertyDoc? exact;
+    try {
+      exact = docs.firstWhere(
+        (doc) => _isMasterPlanType(doc.docType, strict: true),
+      );
+    } catch (_) {
+      exact = null;
+    }
+    if (exact != null && exact.imgUrl.isNotEmpty) {
+      return exact.imgUrl;
+    }
+
+    PropertyDoc? fallback;
+    try {
+      fallback = docs.firstWhere((doc) => _isMasterPlanType(doc.docType));
+    } catch (_) {
+      fallback = null;
+    }
+
+    return fallback?.imgUrl;
+  }
+
+  bool _isMasterPlanType(String? docType, {bool strict = false}) {
+    if (docType == null) return false;
+    final normalized = docType.toLowerCase();
+    if (strict) {
+      return normalized == 'master plan' ||
+          normalized == 'masterplan' ||
+          normalized == 'master-plan';
+    }
+    return normalized.contains('master') ||
+        normalized.contains('plan') ||
+        normalized.contains('layout') ||
+        normalized.contains('site');
+  }
+
+  Future<void> _openMasterPlanForAuction(Auction auction) async {
+    final url = _getMasterPlanUrl(auction);
+    if (url == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No master plan available for this property yet.'),
+        ),
+      );
+      return;
+    }
+
+    final size = MediaQuery.of(context).size;
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(16),
+          child: Stack(
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  SizedBox(
+                    height: size.height * 0.6,
+                    width: size.width * 0.9,
+                    child: InteractiveViewer(
+                      minScale: 0.9,
+                      maxScale: 4,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          url,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'Unable to load master plan image.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Master Plan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
