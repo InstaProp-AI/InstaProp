@@ -125,7 +125,7 @@ class ProjectProperty {
   final int bedrooms;
   final int bathrooms;
   final int squareFeet;
-  final String? category;
+  final String type;
   final String imageUrl;
   final List<String> images;
   final bool hasActiveAuction;
@@ -139,7 +139,7 @@ class ProjectProperty {
     required this.bedrooms,
     required this.bathrooms,
     required this.squareFeet,
-    this.category,
+    required this.type,
     required this.imageUrl,
     required this.images,
     required this.hasActiveAuction,
@@ -155,7 +155,7 @@ class ProjectProperty {
       bedrooms: json['bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? 0,
       squareFeet: json['squareFeet'] ?? 0,
-      category: json['category'],
+      type: json['type'] ?? '',
       imageUrl: json['imageUrl'] ?? '',
       images:
           (json['images'] as List<dynamic>?)

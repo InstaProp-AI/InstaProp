@@ -28,20 +28,9 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
   late final TextEditingController _yearBuiltController;
   late final TextEditingController _imageUrlController;
 
-  late String _selectedCategory;
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
-
-  final List<String> _categories = [
-    'Single Family',
-    'Condo',
-    'Townhouse',
-    'Commercial',
-    'Multi-Family',
-    'Land',
-    'Other',
-  ];
 
   @override
   void initState() {
@@ -65,7 +54,6 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
       text: widget.property.yearBuilt.toString(),
     );
     _imageUrlController = TextEditingController(text: widget.property.imageUrl);
-    _selectedCategory = widget.property.category;
   }
 
   @override
@@ -382,31 +370,6 @@ class _EditPropertyPageState extends State<EditPropertyPage> {
                     ),
                   ),
                 ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Property Category (disabled)
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: 'Property Category',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  enabled: false,
-                ),
-                items: _categories.map((category) {
-                  return DropdownMenuItem<String>(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
-                onChanged: null, // Disabled for editing
               ),
 
               const SizedBox(height: 16),

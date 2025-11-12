@@ -648,7 +648,7 @@ namespace PropertyFlipperAPI.Controllers
                         Bathrooms = p.Bathrooms,
                         SquareFeet = p.SquareFeet,
                         ImageUrl = p.ImageUrl,
-                        Type = p.Type.ToString(),
+                        Type = p.Type.ToDisplayName(),
                         Status = p.Status.ToString(),
                         AuctionId = auction?.AuctionId,
                         CurrentPrice = auction?.CurrentPrice ?? 0,

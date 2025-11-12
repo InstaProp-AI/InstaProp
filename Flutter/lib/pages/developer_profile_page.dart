@@ -7,6 +7,8 @@ import '../services/api_client.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import 'chat_page.dart';
+import 'project_details_page.dart';
+import 'property_details_page.dart';
 import 'rate_developer_dialog.dart';
 
 class DeveloperProfilePage extends StatefulWidget {
@@ -255,7 +257,6 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                 const SizedBox(height: 8),
               ],
 
-              // Portfolio
               if (_profile!.portfolioDescription != null) ...[
                 Container(
                   width: double.infinity,
@@ -283,6 +284,16 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 8),
+              ],
+
+              if (_profile!.projects.isNotEmpty) ...[
+                _buildProjectsCarousel(),
+                const SizedBox(height: 8),
+              ],
+
+              if (_profile!.properties.isNotEmpty) ...[
+                _buildPropertiesCarousel(),
                 const SizedBox(height: 8),
               ],
 
@@ -427,6 +438,305 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
           const SizedBox(height: 16),
           ElevatedButton(onPressed: _loadProfile, child: const Text('Retry')),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProjectsCarousel() {
+    final projects = _profile!.projects;
+
+    return Container(
+      width: double.infinity,
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              'Projects',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 200,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemBuilder: (context, index) {
+                final project = projects[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProjectDetailsPage(
+                          projectId: project.projectId,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 220,
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.secondary.withOpacity(0.1),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                          child: project.coverImageUrl != null &&
+                                  project.coverImageUrl!.isNotEmpty
+                              ? Image.network(
+                                  project.coverImageUrl!,
+                                  height: 110,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _buildProjectPlaceholder(),
+                                )
+                              : _buildProjectPlaceholder(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                project.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              if (project.location != null &&
+                                  project.location!.isNotEmpty)
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      size: 14,
+                                      color: AppColors.secondary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        project.location!,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.secondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${project.propertiesCount} properties',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              itemCount: projects.length,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProjectPlaceholder() {
+    return Container(
+      height: 110,
+      width: double.infinity,
+      color: AppColors.primary.withOpacity(0.08),
+      child: const Center(
+        child: Icon(
+          Icons.apartment,
+          size: 32,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPropertiesCarousel() {
+    final properties = _profile!.properties;
+
+    return Container(
+      width: double.infinity,
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              'Featured Properties',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 230,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemBuilder: (context, index) {
+                final property = properties[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PropertyDetailsPage(
+                          propertyId: property.propertyId,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 220,
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.secondary.withOpacity(0.1),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                          child: property.imageUrl.isNotEmpty
+                              ? Image.network(
+                                  property.imageUrl,
+                                  height: 120,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _buildPropertyPlaceholder(),
+                                )
+                              : _buildPropertyPlaceholder(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                property.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                property.type,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  const Icon(Icons.king_bed, size: 14, color: AppColors.secondary),
+                                  const SizedBox(width: 4),
+                                  Text('${property.bedrooms}'),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.bathtub, size: 14, color: AppColors.secondary),
+                                  const SizedBox(width: 4),
+                                  Text('${property.bathrooms}'),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${property.squareFeet} sqft',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              itemCount: properties.length,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPropertyPlaceholder() {
+    return Container(
+      height: 120,
+      width: double.infinity,
+      color: AppColors.primary.withOpacity(0.08),
+      child: const Center(
+        child: Icon(
+          Icons.home_work_outlined,
+          size: 32,
+          color: AppColors.primary,
+        ),
       ),
     );
   }

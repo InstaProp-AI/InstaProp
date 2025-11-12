@@ -18,8 +18,8 @@ namespace PropertyFlipperAPI.Models
         public bool? NearHospital { get; set; } // Near major hospitals
 
         // Property Type Filters (Egyptian market categories)
-        public string? PropertyCategory { get; set; } // Apartment, Villa, Townhouse, Studio, Penthouse
-        public string? PropertySubCategory { get; set; } // Duplex, Triplex, Garden Apartment, etc.
+        public string? PropertyType { get; set; } // Apartment, Villa, Townhouse, Studio, Penthouse
+        public string? PropertySubtype { get; set; } // Duplex, Triplex, Garden Apartment, etc.
         public bool? Furnished { get; set; } // Fully furnished, semi-furnished, unfurnished
         public bool? HasBalcony { get; set; }
         public bool? HasGarden { get; set; }
@@ -89,9 +89,9 @@ namespace PropertyFlipperAPI.Models
     }
 
     /// <summary>
-    /// Egyptian property categories
+    /// Egyptian property types
     /// </summary>
-    public static class EgyptianPropertyCategories
+    public static class EgyptianPropertyTypes
     {
         // Main Categories
         public const string Apartment = "Apartment";

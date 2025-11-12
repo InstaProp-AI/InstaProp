@@ -16,7 +16,8 @@ class AuctionsPage extends StatefulWidget {
   State<AuctionsPage> createState() => _AuctionsPageState();
 }
 
-class _AuctionsPageState extends State<AuctionsPage> {
+class _AuctionsPageState extends State<AuctionsPage>
+    with SingleTickerProviderStateMixin {
   List<Auction> _filteredAuctions = [];
   Map<String, dynamic> _activeFilters = {};
 
@@ -30,12 +31,14 @@ class _AuctionsPageState extends State<AuctionsPage> {
   int _lastAuctionsHash = 0;
 
   // Filter options
-  final Map<String, String> _categoryOptions = {
-    'all': 'All Categories',
-    'Single Family': 'Single Family',
-    'Condo': 'Condo',
+  final Map<String, String> _typeOptions = {
+    'all': 'All Types',
+    'Apartment': 'Apartment',
+    'Villa': 'Villa',
     'Townhouse': 'Townhouse',
-    'Commercial': 'Commercial',
+    'Studio': 'Studio',
+    'Office': 'Office',
+    'Retail': 'Retail',
   };
 
   final Map<String, String> _priceRangeOptions = {
@@ -110,14 +113,6 @@ class _AuctionsPageState extends State<AuctionsPage> {
       print('Applying filters - auctions count: ${appState.auctions.length}');
       List<Auction> auctions = List.from(appState.auctions);
 
-      // Apply category filter
-      if (_activeFilters.containsKey('category') &&
-          _activeFilters['category'] != 'all') {
-        auctions = auctions.where((auction) {
-          return auction.property?.category == _activeFilters['category'];
-        }).toList();
-      }
-
       // Apply price range filter
       if (_activeFilters.containsKey('priceRange') &&
           _activeFilters['priceRange'] != 'all') {
@@ -174,6 +169,14 @@ class _AuctionsPageState extends State<AuctionsPage> {
                 _activeFilters['location'],
               ) ??
               false;
+        }).toList();
+      }
+
+      // Apply type filter
+      if (_activeFilters.containsKey('type') &&
+          _activeFilters['type'] != 'all') {
+        auctions = auctions.where((auction) {
+          return auction.property?.typeLabel == _activeFilters['type'];
         }).toList();
       }
 
@@ -529,7 +532,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
           children: [
             _buildFilterButton('Clear All', 'clear', {}),
             const SizedBox(width: 8),
-            _buildFilterButton('Category', 'category', _categoryOptions),
+            _buildFilterButton('Type', 'type', _typeOptions),
             const SizedBox(width: 8),
             _buildFilterButton('Price', 'priceRange', _priceRangeOptions),
             const SizedBox(width: 8),
@@ -1154,7 +1157,7 @@ class _AuctionsPageState extends State<AuctionsPage> {
               const SizedBox(width: 8),
               SizedBox(
                 width: 100, // Fixed width for type
-                child: _buildPropertyTypeTag(auction.property?.type),
+                child: _buildPropertyTypeTag(auction.property?.listingType),
               ),
             ],
           ),
@@ -1309,11 +1312,19 @@ class _AuctionsPageState extends State<AuctionsPage> {
     );
   }
 
-  Widget _buildPropertyTypeTag(PropertyType? type) {
-    final isPrimary = type == PropertyType.primary;
-    final backgroundColor = isPrimary ? Colors.blue[100]! : Colors.purple[100]!;
-    final borderColor = isPrimary ? Colors.blue[400]! : Colors.purple[400]!;
-    final textColor = isPrimary ? Colors.blue[900]! : Colors.purple[900]!;
+  Widget _buildPropertyTypeTag(ListingType? listingType) {
+    if (listingType == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isPrimary = listingType == ListingType.primary;
+    final backgroundColor = isPrimary
+        ? AppColors.primary.withOpacity(0.1)
+        : Colors.purple.withOpacity(0.1);
+    final borderColor = isPrimary
+        ? AppColors.primary.withOpacity(0.3)
+        : Colors.purple.withOpacity(0.3);
+    final textColor = isPrimary ? AppColors.primary : Colors.purple[700]!;
     final text = isPrimary ? 'Primary' : 'Resale';
 
     return Container(

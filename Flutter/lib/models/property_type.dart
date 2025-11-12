@@ -1,91 +1,103 @@
 enum PropertyType {
-  primary,
-  secondary,
   apartment,
   villa,
   townhouse,
+  twinhouse,
+  duplex,
   penthouse,
   studio,
-  duplex,
-  triplex,
-  commercial,
+  chalet,
+  servicedApartment,
+  servicedStudio,
   office,
   retail,
-  warehouse,
-  land,
-  other;
+  clinic,
+  pharmacy,
+  cabin,
+  brandedApartment,
+  brandedVilla,
+  luxuryApartment,
+  ultraLuxuryApartment,
+  ultraLuxuryVilla,
+  oneStoryVilla,
+  loft,
+  other,
+}
 
-  static PropertyType? fromString(String? typeString) {
-    if (typeString == null) return null;
+extension PropertyTypeX on PropertyType {
+  static const Map<PropertyType, String> _displayNames = {
+    PropertyType.apartment: 'Apartment',
+    PropertyType.villa: 'Villa',
+    PropertyType.townhouse: 'Townhouse',
+    PropertyType.twinhouse: 'Twinhouse',
+    PropertyType.duplex: 'Duplex',
+    PropertyType.penthouse: 'Penthouse',
+    PropertyType.studio: 'Studio',
+    PropertyType.chalet: 'Chalet',
+    PropertyType.servicedApartment: 'Serviced Apartment',
+    PropertyType.servicedStudio: 'Serviced Studio',
+    PropertyType.office: 'Office',
+    PropertyType.retail: 'Retail',
+    PropertyType.clinic: 'Clinic',
+    PropertyType.pharmacy: 'Pharmacy',
+    PropertyType.cabin: 'Cabin',
+    PropertyType.brandedApartment: 'Branded Apartment',
+    PropertyType.brandedVilla: 'Branded Villa',
+    PropertyType.luxuryApartment: 'Luxury Apartment',
+    PropertyType.ultraLuxuryApartment: 'Ultra Luxury Apartment',
+    PropertyType.ultraLuxuryVilla: 'Ultra Luxury Villa',
+    PropertyType.oneStoryVilla: 'One-story Villa',
+    PropertyType.loft: 'Loft',
+    PropertyType.other: 'Other',
+  };
 
-    switch (typeString.toLowerCase()) {
-      case 'primary':
-        return PropertyType.primary;
-      case 'secondary':
-        return PropertyType.secondary;
-      case 'apartment':
-        return PropertyType.apartment;
-      case 'villa':
-        return PropertyType.villa;
-      case 'townhouse':
-        return PropertyType.townhouse;
-      case 'penthouse':
-        return PropertyType.penthouse;
-      case 'studio':
-        return PropertyType.studio;
-      case 'duplex':
-        return PropertyType.duplex;
-      case 'triplex':
-        return PropertyType.triplex;
-      case 'commercial':
-        return PropertyType.commercial;
-      case 'office':
-        return PropertyType.office;
-      case 'retail':
-        return PropertyType.retail;
-      case 'warehouse':
-        return PropertyType.warehouse;
-      case 'land':
-        return PropertyType.land;
-      case 'other':
-        return PropertyType.other;
-      default:
-        return PropertyType.other;
+  static const List<PropertyType> orderedValues = [
+    PropertyType.apartment,
+    PropertyType.villa,
+    PropertyType.townhouse,
+    PropertyType.twinhouse,
+    PropertyType.duplex,
+    PropertyType.penthouse,
+    PropertyType.studio,
+    PropertyType.chalet,
+    PropertyType.servicedApartment,
+    PropertyType.servicedStudio,
+    PropertyType.office,
+    PropertyType.retail,
+    PropertyType.clinic,
+    PropertyType.pharmacy,
+    PropertyType.cabin,
+    PropertyType.brandedApartment,
+    PropertyType.brandedVilla,
+    PropertyType.luxuryApartment,
+    PropertyType.ultraLuxuryApartment,
+    PropertyType.ultraLuxuryVilla,
+    PropertyType.oneStoryVilla,
+    PropertyType.loft,
+    PropertyType.other,
+  ];
+
+  String get displayName => _displayNames[this] ?? 'Other';
+
+  static PropertyType fromString(String? value) {
+    if (value == null || value.isEmpty) return PropertyType.other;
+
+    final normalized = value
+        .toLowerCase()
+        .replaceAll('-', '')
+        .replaceAll(' ', '')
+        .replaceAll('_', '');
+
+    for (final entry in _displayNames.entries) {
+      final keyNormalized =
+          entry.value.toLowerCase().replaceAll('-', '').replaceAll(' ', '');
+      if (normalized == entry.key.name.toLowerCase() ||
+          normalized == keyNormalized) {
+        return entry.key;
+      }
     }
-  }
 
-  String get displayName {
-    switch (this) {
-      case PropertyType.primary:
-        return 'Primary';
-      case PropertyType.secondary:
-        return 'Secondary';
-      case PropertyType.apartment:
-        return 'Apartment';
-      case PropertyType.villa:
-        return 'Villa';
-      case PropertyType.townhouse:
-        return 'Townhouse';
-      case PropertyType.penthouse:
-        return 'Penthouse';
-      case PropertyType.studio:
-        return 'Studio';
-      case PropertyType.duplex:
-        return 'Duplex';
-      case PropertyType.triplex:
-        return 'Triplex';
-      case PropertyType.commercial:
-        return 'Commercial';
-      case PropertyType.office:
-        return 'Office';
-      case PropertyType.retail:
-        return 'Retail';
-      case PropertyType.warehouse:
-        return 'Warehouse';
-      case PropertyType.land:
-        return 'Land';
-      case PropertyType.other:
-        return 'Other';
-    }
+    return PropertyType.other;
   }
 }
+

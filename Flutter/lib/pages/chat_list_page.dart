@@ -129,7 +129,7 @@ class _ChatListPageState extends State<ChatListPage> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withOpacity(0.3),
+                  color: AppColors.secondary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -140,7 +140,7 @@ class _ChatListPageState extends State<ChatListPage> {
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundColor: AppColors.primary.withOpacity(0.2),
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                       backgroundImage: developer.profileImageUrl != null
                           ? NetworkImage(developer.profileImageUrl!)
                           : null,
@@ -294,7 +294,7 @@ class _ChatListPageState extends State<ChatListPage> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -425,7 +425,7 @@ class _ChatListPageState extends State<ChatListPage> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -499,7 +499,7 @@ class _ChatListPageState extends State<ChatListPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
-                              color: AppColors.secondary.withOpacity(0.3),
+                              color: AppColors.secondary.withValues(alpha: 0.3),
                             ),
                           ),
                         ),
@@ -743,7 +743,7 @@ class _ChatListPageState extends State<ChatListPage> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Colors.blue.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -819,18 +819,25 @@ class _ChatListPageState extends State<ChatListPage> {
   Widget _buildChatItem(Chat chat) {
     final appState = Provider.of<AppState>(context, listen: false);
     final isUser = appState.user?.accountId == chat.userId;
-    final displayName = isUser ? chat.developerName : chat.userName;
+    final isSupportChat = chat.isSupportChat;
+    final displayName = isSupportChat
+        ? (chat.developerName ?? 'Customer Support')
+        : (isUser ? chat.developerName : chat.userName);
     final hasUnread = chat.unreadCount > 0;
 
     return Dismissible(
       key: Key('chat_${chat.chatId}'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
+      direction: isSupportChat
+          ? DismissDirection.none
+          : DismissDirection.endToStart,
+      background: isSupportChat
+          ? const SizedBox.shrink()
+          : Container(
+              color: Colors.red,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -842,10 +849,10 @@ class _ChatListPageState extends State<ChatListPage> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: hasUnread
-                ? AppColors.primary.withOpacity(0.05)
+                ? AppColors.primary.withValues(alpha: 0.05)
                 : AppColors.surface,
             border: Border(
-              bottom: BorderSide(color: AppColors.secondary.withOpacity(0.2)),
+              bottom: BorderSide(color: AppColors.secondary.withValues(alpha: 0.2)),
             ),
           ),
           child: Row(
@@ -853,15 +860,19 @@ class _ChatListPageState extends State<ChatListPage> {
               // Avatar
               CircleAvatar(
                 radius: 28,
-                backgroundColor: AppColors.primary.withOpacity(0.2),
-                child: Text(
-                  (displayName ?? 'U')[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
+                backgroundColor: isSupportChat
+                    ? Colors.orange.withValues(alpha: 0.15)
+                    : AppColors.primary.withValues(alpha: 0.2),
+                child: isSupportChat
+                    ? const Icon(Icons.headset_mic, color: Colors.orange)
+                    : Text(
+                        (displayName ?? 'U')[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               // Chat info
@@ -872,88 +883,88 @@ class _ChatListPageState extends State<ChatListPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            displayName ?? 'Unknown',
-                            style: TextStyle(
-                              fontWeight: hasUnread
-                                  ? FontWeight.bold
-                                  : FontWeight.w600,
-                              fontSize: 16,
-                              color: AppColors.textPrimary,
-                            ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  displayName ?? 'Unknown',
+                                  style: TextStyle(
+                                    fontWeight: hasUnread
+                                        ? FontWeight.bold
+                                        : FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              if (isSupportChat)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    'Pinned',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           timeago.format(
                             chat.lastMessageAt,
                             locale: 'en_short',
                           ),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
-                            color: hasUnread
-                                ? AppColors.primary
-                                : AppColors.secondary,
-                            fontWeight: hasUnread
-                                ? FontWeight.w600
-                                : FontWeight.normal,
+                            color: AppColors.secondary,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    if (chat.projectName != null) ...[
-                      Text(
-                        chat.projectName!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.secondary,
-                          fontStyle: FontStyle.italic,
-                        ),
+                    const SizedBox(height: 6),
+                    Text(
+                      chat.lastMessage ??
+                          (isSupportChat
+                              ? 'Tap to continue your conversation with support'
+                              : 'Tap to open chat'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: hasUnread
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
                       ),
-                      const SizedBox(height: 2),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            chat.lastMessage ?? 'No messages yet',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: hasUnread
-                                  ? AppColors.textPrimary
-                                  : AppColors.secondary,
-                              fontWeight: hasUnread
-                                  ? FontWeight.w500
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                        if (hasUnread)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${chat.unreadCount}',
-                              style: const TextStyle(
-                                color: AppColors.surface,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
                     ),
                   ],
                 ),
               ),
+              if (hasUnread)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    chat.unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1035,10 +1046,10 @@ class _ChatListPageState extends State<ChatListPage> {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.secondary.withOpacity(0.2)),
+            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.2)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -1050,7 +1061,7 @@ class _ChatListPageState extends State<ChatListPage> {
               // Developer avatar
               CircleAvatar(
                 radius: 24,
-                backgroundColor: AppColors.primary.withOpacity(0.2),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                 backgroundImage: developer.profileImageUrl != null
                     ? NetworkImage(developer.profileImageUrl!)
                     : null,
@@ -1100,7 +1111,7 @@ class _ChatListPageState extends State<ChatListPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1130,7 +1141,7 @@ class _ChatListPageState extends State<ChatListPage> {
               color: AppColors.background,
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppColors.secondary.withOpacity(0.3),
+                color: AppColors.secondary.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),

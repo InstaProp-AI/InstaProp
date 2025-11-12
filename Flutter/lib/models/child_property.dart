@@ -2,10 +2,11 @@ import 'parent_property.dart';
 import 'property_image.dart';
 import 'property_doc.dart';
 import 'auction.dart';
+import 'property_type.dart';
 
 class ChildProperty {
   final int propertyId; // Keep same name for compatibility
-  final int parentPropertyId;
+  final int? parentPropertyId;
   final ParentProperty? parent; // Embedded parent data
   final int? ownerId;
 
@@ -34,6 +35,15 @@ class ChildProperty {
   final bool? hasRoofAccess;
   final bool? hasBalcony;
   final bool? hasGarden;
+  final bool? hasClubhouse;
+  final bool? hasInfrastructure;
+  final bool? hasUndergroundParking;
+  final bool? hasMedicalCenter;
+  final bool? hasCommercialStrip;
+  final bool? hasBusinessHub;
+  final bool? hasOutdoorPools;
+  final bool? hasBicycleLanes;
+  final bool? hasJoggingTrail;
   final bool? smartHome;
   final bool? centralAC;
   final bool? naturalGas;
@@ -50,7 +60,6 @@ class ChildProperty {
   final String name;
   final String description;
   final String location;
-  final String category;
   final String imageUrl; // Main image URL
   final int squareFeet;
   final int yearBuilt;
@@ -61,9 +70,8 @@ class ChildProperty {
   // Properties inherited from ParentProperty for compatibility
   final int bedrooms; // From parent
   final int bathrooms; // From parent
-  final String propertyType; // From parent
+  final PropertyType type; // Primary property type
   final String? project; // Project name
-  final String? type; // Property type for compatibility
   final String? status; // Property status
   final bool canRequestAuction; // Computed property
   final bool hasActiveAuction; // Computed property
@@ -73,9 +81,12 @@ class ChildProperty {
   final List<PropertyDoc>? propertyDocs;
   final List<Auction>? auctions;
 
+  String get typeLabel => type.displayName;
+  String get propertyType => type.displayName;
+
   ChildProperty({
     required this.propertyId,
-    required this.parentPropertyId,
+    this.parentPropertyId,
     this.parent,
     this.ownerId,
     this.phase,
@@ -96,6 +107,15 @@ class ChildProperty {
     this.hasRoofAccess,
     this.hasBalcony,
     this.hasGarden,
+    this.hasClubhouse,
+    this.hasInfrastructure,
+    this.hasUndergroundParking,
+    this.hasMedicalCenter,
+    this.hasCommercialStrip,
+    this.hasBusinessHub,
+    this.hasOutdoorPools,
+    this.hasBicycleLanes,
+    this.hasJoggingTrail,
     this.smartHome,
     this.centralAC,
     this.naturalGas,
@@ -108,7 +128,6 @@ class ChildProperty {
     required this.name,
     required this.description,
     required this.location,
-    required this.category,
     required this.imageUrl,
     required this.squareFeet,
     required this.yearBuilt,
@@ -118,9 +137,8 @@ class ChildProperty {
     // Additional properties
     required this.bedrooms,
     required this.bathrooms,
-    required this.propertyType,
+    required this.type,
     this.project,
-    this.type,
     this.status,
     this.canRequestAuction = false,
     this.hasActiveAuction = false,
@@ -132,7 +150,7 @@ class ChildProperty {
   factory ChildProperty.fromJson(Map<String, dynamic> json) {
     return ChildProperty(
       propertyId: json['propertyId'] ?? 0,
-      parentPropertyId: json['parentPropertyId'] ?? 0,
+      parentPropertyId: json['parentPropertyId'],
       parent: json['parent'] != null
           ? ParentProperty.fromJson(json['parent'])
           : null,
@@ -159,6 +177,15 @@ class ChildProperty {
       hasRoofAccess: json['hasRoofAccess'],
       hasBalcony: json['hasBalcony'],
       hasGarden: json['hasGarden'],
+      hasClubhouse: json['hasClubhouse'],
+      hasInfrastructure: json['hasInfrastructure'],
+      hasUndergroundParking: json['hasUndergroundParking'],
+      hasMedicalCenter: json['hasMedicalCenter'],
+      hasCommercialStrip: json['hasCommercialStrip'],
+      hasBusinessHub: json['hasBusinessHub'],
+      hasOutdoorPools: json['hasOutdoorPools'],
+      hasBicycleLanes: json['hasBicycleLanes'],
+      hasJoggingTrail: json['hasJoggingTrail'],
       smartHome: json['smartHome'],
       centralAC: json['centralAC'],
       naturalGas: json['naturalGas'],
@@ -171,7 +198,6 @@ class ChildProperty {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
-      category: json['category'] ?? '',
       imageUrl: json['imageUrl'] ?? '',
       squareFeet: json['squareFeet'] ?? 0,
       yearBuilt: json['yearBuilt'] ?? 0,
@@ -185,9 +211,17 @@ class ChildProperty {
       // Additional properties
       bedrooms: json['bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? 0,
-      propertyType: json['propertyType'] ?? '',
-      project: json['project']?.toString(),
-      type: json['type']?.toString(),
+      project: () {
+        final projectValue = json['project'];
+        if (projectValue is Map) {
+          return projectValue['name']?.toString() ??
+              projectValue['Name']?.toString();
+        }
+        return (json['projectName'] ?? projectValue)?.toString();
+      }(),
+      type: PropertyTypeX.fromString(
+        (json['type'] ?? json['propertyType'])?.toString(),
+      ),
       status: json['status']?.toString(),
       canRequestAuction: json['canRequestAuction'] ?? false,
       hasActiveAuction: json['hasActiveAuction'] ?? false,
@@ -227,6 +261,15 @@ class ChildProperty {
       'hasRoofAccess': hasRoofAccess,
       'hasBalcony': hasBalcony,
       'hasGarden': hasGarden,
+      'hasClubhouse': hasClubhouse,
+      'hasInfrastructure': hasInfrastructure,
+      'hasUndergroundParking': hasUndergroundParking,
+      'hasMedicalCenter': hasMedicalCenter,
+      'hasCommercialStrip': hasCommercialStrip,
+      'hasBusinessHub': hasBusinessHub,
+      'hasOutdoorPools': hasOutdoorPools,
+      'hasBicycleLanes': hasBicycleLanes,
+      'hasJoggingTrail': hasJoggingTrail,
       'smartHome': smartHome,
       'centralAC': centralAC,
       'naturalGas': naturalGas,
@@ -239,7 +282,6 @@ class ChildProperty {
       'name': name,
       'description': description,
       'location': location,
-      'category': category,
       'imageUrl': imageUrl,
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
@@ -249,7 +291,7 @@ class ChildProperty {
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'project': project,
-      'type': type,
+      'type': type.displayName,
       'status': status,
       'canRequestAuction': canRequestAuction,
       'hasActiveAuction': hasActiveAuction,
@@ -267,4 +309,5 @@ class ChildProperty {
 
   @override
   int get hashCode => propertyId.hashCode;
+
 }

@@ -13,6 +13,7 @@ class Chat {
   final bool isActive;
   final String? lastMessage;
   final int unreadCount;
+  final bool isSupportChat;
 
   Chat({
     required this.chatId,
@@ -27,6 +28,7 @@ class Chat {
     required this.isActive,
     this.lastMessage,
     required this.unreadCount,
+    this.isSupportChat = false,
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class Chat {
       isActive: json['isActive'] ?? true,
       lastMessage: json['lastMessage'],
       unreadCount: json['unreadCount'] ?? 0,
+      isSupportChat: json['isSupportChat'] ?? false,
     );
   }
 
@@ -64,6 +67,7 @@ class Chat {
       'isActive': isActive,
       'lastMessage': lastMessage,
       'unreadCount': unreadCount,
+      'isSupportChat': isSupportChat,
     };
   }
 }
@@ -79,6 +83,7 @@ class ChatDetails {
   final DateTime createdAt;
   final DateTime lastMessageAt;
   final bool isActive;
+  final bool isSupportChat;
   final List<ChatMessage> messages;
 
   ChatDetails({
@@ -92,6 +97,7 @@ class ChatDetails {
     required this.createdAt,
     required this.lastMessageAt,
     required this.isActive,
+    this.isSupportChat = false,
     required this.messages,
   });
 
@@ -111,6 +117,7 @@ class ChatDetails {
         json['lastMessageAt'] ?? DateTime.now().toIso8601String(),
       ),
       isActive: json['isActive'] ?? true,
+      isSupportChat: json['isSupportChat'] ?? false,
       messages:
           (json['messages'] as List<dynamic>?)
               ?.map((m) => ChatMessage.fromJson(m))

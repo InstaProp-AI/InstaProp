@@ -16,6 +16,8 @@ import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
 import '../widgets/reward_popup.dart';
+import '../models/child_property.dart';
+import '../models/property_image.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
   final Auction auction;
@@ -683,15 +685,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                             ),
                             const SizedBox(height: 8),
                             _buildPropertyTypeTag(
-                              _currentAuction!.property!.type,
+                              _currentAuction!.property!.listingType,
                             ),
                           ],
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildDetailRow(
-                          'Category',
-                          _currentAuction!.property!.category,
                         ),
                       ),
                     ],
@@ -1636,11 +1632,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             const SizedBox(height: 8),
             _buildDetailItem(
               'Type',
-              property.type.toString().split('.').last.toUpperCase(),
+              property.typeLabel,
               Icons.category,
             ),
-            const SizedBox(height: 8),
-            _buildDetailItem('Category', property.category, Icons.label),
           ],
         ),
       ],
@@ -1845,8 +1839,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     return highlights;
   }
 
-  Widget _buildPropertyTypeTag(PropertyType? type) {
-    final isPrimary = type == PropertyType.primary;
+  Widget _buildPropertyTypeTag(ListingType? listingType) {
+    final isPrimary = listingType == ListingType.primary;
     final backgroundColor = isPrimary ? Colors.blue[100]! : Colors.purple[100]!;
     final borderColor = isPrimary ? Colors.blue[400]! : Colors.purple[400]!;
     final textColor = isPrimary ? Colors.blue[900]! : Colors.purple[900]!;

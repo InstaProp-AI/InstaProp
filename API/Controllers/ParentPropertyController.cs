@@ -26,9 +26,10 @@ namespace PropertyFlipperAPI.Controllers
                 .AsQueryable();
 
             // Apply filters
-            if (filters.PropertyType.HasValue)
+            if (filters.Type.HasValue)
             {
-                query = query.Where(p => p.PropertyType == filters.PropertyType.ToString());
+                var typeName = PropertyTypeHelper.ToDisplayName(filters.Type.Value);
+                query = query.Where(p => p.Type == typeName);
             }
 
             if (filters.Bedrooms.HasValue)
@@ -105,7 +106,10 @@ namespace PropertyFlipperAPI.Controllers
                 .Select(p => new
                 {
                     p.ParentPropertyId,
-                    p.PropertyType,
+                    Type = p.Type,
+                    ProjectName = p.Project != null
+                        ? p.Project.Name
+                        : (string.IsNullOrWhiteSpace(p.ProjectName) ? "N/A" : p.ProjectName),
                     p.Bedrooms,
                     p.Bathrooms,
                     p.AreaSqm,
@@ -154,8 +158,8 @@ namespace PropertyFlipperAPI.Controllers
             return Ok(new
             {
                 parentProperty.ParentPropertyId,
-                parentProperty.ProjectName,
-                parentProperty.PropertyType,
+                ProjectName = string.IsNullOrWhiteSpace(parentProperty.ProjectName) ? "N/A" : parentProperty.ProjectName,
+                Type = parentProperty.Type,
                 parentProperty.Bedrooms,
                 parentProperty.Bathrooms,
                 parentProperty.AreaSqm,
@@ -182,7 +186,6 @@ namespace PropertyFlipperAPI.Controllers
                     c.Name,
                     c.Description,
                     c.Location,
-                    c.Category,
                     c.ImageUrl,
                     c.SquareFeet,
                     c.YearBuilt,
@@ -204,6 +207,15 @@ namespace PropertyFlipperAPI.Controllers
                     c.HasRoofAccess,
                     c.HasBalcony,
                     c.HasGarden,
+                    c.HasClubhouse,
+                    c.HasInfrastructure,
+                    c.HasUndergroundParking,
+                    c.HasMedicalCenter,
+                    c.HasCommercialStrip,
+                    c.HasBusinessHub,
+                    c.HasOutdoorPools,
+                    c.HasBicycleLanes,
+                    c.HasJoggingTrail,
                     c.SmartHome,
                     c.CentralAC,
                     c.NaturalGas,
@@ -255,6 +267,15 @@ namespace PropertyFlipperAPI.Controllers
                 c.HasRoofAccess,
                 c.HasBalcony,
                 c.HasGarden,
+                c.HasClubhouse,
+                c.HasInfrastructure,
+                c.HasUndergroundParking,
+                c.HasMedicalCenter,
+                c.HasCommercialStrip,
+                c.HasBusinessHub,
+                c.HasOutdoorPools,
+                c.HasBicycleLanes,
+                c.HasJoggingTrail,
                 c.SmartHome,
                 c.CentralAC,
                 c.NaturalGas,
@@ -267,7 +288,6 @@ namespace PropertyFlipperAPI.Controllers
                 c.Name,
                 c.Description,
                 c.Location,
-                c.Category,
                 c.ImageUrl,
                 c.SquareFeet,
                 c.YearBuilt,
@@ -276,8 +296,7 @@ namespace PropertyFlipperAPI.Controllers
                 UpdatedAt = c.UpdatedAt.ToString("o"),
                 c.Bedrooms,
                 c.Bathrooms,
-                c.PropertyType,
-                Type = (int)c.Type,
+                Type = PropertyTypeHelper.ToDisplayName(c.Type),
                 Status = (int)c.Status,
                 c.ProjectId,
                 PropertyImages = c.PropertyImages.Select(img => new
@@ -299,16 +318,22 @@ namespace PropertyFlipperAPI.Controllers
         [HttpPost("find-or-create")]
         public async Task<IActionResult> FindOrCreateParentProperty([FromBody] FindOrCreateParentPropertyRequest request)
         {
-            // Try to find existing parent property with similar characteristics
+            var typeDisplayName = PropertyTypeHelper.ToDisplayName(request.Type);
+            var trimmedProjectName = string.IsNullOrWhiteSpace(request.ProjectName)
+                ? null
+                : request.ProjectName!.Trim();
+
+            var project = trimmedProjectName != null
+                ? await _context.Projects.FirstOrDefaultAsync(p => p.Name == trimmedProjectName)
+                : null;
+
             var existingParent = await _context.ParentProperties
                 .Include(p => p.Project)
-                .FirstOrDefaultAsync(p => 
-                    p.Project != null && 
-                    p.Project.Name == request.ProjectName &&
-                    p.PropertyType == request.PropertyType.ToString() &&
+                .FirstOrDefaultAsync(p =>
+                    p.Type == typeDisplayName &&
                     p.Bedrooms == request.Bedrooms &&
                     p.Bathrooms == request.Bathrooms &&
-                    Math.Abs(p.AreaSqm - request.AreaSqm) <= 5 && // ±5 sqm tolerance
+                    Math.Abs(p.AreaSqm - request.AreaSqm) <= 5 &&
                     p.FinishingType == request.FinishingType.ToString() &&
                     p.HasPool == request.HasPool &&
                     p.HasGym == request.HasGym &&
@@ -316,7 +341,9 @@ namespace PropertyFlipperAPI.Controllers
                     p.HasParking == request.HasParking &&
                     p.HasGarden == request.HasGarden &&
                     p.HasPlayground == request.HasPlayground &&
-                    p.HasClubhouse == request.HasClubhouse);
+                    p.HasClubhouse == request.HasClubhouse &&
+                    (project != null ? p.ProjectId == project.ProjectId : p.ProjectId == null) &&
+                    (trimmedProjectName != null ? p.ProjectName == trimmedProjectName : p.ProjectName == null));
 
             if (existingParent != null)
             {
@@ -328,19 +355,11 @@ namespace PropertyFlipperAPI.Controllers
                 });
             }
 
-            // Create new parent property
-            var project = await _context.Projects
-                .FirstOrDefaultAsync(p => p.Name == request.ProjectName);
-
-            if (project == null)
-            {
-                return BadRequest(new { message = "Project not found" });
-            }
-
             var newParentProperty = new ParentProperty
             {
-                ProjectId = project.ProjectId,
-                PropertyType = request.PropertyType.ToString(),
+                ProjectId = project?.ProjectId,
+                ProjectName = project?.Name ?? trimmedProjectName,
+                Type = typeDisplayName,
                 Bedrooms = request.Bedrooms,
                 Bathrooms = request.Bathrooms,
                 AreaSqm = (int)request.AreaSqm,
@@ -371,7 +390,7 @@ namespace PropertyFlipperAPI.Controllers
         {
             var totalCount = await _context.ParentProperties.CountAsync();
             var byType = await _context.ParentProperties
-                .GroupBy(p => p.PropertyType)
+                .GroupBy(p => p.Type)
                 .Select(g => new { Type = g.Key, Count = g.Count() })
                 .ToListAsync();
             var byBedrooms = await _context.ParentProperties
@@ -412,7 +431,7 @@ namespace PropertyFlipperAPI.Controllers
 
     public class ParentPropertyFilters
     {
-        public PropertyType? PropertyType { get; set; }
+        public PropertyType? Type { get; set; }
         public int? Bedrooms { get; set; }
         public int? Bathrooms { get; set; }
         public decimal? MinArea { get; set; }
@@ -431,8 +450,8 @@ namespace PropertyFlipperAPI.Controllers
 
     public class FindOrCreateParentPropertyRequest
     {
-        public string ProjectName { get; set; } = string.Empty;
-        public PropertyType PropertyType { get; set; }
+        public string? ProjectName { get; set; }
+        public PropertyType Type { get; set; }
         public int Bedrooms { get; set; }
         public int Bathrooms { get; set; }
         public decimal AreaSqm { get; set; }

@@ -7,35 +7,35 @@ class DiscoveryService {
     int page = 1,
     int pageSize = 20,
   }) async {
-    return await ApiClient.get<List<CommunityPost>>(
+    return await ApiClient.getListWithQuery<CommunityPost>(
       '/api/discovery/trending/posts',
-      queryParams: {'page': page.toString(), 'pageSize': pageSize.toString()},
-      fromJson: (json) => CommunityPost.fromJson(json as Map<String, dynamic>),
+      {'page': page.toString(), 'pageSize': pageSize.toString()},
+      (json) => CommunityPost.fromJson(json as Map<String, dynamic>),
     );
   }
 
   static Future<ApiResponse<List<Community>>> getTrendingCommunities() async {
-    return await ApiClient.get<List<Community>>(
+    return await ApiClient.getList<Community>(
       '/api/discovery/trending/communities',
-      fromJson: (json) => Community.fromJson(json as Map<String, dynamic>),
+      (json) => Community.fromJson(json as Map<String, dynamic>),
     );
   }
 
-  static Future<ApiResponse<List<dynamic>>> getPopularMembers({
+  static Future<ApiResponse<List<Map<String, dynamic>>>> getPopularMembers({
     int page = 1,
     int pageSize = 20,
   }) async {
-    return await ApiClient.get<List<dynamic>>(
+    return await ApiClient.getListWithQuery<Map<String, dynamic>>(
       '/api/discovery/popular/members',
-      queryParams: {'page': page.toString(), 'pageSize': pageSize.toString()},
-      fromJson: (json) => json as Map<String, dynamic>,
+      {'page': page.toString(), 'pageSize': pageSize.toString()},
+      (json) => json as Map<String, dynamic>,
     );
   }
 
   static Future<ApiResponse<List<Community>>> getSuggestedCommunities() async {
-    return await ApiClient.get<List<Community>>(
+    return await ApiClient.getList<Community>(
       '/api/discovery/suggested/communities',
-      fromJson: (json) => Community.fromJson(json as Map<String, dynamic>),
+      (json) => Community.fromJson(json as Map<String, dynamic>),
     );
   }
 
@@ -45,15 +45,15 @@ class DiscoveryService {
     int page = 1,
     int pageSize = 20,
   }) async {
-    return await ApiClient.get<Map<String, dynamic>>(
+    return await ApiClient.getWithQuery<Map<String, dynamic>>(
       '/api/discovery/search',
-      queryParams: {
+      {
         'query': query,
         if (type != null) 'type': type,
         'page': page.toString(),
         'pageSize': pageSize.toString(),
       },
-      fromJson: (json) => json as Map<String, dynamic>,
+      (json) => json as Map<String, dynamic>,
     );
   }
 }

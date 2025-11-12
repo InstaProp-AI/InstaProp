@@ -6,6 +6,7 @@ import '../models/property.dart';
 import '../models/child_property.dart';
 import '../models/parent_property.dart';
 import '../models/property_image.dart';
+import '../models/property_type.dart';
 
 class PropertyService {
   static Future<ApiResponse<List<Property>>> getProperties() async {
@@ -26,11 +27,11 @@ class PropertyService {
     required int bathrooms,
     required int squareFeet,
     required int yearBuilt,
-    required String category,
+    required PropertyType type,
     String? imageUrl,
     // Additional parameters for parent/child system
     String? projectName,
-    String? propertyType,
+    int? projectId,
     String? finishingType,
     bool hasPool = false,
     bool hasGym = false,
@@ -58,6 +59,15 @@ class PropertyService {
     bool? hasRoofAccess,
     bool? hasBalcony,
     bool? hasGardenUnit,
+    bool? hasClubhouseUnit,
+    bool? hasInfrastructure,
+    bool? hasUndergroundParking,
+    bool? hasMedicalCenter,
+    bool? hasCommercialStrip,
+    bool? hasBusinessHub,
+    bool? hasOutdoorPools,
+    bool? hasBicycleLanes,
+    bool? hasJoggingTrail,
     bool? smartHome,
     bool? centralAC,
     bool? naturalGas,
@@ -69,20 +79,17 @@ class PropertyService {
     bool? streetView,
   }) async {
     try {
-      // Step 1: Find or create parent property
       final projectNameToUse =
           projectName ?? _extractProjectNameFromLocation(location);
-      final propertyTypeToUse = propertyType ?? category;
-      final finishingTypeToUse =
-          finishingType ?? 'Finished'; // Default to finished
-      final areaSqm = (squareFeet * 0.092903).round(); // Convert sqft to sqm
+      final finishingTypeToUse = finishingType ?? 'Finished';
+      final areaSqm = (squareFeet * 0.092903).round();
 
       final parentResponse = await findOrCreateParentProperty(
         projectName: projectNameToUse,
         bedrooms: bedrooms,
         bathrooms: bathrooms,
         areaSqm: areaSqm,
-        propertyType: propertyTypeToUse,
+        type: type,
         finishingType: finishingTypeToUse,
         hasPool: hasPool,
         hasGym: hasGym,
@@ -105,21 +112,20 @@ class PropertyService {
 
       final parentPropertyId = parentResponse.data!['parentPropertyId'] as int;
 
-      // Step 2: Create child property
       final childResponse = await createChildProperty(
         parentPropertyId: parentPropertyId,
         name: name,
         description: description,
         location: location,
-        category: category,
         imageUrl: imageUrl ?? '',
         squareFeet: squareFeet,
         yearBuilt: yearBuilt,
-        isApproved: false, // Default to not approved
+        isApproved: false,
         bedrooms: bedrooms,
         bathrooms: bathrooms,
-        propertyType: propertyTypeToUse,
-        status: 'NotApproved', // Default status
+        type: type,
+        status: 'NotApproved',
+        projectId: projectId,
         phase: phase,
         floorNumber: floorNumber,
         unitNumber: unitNumber,
@@ -138,6 +144,15 @@ class PropertyService {
         hasRoofAccess: hasRoofAccess,
         hasBalcony: hasBalcony,
         hasGarden: hasGardenUnit,
+        hasClubhouse: hasClubhouseUnit,
+        hasInfrastructure: hasInfrastructure,
+        hasUndergroundParking: hasUndergroundParking,
+        hasMedicalCenter: hasMedicalCenter,
+        hasCommercialStrip: hasCommercialStrip,
+        hasBusinessHub: hasBusinessHub,
+        hasOutdoorPools: hasOutdoorPools,
+        hasBicycleLanes: hasBicycleLanes,
+        hasJoggingTrail: hasJoggingTrail,
         smartHome: smartHome,
         centralAC: centralAC,
         naturalGas: naturalGas,
@@ -158,7 +173,6 @@ class PropertyService {
         );
       }
 
-      // Step 3: Convert ChildProperty to Property for backward compatibility
       final property = Property.fromChildProperty(childResponse.data!);
 
       return ApiResponse<Property>(
@@ -234,7 +248,7 @@ class PropertyService {
     required int bathrooms,
     required int squareFeet,
     required int yearBuilt,
-    required String category,
+    required PropertyType type,
     String? imageUrl,
   }) async {
     return await ApiClient.post('/api/property/skip-documents', {
@@ -245,7 +259,7 @@ class PropertyService {
       'bathrooms': bathrooms,
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
-      'category': category,
+      'type': type.displayName,
       'imageUrl': imageUrl ?? '',
     }, Property.fromJson);
   }
@@ -370,7 +384,7 @@ class PropertyService {
     required int bedrooms,
     required int bathrooms,
     required int areaSqm,
-    required String propertyType,
+    required PropertyType type,
     required String finishingType,
     required bool hasPool,
     required bool hasGym,
@@ -385,7 +399,7 @@ class PropertyService {
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'areaSqm': areaSqm,
-      'propertyType': propertyType,
+      'type': type.displayName,
       'finishingType': finishingType,
       'hasPool': hasPool,
       'hasGym': hasGym,
@@ -417,12 +431,12 @@ class PropertyService {
   }
 
   // Find or create parent property based on characteristics
-  static Future<ApiResponse<Map<String, dynamic>>> findOrCreateParentProperty({
-    required String projectName,
+  static Future<ApiResponse<dynamic>> findOrCreateParentProperty({
+    String? projectName,
     required int bedrooms,
     required int bathrooms,
     required int areaSqm,
-    required String propertyType,
+    required PropertyType type,
     required String finishingType,
     required bool hasPool,
     required bool hasGym,
@@ -437,7 +451,7 @@ class PropertyService {
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'areaSqm': areaSqm,
-      'propertyType': propertyType,
+      'type': type.displayName,
       'finishingType': finishingType,
       'hasPool': hasPool,
       'hasGym': hasGym,
@@ -455,15 +469,14 @@ class PropertyService {
     required String name,
     required String description,
     required String location,
-    required String category,
     required String imageUrl,
     required int squareFeet,
     required int yearBuilt,
-    bool isApproved = false, // Default to not approved
+    bool isApproved = false,
     required int bedrooms,
     required int bathrooms,
-    String propertyType = 'Apartment', // Default property type
-    String status = 'NotApproved', // Default status
+    required PropertyType type,
+    String status = 'NotApproved',
     int? projectId,
     String? phase,
     int? floorNumber,
@@ -483,6 +496,15 @@ class PropertyService {
     bool? hasRoofAccess,
     bool? hasBalcony,
     bool? hasGarden,
+    bool? hasClubhouse,
+    bool? hasInfrastructure,
+    bool? hasUndergroundParking,
+    bool? hasMedicalCenter,
+    bool? hasCommercialStrip,
+    bool? hasBusinessHub,
+    bool? hasOutdoorPools,
+    bool? hasBicycleLanes,
+    bool? hasJoggingTrail,
     bool? smartHome,
     bool? centralAC,
     bool? naturalGas,
@@ -498,14 +520,13 @@ class PropertyService {
       'name': name,
       'description': description,
       'location': location,
-      'category': category,
       'imageUrl': imageUrl,
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
       'isApproved': isApproved,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
-      'propertyType': propertyType,
+      'type': type.displayName,
       'status': status,
       'projectId': projectId,
       'phase': phase,
@@ -526,6 +547,15 @@ class PropertyService {
       'hasRoofAccess': hasRoofAccess,
       'hasBalcony': hasBalcony,
       'hasGarden': hasGarden,
+      'hasClubhouse': hasClubhouse,
+      'hasInfrastructure': hasInfrastructure,
+      'hasUndergroundParking': hasUndergroundParking,
+      'hasMedicalCenter': hasMedicalCenter,
+      'hasCommercialStrip': hasCommercialStrip,
+      'hasBusinessHub': hasBusinessHub,
+      'hasOutdoorPools': hasOutdoorPools,
+      'hasBicycleLanes': hasBicycleLanes,
+      'hasJoggingTrail': hasJoggingTrail,
       'smartHome': smartHome,
       'centralAC': centralAC,
       'naturalGas': naturalGas,
@@ -628,14 +658,15 @@ class PropertyService {
       PropertyPriceHistoryResponse? priceHistory;
       PropertyPriceStats? priceStats;
 
-      if (child.parentPropertyId != 0) {
-        final parentResponse = await getParentProperty(child.parentPropertyId);
+      if (child.parentPropertyId != null) {
+        final parentResponse =
+            await getParentProperty(child.parentPropertyId!);
         if (parentResponse.success && parentResponse.data != null) {
           parent = parentResponse.data;
         }
 
         final siblingsResponse =
-            await getParentChildProperties(child.parentPropertyId);
+            await getParentChildProperties(child.parentPropertyId!);
         if (siblingsResponse.success && siblingsResponse.data != null) {
           siblings = siblingsResponse.data!
               .where((sibling) => sibling.propertyId != child.propertyId)
@@ -644,14 +675,14 @@ class PropertyService {
 
         try {
           priceHistory = await PriceHistoryService
-              .getParentPropertyPriceHistory(child.parentPropertyId);
+              .getParentPropertyPriceHistory(child.parentPropertyId!);
         } catch (_) {
           priceHistory = null;
         }
 
         try {
           priceStats = await PriceHistoryService
-              .getParentPropertyPriceStats(child.parentPropertyId);
+              .getParentPropertyPriceStats(child.parentPropertyId!);
         } catch (_) {
           priceStats = null;
         }
@@ -723,18 +754,23 @@ class PropertyService {
       data: Property(
         propertyId: 0,
         ownerId: 0,
+        owner: null,
+        projectId: null,
+        project: null,
         name: '',
         description: '',
         location: '',
-        type: PropertyType.resale,
+        listingType: ListingType.resale,
+        type: PropertyType.other,
         status: PropertyStatus.notApproved,
         bedrooms: 0,
         bathrooms: 0,
         squareFeet: 0,
         yearBuilt: 0,
-        category: '',
         imageUrl: '',
         createdAt: DateTime.now(),
+        hasActiveAuction: false,
+        propertyImages: const [],
       ),
       statusCode: childPropertyResponse.statusCode,
     );

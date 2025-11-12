@@ -238,7 +238,7 @@ namespace PropertyFlipperAPI.Controllers
                 Property = new
                 {
                     parentProperty.ParentPropertyId,
-                    parentProperty.PropertyType,
+                    parentProperty.Type,
                     parentProperty.Bedrooms,
                     parentProperty.Bathrooms,
                     parentProperty.AreaSqm,

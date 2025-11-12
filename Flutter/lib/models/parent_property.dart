@@ -1,12 +1,13 @@
 import 'property_price_history.dart';
+import 'property_type.dart';
 
 class ParentProperty {
   final int parentPropertyId;
-  final String projectName;
+  final String? projectName;
   final int bedrooms;
   final int bathrooms;
   final int areaSqm;
-  final String propertyType;
+  final PropertyType type;
   final String finishingType;
 
   // Compound amenities
@@ -30,11 +31,11 @@ class ParentProperty {
 
   ParentProperty({
     required this.parentPropertyId,
-    required this.projectName,
+    this.projectName,
     required this.bedrooms,
     required this.bathrooms,
     required this.areaSqm,
-    required this.propertyType,
+    required this.type,
     required this.finishingType,
     this.hasPool = false,
     this.hasGym = false,
@@ -55,11 +56,15 @@ class ParentProperty {
   factory ParentProperty.fromJson(Map<String, dynamic> json) {
     return ParentProperty(
       parentPropertyId: json['parentPropertyId'] ?? 0,
-      projectName: json['projectName'] ?? '',
+      projectName: json['projectName'] ??
+          (json['project'] is Map ? json['project']['name'] : json['project']) ??
+          null,
       bedrooms: json['bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? 0,
       areaSqm: json['areaSqm'] ?? 0,
-      propertyType: json['propertyType'] ?? '',
+      type: PropertyTypeX.fromString(
+        (json['type'] ?? json['propertyType'])?.toString(),
+      ),
       finishingType: json['finishingType'] ?? '',
       hasPool: json['hasPool'] ?? false,
       hasGym: json['hasGym'] ?? false,
@@ -91,7 +96,7 @@ class ParentProperty {
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'areaSqm': areaSqm,
-      'propertyType': propertyType,
+      'type': type.displayName,
       'finishingType': finishingType,
       'hasPool': hasPool,
       'hasGym': hasGym,
@@ -119,4 +124,7 @@ class ParentProperty {
 
   @override
   int get hashCode => parentPropertyId.hashCode;
+
+  String get displayProjectName => projectName ?? 'N/A';
+  String get typeLabel => type.displayName;
 }

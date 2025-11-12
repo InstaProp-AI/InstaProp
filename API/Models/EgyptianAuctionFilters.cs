@@ -18,8 +18,8 @@ namespace PropertyFlipperAPI.Models
         public bool? NearHospital { get; set; }
 
         // Property Type Filters
-        public string? PropertyCategory { get; set; }
-        public string? PropertySubCategory { get; set; }
+        public string? PropertyType { get; set; }
+        public string? PropertySubtype { get; set; }
         public bool? Furnished { get; set; }
         public bool? HasBalcony { get; set; }
         public bool? HasGarden { get; set; }

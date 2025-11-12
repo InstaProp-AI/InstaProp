@@ -14,9 +14,8 @@ namespace PropertyFlipperAPI.Models
         [Key]
         public int PropertyId { get; set; } // Keep same name for compatibility
 
-        [Required]
         [ForeignKey("ParentProperty")]
-        public int ParentPropertyId { get; set; }
+        public int? ParentPropertyId { get; set; }
 
         [ForeignKey("Owner")]
         public long? OwnerId { get; set; }
@@ -59,6 +58,15 @@ namespace PropertyFlipperAPI.Models
         public bool? HasRoofAccess { get; set; }
         public bool? HasBalcony { get; set; }
         public bool? HasGarden { get; set; }
+        public bool? HasClubhouse { get; set; }
+        public bool? HasInfrastructure { get; set; }
+        public bool? HasUndergroundParking { get; set; }
+        public bool? HasMedicalCenter { get; set; }
+        public bool? HasCommercialStrip { get; set; }
+        public bool? HasBusinessHub { get; set; }
+        public bool? HasOutdoorPools { get; set; }
+        public bool? HasBicycleLanes { get; set; }
+        public bool? HasJoggingTrail { get; set; }
         public bool? SmartHome { get; set; }
         public bool? CentralAC { get; set; }
         public bool? NaturalGas { get; set; }
@@ -81,9 +89,6 @@ namespace PropertyFlipperAPI.Models
         [MaxLength(500)]
         public string Location { get; set; } = string.Empty; // From parent's project
 
-        [MaxLength(200)]
-        public string Category { get; set; } = string.Empty; // From parent's property type
-
         public string ImageUrl { get; set; } = string.Empty;
         public int SquareFeet { get; set; } // Calculated from parent's AreaSqm
 
@@ -96,8 +101,7 @@ namespace PropertyFlipperAPI.Models
         // Properties inherited from ParentProperty for compatibility
         public int Bedrooms { get; set; } // From parent
         public int Bathrooms { get; set; } // From parent
-        public string PropertyType { get; set; } = string.Empty; // From parent
-        public PropertyType Type { get; set; } = Models.PropertyType.Apartment; // For compatibility with old code
+        public PropertyType Type { get; set; } = PropertyType.Apartment;
         public PropertyStatus Status { get; set; } = PropertyStatus.NotApproved; // Individual property status
         public long? ProjectId { get; set; } // Optional direct link to project
 

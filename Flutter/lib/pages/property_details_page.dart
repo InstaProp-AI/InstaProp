@@ -209,11 +209,11 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildChip(Icons.apartment, property.category),
+              if (property.project != null)
+                _buildChip(Icons.business, property.project!),
+              _buildChip(Icons.apartment, property.typeLabel),
               if (property.phase != null && property.phase!.isNotEmpty)
                 _buildChip(Icons.timeline, property.phase!),
-              if (property.propertyType.isNotEmpty)
-                _buildChip(Icons.home_work_outlined, property.propertyType),
               if (property.status != null && property.status!.isNotEmpty)
                 _buildChip(Icons.verified, property.status!),
             ],
@@ -338,7 +338,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                           ),
                         ),
                         Text(
-                          parent.projectName,
+                          parent.displayProjectName,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,

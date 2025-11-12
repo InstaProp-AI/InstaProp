@@ -1,5 +1,8 @@
+import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/property.dart';
+import '../models/property_type.dart';
 import '../models/auction.dart';
 import '../services/property_service.dart';
 import '../services/auction_service.dart';
@@ -24,15 +27,12 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
 
   // Search and filter
   final TextEditingController _searchController = TextEditingController();
-  String _selectedCategory = 'All';
+  String _selectedTypeFilter = 'All';
   int _selectedBedrooms = 0; // 0 means all
 
-  final List<String> _categories = [
+  final List<String> _typeFilters = [
     'All',
-    'Single Family',
-    'Condo',
-    'Townhouse',
-    'Commercial',
+    ...PropertyTypeX.orderedValues.map((type) => type.displayName),
   ];
 
   @override
@@ -80,18 +80,17 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
             searchQuery.isEmpty ||
             property.name.toLowerCase().contains(searchQuery) ||
             (property.location ?? '').toLowerCase().contains(searchQuery) ||
-            (property.category ?? '').toLowerCase().contains(searchQuery);
+            property.typeLabel.toLowerCase().contains(searchQuery);
 
-        // Category filter
-        final matchesCategory =
-            _selectedCategory == 'All' ||
-            property.category == _selectedCategory;
+        // Type filter
+        final matchesType = _selectedTypeFilter == 'All' ||
+            property.typeLabel == _selectedTypeFilter;
 
         // Bedrooms filter
         final matchesBedrooms =
             _selectedBedrooms == 0 || property.bedrooms == _selectedBedrooms;
 
-        return matchesSearch && matchesCategory && matchesBedrooms;
+        return matchesSearch && matchesType && matchesBedrooms;
       }).toList();
     });
   }
@@ -304,28 +303,23 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                     // Category Filter
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedCategory,
+                        value: _selectedTypeFilter,
                         decoration: InputDecoration(
-                          labelText: 'Category',
+                          labelText: 'Property Type',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
                         ),
-                        items: _categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(category),
+                        items: _typeFilters.map((typeLabel) {
+                          return DropdownMenuItem<String>(
+                            value: typeLabel,
+                            child: Text(typeLabel),
                           );
                         }).toList(),
                         onChanged: (value) {
+                          if (value == null) return;
                           setState(() {
-                            _selectedCategory = value!;
+                            _selectedTypeFilter = value;
                             _applyFilters();
                           });
                         },
@@ -429,7 +423,7 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                         ),
                         title: Text(property.name),
                         subtitle: Text(
-                          '${property.bedrooms} bed • ${property.bathrooms} bath${property.category != null ? ' • ${property.category}' : ''}',
+                          '${property.bedrooms} bed • ${property.bathrooms} bath • ${property.typeLabel}',
                         ),
                         trailing: isSelected
                             ? const Icon(
@@ -596,34 +590,6 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
   List<DataRow> _buildComparisonRows() {
     final rows = [
       {
-        'label': 'Name',
-        'values': selectedProperties.map((p) => p.name).toList(),
-      },
-      {
-        'label': 'Location',
-        'values': selectedProperties.map((p) => p.location ?? 'N/A').toList(),
-      },
-      {
-        'label': 'Project',
-        'values': selectedProperties.map((p) => p.project ?? 'N/A').toList(),
-      },
-      {
-        'label': 'Type',
-        'values': selectedProperties
-            .map((p) => p.type.toString().split('.').last)
-            .toList(),
-      },
-      {
-        'label': 'Current Auction Price',
-        'values': selectedProperties.map((p) {
-          final auction = propertyAuctions[p.propertyId];
-          if (auction != null && auction.isActive) {
-            return '\$${auction.currentPrice.toStringAsFixed(0)}';
-          }
-          return 'No Active Auction';
-        }).toList(),
-      },
-      {
         'label': 'Bedrooms',
         'values': selectedProperties.map((p) => '${p.bedrooms}').toList(),
       },
@@ -642,8 +608,8 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
         'values': selectedProperties.map((p) => '${p.yearBuilt}').toList(),
       },
       {
-        'label': 'Category',
-        'values': selectedProperties.map((p) => p.category ?? 'N/A').toList(),
+        'label': 'Type',
+        'values': selectedProperties.map((p) => p.typeLabel).toList(),
       },
     ];
 

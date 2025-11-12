@@ -2,8 +2,9 @@ import 'user.dart';
 import 'property_image.dart';
 import 'child_property.dart';
 import 'parent_property.dart';
+import 'property_type.dart';
 
-enum PropertyType { resale, primary }
+enum ListingType { resale, primary }
 
 enum PropertyStatus { notApproved, pending, approved }
 
@@ -16,13 +17,13 @@ class Property {
   final String name;
   final String description;
   final String location;
+  final ListingType listingType;
   final PropertyType type;
   final PropertyStatus status;
   final int bedrooms;
   final int bathrooms;
   final int squareFeet;
   final int yearBuilt;
-  final String category;
   final String imageUrl;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -38,13 +39,13 @@ class Property {
     required this.name,
     required this.description,
     required this.location,
+    required this.listingType,
     required this.type,
     required this.status,
     required this.bedrooms,
     required this.bathrooms,
     required this.squareFeet,
     required this.yearBuilt,
-    required this.category,
     required this.imageUrl,
     required this.createdAt,
     this.updatedAt,
@@ -54,19 +55,26 @@ class Property {
 
   factory Property.fromJson(Map<String, dynamic> json) {
     // Handle PropertyType parsing
-    PropertyType parsePropertyType() {
-      final typeValue = json['type'] ?? json['Type'];
-      if (typeValue == null) return PropertyType.resale;
+    ListingType parseListingType() {
+      final typeValue =
+          json['listingType'] ?? json['ListingType'] ?? json['saleType'];
+      if (typeValue == null) return ListingType.resale;
 
-      // Handle both string and integer type values
       if (typeValue is int) {
-        return typeValue == 0 ? PropertyType.resale : PropertyType.primary;
+        return typeValue == 0 ? ListingType.resale : ListingType.primary;
       } else if (typeValue is String) {
         final typeStr = typeValue.toString().toLowerCase();
-        if (typeStr == 'resale' || typeStr == '0') return PropertyType.resale;
-        if (typeStr == 'primary' || typeStr == '1') return PropertyType.primary;
+        if (typeStr == 'resale' || typeStr == '0') return ListingType.resale;
+        if (typeStr == 'primary' || typeStr == '1') return ListingType.primary;
       }
-      return PropertyType.resale;
+      return ListingType.resale;
+    }
+
+    PropertyType parsePropertyType() {
+      final rawType =
+          (json['type'] ?? json['Type'] ?? json['propertyType'] ?? json['category'])
+              ?.toString();
+      return PropertyTypeX.fromString(rawType);
     }
 
     // Handle PropertyStatus parsing
@@ -161,17 +169,25 @@ class Property {
             })
           : null,
       projectId: json['projectId'] ?? json['ProjectId'],
-      project: json['project'] ?? json['Project'],
+      project: () {
+        final projectValue = json['project'] ?? json['Project'];
+        if (projectValue is Map) {
+          return projectValue['name'] ??
+              projectValue['Name'] ??
+              projectValue['projectName'];
+        }
+        return json['projectName'] ?? projectValue;
+      }(),
       name: json['name'] ?? json['Name'] ?? '',
       description: json['description'] ?? json['Description'] ?? '',
       location: json['location'] ?? json['Location'] ?? '',
+      listingType: parseListingType(),
       type: parsePropertyType(),
       status: parsePropertyStatus(),
       bedrooms: json['bedrooms'] ?? json['Bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? json['Bathrooms'] ?? 0,
       squareFeet: json['squareFeet'] ?? json['SquareFeet'] ?? 0,
       yearBuilt: json['yearBuilt'] ?? json['YearBuilt'] ?? 0,
-      category: json['category'] ?? json['Category'] ?? 'Residential',
       imageUrl: json['imageUrl'] ?? json['ImageUrl'] ?? '',
       createdAt: DateTime.parse(
         json['createdAt'] ??
@@ -199,13 +215,13 @@ class Property {
       'name': name,
       'description': description,
       'location': location,
-      'type': type.index,
+      'listingType': listingType.index,
+      'type': type.displayName,
       'status': status.index,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
-      'category': category,
       'imageUrl': imageUrl,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
@@ -219,6 +235,7 @@ class Property {
   bool get isApproved => status == PropertyStatus.approved;
   bool get isPending => status == PropertyStatus.pending;
   bool get isNotApproved => status == PropertyStatus.notApproved;
+  String get typeLabel => type.displayName;
 
   // Factory method to create Property from ChildProperty for backward compatibility
   factory Property.fromChildProperty(ChildProperty childProperty) {
@@ -231,13 +248,13 @@ class Property {
       name: childProperty.name,
       description: childProperty.description,
       location: childProperty.location,
-      type: _convertPropertyTypeFromString(childProperty.propertyType),
+      listingType: ListingType.resale,
+      type: childProperty.type,
       status: _convertPropertyStatus(childProperty.status),
       bedrooms: childProperty.bedrooms,
       bathrooms: childProperty.bathrooms,
       squareFeet: childProperty.squareFeet,
       yearBuilt: childProperty.yearBuilt,
-      category: childProperty.category,
       imageUrl: childProperty.imageUrl,
       createdAt: childProperty.createdAt,
       updatedAt: childProperty.updatedAt,
@@ -253,18 +270,18 @@ class Property {
       ownerId: 0, // ParentProperty doesn't have owner
       owner: null,
       projectId: null, // ParentProperty doesn't have projectId directly
-      project: parentProperty.projectName,
-      name: '${parentProperty.propertyType} - ${parentProperty.bedrooms}BR',
+      project: parentProperty.displayProjectName,
+      name: '${parentProperty.typeLabel} - ${parentProperty.bedrooms}BR',
       description:
-          '${parentProperty.propertyType} with ${parentProperty.bedrooms} bedrooms and ${parentProperty.bathrooms} bathrooms',
-      location: parentProperty.projectName,
-      type: _convertPropertyTypeFromString(parentProperty.propertyType),
+          '${parentProperty.typeLabel} with ${parentProperty.bedrooms} bedrooms and ${parentProperty.bathrooms} bathrooms',
+      location: parentProperty.displayProjectName,
+      listingType: ListingType.resale,
+      type: parentProperty.type,
       status: PropertyStatus.approved, // Assume approved for parent properties
       bedrooms: parentProperty.bedrooms,
       bathrooms: parentProperty.bathrooms,
       squareFeet: parentProperty.areaSqm,
       yearBuilt: 0,
-      category: parentProperty.propertyType,
       imageUrl: '', // ParentProperty doesn't have image
       createdAt: parentProperty.createdAt,
       updatedAt: parentProperty.updatedAt,
@@ -274,22 +291,6 @@ class Property {
   }
 
   // Helper methods to convert between old and new property types
-  static PropertyType _convertPropertyType(String? typeString) {
-    if (typeString == null) return PropertyType.resale;
-
-    switch (typeString.toLowerCase()) {
-      case 'apartment':
-      case 'villa':
-      case 'townhouse':
-      case 'penthouse':
-      case 'studio':
-      case 'duplex':
-        return PropertyType.primary;
-      default:
-        return PropertyType.resale;
-    }
-  }
-
   static PropertyStatus _convertPropertyStatus(String? statusString) {
     if (statusString == null) return PropertyStatus.notApproved;
 
@@ -300,22 +301,6 @@ class Property {
         return PropertyStatus.pending;
       default:
         return PropertyStatus.notApproved;
-    }
-  }
-
-  static PropertyType _convertPropertyTypeFromString(String? typeString) {
-    if (typeString == null) return PropertyType.resale;
-
-    switch (typeString.toLowerCase()) {
-      case 'apartment':
-      case 'villa':
-      case 'townhouse':
-      case 'penthouse':
-      case 'studio':
-      case 'duplex':
-        return PropertyType.primary;
-      default:
-        return PropertyType.resale;
     }
   }
 }

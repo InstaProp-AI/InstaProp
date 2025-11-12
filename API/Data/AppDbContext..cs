@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PropertyFlipperAPI.Models;
 
 namespace PropertyFlipperAPI.Data
@@ -48,6 +49,8 @@ namespace PropertyFlipperAPI.Data
         public DbSet<NewsArticle> NewsArticles { get; set; }
         public DbSet<NewsImage> NewsImages { get; set; }
 
+        public DbSet<Faq> Faqs { get; set; }
+
         // Community System
         public DbSet<Community> Communities { get; set; }
         public DbSet<CommunityMember> CommunityMembers { get; set; }
@@ -87,6 +90,10 @@ namespace PropertyFlipperAPI.Data
                 entity.Property(e => e.HashedPassword).HasMaxLength(255); // Nullable for OAuth users
             });
 
+            var propertyTypeConverter = new ValueConverter<PropertyType, string>(
+                type => PropertyTypeHelper.ToDisplayName(type),
+                value => PropertyTypeHelper.FromDisplayName(value));
+
             // Configure Property (now ChildProperty)
             modelBuilder.Entity<ChildProperty>(entity =>
             {
@@ -94,7 +101,9 @@ namespace PropertyFlipperAPI.Data
                 entity.Property(e => e.PropertyId).ValueGeneratedOnAdd();
                 entity.Property(e => e.Name).HasMaxLength(500).IsRequired();
                 entity.Property(e => e.Location).HasMaxLength(500);
-                entity.Property(e => e.Type).HasConversion<int>();
+                entity.Property(e => e.Type)
+                    .HasConversion(propertyTypeConverter)
+                    .HasMaxLength(100);
                 entity.Property(e => e.BuyingPrice).HasColumnType("decimal(18,2)");
                 entity.HasOne(e => e.Owner)
                     .WithMany()
@@ -107,7 +116,7 @@ namespace PropertyFlipperAPI.Data
                 entity.HasOne(e => e.ParentProperty)
                     .WithMany(p => p.ChildProperties)
                     .HasForeignKey(e => e.ParentPropertyId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure Auction
@@ -239,6 +248,8 @@ namespace PropertyFlipperAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.ProjectId)
                     .OnDelete(DeleteBehavior.SetNull);
+                entity.Property(e => e.IsSupportChat)
+                    .HasDefaultValue(false);
             });
 
             // Configure ChatMessage
@@ -392,8 +403,8 @@ namespace PropertyFlipperAPI.Data
             {
                 entity.HasKey(e => e.ParentPropertyId);
                 entity.Property(e => e.ParentPropertyId).ValueGeneratedOnAdd();
-                entity.Property(e => e.ProjectName).HasMaxLength(200).IsRequired();
-                entity.Property(e => e.PropertyType).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.ProjectName).HasMaxLength(200);
+                entity.Property(e => e.Type).HasMaxLength(100).IsRequired();
                 entity.Property(e => e.FinishingType).HasMaxLength(100).IsRequired();
                 entity.HasOne(e => e.Project)
                     .WithMany()
@@ -457,6 +468,31 @@ namespace PropertyFlipperAPI.Data
                     .WithMany(n => n.Images)
                     .HasForeignKey(e => e.NewsArticleId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Faq>(entity =>
+            {
+                entity.HasKey(e => e.FaqId);
+                entity.Property(e => e.FaqId).ValueGeneratedOnAdd();
+                entity.Property(e => e.Question).HasMaxLength(250).IsRequired();
+                entity.Property(e => e.Answer).IsRequired();
+                entity.Property(e => e.DisplayOrder).HasDefaultValue(0);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasIndex(e => e.DisplayOrder);
+
+                entity.HasData(
+                    new Faq { FaqId = 1, Question = "How do I list a new property?", Answer = "Go to the Add Property screen, fill out the mandatory fields, upload images, and submit for review.", DisplayOrder = 1, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 2, Question = "Can I edit my property after submission?", Answer = "Yes, open the property from your dashboard and tap Edit. Changes trigger a short review cycle.", DisplayOrder = 2, CreatedAt = new DateTime(2025, 1, 1, 0, 1, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 3, Question = "What documents are required?", Answer = "At minimum you need proof of ownership and unit floor plans. Optional docs speed up verification.", DisplayOrder = 3, CreatedAt = new DateTime(2025, 1, 1, 0, 2, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 4, Question = "How do auctions work?", Answer = "Approved sellers can request an auction. Once approved, buyers place bids until the auction end date.", DisplayOrder = 4, CreatedAt = new DateTime(2025, 1, 1, 0, 3, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 5, Question = "How is property pricing estimated?", Answer = "Pricing leverages market comps, developer data, and our AI valuation engine.", DisplayOrder = 5, CreatedAt = new DateTime(2025, 1, 1, 0, 4, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 6, Question = "Can I save favourite properties?", Answer = "Yes, tap the bookmark icon on any property to store it in your Saved list.", DisplayOrder = 6, CreatedAt = new DateTime(2025, 1, 1, 0, 5, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 7, Question = "How do I contact a developer?", Answer = "Use the Contact Developer button on the project or property page to open a chat.", DisplayOrder = 7, CreatedAt = new DateTime(2025, 1, 1, 0, 6, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 8, Question = "What is the AI Broker?", Answer = "Our AI Broker suggests opportunities and answers investment questions in real time.", DisplayOrder = 8, CreatedAt = new DateTime(2025, 1, 1, 0, 7, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 9, Question = "How do I track project updates?", Answer = "Follow projects to receive push notifications and see updates in your feed.", DisplayOrder = 9, CreatedAt = new DateTime(2025, 1, 1, 0, 8, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = 10, Question = "How can I reset my password?", Answer = "Tap Forgot Password on the login screen and follow the emailed instructions.", DisplayOrder = 10, CreatedAt = new DateTime(2025, 1, 1, 0, 9, 0, DateTimeKind.Utc) }
+                );
             });
 
             // Configure Community

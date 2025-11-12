@@ -234,7 +234,7 @@ namespace PropertyFlipperAPI.Controllers
                     Bathrooms = prop.Bathrooms,
                     SquareFeet = prop.SquareFeet,
                     YearBuilt = prop.YearBuilt,
-                    Type = prop.Type.ToString(),
+                    Type = prop.Type.ToDisplayName(),
                     Price = price,
                     Status = prop.Status.ToString()
                 });

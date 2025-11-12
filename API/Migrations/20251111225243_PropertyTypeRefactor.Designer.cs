@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PropertyFlipperAPI.Data;
 
@@ -10,9 +11,11 @@ using PropertyFlipperAPI.Data;
 namespace PropertyFlipperAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251111225243_PropertyTypeRefactor")]
+    partial class PropertyTypeRefactor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
@@ -305,11 +308,6 @@ namespace PropertyFlipperAPI.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsSupportChat")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(false);
 
                     b.Property<DateTime>("LastMessageAt")
                         .HasColumnType("TEXT");
@@ -920,120 +918,6 @@ namespace PropertyFlipperAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Events");
-                });
-
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Faq", b =>
-                {
-                    b.Property<int>("FaqId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Answer")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<int>("DisplayOrder")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(0);
-
-                    b.Property<string>("Question")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("FaqId");
-
-                    b.HasIndex("DisplayOrder");
-
-                    b.ToTable("Faqs");
-
-                    b.HasData(
-                        new
-                        {
-                            FaqId = 1,
-                            Answer = "Go to the Add Property screen, fill out the mandatory fields, upload images, and submit for review.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 1,
-                            Question = "How do I list a new property?"
-                        },
-                        new
-                        {
-                            FaqId = 2,
-                            Answer = "Yes, open the property from your dashboard and tap Edit. Changes trigger a short review cycle.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 1, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 2,
-                            Question = "Can I edit my property after submission?"
-                        },
-                        new
-                        {
-                            FaqId = 3,
-                            Answer = "At minimum you need proof of ownership and unit floor plans. Optional docs speed up verification.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 2, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 3,
-                            Question = "What documents are required?"
-                        },
-                        new
-                        {
-                            FaqId = 4,
-                            Answer = "Approved sellers can request an auction. Once approved, buyers place bids until the auction end date.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 3, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 4,
-                            Question = "How do auctions work?"
-                        },
-                        new
-                        {
-                            FaqId = 5,
-                            Answer = "Pricing leverages market comps, developer data, and our AI valuation engine.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 4, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 5,
-                            Question = "How is property pricing estimated?"
-                        },
-                        new
-                        {
-                            FaqId = 6,
-                            Answer = "Yes, tap the bookmark icon on any property to store it in your Saved list.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 5, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 6,
-                            Question = "Can I save favourite properties?"
-                        },
-                        new
-                        {
-                            FaqId = 7,
-                            Answer = "Use the Contact Developer button on the project or property page to open a chat.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 6, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 7,
-                            Question = "How do I contact a developer?"
-                        },
-                        new
-                        {
-                            FaqId = 8,
-                            Answer = "Our AI Broker suggests opportunities and answers investment questions in real time.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 7, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 8,
-                            Question = "What is the AI Broker?"
-                        },
-                        new
-                        {
-                            FaqId = 9,
-                            Answer = "Follow projects to receive push notifications and see updates in your feed.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 8, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 9,
-                            Question = "How do I track project updates?"
-                        },
-                        new
-                        {
-                            FaqId = 10,
-                            Answer = "Tap Forgot Password on the login screen and follow the emailed instructions.",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 9, 0, 0, DateTimeKind.Utc),
-                            DisplayOrder = 10,
-                            Question = "How can I reset my password?"
-                        });
                 });
 
             modelBuilder.Entity("PropertyFlipperAPI.Models.GoldPrice", b =>

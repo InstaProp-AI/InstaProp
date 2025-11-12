@@ -13,9 +13,8 @@ namespace PropertyFlipperAPI.Models
         [Key]
         public int ParentPropertyId { get; set; }
 
-        [Required]
         [MaxLength(200)]
-        public string ProjectName { get; set; } = string.Empty;
+        public string? ProjectName { get; set; }
 
         [Required]
         public int Bedrooms { get; set; }
@@ -28,7 +27,7 @@ namespace PropertyFlipperAPI.Models
 
         [Required]
         [MaxLength(100)]
-        public string PropertyType { get; set; } = string.Empty; // Apartment, Villa, Townhouse, Duplex, Penthouse, etc.
+        public string Type { get; set; } = PropertyTypeHelper.ToDisplayName(PropertyType.Apartment);
 
         [Required]
         [MaxLength(100)]

@@ -31,13 +31,12 @@ namespace PropertyFlipperAPI.Models
                     Name = auction.Property.Name,
                     Description = auction.Property.Description,
                     Location = auction.Property.Location,
-                    Type = auction.Property.Type.ToString(),
+                    Type = PropertyTypeHelper.ToDisplayName(auction.Property.Type),
                     Status = auction.Property.Status.ToString(),
                     Bedrooms = auction.Property.Bedrooms,
                     Bathrooms = auction.Property.Bathrooms,
                     SquareFeet = auction.Property.SquareFeet,
                     YearBuilt = auction.Property.YearBuilt,
-                    Category = auction.Property.Category,
                     ImageUrl = auction.Property.ImageUrl,
                     Project = auction.Property.Project?.Name,
                     PropertyImages = auction.Property.PropertyImages?.Select(img => new PropertyImageDto
@@ -74,7 +73,6 @@ namespace PropertyFlipperAPI.Models
         public int Bathrooms { get; set; }
         public int SquareFeet { get; set; }
         public int YearBuilt { get; set; }
-        public string Category { get; set; }
         public string ImageUrl { get; set; }
         public string Project { get; set; }
         public List<PropertyImageDto> PropertyImages { get; set; } = new List<PropertyImageDto>();

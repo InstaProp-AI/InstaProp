@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace PropertyFlipperAPI.Models
@@ -20,14 +21,31 @@ namespace PropertyFlipperAPI.Models
 
         public int YearBuilt { get; set; }
 
-        public string? Category { get; set; } = "Residential";
+        [Required]
+        public string Type { get; set; } = PropertyTypeHelper.ToDisplayName(PropertyType.Apartment);
 
         public string? ImageUrl { get; set; } = string.Empty;
 
         public long? ProjectId { get; set; }
+        public string? ProjectName { get; set; }
 
-        // Optional: allows developers and admins to choose property type
-        public string? Type { get; set; }
+        public int? ParentPropertyId { get; set; }
+
+        [MaxLength(50)]
+        public string? UnitNumber { get; set; }
+
+        public DateTime? DeliveryDate { get; set; }
+
+        public bool? HasGarden { get; set; }
+        public bool? HasClubhouse { get; set; }
+        public bool? HasInfrastructure { get; set; }
+        public bool? HasUndergroundParking { get; set; }
+        public bool? HasMedicalCenter { get; set; }
+        public bool? HasCommercialStrip { get; set; }
+        public bool? HasBusinessHub { get; set; }
+        public bool? HasOutdoorPools { get; set; }
+        public bool? HasBicycleLanes { get; set; }
+        public bool? HasJoggingTrail { get; set; }
     }
 
     public class PropertyUpdateDto

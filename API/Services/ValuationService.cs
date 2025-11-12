@@ -53,7 +53,7 @@ namespace PropertyFlipperAPI.Services
                     Bathrooms = property.Bathrooms,
                     SquareFeet = property.SquareFeet,
                     YearBuilt = property.YearBuilt,
-                    PropertyType = property.PropertyType
+                    PropertyType = PropertyTypeHelper.ToDisplayName(property.Type)
                 };
 
                 // Get AI valuation
@@ -65,7 +65,7 @@ namespace PropertyFlipperAPI.Services
                         Bathrooms = property.Bathrooms,
                         SquareFeet = property.SquareFeet,
                         YearBuilt = property.YearBuilt,
-                        PropertyType = property.PropertyType
+                        PropertyType = PropertyTypeHelper.ToDisplayName(property.Type)
                     },
                     await GetSimilarProperties(request),
                     await GetRelevantAuctions(request)

@@ -29,34 +29,28 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
   // Served/Suggested Searches
   final List<Map<String, dynamic>> _servedSearches = [
     {
-      'title': 'Luxury Waterfront',
-      'icon': Icons.water,
-      'filters': {'category': 'Condo', 'location': 'Waterfront'},
-    },
-    {
-      'title': 'Affordable Family Homes',
-      'icon': Icons.home,
-      'filters': {'category': 'Single Family', 'priceMax': 300000},
-    },
-    {
-      'title': 'Downtown Condos',
+      'title': 'Luxury Apartments in New Cairo',
+      'subtitle': 'Handpicked apartments with premium amenities',
+      'filters': {'type': 'Apartment', 'location': 'Waterfront'},
       'icon': Icons.apartment,
-      'filters': {'category': 'Condo', 'location': 'Downtown'},
     },
     {
-      'title': 'Historic Properties',
-      'icon': Icons.history_edu,
-      'filters': {'location': 'Historic'},
+      'title': 'Budget Family Homes',
+      'subtitle': 'Affordable townhouses with good schools nearby',
+      'filters': {'type': 'Townhouse', 'priceMax': 300000},
+      'icon': Icons.family_restroom,
     },
     {
-      'title': 'New Construction',
-      'icon': Icons.construction,
-      'filters': {'status': 'New'},
+      'title': 'Downtown Studios',
+      'subtitle': 'Perfect for young professionals',
+      'filters': {'type': 'Studio', 'location': 'Downtown'},
+      'icon': Icons.business,
     },
     {
-      'title': 'Investment Opportunities',
-      'icon': Icons.trending_up,
-      'filters': {'category': 'Commercial'},
+      'title': 'Commercial Spaces',
+      'subtitle': 'Retail, clinic, and office spaces in key areas',
+      'filters': {'type': 'Commercial'},
+      'icon': Icons.store,
     },
   ];
 
@@ -114,7 +108,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
           final searchLower = query.toLowerCase();
           return property.name.toLowerCase().contains(searchLower) ||
               property.location.toLowerCase().contains(searchLower) ||
-              property.category.toLowerCase().contains(searchLower) ||
+              property.typeLabel.toLowerCase().contains(searchLower) ||
               (property.project ?? '').toLowerCase().contains(searchLower);
         }).toList();
       }
@@ -126,8 +120,8 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
       _filteredProperties = _allProperties.where((property) {
         bool matches = true;
 
-        if (filters.containsKey('category')) {
-          matches = matches && property.category == filters['category'];
+        if (filters.containsKey('type')) {
+          matches = matches && property.typeLabel == filters['type'];
         }
 
         if (filters.containsKey('location')) {
@@ -220,7 +214,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: 'Search by name, location, category...',
+                          hintText: 'Search by name, location, type...',
                           hintStyle: TextStyle(
                             color: Colors.grey[500],
                             fontSize: 14,
@@ -727,28 +721,26 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                   Row(
                     children: [
                       // Property Type Tag (Primary/Resale)
-                      _buildPropertyTypeTag(property.type),
+                      _buildPropertyTypeTag(property.listingType),
                       const SizedBox(width: 8),
 
                       // Category Tag
-                      if (property.category.isNotEmpty)
+                      if (property.typeLabel.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+                            horizontal: 12,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.grey[200]!),
+                            color: AppColors.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            property.category,
+                            property.typeLabel,
                             style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -0.2,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -1051,8 +1043,8 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
     );
   }
 
-  Widget _buildPropertyTypeTag(PropertyType type) {
-    final isPrimary = type == PropertyType.primary;
+  Widget _buildPropertyTypeTag(ListingType listingType) {
+    final isPrimary = listingType == ListingType.primary;
     final backgroundColor = isPrimary
         ? AppColors.primary.withOpacity(0.1)
         : Colors.purple.withOpacity(0.1);

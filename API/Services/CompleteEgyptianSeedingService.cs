@@ -455,13 +455,15 @@ namespace PropertyFlipperAPI.Services
                         break;
                 }
                 
+                var propertyTypeEnum = PropertyTypeHelper.FromDisplayName(propertyType);
+
                 parentProperties.Add(new ParentProperty
                 {
                     ProjectName = project.Name,
                     Bedrooms = bedrooms,
                     Bathrooms = bathrooms,
                     AreaSqm = areaSqm,
-                    PropertyType = propertyType,
+                    Type = PropertyTypeHelper.ToDisplayName(propertyTypeEnum),
                     FinishingType = finishingType,
                     HasPool = _random.Next(3) == 0,
                     HasGym = _random.Next(2) == 0,
@@ -492,6 +494,8 @@ namespace PropertyFlipperAPI.Services
             
             foreach (var parent in parentProperties)
             {
+                var parentTypeEnum = PropertyTypeHelper.FromDisplayName(parent.Type);
+
                 // Create 2-8 child properties per parent
                 var childCount = _random.Next(2, 9);
                 
@@ -507,7 +511,7 @@ namespace PropertyFlipperAPI.Services
                         ParentPropertyId = parent.ParentPropertyId,
                         OwnerId = owner?.AccountId,
                         Phase = phase,
-                        FloorNumber = parent.PropertyType == "Villa" ? 0 : _random.Next(1, 20),
+                        FloorNumber = parentTypeEnum == PropertyType.Villa ? 0 : _random.Next(1, 20),
                         UnitNumber = $"{_random.Next(1, 50)}{(char)('A' + _random.Next(4))}",
                         ViewType = viewType,
                         Orientation = orientation,
@@ -526,6 +530,15 @@ namespace PropertyFlipperAPI.Services
                         HasRoofAccess = _random.Next(3) == 0,
                         HasBalcony = _random.Next(2) == 0,
                         HasGarden = parent.HasGarden && _random.Next(2) == 0,
+                        HasClubhouse = parent.HasClubhouse && _random.Next(3) == 0,
+                        HasInfrastructure = _random.Next(2) == 0,
+                        HasUndergroundParking = _random.Next(2) == 0,
+                        HasMedicalCenter = _random.Next(3) == 0,
+                        HasCommercialStrip = _random.Next(3) == 0,
+                        HasBusinessHub = _random.Next(3) == 0,
+                        HasOutdoorPools = _random.Next(3) == 0,
+                        HasBicycleLanes = _random.Next(2) == 0,
+                        HasJoggingTrail = _random.Next(2) == 0,
                         SmartHome = _random.Next(3) == 0,
                         CentralAC = _random.Next(2) == 0,
                         NaturalGas = _random.Next(2) == 0,
@@ -539,10 +552,9 @@ namespace PropertyFlipperAPI.Services
                         StreetView = viewType == "Street View",
                         
                         // Legacy fields
-                        Name = $"{parent.ProjectName} - {parent.PropertyType} {parent.Bedrooms}BR",
-                        Description = $"Beautiful {parent.PropertyType.ToLower()} in {parent.ProjectName} with {parent.Bedrooms} bedrooms and {parent.Bathrooms} bathrooms.",
+                        Name = $"{parent.ProjectName} - {parent.Type} {parent.Bedrooms}BR",
+                        Description = $"Beautiful {parent.Type.ToLowerInvariant()} in {parent.ProjectName} with {parent.Bedrooms} bedrooms and {parent.Bathrooms} bathrooms.",
                         Location = $"{parent.ProjectName}, Egypt",
-                        Category = parent.PropertyType,
                         ImageUrl = $"https://images.unsplash.com/photo-{1700000000000 + childProperties.Count}?w=800&h=600&fit=crop",
                         SquareFeet = (int)(parent.AreaSqm * 10.764), // Convert to sq ft
                         YearBuilt = DateTime.UtcNow.Year - _random.Next(0, 5),
@@ -553,8 +565,7 @@ namespace PropertyFlipperAPI.Services
                         // Inherited properties
                         Bedrooms = parent.Bedrooms,
                         Bathrooms = parent.Bathrooms,
-                        PropertyType = parent.PropertyType,
-                        Type = Enum.Parse<PropertyType>(parent.PropertyType),
+                        Type = parentTypeEnum,
                         Status = (PropertyStatus)_random.Next(0, 4),
                         ProjectId = parent.ProjectId
                     };

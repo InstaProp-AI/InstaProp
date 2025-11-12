@@ -96,13 +96,12 @@ namespace PropertyFlipperAPI.Controllers
                         p.Name,
                         p.Description,
                         p.Location,
-                        Type = p.Type.ToString(),
+                        Type = p.Type.ToDisplayName(),
                         Status = p.Status.ToString(),
                         p.Bedrooms,
                         p.Bathrooms,
                         p.SquareFeet,
                         p.YearBuilt,
-                        p.Category,
                         p.ImageUrl,
                         p.CreatedAt,
                         Project = p.Project != null ? new
@@ -431,13 +430,12 @@ namespace PropertyFlipperAPI.Controllers
                         p.Name,
                         p.Description,
                         p.Location,
-                        p.Type,
+                        Type = PropertyTypeHelper.ToDisplayName(p.Type),
                         Status = p.Status.ToString(), // Convert enum to string
                         p.Bedrooms,
                         p.Bathrooms,
                         p.SquareFeet,
                         p.YearBuilt,
-                        p.Category,
                         p.ImageUrl,
                         p.CreatedAt,
                         p.UpdatedAt,
@@ -597,13 +595,12 @@ namespace PropertyFlipperAPI.Controllers
                             a.Property.Name,
                             a.Property.Description,
                             a.Property.Location,
-                            a.Property.Type,
                             a.Property.Status,
                             a.Property.Bedrooms,
                             a.Property.Bathrooms,
                             a.Property.SquareFeet,
                             a.Property.YearBuilt,
-                            a.Property.Category,
+                            Type = PropertyTypeHelper.ToDisplayName(a.Property.Type),
                             a.Property.ImageUrl,
                             Owner = a.Property.Owner != null ? new
                             {
@@ -706,7 +703,7 @@ namespace PropertyFlipperAPI.Controllers
                                 b.Auction.Property.PropertyId,
                                 b.Auction.Property.Name,
                                 b.Auction.Property.Location,
-                                b.Auction.Property.Category,
+                                Type = b.Auction.Property != null ? PropertyTypeHelper.ToDisplayName(b.Auction.Property.Type) : "Unknown",
                                 Status = b.Auction.Property.Status.ToString()
                             } : null
                         }
@@ -888,7 +885,7 @@ namespace PropertyFlipperAPI.Controllers
 
                 // Property categories distribution
                 var categoryDistribution = await _context.ChildProperties
-                    .GroupBy(p => p.Category ?? "Uncategorized")
+                    .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
                     .Select(g => new
                     {
                         category = g.Key,

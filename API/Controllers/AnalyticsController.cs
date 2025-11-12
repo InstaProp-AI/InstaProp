@@ -44,7 +44,7 @@ namespace PropertyFlipperAPI.Controllers
                 // Property type distribution
                 var typeDistribution = await _context.ChildProperties
                     .Where(p => p.Auctions.Any())
-                    .GroupBy(p => p.PropertyType)
+                    .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
                     .Select(g => new PropertyTypeDistribution
                     {
                         PropertyType = g.Key,
@@ -105,12 +105,12 @@ namespace PropertyFlipperAPI.Controllers
 
                 if (!string.IsNullOrEmpty(propertyType))
                 {
-                    query = query.Where(ph => ph.ParentProperty.PropertyType == propertyType);
+                    query = query.Where(ph => ph.ParentProperty != null && ph.ParentProperty.Type == propertyType);
                 }
 
                 if (!string.IsNullOrEmpty(location))
                 {
-                    query = query.Where(ph => ph.ParentProperty.ProjectName.Contains(location));
+                    query = query.Where(ph => ph.ParentProperty != null && ph.ParentProperty.ProjectName != null && ph.ParentProperty.ProjectName.Contains(location));
                 }
 
                 var priceHistory = await query
@@ -121,8 +121,12 @@ namespace PropertyFlipperAPI.Controllers
                         Price = ph.Price,
                         Source = ph.Source,
                         ParentPropertyId = ph.ParentPropertyId,
-                        ProjectName = ph.ParentProperty.ProjectName,
-                        PropertyType = ph.ParentProperty.PropertyType
+                        ProjectName = ph.ParentProperty != null
+                            ? (string.IsNullOrWhiteSpace(ph.ParentProperty.ProjectName) ? "N/A" : ph.ParentProperty.ProjectName)
+                            : "N/A",
+                        PropertyType = ph.ParentProperty != null
+                            ? (string.IsNullOrWhiteSpace(ph.ParentProperty.Type) ? PropertyTypeHelper.ToDisplayName(PropertyType.Other) : ph.ParentProperty.Type)
+                            : PropertyTypeHelper.ToDisplayName(PropertyType.Other)
                     })
                     .ToListAsync();
 
@@ -242,22 +246,32 @@ namespace PropertyFlipperAPI.Controllers
                         PropertyId = property.PropertyId,
                         PropertyName = property.Name,
                         Location = property.Location,
-                        PropertyType = property.PropertyType,
+                        PropertyType = PropertyTypeHelper.ToDisplayName(property.Type),
                         CurrentPrice = property.Auctions.First().CurrentPrice,
                         PricePerSqm = property.Auctions.First().CurrentPrice / property.SquareFeet,
-                        ProjectName = property.ParentProperty.ProjectName,
+                        ProjectName = property.ParentProperty != null
+                            ? (string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName) ? "N/A" : property.ParentProperty.ProjectName)
+                            : "N/A",
                         Bedrooms = property.Bedrooms,
                         Bathrooms = property.Bathrooms,
                         SquareFeet = property.SquareFeet,
-                        PriceHistoryCount = _context.PropertyPriceHistories.Count(ph => ph.ParentPropertyId == property.ParentPropertyId),
-                        AveragePriceHistory = _context.PropertyPriceHistories
-                            .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
-                            .Average(ph => ph.Price),
-                        PriceTrend = _context.PropertyPriceHistories
-                            .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
-                            .OrderBy(ph => ph.PriceDate)
-                            .Select(ph => ph.Price)
-                            .ToList()
+                        PriceHistoryCount = property.ParentPropertyId != null
+                            ? _context.PropertyPriceHistories.Count(ph => ph.ParentPropertyId == property.ParentPropertyId)
+                            : 0,
+                        AveragePriceHistory = property.ParentPropertyId != null
+                            ? _context.PropertyPriceHistories
+                                .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
+                                .Select(ph => (decimal?)ph.Price)
+                                .DefaultIfEmpty()
+                                .Average() ?? 0
+                            : 0,
+                        PriceTrend = property.ParentPropertyId != null
+                            ? _context.PropertyPriceHistories
+                                .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
+                                .OrderBy(ph => ph.PriceDate)
+                                .Select(ph => ph.Price)
+                                .ToList()
+                            : new List<decimal>()
                     })
                     .OrderByDescending(p => p.PriceHistoryCount)
                     .ThenByDescending(p => p.PriceTrend.Count > 1 ? 
@@ -350,7 +364,7 @@ namespace PropertyFlipperAPI.Controllers
                         PropertyId = p.PropertyId,
                         PropertyName = p.Name,
                         Location = p.Location,
-                        PropertyType = p.PropertyType,
+                        PropertyType = PropertyTypeHelper.ToDisplayName(p.Type),
                         InvestedAmount = p.BuyingPrice ?? 0,
                         CurrentValue = currentValues[userProperties.IndexOf(p)],
                         ROI = p.BuyingPrice.HasValue && p.BuyingPrice > 0 ? 

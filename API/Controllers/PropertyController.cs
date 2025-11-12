@@ -79,6 +79,7 @@ namespace PropertyFlipperAPI.Controllers
             var property = await _context.ChildProperties
                 .Include(p => p.Owner)
                 .Include(p => p.Auctions)
+                .Include(p => p.ParentProperty)
                 .Include(p => p.Project)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.PropertyImages)
@@ -99,16 +100,41 @@ namespace PropertyFlipperAPI.Controllers
                 property.Name,
                 property.Description,
                 property.Location,
-                Type = property.Type.ToString(),
+                Type = PropertyTypeHelper.ToDisplayName(property.Type),
                 Status = property.Status.ToString(),
                 property.Bedrooms,
                 property.Bathrooms,
                 property.SquareFeet,
                 property.YearBuilt,
-                property.Category,
                 property.ImageUrl,
+                property.HasGarden,
+                property.HasClubhouse,
+                property.HasInfrastructure,
+                property.HasUndergroundParking,
+                property.HasMedicalCenter,
+                property.HasCommercialStrip,
+                property.HasBusinessHub,
+                property.HasOutdoorPools,
+                property.HasBicycleLanes,
+                property.HasJoggingTrail,
+                ProjectName = property.Project?.Name 
+                    ?? (property.ParentProperty != null && !string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName)
+                        ? property.ParentProperty.ProjectName
+                        : "N/A"),
                 property.CreatedAt,
                 property.UpdatedAt,
+                ParentProperty = property.ParentProperty != null ? new
+                {
+                    property.ParentProperty.ParentPropertyId,
+                    ProjectName = string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName)
+                        ? "N/A"
+                        : property.ParentProperty.ProjectName,
+                    property.ParentProperty.Type,
+                    property.ParentProperty.Bedrooms,
+                    property.ParentProperty.Bathrooms,
+                    property.ParentProperty.AreaSqm,
+                    property.ParentProperty.FinishingType
+                } : null,
                 Owner = property.Owner != null ? new
                 {
                     property.Owner.AccountId,
@@ -255,53 +281,61 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Invalid user ID");
             }
 
-            // Get account to determine property type
             var account = await _context.Accounts.FindAsync(userId);
             if (account == null)
             {
                 return BadRequest("Account not found");
             }
 
-            // Determine property type based on account type and provided type
-            PropertyType propertyType;
-            if (account.Type == AccountType.Admin)
+            ParentProperty? parentTemplate = null;
+            if (propertyDto.ParentPropertyId.HasValue)
             {
-                // Admin can set any type - use provided or default to Resale
-                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
-                    ? parsedType 
-                    : PropertyType.Apartment;
+                parentTemplate = await _context.ParentProperties
+                    .Include(pp => pp.Project)
+                    .FirstOrDefaultAsync(pp => pp.ParentPropertyId == propertyDto.ParentPropertyId.Value);
             }
-            else if (account.Type == AccountType.Developer)
-            {
-                // Developer can choose between Primary and Resale
-                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
-                    ? parsedType 
-                    : PropertyType.Villa; // Default to Primary for developers
-            }
-            else
-            {
-                // Regular users always get Resale, regardless of what they send
-                propertyType = PropertyType.Apartment;
-            }
+
+            var propertyType = parentTemplate != null
+                ? PropertyTypeHelper.FromDisplayName(parentTemplate.Type)
+                : PropertyTypeHelper.FromDisplayName(propertyDto.Type);
 
             // Create Property entity from DTO
             var property = new ChildProperty
             {
                 OwnerId = userId,
-                ProjectId = propertyDto.ProjectId, // Optional for developers
+                ProjectId = propertyDto.ProjectId ?? parentTemplate?.ProjectId, // Optional for developers
+                ParentPropertyId = propertyDto.ParentPropertyId,
                 Name = propertyDto.Name,
-                Description = propertyDto.Description,
-                Location = propertyDto.Location,
+                Description = propertyDto.Description ?? string.Empty,
+                Location = propertyDto.Location ?? string.Empty,
                 Type = propertyType,
-                Bedrooms = propertyDto.Bedrooms,
-                Bathrooms = propertyDto.Bathrooms,
+                UnitNumber = propertyDto.UnitNumber,
+                DeliveryDate = propertyDto.DeliveryDate,
+                Bedrooms = parentTemplate?.Bedrooms ?? propertyDto.Bedrooms,
+                Bathrooms = parentTemplate?.Bathrooms ?? propertyDto.Bathrooms,
                 SquareFeet = propertyDto.SquareFeet,
                 YearBuilt = propertyDto.YearBuilt,
-                Category = propertyDto.Category,
+                HasGarden = propertyDto.HasGarden ?? (parentTemplate != null ? parentTemplate.HasGarden : (bool?)null),
+                HasClubhouse = propertyDto.HasClubhouse ?? (parentTemplate != null ? parentTemplate.HasClubhouse : (bool?)null),
+                HasInfrastructure = propertyDto.HasInfrastructure,
+                HasUndergroundParking = propertyDto.HasUndergroundParking,
+                HasMedicalCenter = propertyDto.HasMedicalCenter,
+                HasCommercialStrip = propertyDto.HasCommercialStrip,
+                HasBusinessHub = propertyDto.HasBusinessHub,
+                HasOutdoorPools = propertyDto.HasOutdoorPools,
+                HasBicycleLanes = propertyDto.HasBicycleLanes,
+                HasJoggingTrail = propertyDto.HasJoggingTrail,
                 ImageUrl = propertyDto.ImageUrl ?? "",
                 Status = PropertyStatus.NotApproved, // Default status
                 CreatedAt = DateTime.UtcNow
             };
+
+            if (string.IsNullOrWhiteSpace(property.Location) && parentTemplate != null)
+            {
+                property.Location = parentTemplate.Project?.Location
+                    ?? parentTemplate.ProjectName
+                    ?? property.Location;
+            }
 
             _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();
@@ -324,53 +358,61 @@ namespace PropertyFlipperAPI.Controllers
                 return BadRequest("Invalid user ID");
             }
 
-            // Get account to determine property type
             var account = await _context.Accounts.FindAsync(userId);
             if (account == null)
             {
                 return BadRequest("Account not found");
             }
 
-            // Determine property type based on account type and provided type
-            PropertyType propertyType;
-            if (account.Type == AccountType.Admin)
+            ParentProperty? parentTemplate = null;
+            if (propertyDto.ParentPropertyId.HasValue)
             {
-                // Admin can set any type - use provided or default to Resale
-                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
-                    ? parsedType 
-                    : PropertyType.Apartment;
+                parentTemplate = await _context.ParentProperties
+                    .Include(pp => pp.Project)
+                    .FirstOrDefaultAsync(pp => pp.ParentPropertyId == propertyDto.ParentPropertyId.Value);
             }
-            else if (account.Type == AccountType.Developer)
-            {
-                // Developer can choose between Primary and Resale
-                propertyType = propertyDto.Type != null && Enum.TryParse<PropertyType>(propertyDto.Type, out var parsedType) 
-                    ? parsedType 
-                    : PropertyType.Villa; // Default to Primary for developers
-            }
-            else
-            {
-                // Regular users always get Resale, regardless of what they send
-                propertyType = PropertyType.Apartment;
-            }
+
+            var propertyType = parentTemplate != null
+                ? PropertyTypeHelper.FromDisplayName(parentTemplate.Type)
+                : PropertyTypeHelper.FromDisplayName(propertyDto.Type);
 
             // Create Property entity from DTO
             var property = new ChildProperty
             {
                 OwnerId = userId,
-                ProjectId = propertyDto.ProjectId, // Optional for developers
+                ProjectId = propertyDto.ProjectId ?? parentTemplate?.ProjectId, // Optional for developers
+                ParentPropertyId = propertyDto.ParentPropertyId,
                 Name = propertyDto.Name,
-                Description = propertyDto.Description,
-                Location = propertyDto.Location,
+                Description = propertyDto.Description ?? string.Empty,
+                Location = propertyDto.Location ?? string.Empty,
                 Type = propertyType,
-                Bedrooms = propertyDto.Bedrooms,
-                Bathrooms = propertyDto.Bathrooms,
+                UnitNumber = propertyDto.UnitNumber,
+                DeliveryDate = propertyDto.DeliveryDate,
+                Bedrooms = parentTemplate?.Bedrooms ?? propertyDto.Bedrooms,
+                Bathrooms = parentTemplate?.Bathrooms ?? propertyDto.Bathrooms,
                 SquareFeet = propertyDto.SquareFeet,
                 YearBuilt = propertyDto.YearBuilt,
-                Category = propertyDto.Category,
+                HasGarden = propertyDto.HasGarden ?? (parentTemplate != null ? parentTemplate.HasGarden : (bool?)null),
+                HasClubhouse = propertyDto.HasClubhouse ?? (parentTemplate != null ? parentTemplate.HasClubhouse : (bool?)null),
+                HasInfrastructure = propertyDto.HasInfrastructure,
+                HasUndergroundParking = propertyDto.HasUndergroundParking,
+                HasMedicalCenter = propertyDto.HasMedicalCenter,
+                HasCommercialStrip = propertyDto.HasCommercialStrip,
+                HasBusinessHub = propertyDto.HasBusinessHub,
+                HasOutdoorPools = propertyDto.HasOutdoorPools,
+                HasBicycleLanes = propertyDto.HasBicycleLanes,
+                HasJoggingTrail = propertyDto.HasJoggingTrail,
                 ImageUrl = propertyDto.ImageUrl ?? "",
                 Status = PropertyStatus.NotApproved, // Default status
                 CreatedAt = DateTime.UtcNow
             };
+
+            if (string.IsNullOrWhiteSpace(property.Location) && parentTemplate != null)
+            {
+                property.Location = parentTemplate.Project?.Location
+                    ?? parentTemplate.ProjectName
+                    ?? property.Location;
+            }
 
             _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();

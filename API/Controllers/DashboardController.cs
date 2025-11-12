@@ -145,9 +145,9 @@ namespace PropertyFlipperAPI.Controllers
         {
             var analytics = new
             {
-                PropertyCategories = await _context.ChildProperties
-                    .GroupBy(p => p.Category)
-                    .Select(g => new { Category = g.Key, Count = g.Count() })
+                PropertyTypes = await _context.ChildProperties
+                    .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
+                    .Select(g => new { Type = g.Key, Count = g.Count() })
                     .ToListAsync(),
                 AuctionStatuses = await _context.Auctions
                     .GroupBy(a => a.Status)

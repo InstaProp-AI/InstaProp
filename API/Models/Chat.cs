@@ -33,6 +33,8 @@ namespace PropertyFlipperAPI.Models
 
         public bool IsActive { get; set; } = true;
 
+        public bool IsSupportChat { get; set; } = false;
+
         // 🔗 Relations
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
     }

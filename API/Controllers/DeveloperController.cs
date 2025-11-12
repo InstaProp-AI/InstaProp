@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyFlipperAPI.Data;
 using PropertyFlipperAPI.Models;
 using PropertyFlipperAPI.Services;
+using System.Linq;
 
 namespace PropertyFlipperAPI.Controllers
 {
@@ -45,14 +46,84 @@ namespace PropertyFlipperAPI.Controllers
 
             var projects = await _context.Projects
                 .Where(p => p.DeveloperId == developerId && p.IsActive)
+                .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
 
-            var totalProperties = await _context.ChildProperties
-                .Where(cp => projects.Select(p => p.ProjectId).Contains(cp.ProjectId.Value))
+            var projectIds = projects.Select(p => p.ProjectId).ToList();
+            var projectIdSet = new HashSet<long>(projectIds);
+
+            var propertyQueryable = _context.ChildProperties
+                .Where(cp =>
+                    (cp.ProjectId.HasValue && projectIdSet.Contains(cp.ProjectId.Value)) ||
+                    cp.OwnerId == developerId);
+
+            var totalProperties = await propertyQueryable
+                .Select(cp => cp.PropertyId)
+                .Distinct()
                 .CountAsync();
-            var soldProperties = await _context.ChildProperties
-                .Where(p => p.OwnerId == developerId && p.Auctions.Any(a => a.Status == "Sold"))
+
+            var soldProperties = await propertyQueryable
+                .Where(cp => cp.Auctions.Any(a => a.Status == "Sold"))
+                .Select(cp => cp.PropertyId)
+                .Distinct()
                 .CountAsync();
+
+            var latestPropertiesRaw = await propertyQueryable
+                .OrderByDescending(cp => cp.CreatedAt)
+                .Select(cp => new PropertySummaryDto
+                {
+                    PropertyId = cp.PropertyId,
+                    ProjectId = cp.ProjectId,
+                    Name = cp.Name,
+                    Location = cp.Location,
+                    ImageUrl = cp.ImageUrl ?? string.Empty,
+                    Status = cp.Status.ToString(),
+                    Type = cp.Type.ToDisplayName(),
+                    Bedrooms = cp.Bedrooms,
+                    Bathrooms = cp.Bathrooms,
+                    SquareFeet = cp.SquareFeet
+                })
+                .Take(100)
+                .ToListAsync();
+
+            var propertySummaries = latestPropertiesRaw
+                .DistinctBy(p => p.PropertyId)
+                .Take(20)
+                .ToList();
+
+            var projectPropertyCounts = await _context.ChildProperties
+                .Where(cp => cp.ProjectId.HasValue && projectIdSet.Contains(cp.ProjectId.Value))
+                .GroupBy(cp => cp.ProjectId!.Value)
+                .Select(g => new { ProjectId = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var projectCoverImages = await _context.ChildProperties
+                .Where(cp => cp.ProjectId.HasValue && projectIdSet.Contains(cp.ProjectId.Value) && !string.IsNullOrEmpty(cp.ImageUrl))
+                .GroupBy(cp => cp.ProjectId!.Value)
+                .Select(g => new
+                {
+                    ProjectId = g.Key,
+                    ImageUrl = g
+                        .OrderByDescending(cp => cp.CreatedAt)
+                        .Select(cp => cp.ImageUrl)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            var propertyCountLookup = projectPropertyCounts.ToDictionary(x => x.ProjectId, x => x.Count);
+            var projectCoverLookup = projectCoverImages
+                .Where(x => !string.IsNullOrEmpty(x.ImageUrl))
+                .ToDictionary(x => x.ProjectId, x => x.ImageUrl!);
+
+            var projectSummaries = projects.Select(p => new ProjectSummaryDto
+            {
+                ProjectId = p.ProjectId,
+                Name = p.Name,
+                Location = p.Location,
+                PropertiesCount = propertyCountLookup.TryGetValue(p.ProjectId, out var count) ? count : 0,
+                CoverImageUrl = projectCoverLookup.TryGetValue(p.ProjectId, out var cover) ? cover : null,
+                CreatedAt = p.CreatedAt
+            }).ToList();
 
             var ratings = await _context.DeveloperRatings
                 .Where(r => r.DeveloperId == developerId)
@@ -73,9 +144,11 @@ namespace PropertyFlipperAPI.Controllers
                 Rating = profile?.Rating ?? 0,
                 TotalRatings = profile?.TotalRatings ?? 0,
                 PortfolioDescription = profile?.PortfolioDescription,
-                ActiveProjectsCount = projects.Count(),
+                ActiveProjectsCount = projectSummaries.Count,
                 TotalPropertiesCount = totalProperties,
                 SoldPropertiesCount = soldProperties,
+                Projects = projectSummaries,
+                Properties = propertySummaries,
                 Ratings = ratings.Select(r => new DeveloperRatingDto
                 {
                     RatingId = r.RatingId,
@@ -218,11 +291,12 @@ namespace PropertyFlipperAPI.Controllers
                 var properties = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).Select(prop => new PropertySummaryDto
                 {
                     PropertyId = prop.PropertyId,
+                    ProjectId = prop.ProjectId,
                     Name = prop.Name,
                     Location = prop.Location,
-                    ImageUrl = prop.ImageUrl,
+                    ImageUrl = prop.ImageUrl ?? string.Empty,
                     Status = prop.Status.ToString(),
-                    Type = prop.Type.ToString(),
+                    Type = prop.Type.ToDisplayName(),
                     Bedrooms = prop.Bedrooms,
                     Bathrooms = prop.Bathrooms,
                     SquareFeet = prop.SquareFeet
@@ -265,11 +339,12 @@ namespace PropertyFlipperAPI.Controllers
             var result = properties.Select(prop => new PropertySummaryDto
             {
                 PropertyId = prop.PropertyId,
+                ProjectId = prop.ProjectId,
                 Name = prop.Name,
                 Location = prop.Location,
-                ImageUrl = prop.ImageUrl,
+                ImageUrl = prop.ImageUrl ?? string.Empty,
                 Status = prop.Status.ToString(),
-                Type = prop.Type.ToString(),
+                Type = prop.Type.ToDisplayName(),
                 Bedrooms = prop.Bedrooms,
                 Bathrooms = prop.Bathrooms,
                 SquareFeet = prop.SquareFeet
@@ -410,6 +485,8 @@ namespace PropertyFlipperAPI.Controllers
         public int ActiveProjectsCount { get; set; }
         public int TotalPropertiesCount { get; set; }
         public int SoldPropertiesCount { get; set; }
+        public List<ProjectSummaryDto> Projects { get; set; } = new();
+        public List<PropertySummaryDto> Properties { get; set; } = new();
         public List<DeveloperRatingDto> Ratings { get; set; } = new();
     }
 
@@ -472,6 +549,7 @@ namespace PropertyFlipperAPI.Controllers
     public class PropertySummaryDto
     {
         public long PropertyId { get; set; }
+        public long? ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Location { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
@@ -501,6 +579,16 @@ namespace PropertyFlipperAPI.Controllers
         public int TotalRatings { get; set; }
         public string? Bio { get; set; }
         public int ActiveProjectsCount { get; set; }
+    }
+
+    public class ProjectSummaryDto
+    {
+        public long ProjectId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Location { get; set; }
+        public int PropertiesCount { get; set; }
+        public string? CoverImageUrl { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }
 

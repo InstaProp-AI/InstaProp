@@ -304,7 +304,7 @@ namespace PropertyFlipperAPI.Controllers
                     Bedrooms = p.Bedrooms,
                     Bathrooms = p.Bathrooms,
                     SquareFeet = p.SquareFeet,
-                    Category = p.Category,
+                    Type = PropertyTypeHelper.ToDisplayName(p.Type),
                     ImageUrl = p.ImageUrl,
                     Images = new List<string>(), // TODO: Get images from ChildProperty
                     HasActiveAuction = p.Auctions.Any(a => a.Status == "Active"),
@@ -414,7 +414,7 @@ namespace PropertyFlipperAPI.Controllers
         public int Bedrooms { get; set; }
         public int Bathrooms { get; set; }
         public int SquareFeet { get; set; }
-        public string? Category { get; set; }
+        public string? Type { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
         public List<string> Images { get; set; } = new();
         public bool HasActiveAuction { get; set; }

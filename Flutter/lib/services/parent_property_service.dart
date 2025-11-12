@@ -1,10 +1,11 @@
 import '../models/parent_property.dart';
+import '../models/property_type.dart';
 import 'api_client.dart';
 
 class ParentPropertyService {
   /// Get parent properties with filters
   static Future<ParentPropertyListResponse> getParentProperties({
-    String? propertyType,
+    PropertyType? type,
     int? bedrooms,
     int? bathrooms,
     double? minArea,
@@ -22,7 +23,7 @@ class ParentPropertyService {
   }) async {
     final queryParams = <String, dynamic>{'page': page, 'pageSize': pageSize};
 
-    if (propertyType != null) queryParams['propertyType'] = propertyType;
+    if (type != null) queryParams['type'] = type.displayName;
     if (bedrooms != null) queryParams['bedrooms'] = bedrooms;
     if (bathrooms != null) queryParams['bathrooms'] = bathrooms;
     if (minArea != null) queryParams['minArea'] = minArea;
@@ -128,8 +129,8 @@ class ParentPropertyListResponse {
 }
 
 class FindOrCreateRequest {
-  final String projectName;
-  final String propertyType;
+  final String? projectName;
+  final PropertyType type;
   final int bedrooms;
   final int bathrooms;
   final double areaSqm;
@@ -143,8 +144,8 @@ class FindOrCreateRequest {
   final bool hasClubhouse;
 
   FindOrCreateRequest({
-    required this.projectName,
-    required this.propertyType,
+    this.projectName,
+    required this.type,
     required this.bedrooms,
     required this.bathrooms,
     required this.areaSqm,
@@ -161,7 +162,7 @@ class FindOrCreateRequest {
   Map<String, dynamic> toJson() {
     return {
       'projectName': projectName,
-      'propertyType': propertyType,
+      'type': type.displayName,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'areaSqm': areaSqm,

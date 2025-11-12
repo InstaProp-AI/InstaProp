@@ -13,6 +13,8 @@ class DeveloperProfile {
   final int activeProjectsCount;
   final int totalPropertiesCount;
   final int soldPropertiesCount;
+  final List<DeveloperProjectSummary> projects;
+  final List<DeveloperPropertySummary> properties;
   final List<DeveloperRatingModel> ratings;
 
   DeveloperProfile({
@@ -30,6 +32,8 @@ class DeveloperProfile {
     required this.activeProjectsCount,
     required this.totalPropertiesCount,
     required this.soldPropertiesCount,
+    this.projects = const [],
+    this.properties = const [],
     required this.ratings,
   });
 
@@ -51,11 +55,91 @@ class DeveloperProfile {
       activeProjectsCount: json['activeProjectsCount'] ?? 0,
       totalPropertiesCount: json['totalPropertiesCount'] ?? 0,
       soldPropertiesCount: json['soldPropertiesCount'] ?? 0,
+      projects: (json['projects'] as List<dynamic>?)
+              ?.map((p) => DeveloperProjectSummary.fromJson(p))
+              .toList() ??
+          [],
+      properties: (json['properties'] as List<dynamic>?)
+              ?.map((p) => DeveloperPropertySummary.fromJson(p))
+              .toList() ??
+          [],
       ratings:
           (json['ratings'] as List<dynamic>?)
               ?.map((r) => DeveloperRatingModel.fromJson(r))
               .toList() ??
           [],
+    );
+  }
+}
+
+class DeveloperProjectSummary {
+  final int projectId;
+  final String name;
+  final String? location;
+  final int propertiesCount;
+  final String? coverImageUrl;
+  final DateTime createdAt;
+
+  DeveloperProjectSummary({
+    required this.projectId,
+    required this.name,
+    this.location,
+    required this.propertiesCount,
+    this.coverImageUrl,
+    required this.createdAt,
+  });
+
+  factory DeveloperProjectSummary.fromJson(Map<String, dynamic> json) {
+    return DeveloperProjectSummary(
+      projectId: json['projectId'] ?? 0,
+      name: json['name'] ?? '',
+      location: json['location'],
+      propertiesCount: json['propertiesCount'] ?? 0,
+      coverImageUrl: json['coverImageUrl'],
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+    );
+  }
+}
+
+class DeveloperPropertySummary {
+  final int propertyId;
+  final int? projectId;
+  final String name;
+  final String? location;
+  final String imageUrl;
+  final String status;
+  final String type;
+  final int bedrooms;
+  final int bathrooms;
+  final int squareFeet;
+
+  DeveloperPropertySummary({
+    required this.propertyId,
+    this.projectId,
+    required this.name,
+    this.location,
+    required this.imageUrl,
+    required this.status,
+    required this.type,
+    required this.bedrooms,
+    required this.bathrooms,
+    required this.squareFeet,
+  });
+
+  factory DeveloperPropertySummary.fromJson(Map<String, dynamic> json) {
+    return DeveloperPropertySummary(
+      propertyId: json['propertyId'] ?? 0,
+      projectId: json['projectId'],
+      name: json['name'] ?? '',
+      location: json['location'],
+      imageUrl: json['imageUrl'] ?? '',
+      status: json['status'] ?? '',
+      type: json['type'] ?? '',
+      bedrooms: json['bedrooms'] ?? 0,
+      bathrooms: json['bathrooms'] ?? 0,
+      squareFeet: json['squareFeet'] ?? 0,
     );
   }
 }

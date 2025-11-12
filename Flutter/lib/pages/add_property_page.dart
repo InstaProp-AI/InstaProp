@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/app_state.dart';
 import '../services/property_service.dart';
+import '../services/api_client.dart';
+import '../models/project_model.dart';
+import '../models/property_type.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import 'property_docs_upload_page.dart';
@@ -20,40 +23,96 @@ class AddPropertyPage extends StatefulWidget {
 class _AddPropertyPageState extends State<AddPropertyPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _unitNumberController = TextEditingController();
   final _locationController = TextEditingController();
-  final _bedroomsController = TextEditingController();
-  final _bathroomsController = TextEditingController();
-  final _squareFeetController = TextEditingController();
-  final _yearBuiltController = TextEditingController();
+  final _areaController = TextEditingController();
 
-  String _selectedCategory = 'Single Family';
+  PropertyType _selectedType = PropertyType.apartment;
+  int _selectedBedrooms = 1;
+  int _selectedBathrooms = 1;
+  bool _isBuilt = true;
+  String? _selectedBuiltYear;
+  String? _selectedDeliveryYear;
+  int? _selectedProjectId;
+  String? _selectedProjectName;
+
+  bool _hasGarden = false;
+  bool _hasClubhouse = false;
+  bool _hasInfrastructure = false;
+  bool _hasUndergroundParking = false;
+  bool _hasMedicalCenter = false;
+  bool _hasCommercialStrip = false;
+  bool _hasBusinessHub = false;
+  bool _hasOutdoorPools = false;
+  bool _hasBicycleLanes = false;
+  bool _hasJoggingTrail = false;
+
   bool _isLoading = false;
+  bool _loadingProjects = false;
+  String? _projectsError;
   String? _errorMessage;
   String? _successMessage;
 
-  // Image picker
   final List<PlatformFile> _selectedImages = [];
+  List<ProjectModel> _projects = [];
 
-  final List<String> _categories = [
-    'Single Family',
-    'Condo',
-    'Townhouse',
-    'Commercial',
-    'Multi-Family',
-    'Land',
-    'Other',
-  ];
+  final List<int> _bedroomOptions =
+      List<int>.generate(11, (index) => index); // 0-10
+  final List<int> _bathroomOptions =
+      List<int>.generate(11, (index) => index); // 0-10
+
+  List<String> get _builtYearOptions =>
+      List<String>.generate(2025 - 1980 + 1, (index) => (2025 - index).toString());
+
+  List<String> get _deliveryYearOptions =>
+      List<String>.generate(2040 - 2025 + 1, (index) => (2025 + index).toString());
+
+  @override
+  void initState() {
+    super.initState();
+    final builtYears = _builtYearOptions;
+    if (builtYears.isNotEmpty) {
+      _selectedBuiltYear = builtYears.first;
+    }
+    final deliveryYears = _deliveryYearOptions;
+    if (deliveryYears.isNotEmpty) {
+      _selectedDeliveryYear = deliveryYears.first;
+    }
+    _loadProjects();
+  }
+
+  Future<void> _loadProjects() async {
+    setState(() {
+      _loadingProjects = true;
+      _projectsError = null;
+    });
+
+    final response = await ApiClient.getList<ProjectModel>(
+      '/api/project/public',
+      ProjectModel.fromJson,
+    );
+
+    if (!mounted) return;
+
+    if (response.success) {
+      setState(() {
+        _projects = response.data ?? [];
+        _loadingProjects = false;
+      });
+    } else {
+      setState(() {
+        _projectsError = response.error ?? 'Failed to load projects';
+        _loadingProjects = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
+    _unitNumberController.dispose();
     _locationController.dispose();
-    _bedroomsController.dispose();
-    _bathroomsController.dispose();
-    _squareFeetController.dispose();
-    _yearBuiltController.dispose();
+    _areaController.dispose();
     super.dispose();
   }
 
@@ -101,7 +160,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
   Future<void> _submitProperty() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validate that at least one image is selected
     if (_selectedImages.isEmpty) {
       setState(() {
         _errorMessage = 'Please select at least one property image';
@@ -116,30 +174,73 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     });
 
     try {
-      // First create the property (imageUrl will be set after uploading images)
+      final normalizedArea =
+          _areaController.text.trim().replaceAll(',', '');
+      final areaValue = double.tryParse(normalizedArea);
+
+      if (areaValue == null || areaValue <= 0) {
+        setState(() {
+          _errorMessage = 'Enter a valid area in square meters';
+        });
+        return;
+      }
+
+      final int areaSqm = areaValue.round();
+
+      final int year = int.parse(
+        _isBuilt ? _selectedBuiltYear! : _selectedDeliveryYear!,
+      );
+
+      final DateTime? deliveryDate =
+          _isBuilt ? null : DateTime(year, 1, 1);
+
+      ProjectModel? selectedProject;
+      if (_selectedProjectId != null) {
+        try {
+          selectedProject = _projects.firstWhere(
+            (project) => project.projectId == _selectedProjectId,
+          );
+        } catch (_) {
+          selectedProject = null;
+        }
+      }
+
       final response = await PropertyService.createProperty(
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
+        description: '',
         location: _locationController.text.trim(),
-        bedrooms: int.parse(_bedroomsController.text),
-        bathrooms: int.parse(_bathroomsController.text),
-        squareFeet: int.parse(_squareFeetController.text),
-        yearBuilt: int.parse(_yearBuiltController.text),
-        category: _selectedCategory,
+        bedrooms: _selectedBedrooms,
+        bathrooms: _selectedBathrooms,
+        squareFeet: areaSqm,
+        yearBuilt: year,
+        type: _selectedType,
+        projectId: selectedProject?.projectId,
+        projectName: selectedProject?.name ?? _selectedProjectName,
+        unitNumber: _unitNumberController.text.trim(),
+        hasGardenUnit: _hasGarden,
+        hasClubhouseUnit: _hasClubhouse,
+        hasInfrastructure: _hasInfrastructure,
+        hasUndergroundParking: _hasUndergroundParking,
+        hasMedicalCenter: _hasMedicalCenter,
+        hasCommercialStrip: _hasCommercialStrip,
+        hasBusinessHub: _hasBusinessHub,
+        hasOutdoorPools: _hasOutdoorPools,
+        hasBicycleLanes: _hasBicycleLanes,
+        hasJoggingTrail: _hasJoggingTrail,
+        deliveryDate: deliveryDate,
       );
 
       if (response.success && response.data != null) {
         final propertyId = response.data!.propertyId;
         final propertyName = _nameController.text.trim();
 
-        // Upload images directly (works on both web and mobile)
         if (_selectedImages.isNotEmpty) {
           final uploadResponse =
               await PropertyService.uploadPropertyImagesPlatform(
-                propertyId,
-                _selectedImages,
-                imageType: 'Gallery',
-              );
+            propertyId,
+            _selectedImages,
+            imageType: 'Gallery',
+          );
 
           if (!uploadResponse.success) {
             setState(() {
@@ -154,7 +255,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           _successMessage = 'Property added successfully!';
         });
 
-        // Show reward popup
         final appState = context.read<AppState>();
         await appState.refreshUserProfile();
         if (mounted && appState.user?.totalEarnedPoints != null) {
@@ -168,23 +268,37 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           );
         }
 
-        // Clear form
         _nameController.clear();
-        _descriptionController.clear();
+        _unitNumberController.clear();
         _locationController.clear();
-        _bedroomsController.clear();
-        _bathroomsController.clear();
-        _squareFeetController.clear();
-        _yearBuiltController.clear();
+        _areaController.clear();
         _selectedImages.clear();
         setState(() {
-          _selectedCategory = 'Single Family';
+          _selectedType = PropertyType.apartment;
+          _selectedBedrooms = 1;
+          _selectedBathrooms = 1;
+          _isBuilt = true;
+          _selectedBuiltYear =
+              _builtYearOptions.isNotEmpty ? _builtYearOptions.first : null;
+          _selectedDeliveryYear = _deliveryYearOptions.isNotEmpty
+              ? _deliveryYearOptions.first
+              : null;
+          _selectedProjectId = null;
+          _selectedProjectName = null;
+          _hasGarden = false;
+          _hasClubhouse = false;
+          _hasInfrastructure = false;
+          _hasUndergroundParking = false;
+          _hasMedicalCenter = false;
+          _hasCommercialStrip = false;
+          _hasBusinessHub = false;
+          _hasOutdoorPools = false;
+          _hasBicycleLanes = false;
+          _hasJoggingTrail = false;
         });
 
-        // Refresh properties in app state
         context.read<AppState>().loadProperties();
 
-        // Navigate to document upload page
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -195,7 +309,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
               ),
             ),
           ).then((_) {
-            // After documents are uploaded or skipped, show success and go to properties page
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -304,22 +417,21 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           CustomTextField(
                             controller: _nameController,
                             labelText: 'Property Name',
-                            hintText: 'e.g., Beautiful 3-bedroom house',
-                            validator: (value) => value?.isEmpty == true
+                            hintText: 'e.g., Beautiful 3-bedroom home',
+                            validator: (value) => value?.trim().isEmpty == true
                                 ? 'Property name is required'
                                 : null,
                           ),
 
                           const SizedBox(height: 16),
 
-                          // Description
+                          // Unit number
                           CustomTextField(
-                            controller: _descriptionController,
-                            labelText: 'Description',
-                            hintText: 'Describe your property...',
-                            maxLines: 4,
-                            validator: (value) => value?.isEmpty == true
-                                ? 'Description is required'
+                            controller: _unitNumberController,
+                            labelText: 'Unit Number',
+                            hintText: 'e.g., Unit 5B',
+                            validator: (value) => value?.trim().isEmpty == true
+                                ? 'Unit number is required'
                                 : null,
                           ),
 
@@ -330,12 +442,16 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                             controller: _locationController,
                             labelText: 'Location',
                             hintText: 'e.g., 123 Main St, City, State',
-                            validator: (value) => value?.isEmpty == true
+                            validator: (value) => value?.trim().isEmpty == true
                                 ? 'Location is required'
                                 : null,
                           ),
 
                           const SizedBox(height: 16),
+
+                          _buildProjectDropdown(context),
+
+                          const SizedBox(height: 24),
 
                           // Property Details Section
                           Text(
@@ -346,124 +462,41 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
                           const SizedBox(height: 16),
 
-                          // Bedrooms and Bathrooms Row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: CustomTextField(
-                                  controller: _bedroomsController,
-                                  labelText: 'Bedrooms',
-                                  hintText: 'e.g., 3',
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) {
-                                    if (value?.isEmpty == true)
-                                      return 'Bedrooms required';
-                                    if (int.tryParse(value!) == null)
-                                      return 'Enter valid number';
-                                    if (int.parse(value) < 0)
-                                      return 'Must be 0 or more';
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: CustomTextField(
-                                  controller: _bathroomsController,
-                                  labelText: 'Bathrooms',
-                                  hintText: 'e.g., 2',
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) {
-                                    if (value?.isEmpty == true)
-                                      return 'Bathrooms required';
-                                    if (int.tryParse(value!) == null)
-                                      return 'Enter valid number';
-                                    if (int.parse(value) < 0)
-                                      return 'Must be 0 or more';
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
+                          _buildCategoryDropdown(context),
 
                           const SizedBox(height: 16),
 
-                          // Square Feet and Year Built Row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: CustomTextField(
-                                  controller: _squareFeetController,
-                                  labelText: 'Square Feet',
-                                  hintText: 'e.g., 2000',
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) {
-                                    if (value?.isEmpty == true)
-                                      return 'Square feet required';
-                                    if (int.tryParse(value!) == null)
-                                      return 'Enter valid number';
-                                    if (int.parse(value) <= 0)
-                                      return 'Must be greater than 0';
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: CustomTextField(
-                                  controller: _yearBuiltController,
-                                  labelText: 'Year Built',
-                                  hintText: 'e.g., 2020',
-                                  keyboardType: TextInputType.number,
-                                  validator: (value) {
-                                    if (value?.isEmpty == true)
-                                      return 'Year built required';
-                                    if (int.tryParse(value!) == null)
-                                      return 'Enter valid number';
-                                    final year = int.parse(value);
-                                    final currentYear = DateTime.now().year;
-                                    if (year < 1800 || year > currentYear + 1)
-                                      return 'Enter valid year';
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
+                          _buildBedroomsBathroomsRow(),
 
                           const SizedBox(height: 16),
 
-                          // Property Category
-                          DropdownButtonFormField<String>(
-                            value: _selectedCategory,
-                            decoration: InputDecoration(
-                              labelText: 'Property Category',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            items: _categories.map((category) {
-                              return DropdownMenuItem<String>(
-                                value: category,
-                                child: Text(category),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedCategory = value!;
-                              });
+                          CustomTextField(
+                            controller: _areaController,
+                            labelText: 'Area (sqm)',
+                            hintText: 'e.g., 185',
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Area is required';
+                              }
+                              final normalized = value.replaceAll(',', '');
+                              final number = double.tryParse(normalized);
+                              if (number == null || number <= 0) {
+                                return 'Enter a valid area';
+                              }
+                              return null;
                             },
-                            validator: (value) => value == null
-                                ? 'Please select a category'
-                                : null,
                           ),
 
                           const SizedBox(height: 16),
+
+                          _buildConstructionStatusSection(context),
+
+                          const SizedBox(height: 24),
+
+                          _buildAmenitiesSection(context),
+
+                          const SizedBox(height: 24),
 
                           // Property Images Section
                           Text(
@@ -792,6 +825,321 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
         ),
       ],
+    );
+  }
+
+  Widget _buildProjectDropdown(BuildContext context) {
+    final labelStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        );
+
+    Widget content;
+    if (_loadingProjects) {
+      content = const Center(child: CircularProgressIndicator());
+    } else if (_projectsError != null) {
+      content = Row(
+        children: [
+          Expanded(
+            child: Text(
+              _projectsError!,
+              style: TextStyle(color: Colors.red[600]),
+            ),
+          ),
+          IconButton(
+            onPressed: _loadProjects,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Retry',
+          ),
+        ],
+      );
+    } else {
+      final items = <DropdownMenuItem<int?>>[
+        ..._projects.map(
+          (project) => DropdownMenuItem<int?>(
+            value: project.projectId,
+            child: Text(project.name),
+          ),
+        ),
+        const DropdownMenuItem<int?>(
+          value: null,
+          child: Text('Other / Not Listed'),
+        ),
+      ];
+
+      content = DropdownButtonFormField<int?>(
+        value: _selectedProjectId,
+        decoration: InputDecoration(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          hintText: 'Select a project',
+        ),
+        items: items,
+        onChanged: (value) {
+          setState(() {
+            _selectedProjectId = value;
+            if (value != null) {
+              try {
+                final project = _projects.firstWhere(
+                  (p) => p.projectId == value,
+                );
+                _selectedProjectName = project.name;
+              } catch (_) {
+                _selectedProjectName = null;
+              }
+            } else {
+              _selectedProjectName = null;
+            }
+          });
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Project', style: labelStyle),
+        const SizedBox(height: 8),
+        content,
+      ],
+    );
+  }
+
+  Widget _buildCategoryDropdown(BuildContext context) {
+    return DropdownButtonFormField<PropertyType>(
+      value: _selectedType,
+      decoration: InputDecoration(
+        labelText: 'Property Type',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+      ),
+      items: PropertyTypeX.orderedValues.map((propertyType) {
+        return DropdownMenuItem<PropertyType>(
+          value: propertyType,
+          child: Text(propertyType.displayName),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _selectedType = value;
+        });
+      },
+    );
+  }
+
+  Widget _buildBedroomsBathroomsRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<int>(
+            value: _selectedBedrooms,
+            decoration: InputDecoration(
+              labelText: 'Bedrooms',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+            items: _bedroomOptions.map((value) {
+              final label = value >= 10 ? '10+' : value.toString();
+              return DropdownMenuItem<int>(
+                value: value,
+                child: Text(label),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _selectedBedrooms = value;
+              });
+            },
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: DropdownButtonFormField<int>(
+            value: _selectedBathrooms,
+            decoration: InputDecoration(
+              labelText: 'Bathrooms',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+            items: _bathroomOptions.map((value) {
+              final label = value >= 10 ? '10+' : value.toString();
+              return DropdownMenuItem<int>(
+                value: value,
+                child: Text(label),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _selectedBathrooms = value;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConstructionStatusSection(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        );
+
+    final yearItems = (_isBuilt ? _builtYearOptions : _deliveryYearOptions)
+        .map(
+          (year) => DropdownMenuItem<String>(
+            value: year,
+            child: Text(year),
+          ),
+        )
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Construction Status', style: textStyle),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ChoiceChip(
+                label: const Text('Built'),
+                selected: _isBuilt,
+                onSelected: (selected) {
+                  if (!selected) return;
+                  setState(() {
+                    _isBuilt = true;
+                    _selectedBuiltYear ??=
+                        _builtYearOptions.isNotEmpty ? _builtYearOptions.first : null;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ChoiceChip(
+                label: const Text('Delivering Soon'),
+                selected: !_isBuilt,
+                onSelected: (selected) {
+                  if (!selected) return;
+                  setState(() {
+                    _isBuilt = false;
+                    _selectedDeliveryYear ??= _deliveryYearOptions.isNotEmpty
+                        ? _deliveryYearOptions.first
+                        : null;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _isBuilt ? _selectedBuiltYear : _selectedDeliveryYear,
+          decoration: InputDecoration(
+            labelText: _isBuilt ? 'Year Built' : 'Delivery Year',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+          items: yearItems,
+          onChanged: (value) {
+            setState(() {
+              if (_isBuilt) {
+                _selectedBuiltYear = value;
+              } else {
+                _selectedDeliveryYear = value;
+              }
+            });
+          },
+          validator: (value) =>
+              value == null ? 'Please select a year' : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAmenitiesSection(BuildContext context) {
+    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Key Amenities', style: titleStyle),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildAmenityChip('Garden', _hasGarden,
+                (value) => _hasGarden = value),
+            _buildAmenityChip('Clubhouse', _hasClubhouse,
+                (value) => _hasClubhouse = value),
+            _buildAmenityChip('Infrastructure', _hasInfrastructure,
+                (value) => _hasInfrastructure = value),
+            _buildAmenityChip('Underground parking', _hasUndergroundParking,
+                (value) => _hasUndergroundParking = value),
+            _buildAmenityChip('Medical center', _hasMedicalCenter,
+                (value) => _hasMedicalCenter = value),
+            _buildAmenityChip('Commercial strip', _hasCommercialStrip,
+                (value) => _hasCommercialStrip = value),
+            _buildAmenityChip('Business hub', _hasBusinessHub,
+                (value) => _hasBusinessHub = value),
+            _buildAmenityChip('Outdoor pools', _hasOutdoorPools,
+                (value) => _hasOutdoorPools = value),
+            _buildAmenityChip('Bicycles lanes', _hasBicycleLanes,
+                (value) => _hasBicycleLanes = value),
+            _buildAmenityChip('Jogging trail', _hasJoggingTrail,
+                (value) => _hasJoggingTrail = value),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAmenityChip(
+    String label,
+    bool value,
+    ValueChanged<bool> update,
+  ) {
+    return FilterChip(
+      label: Text(label),
+      selected: value,
+      onSelected: (selected) {
+        setState(() {
+          update(selected);
+        });
+      },
     );
   }
 }

@@ -51,23 +51,25 @@ namespace PropertyFlipperAPI.Controllers
                 .Include(c => c.Developer)
                 .Include(c => c.Project)
                 .Include(c => c.Messages.OrderByDescending(m => m.CreatedAt).Take(1))
-                .OrderByDescending(c => c.LastMessageAt)
+                .OrderByDescending(c => c.IsSupportChat)
+                .ThenByDescending(c => c.LastMessageAt)
                 .ToListAsync();
 
             var chatDtos = chats.Select(c => new ChatDto
             {
                 ChatId = c.ChatId,
                 UserId = c.UserId,
-                UserName = $"{c.User.FirstName} {c.User.LastName}",
+                UserName = FormatAccountName(c.User),
                 DeveloperId = c.DeveloperId,
-                DeveloperName = "Unknown Developer", // Will be updated to use company name
+                DeveloperName = FormatAccountName(c.Developer),
                 ProjectId = c.ProjectId,
                 ProjectName = c.Project?.Name,
                 CreatedAt = c.CreatedAt,
                 LastMessageAt = c.LastMessageAt,
                 IsActive = c.IsActive,
                 LastMessage = c.Messages.FirstOrDefault()?.Content,
-                UnreadCount = c.Messages.Count(m => !m.IsRead && m.SenderId != accountId)
+                UnreadCount = c.Messages.Count(m => !m.IsRead && m.SenderId != accountId),
+                IsSupportChat = c.IsSupportChat
             }).ToList();
 
             return Ok(chatDtos);
@@ -102,14 +104,15 @@ namespace PropertyFlipperAPI.Controllers
             {
                 ChatId = chat.ChatId,
                 UserId = chat.UserId,
-                UserName = $"{chat.User.FirstName} {chat.User.LastName}",
+                UserName = FormatAccountName(chat.User),
                 DeveloperId = chat.DeveloperId,
-                DeveloperName = "Unknown Developer", // Will be updated to use company name
+                DeveloperName = FormatAccountName(chat.Developer),
                 ProjectId = chat.ProjectId,
                 ProjectName = chat.Project?.Name,
                 CreatedAt = chat.CreatedAt,
                 LastMessageAt = chat.LastMessageAt,
                 IsActive = chat.IsActive,
+                IsSupportChat = chat.IsSupportChat,
                 Messages = chat.Messages.Select(m => new MessageDto
                 {
                     MessageId = m.MessageId,
@@ -146,6 +149,8 @@ namespace PropertyFlipperAPI.Controllers
 
             // Check if chat already exists
             var existingChat = await _context.Chats
+                .Include(c => c.Developer)
+                .Include(c => c.Project)
                 .FirstOrDefaultAsync(c => 
                     c.UserId == accountId && 
                     c.DeveloperId == dto.DeveloperId && 
@@ -158,10 +163,13 @@ namespace PropertyFlipperAPI.Controllers
                     ChatId = existingChat.ChatId,
                     UserId = existingChat.UserId,
                     DeveloperId = existingChat.DeveloperId,
+                    DeveloperName = FormatAccountName(existingChat.Developer),
                     ProjectId = existingChat.ProjectId,
+                    ProjectName = existingChat.Project?.Name,
                     CreatedAt = existingChat.CreatedAt,
                     LastMessageAt = existingChat.LastMessageAt,
-                    IsActive = existingChat.IsActive
+                    IsActive = existingChat.IsActive,
+                    IsSupportChat = existingChat.IsSupportChat
                 });
             }
 
@@ -187,10 +195,13 @@ namespace PropertyFlipperAPI.Controllers
                 ChatId = chat.ChatId,
                 UserId = chat.UserId,
                 DeveloperId = chat.DeveloperId,
+                DeveloperName = FormatAccountName(developer),
                 ProjectId = chat.ProjectId,
+                ProjectName = chat.Project?.Name,
                 CreatedAt = chat.CreatedAt,
                 LastMessageAt = chat.LastMessageAt,
-                IsActive = chat.IsActive
+                IsActive = chat.IsActive,
+                IsSupportChat = chat.IsSupportChat
             });
         }
 
@@ -335,6 +346,29 @@ namespace PropertyFlipperAPI.Controllers
 
             return Ok(new { DeletedCount = expiredMessages.Count });
         }
+
+        private string FormatAccountName(Account account)
+        {
+            var first = account.FirstName?.Trim();
+            var last = account.LastName?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(first) && !string.IsNullOrWhiteSpace(last))
+            {
+                return $"{first} {last}".Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(first))
+            {
+                return first;
+            }
+
+            if (!string.IsNullOrWhiteSpace(last))
+            {
+                return last;
+            }
+
+            return account.Email;
+        }
     }
 
     // DTOs
@@ -352,6 +386,7 @@ namespace PropertyFlipperAPI.Controllers
         public bool IsActive { get; set; }
         public string? LastMessage { get; set; }
         public int UnreadCount { get; set; }
+        public bool IsSupportChat { get; set; }
     }
 
     public class ChatDetailsDto
@@ -366,6 +401,7 @@ namespace PropertyFlipperAPI.Controllers
         public DateTime CreatedAt { get; set; }
         public DateTime LastMessageAt { get; set; }
         public bool IsActive { get; set; }
+        public bool IsSupportChat { get; set; }
         public List<MessageDto> Messages { get; set; } = new();
     }
 

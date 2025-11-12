@@ -86,13 +86,13 @@ namespace PropertyFlipperAPI.Services
                         ["description"] = auction.Property.Description ?? "",
                         ["location"] = auction.Property.Location ?? "",
                         ["imageUrl"] = auction.Property.ImageUrl ?? "",
-                        ["type"] = auction.Property.Type.ToString(),
+                        ["type"] = auction.Property.Type.ToDisplayName(),
                         ["status"] = auction.Property.Status.ToString(),
                         ["bedrooms"] = auction.Property.Bedrooms,
                         ["bathrooms"] = auction.Property.Bathrooms,
                         ["squareFeet"] = auction.Property.SquareFeet,
                         ["yearBuilt"] = auction.Property.YearBuilt,
-                        ["category"] = auction.Property.Category ?? "",
+                        ["type"] = PropertyTypeHelper.ToDisplayName(auction.Property.Type),
                         ["project"] = auction.Property.Project?.Name ?? "",
                         ["propertyImages"] = auction.Property.PropertyImages?.Select(img => new Dictionary<string, object>
                         {
@@ -389,7 +389,7 @@ namespace PropertyFlipperAPI.Services
                     ["bathrooms"] = property.Bathrooms,
                     ["squareFeet"] = property.SquareFeet,
                     ["yearBuilt"] = property.YearBuilt,
-                    ["category"] = property.Category ?? "",
+                    ["type"] = PropertyTypeHelper.ToDisplayName(property.Type),
                     ["project"] = property.Project?.Name ?? "",
                     ["imageUrl"] = property.ImageUrl ?? "",
                     ["createdAt"] = property.CreatedAt.ToString("o"), // ISO 8601 format
