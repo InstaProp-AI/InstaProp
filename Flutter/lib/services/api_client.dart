@@ -42,7 +42,7 @@ class ApiClient {
   // ⚙️ CONFIGURATION - Production vs Development
   // Set this to your Railway deployment URL after deploying backend
   // Example: 'https://your-app-name.railway.app'
-  static const String productionBaseUrl = 'https://YOUR-RAILWAY-APP-NAME.railway.app';
+  static const String productionBaseUrl = 'https://instaprop-production.up.railway.app';
   
   // Development URLs (for local testing)
   static const String devBaseUrlAndroid = 'http://192.168.1.5:5284';
