@@ -13,6 +13,20 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 
+// Debug: Log environment check (only once, not during migrations)
+var isProduction = builder.Environment.IsProduction();
+if (isProduction)
+{
+    Console.WriteLine($"🔍 Environment: Production");
+    Console.WriteLine($"🔍 DATABASE_URL is {(string.IsNullOrEmpty(databaseUrl) ? "NOT SET" : "SET")}");
+    if (!string.IsNullOrEmpty(databaseUrl))
+    {
+        // Don't log full URL for security, just confirm it exists
+        var uri = new Uri(databaseUrl);
+        Console.WriteLine($"🔍 DATABASE_URL host: {uri.Host}, database: {uri.LocalPath.TrimStart('/')}");
+    }
+}
+
 // Railway provides DATABASE_URL in format: postgresql://user:password@host:port/database
 // Convert it to Npgsql connection string format if present
 if (!string.IsNullOrEmpty(databaseUrl))
@@ -29,7 +43,7 @@ if (!string.IsNullOrEmpty(databaseUrl))
             ? uri.UserInfo.Split(':')[1] : "";
         
         connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require";
-        Console.WriteLine($"🗄️ Using PostgreSQL database from DATABASE_URL (Host: {host}, Database: {database})");
+        Console.WriteLine($"🗄️ Using PostgreSQL: {host}:{port}/{database}");
         
         builder.Services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
@@ -37,22 +51,33 @@ if (!string.IsNullOrEmpty(databaseUrl))
     catch (Exception ex)
     {
         Console.WriteLine($"⚠️ Failed to parse DATABASE_URL: {ex.Message}");
-        Console.WriteLine($"⚠️ Falling back to SQLite for local development");
-        builder.Services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite(connectionString ?? "Data Source=mydb.db"));
+        if (!isProduction)
+        {
+            Console.WriteLine($"⚠️ Falling back to SQLite for local development");
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlite(connectionString ?? "Data Source=mydb.db"));
+        }
+        else
+        {
+            throw new Exception($"CRITICAL: DATABASE_URL is set but invalid in production. Error: {ex.Message}");
+        }
     }
 }
 else if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("Host="))
 {
     // Connection string is already in PostgreSQL format
-    Console.WriteLine($"🗄️ Using PostgreSQL database from connection string");
+    Console.WriteLine($"🗄️ Using PostgreSQL from connection string");
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(connectionString));
 }
 else
 {
-    // Default to SQLite for local development
-    Console.WriteLine($"🗄️ Using SQLite database for local development");
+    // Default to SQLite for local development only
+    if (isProduction)
+    {
+        throw new Exception("CRITICAL: DATABASE_URL environment variable is not set in production. Railway PostgreSQL service must be linked.");
+    }
+    Console.WriteLine($"🗄️ Using SQLite for local development");
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlite(connectionString ?? "Data Source=mydb.db"));
 }
@@ -233,13 +258,18 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        Console.WriteLine("📦 Applying pending migrations (if any)...");
+        Console.WriteLine("📦 Applying migrations...");
+        // Suppress detailed migration logging to avoid Railway rate limits
         await context.Database.MigrateAsync();
-        Console.WriteLine("✅ Database schema up to date.");
+        Console.WriteLine("✅ Migrations completed.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Failed to apply migrations: {ex.Message}");
+        Console.WriteLine($"❌ Migration failed: {ex.Message}");
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"   Inner: {ex.InnerException.Message}");
+        }
         throw;
     }
     
