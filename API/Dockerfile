@@ -17,6 +17,9 @@ WORKDIR /app
 # Copy published app from build stage
 COPY --from=build /app/publish .
 
+# Copy Flutter web app (built separately)
+COPY wwwroot/app ./wwwroot/app
+
 # Expose port (Railway will set PORT environment variable)
 EXPOSE 8080
 

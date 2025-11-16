@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Reflection;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -250,6 +251,15 @@ app.UseErrorHandling();
 // Uncomment when needed:
 // app.UseRateLimiting(maxRequestsPerWindow: 1000, timeWindowSeconds: 60);
 
+// Serve Flutter web app from wwwroot/app
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "app")),
+    RequestPath = ""
+});
+
+// Serve other static files from wwwroot (uploads, etc.)
 app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();

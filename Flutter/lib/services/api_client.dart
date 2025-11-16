@@ -42,28 +42,35 @@ class ApiClient {
   // ⚙️ CONFIGURATION - Production vs Development
   // Set this to your Railway deployment URL after deploying backend
   // Example: 'https://your-app-name.railway.app'
-  static const String productionBaseUrl = 'https://instaprop-production.up.railway.app';
-  
+  static const String productionBaseUrl =
+      'https://instaprop-production.up.railway.app';
+
   // Development URLs (for local testing)
   static const String devBaseUrlAndroid = 'http://192.168.1.5:5284';
   static const String devBaseUrlIOS = 'http://localhost:5284';
   static const String devBaseUrlWeb = 'http://localhost:5284';
-  
+
   // Set to true when building for production (APK/IPA)
   // Set to false for local development/testing
   static const bool useProductionUrl = true;
 
   // 🔧 Auto-detect best URL based on platform and environment
   static String get baseUrl {
-    // Use production URL if enabled
-    if (useProductionUrl && productionBaseUrl != 'https://YOUR-RAILWAY-APP-NAME.railway.app') {
-      return productionBaseUrl;
+    // For web platform, use same origin (API serves the web app)
+    if (kIsWeb) {
+      // When running on web, use relative URL to same origin
+      // This allows the API to serve both the web app and API endpoints
+      return '';
     }
     
+    // Use production URL if enabled
+    if (useProductionUrl &&
+        productionBaseUrl != 'https://YOUR-RAILWAY-APP-NAME.railway.app') {
+      return productionBaseUrl;
+    }
+
     // Development URLs based on platform
-    if (kIsWeb) {
-      return devBaseUrlWeb;
-    } else if (Platform.isAndroid) {
+    if (Platform.isAndroid) {
       return devBaseUrlAndroid;
       // For Android emulator, use: return 'http://10.0.2.2:5284';
     } else if (Platform.isIOS) {
