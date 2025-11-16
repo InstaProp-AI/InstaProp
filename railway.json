@@ -1,11 +1,8 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
-  "$service": {
-    "source": "api"
-  },
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "API/Dockerfile"
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
     "startCommand": "dotnet InstapropAPI.dll",
