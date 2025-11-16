@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using System.Net.Http;
+using Microsoft.Extensions.Logging;
 
 namespace InstapropAPI.Services
 {
@@ -213,7 +214,7 @@ namespace InstapropAPI.Services
             foreach (var profile in profiles)
             {
                 result.TotalChecked++;
-                if (!await IsImageAccessibleAsync(profile.ProfileImageUrl))
+                if (!string.IsNullOrEmpty(profile.ProfileImageUrl) && !await IsImageAccessibleAsync(profile.ProfileImageUrl))
                 {
                     result.TotalBroken++;
                     profile.ProfileImageUrl = PlaceholderProfileImage;
