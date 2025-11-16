@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -446,11 +448,20 @@ class _PropertyDocsUploadPageState extends State<PropertyDocsUploadPage> {
           // Add headers
           request.headers.addAll({'Authorization': 'Bearer $token'});
 
-          // Add file
+          // Add file: support both in-memory bytes and file path (desktop)
+          List<int> fileBytes;
+          if (file.bytes != null) {
+            fileBytes = file.bytes!;
+          } else if (file.path != null) {
+            fileBytes = await File(file.path!).readAsBytes();
+          } else {
+            throw Exception('Selected file has no data: ${file.name}');
+          }
+
           request.files.add(
             http.MultipartFile.fromBytes(
               'file',
-              file.bytes!,
+              fileBytes,
               filename: file.name,
             ),
           );

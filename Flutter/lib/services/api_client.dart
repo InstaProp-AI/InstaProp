@@ -261,9 +261,16 @@ class ApiClient {
       final uri = Uri.parse('$baseUrl$endpoint');
       final headers = await _getHeaders();
 
+      // Debug logging for POST requests
+      print('🌐 POST $uri');
+      print('📤 Body: ${jsonEncode(body)}');
+
       final response = await http
           .post(uri, headers: headers, body: jsonEncode(body))
           .timeout(timeout);
+
+      print('✅ Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
 
       return _handleResponse(response, fromJson);
     } on SocketException {

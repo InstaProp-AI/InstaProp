@@ -3,7 +3,14 @@ import 'package:app1/services/leaderboard_service.dart';
 import 'package:flutter/material.dart';
 
 class LeaderboardPage extends StatefulWidget {
-  const LeaderboardPage({super.key});
+  const LeaderboardPage({
+    super.key,
+    this.initialTabIndex = 0,
+  });
+
+  /// Optional initial tab index:
+  /// 0 = This Week, 1 = Last Week, 2 = All Time
+  final int initialTabIndex;
 
   @override
   State<LeaderboardPage> createState() => _LeaderboardPageState();
@@ -29,7 +36,12 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _periods.length, vsync: this);
+    final clampedIndex = widget.initialTabIndex.clamp(0, _periods.length - 1);
+    _tabController = TabController(
+      length: _periods.length,
+      vsync: this,
+      initialIndex: clampedIndex,
+    );
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         _loadPeriod(_periods[_tabController.index]);
@@ -41,8 +53,14 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       _errors[period] = null;
     }
 
-    _loadHighlights();
-    _loadPeriod(_periods.first);
+    // Load the initially selected period
+    final initialPeriod = _periods[_tabController.index];
+    _loadPeriod(initialPeriod);
+
+    // Highlights are only relevant for "This Week"
+    if (initialPeriod == LeaderboardPeriod.thisWeek) {
+      _loadHighlights();
+    }
   }
 
   @override

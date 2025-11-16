@@ -333,7 +333,10 @@ namespace PropertyFlipperAPI.Controllers
                     p.Type == typeDisplayName &&
                     p.Bedrooms == request.Bedrooms &&
                     p.Bathrooms == request.Bathrooms &&
-                    Math.Abs(p.AreaSqm - request.AreaSqm) <= 5 &&
+                    // EF Core on SQLite can't translate Math.Abs for this expression,
+                    // so use a simple BETWEEN-style range instead
+                    p.AreaSqm >= request.AreaSqm - 5 &&
+                    p.AreaSqm <= request.AreaSqm + 5 &&
                     p.FinishingType == request.FinishingType.ToString() &&
                     p.HasPool == request.HasPool &&
                     p.HasGym == request.HasGym &&

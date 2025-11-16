@@ -656,7 +656,7 @@ namespace PropertyFlipperAPI.Controllers
         // POST: api/Property/{id}/documents
         [HttpPost("{id}/documents")]
         [Authorize]
-        public async Task<ActionResult> UploadPropertyDocument(long id, [FromForm] IFormFile file, [FromForm] string docType)
+        public async Task<ActionResult> UploadPropertyDocument(int id, [FromForm] IFormFile file, [FromForm] string docType)
         {
             try
             {
@@ -740,7 +740,7 @@ namespace PropertyFlipperAPI.Controllers
         // GET: api/Property/{id}/documents
         [HttpGet("{id}/documents")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<PropertyDoc>>> GetPropertyDocuments(long id)
+        public async Task<ActionResult<IEnumerable<PropertyDoc>>> GetPropertyDocuments(int id)
         {
             var property = await _context.ChildProperties.FindAsync(id);
             if (property == null)
@@ -756,11 +756,12 @@ namespace PropertyFlipperAPI.Controllers
         // POST: api/Property/{id}/images
         [HttpPost("{id}/images")]
         [Authorize]
-        public async Task<ActionResult> UploadPropertyImages(long id, [FromForm] List<IFormFile> images, [FromForm] string? imageType = "Gallery")
+        public async Task<ActionResult> UploadPropertyImages(int id, [FromForm] List<IFormFile> images, [FromForm] string? imageType = "Gallery")
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(id);
+                // ChildProperty primary key is int; cast route id accordingly
+                var property = await _context.ChildProperties.FindAsync((int)id);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -853,9 +854,9 @@ namespace PropertyFlipperAPI.Controllers
 
         // GET: api/Property/{id}/images
         [HttpGet("{id}/images")]
-        public async Task<ActionResult<IEnumerable<PropertyImage>>> GetPropertyImages(long id)
+        public async Task<ActionResult<IEnumerable<PropertyImage>>> GetPropertyImages(int id)
         {
-            var property = await _context.ChildProperties.FindAsync(id);
+            var property = await _context.ChildProperties.FindAsync((int)id);
             if (property == null)
                 return NotFound();
 
@@ -870,11 +871,11 @@ namespace PropertyFlipperAPI.Controllers
         // DELETE: api/Property/{propertyId}/images/{imageId}
         [HttpDelete("{propertyId}/images/{imageId}")]
         [Authorize]
-        public async Task<ActionResult> DeletePropertyImage(long propertyId, long imageId)
+        public async Task<ActionResult> DeletePropertyImage(int propertyId, int imageId)
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(propertyId);
+                var property = await _context.ChildProperties.FindAsync((int)propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -934,11 +935,11 @@ namespace PropertyFlipperAPI.Controllers
         // PUT: api/Property/{propertyId}/images/{imageId}/set-main
         [HttpPut("{propertyId}/images/{imageId}/set-main")]
         [Authorize]
-        public async Task<ActionResult> SetMainImage(long propertyId, long imageId)
+        public async Task<ActionResult> SetMainImage(int propertyId, int imageId)
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(propertyId);
+                var property = await _context.ChildProperties.FindAsync((int)propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 

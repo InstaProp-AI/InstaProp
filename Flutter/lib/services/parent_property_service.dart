@@ -162,11 +162,14 @@ class FindOrCreateRequest {
   Map<String, dynamic> toJson() {
     return {
       'projectName': projectName,
-      'type': type.displayName,
+      // Backend expects the C# enum PropertyType; sending the
+      // underlying index (int) guarantees correct binding
+      'type': type.index,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'areaSqm': areaSqm,
-      'finishingType': finishingType,
+      // Backend FinishingType enum expects an int value; map from string
+      'finishingType': _mapFinishingTypeToIndex(finishingType),
       'hasPool': hasPool,
       'hasGym': hasGym,
       'hasSecurity': hasSecurity,
@@ -175,6 +178,18 @@ class FindOrCreateRequest {
       'hasPlayground': hasPlayground,
       'hasClubhouse': hasClubhouse,
     };
+  }
+
+  /// Map our string label to the backend FinishingType enum index
+  /// Finished = 0, SemiFinished = 1, CoreAndShell = 2, SuperLuxury = 3
+  int _mapFinishingTypeToIndex(String value) {
+    final normalized =
+        value.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+    if (normalized == 'semifinished') return 1;
+    if (normalized == 'coreandshell') return 2;
+    if (normalized == 'superluxury') return 3;
+    // default to Finished
+    return 0;
   }
 }
 

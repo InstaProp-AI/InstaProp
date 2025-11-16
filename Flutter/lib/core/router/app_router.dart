@@ -35,7 +35,7 @@ class AppRouter {
   static const String addPropertyFinancial = '/add-property/financial';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    // final args = settings.arguments; // reserved for future use
+    final args = settings.arguments;
 
     switch (settings.name) {
       case root:
@@ -64,7 +64,18 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const MarketPage());
 
       case leaderboard:
-        return MaterialPageRoute(builder: (_) => const LeaderboardPage());
+        int initialTabIndex = 0;
+        if (args is Map<String, dynamic>) {
+          final index = args['initialTabIndex'];
+          if (index is int) {
+            initialTabIndex = index;
+          }
+        }
+        return MaterialPageRoute(
+          builder: (_) => LeaderboardPage(
+            initialTabIndex: initialTabIndex,
+          ),
+        );
 
       case auctions:
         return MaterialPageRoute(builder: (_) => const AuctionsPage());

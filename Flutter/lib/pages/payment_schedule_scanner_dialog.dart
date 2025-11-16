@@ -148,6 +148,23 @@ class _PaymentScheduleScannerDialogState
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
+
+    // Ensure the selected property is one of the current userProperties
+    // to avoid DropdownButton assertion when value is not in items.
+    final properties = appState.userProperties;
+    if (_selectedProperty != null) {
+      try {
+        final match = properties.firstWhere(
+          (p) => p.propertyId == _selectedProperty!.propertyId,
+        );
+        if (!identical(_selectedProperty, match)) {
+          _selectedProperty = match;
+        }
+      } catch (_) {
+        // If the previously selected property no longer exists, clear it
+        _selectedProperty = null;
+      }
+    }
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       contentPadding: const EdgeInsets.all(20),

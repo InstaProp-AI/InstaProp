@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'api_client.dart';
+import 'parent_property_service.dart';
 import 'price_history_service.dart';
 import '../models/property.dart';
 import '../models/child_property.dart';
@@ -102,17 +103,19 @@ class PropertyService {
     InstallmentSummaryPayload? installmentSummary,
   }) async {
     try {
+      // Our add-property form uses area in sqm; keep the same value here
       final projectNameToUse =
           projectName ?? _extractProjectNameFromLocation(location);
       final finishingTypeToUse = finishingType ?? 'Finished';
-      final areaSqm = (squareFeet * 0.092903).round();
+      final int areaSqm = squareFeet;
 
-      final parentResponse = await findOrCreateParentProperty(
+      // Use the strongly-typed ParentPropertyService to find or create parent
+      final parentRequest = FindOrCreateRequest(
         projectName: projectNameToUse,
+        type: type,
         bedrooms: bedrooms,
         bathrooms: bathrooms,
-        areaSqm: areaSqm,
-        type: type,
+        areaSqm: areaSqm.toDouble(),
         finishingType: finishingTypeToUse,
         hasPool: hasPool,
         hasGym: hasGym,
@@ -123,17 +126,12 @@ class PropertyService {
         hasClubhouse: hasClubhouse,
       );
 
-      if (!parentResponse.success || parentResponse.data == null) {
-        return ApiResponse<Property>(
-          success: false,
-          data: null,
-          error:
-              'Failed to find or create parent property: ${parentResponse.error}',
-          statusCode: parentResponse.statusCode,
-        );
-      }
+      final parentResult =
+          await ParentPropertyService.findOrCreateParentProperty(
+        parentRequest,
+      );
 
-      final parentPropertyId = parentResponse.data!['parentPropertyId'] as int;
+      final parentPropertyId = parentResult.parentPropertyId;
 
       final childResponse = await createChildProperty(
         parentPropertyId: parentPropertyId,
@@ -487,39 +485,6 @@ class PropertyService {
     );
   }
 
-  // Find or create parent property based on characteristics
-  static Future<ApiResponse<dynamic>> findOrCreateParentProperty({
-    String? projectName,
-    required int bedrooms,
-    required int bathrooms,
-    required int areaSqm,
-    required PropertyType type,
-    required String finishingType,
-    required bool hasPool,
-    required bool hasGym,
-    required bool hasSecurity,
-    required bool hasParking,
-    required bool hasGarden,
-    required bool hasPlayground,
-    required bool hasClubhouse,
-  }) async {
-    return await ApiClient.post('/api/parentproperty/find-or-create', {
-      'projectName': projectName,
-      'bedrooms': bedrooms,
-      'bathrooms': bathrooms,
-      'areaSqm': areaSqm,
-      'type': type.displayName,
-      'finishingType': finishingType,
-      'hasPool': hasPool,
-      'hasGym': hasGym,
-      'hasSecurity': hasSecurity,
-      'hasParking': hasParking,
-      'hasGarden': hasGarden,
-      'hasPlayground': hasPlayground,
-      'hasClubhouse': hasClubhouse,
-    }, (json) => json);
-  }
-
   // Create a new child property
   static Future<ApiResponse<ChildProperty>> createChildProperty({
     required int parentPropertyId,
@@ -572,7 +537,7 @@ class PropertyService {
     bool? gardenView,
     bool? streetView,
   }) async {
-    return await ApiClient.post('/api/parentproperty/child', {
+    return await ApiClient.post('/api/property', {
       'parentPropertyId': parentPropertyId,
       'name': name,
       'description': description,
@@ -580,11 +545,9 @@ class PropertyService {
       'imageUrl': imageUrl,
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
-      'isApproved': isApproved,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'type': type.displayName,
-      'status': status,
       'projectId': projectId,
       'phase': phase,
       'floorNumber': floorNumber,

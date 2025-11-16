@@ -111,8 +111,12 @@ class _MarketPageState extends State<MarketPage> {
           IconButton(
             icon: const Icon(Icons.emoji_events_outlined),
             tooltip: 'Weekly leaderboard',
-            onPressed: () =>
-                AppRouter.navigateTo(context, AppRouter.leaderboard),
+            onPressed: () => AppRouter.navigateTo(
+              context,
+              AppRouter.leaderboard,
+              // 2 = "All Time" tab in LeaderboardPage
+              arguments: {'initialTabIndex': 2},
+            ),
           ),
           const SizedBox(width: 8),
         ],
