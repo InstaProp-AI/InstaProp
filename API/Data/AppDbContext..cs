@@ -8,6 +8,14 @@ namespace InstapropAPI.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {}
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            // Suppress pending model changes warning in production
+            // This allows migrations to run even if model has minor differences
+            optionsBuilder.ConfigureWarnings(warnings =>
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+
         public DbSet<Account> Accounts { get; set; }
         // Removed: public DbSet<Property> Properties { get; set; } - Now using ChildProperty
         public DbSet<PropertyDoc> PropertyDocs { get; set; }

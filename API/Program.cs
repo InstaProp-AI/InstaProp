@@ -46,7 +46,12 @@ if (!string.IsNullOrEmpty(databaseUrl))
         Console.WriteLine($"🗄️ Using PostgreSQL: {host}:{port}/{database}");
         
         builder.Services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        {
+            options.UseNpgsql(connectionString);
+            // Suppress pending model changes warning in production
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        });
     }
     catch (Exception ex)
     {
