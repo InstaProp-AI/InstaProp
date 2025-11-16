@@ -504,6 +504,11 @@ namespace InstapropAPI.Controllers
             if (userId == null)
                 return Unauthorized();
 
+            // Verify user account exists
+            var userAccount = await _context.Accounts.FirstOrDefaultAsync(a => a.AccountId == userId.Value);
+            if (userAccount == null)
+                return StatusCode(500, new { message = "User account not found" });
+
             if (image == null || image.Length == 0)
                 return BadRequest("No image file provided");
 
