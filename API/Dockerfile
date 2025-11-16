@@ -2,13 +2,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj and restore dependencies (works from API/ or root)
-COPY API/*.csproj ./API/
-WORKDIR /src/API
+# Copy csproj and restore dependencies (building from API directory)
+COPY *.csproj ./
 RUN dotnet restore
 
 # Copy everything else and build
-COPY API/ ./
+COPY . ./
 RUN dotnet publish -c Release -o /app/publish
 
 # Use the official .NET 8.0 runtime image for running
