@@ -818,13 +818,13 @@ namespace InstapropAPI.Controllers
                     Type = dto.Type,
                     Location = dto.Location,
                     IsAllDay = dto.IsAllDay,
-                    StartTime = dto.StartTime.HasValue 
+                        StartTime = dto.StartTime.HasValue
                         ? new DateTime(currentDate.Year, currentDate.Month, currentDate.Day, 
-                                      dto.StartTime.Value.Hour, dto.StartTime.Value.Minute, dto.StartTime.Value.Second)
+                                      dto.StartTime.Value.Hour, dto.StartTime.Value.Minute, dto.StartTime.Value.Second, DateTimeKind.Utc)
                         : null,
-                    EndTime = dto.EndTime.HasValue 
+                        EndTime = dto.EndTime.HasValue
                         ? new DateTime(currentDate.Year, currentDate.Month, currentDate.Day, 
-                                      dto.EndTime.Value.Hour, dto.EndTime.Value.Minute, dto.EndTime.Value.Second)
+                                      dto.EndTime.Value.Hour, dto.EndTime.Value.Minute, dto.EndTime.Value.Second, DateTimeKind.Utc)
                         : null,
                     IsCompleted = false,
                     IsReminderSet = dto.IsReminderSet,
