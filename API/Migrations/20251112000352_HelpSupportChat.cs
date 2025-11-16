@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace PropertyFlipperAPI.Migrations
+namespace InstapropAPI.Migrations
 {
     /// <inheritdoc />
     public partial class HelpSupportChat : Migration

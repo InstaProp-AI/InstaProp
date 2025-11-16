@@ -1,0 +1,13 @@
+Flutter/
+dashboard/
+developer-dashboard/
+scripts/
+*.md
+.git/
+.vscode/
+.cursor/
+.DS_Store
+*.bak
+*.bak2
+*.disabled
+

@@ -1,12 +1,9 @@
-import 'package:app1/models/leaderboard_models.dart';
-import 'package:app1/services/leaderboard_service.dart';
+import 'package:instaprop/models/leaderboard_models.dart';
+import 'package:instaprop/services/leaderboard_service.dart';
 import 'package:flutter/material.dart';
 
 class LeaderboardPage extends StatefulWidget {
-  const LeaderboardPage({
-    super.key,
-    this.initialTabIndex = 0,
-  });
+  const LeaderboardPage({super.key, this.initialTabIndex = 0});
 
   /// Optional initial tab index:
   /// 0 = This Week, 1 = Last Week, 2 = All Time
@@ -181,10 +178,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
         children: [
-          if (period == LeaderboardPeriod.thisWeek)
-            _buildHighlightsHero(),
-          if (period == LeaderboardPeriod.thisWeek)
-            const SizedBox(height: 16),
+          if (period == LeaderboardPeriod.thisWeek) _buildHighlightsHero(),
+          if (period == LeaderboardPeriod.thisWeek) const SizedBox(height: 16),
           _buildHeadlineCard(response),
           const SizedBox(height: 16),
           _buildPodium(response.entries),
@@ -230,7 +225,11 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Icon(Icons.emoji_events_outlined, size: 32, color: Colors.white),
+            const Icon(
+              Icons.emoji_events_outlined,
+              size: 32,
+              color: Colors.white,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -267,7 +266,11 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                   shape: BoxShape.circle,
                   color: Colors.white.withOpacity(0.15),
                 ),
-                child: const Icon(Icons.emoji_events, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.emoji_events,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -286,9 +289,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                     Text(
                       highlight?.summary ??
                           'Stay active — the next champion could be you.',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                      ),
+                      style: TextStyle(color: Colors.white.withOpacity(0.8)),
                     ),
                   ],
                 ),
@@ -337,7 +338,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                     ),
                   )
                   .toList(),
-            )
+            ),
           ],
         ],
       ),
@@ -374,24 +375,21 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         children: [
           Text(
             response.headline,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
             response.subheading,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.calendar_today,
-                  size: 16, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                Icons.calendar_today,
+                size: 16,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Text(
                 '${_formatDate(response.rangeStart)} → ${_formatDate(response.rangeEnd)}',
@@ -429,9 +427,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
             children: topThree
                 .asMap()
                 .entries
-                .map(
-                  (entry) => _buildPodiumTile(entry.value, entry.key),
-                )
+                .map((entry) => _buildPodiumTile(entry.value, entry.key))
                 .toList(),
           ),
         ],
@@ -451,8 +447,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     final label = index == 0
         ? 'Champion'
         : index == 1
-            ? 'Runner-up'
-            : 'Top 3';
+        ? 'Runner-up'
+        : 'Top 3';
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -506,18 +502,17 @@ class _LeaderboardPageState extends State<LeaderboardPage>
               if (entry.cashbackAwarded > 0) ...[
                 const SizedBox(height: 6),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '+${entry.cashbackAwarded.toStringAsFixed(0)} EGP',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
               ],
@@ -530,17 +525,14 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           child: Text(
             entry.displayName,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildPersonalCard(
-      LeaderboardEntry entry, LeaderboardPeriod period) {
+  Widget _buildPersonalCard(LeaderboardEntry entry, LeaderboardPeriod period) {
     return Container(
       decoration: _cardDecoration(accent: true),
       padding: const EdgeInsets.all(20),
@@ -561,10 +553,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
               children: [
                 const Text(
                   'Your Momentum',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -606,10 +595,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         children: [
           const Text(
             'Momentum Tips',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           ),
           const SizedBox(height: 12),
           ...tips.map(
@@ -625,10 +611,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      tip,
-                      style: TextStyle(color: Colors.grey[700]),
-                    ),
+                    child: Text(tip, style: TextStyle(color: Colors.grey[700])),
                   ),
                 ],
               ),
@@ -654,10 +637,8 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                   Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.primary.withOpacity(
-                                  entry.isRequester ? 0.2 : 0.1,
-                                ),
+                        backgroundColor: Theme.of(context).colorScheme.primary
+                            .withOpacity(entry.isRequester ? 0.2 : 0.1),
                         child: Text(
                           entry.avatarInitials ??
                               entry.displayName.substring(0, 1),
@@ -672,7 +653,9 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                             Text(
                               entry.displayName,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 15),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
                             ),
                             Text(
                               '#${entry.rank} · ${entry.points} pts',
@@ -687,15 +670,21 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                           label: Text(
                             '+${entry.cashbackAwarded.toStringAsFixed(0)} EGP',
                             style: const TextStyle(
-                                color: Colors.green, fontWeight: FontWeight.w600),
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          avatar: const Icon(Icons.payments_outlined,
-                              color: Colors.green, size: 18),
+                          avatar: const Icon(
+                            Icons.payments_outlined,
+                            color: Colors.green,
+                            size: 18,
+                          ),
                         )
                       else if (entry.potentialCashback > 0)
                         Chip(
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.12),
                           label: Text(
                             '${entry.potentialCashback.toStringAsFixed(0)} EGP on standby',
                             style: TextStyle(
@@ -727,20 +716,25 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      ...entry.activity.take(3).map(
-                        (slice) => Chip(
-                          label: Text(
-                            '${slice.category}: ${slice.points} pts',
-                            style: const TextStyle(fontSize: 12),
+                      ...entry.activity
+                          .take(3)
+                          .map(
+                            (slice) => Chip(
+                              label: Text(
+                                '${slice.category}: ${slice.points} pts',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              backgroundColor: Colors.grey[100],
+                            ),
                           ),
-                          backgroundColor: Colors.grey[100],
-                        ),
-                      ),
                       if (entry.streakWeeks > 0)
                         Chip(
                           label: Text('${entry.streakWeeks} week streak'),
-                          avatar: const Icon(Icons.local_fire_department,
-                              color: Colors.orange, size: 18),
+                          avatar: const Icon(
+                            Icons.local_fire_department,
+                            color: Colors.orange,
+                            size: 18,
+                          ),
                           backgroundColor: Colors.orange.withOpacity(0.12),
                         ),
                     ],
@@ -836,10 +830,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  error,
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
+                Text(error, style: TextStyle(color: Colors.grey[700])),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _loadPeriod(period, forceRefresh: true),
@@ -856,7 +847,9 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
   BoxDecoration _cardDecoration({bool accent = false}) {
     return BoxDecoration(
-      color: accent ? Theme.of(context).colorScheme.primary.withOpacity(0.08) : Colors.white,
+      color: accent
+          ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+          : Colors.white,
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
@@ -872,5 +865,3 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     return '${date.day}/${date.month}';
   }
 }
-
-

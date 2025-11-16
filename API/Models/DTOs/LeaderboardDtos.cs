@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     public class LeaderboardActivitySliceDto
     {

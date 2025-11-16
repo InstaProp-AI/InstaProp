@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class EmailVerificationService
     {
@@ -28,7 +28,7 @@ namespace PropertyFlipperAPI.Services
         /// </summary>
         public async Task<bool> SendVerificationEmail(string email, string pin, string firstName)
         {
-            var subject = "Verify Your Email - Property Flipper";
+            var subject = "Verify Your Email - Instaprop";
             var htmlBody = _templateService.GetEmailVerificationEmail(firstName, pin);
 
             return await _smtpService.SendEmailAsync(email, firstName, subject, htmlBody);
@@ -56,7 +56,7 @@ namespace PropertyFlipperAPI.Services
         /// </summary>
         public async Task<bool> SendPasswordResetEmail(string email, string firstName, string temporaryPassword)
         {
-            var subject = "Password Reset - Property Flipper";
+            var subject = "Password Reset - Instaprop";
             var htmlBody = _templateService.GetPasswordResetEmail(firstName, temporaryPassword);
 
             return await _smtpService.SendEmailAsync(email, firstName, subject, htmlBody);
@@ -67,7 +67,7 @@ namespace PropertyFlipperAPI.Services
         /// </summary>
         public async Task<bool> SendAccountLockoutEmail(string email, string firstName, DateTime lockedUntil)
         {
-            var subject = "Account Temporarily Locked - Property Flipper";
+            var subject = "Account Temporarily Locked - Instaprop";
             var htmlBody = _templateService.GetAccountLockoutEmail(firstName, lockedUntil);
 
             return await _smtpService.SendEmailAsync(email, firstName, subject, htmlBody);
@@ -78,7 +78,7 @@ namespace PropertyFlipperAPI.Services
         /// </summary>
         public async Task<bool> SendWelcomeEmail(string email, string firstName)
         {
-            var subject = "Welcome to Property Flipper! 🎉";
+            var subject = "Welcome to Instaprop! 🎉";
             var htmlBody = _templateService.GetWelcomeEmail(firstName);
 
             return await _smtpService.SendEmailAsync(email, firstName, subject, htmlBody);

@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using PropertyFlipperAPI.Controllers;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Controllers;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 using Xunit;
 
-namespace PropertyFlipperAPI.Tests;
+namespace InstapropAPI.Tests;
 
 public class AnalyticsControllerTests
 {

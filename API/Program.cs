@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Services;
-using PropertyFlipperAPI.Middleware;
+using InstapropAPI.Data;
+using InstapropAPI.Services;
+using InstapropAPI.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -9,11 +9,53 @@ using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DB Context with SQLite
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
-   // options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-// "DefaultConnection": "Host=metro.proxy.rlwy.net;Port=20873;Database=railway;Username=postgres;Password=wXQPZyZfdnrcYMrZCpXEcPJnJXQUUPmv;SslMode=Require"
+// Add DB Context - Use PostgreSQL in production (Railway), SQLite in development
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+// Railway provides DATABASE_URL in format: postgresql://user:password@host:port/database
+// Convert it to Npgsql connection string format if present
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    try
+    {
+        // Parse Railway DATABASE_URL format: postgresql://user:password@host:port/database
+        var uri = new Uri(databaseUrl);
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432; // Default PostgreSQL port
+        var database = uri.LocalPath.TrimStart('/');
+        var username = !string.IsNullOrEmpty(uri.UserInfo) ? uri.UserInfo.Split(':')[0] : "";
+        var password = !string.IsNullOrEmpty(uri.UserInfo) && uri.UserInfo.Split(':').Length > 1 
+            ? uri.UserInfo.Split(':')[1] : "";
+        
+        connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require";
+        Console.WriteLine($"🗄️ Using PostgreSQL database from DATABASE_URL (Host: {host}, Database: {database})");
+        
+        builder.Services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(connectionString));
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️ Failed to parse DATABASE_URL: {ex.Message}");
+        Console.WriteLine($"⚠️ Falling back to SQLite for local development");
+        builder.Services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlite(connectionString ?? "Data Source=mydb.db"));
+    }
+}
+else if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("Host="))
+{
+    // Connection string is already in PostgreSQL format
+    Console.WriteLine($"🗄️ Using PostgreSQL database from connection string");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
+else
+{
+    // Default to SQLite for local development
+    Console.WriteLine($"🗄️ Using SQLite database for local development");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite(connectionString ?? "Data Source=mydb.db"));
+}
 // Add Services
 //builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<CompleteEgyptianSeedingService>();
@@ -53,7 +95,7 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "Property Flipper API", Version = "v1" });
+    c.SwaggerDoc("v1", new() { Title = "Instaprop API", Version = "v1" });
     
     // Add JWT Authentication to Swagger
     c.AddSecurityDefinition("Bearer", new()
@@ -98,7 +140,7 @@ builder.Services.AddSwaggerGen(c =>
     c.IgnoreObsoleteProperties();
 });
 
-// CORS - Allow all origins in development, restricted in production
+// CORS - Allow all origins for mobile apps (both development and production)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AppCors", policy =>
@@ -115,13 +157,10 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // Production: Use configured allowed origins
-            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-                ?? new[] { "https://yourdomain.com" };
-            
-            Console.WriteLine($"🔒 CORS: Allowing specific origins (Production Mode): {string.Join(", ", allowedOrigins)}");
-            policy.WithOrigins(allowedOrigins)
-                  .AllowCredentials()
+            // Production: Allow all origins for mobile apps (APK/IPA can come from anywhere)
+            // Mobile apps don't have a fixed origin, so we need to allow all
+            Console.WriteLine("🌍 CORS: Allowing ALL origins (Production Mode - Mobile Apps)");
+            policy.AllowAnyOrigin()
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         }
@@ -130,9 +169,14 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddMemoryCache();
 
-// JWT Auth
+// JWT Auth - Read from environment variable in production, config file in development
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"] ?? "insecure"));
+var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") ?? jwtSection["Key"] ?? "insecure";
+if (string.IsNullOrEmpty(jwtKey) || jwtKey == "insecure" || jwtKey.Contains("REPLACE"))
+{
+    Console.WriteLine("⚠️ WARNING: Using insecure JWT key. Set JWT_SECRET environment variable in production!");
+}
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -160,7 +204,7 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Property Flipper API v1");
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Instaprop API v1");
     c.RoutePrefix = "swagger"; // Swagger UI will be available at /swagger
     c.ConfigObject.AdditionalItems.Add("syntaxHighlight", false); // Disable syntax highlighting for better compatibility
 });

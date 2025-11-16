@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 
-namespace PropertyFlipperAPI.Middleware
+namespace InstapropAPI.Middleware
 {
     /// <summary>
     /// Rate limiting middleware to protect API from DDoS and abuse.

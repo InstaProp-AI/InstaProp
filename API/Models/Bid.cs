@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     public class Bid
     {

@@ -2,14 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Background service that automatically updates auction status to "Ended" when the auction time expires.

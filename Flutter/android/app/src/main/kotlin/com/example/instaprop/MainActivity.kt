@@ -1,4 +1,4 @@
-package com.example.app1
+package com.instaprop.app
 
 import io.flutter.embedding.android.FlutterActivity
 

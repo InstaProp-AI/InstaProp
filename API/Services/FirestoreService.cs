@@ -1,9 +1,9 @@
 using Google.Cloud.Firestore;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Models;
 using System.Text.Json;
 using System.Linq;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Firestore service for real-time data synchronization.

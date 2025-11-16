@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
+using InstapropAPI.Data;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class NotificationCleanupService : BackgroundService
     {

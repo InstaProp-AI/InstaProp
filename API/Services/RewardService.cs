@@ -1,8 +1,8 @@
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class RewardService
     {

@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Attributes;
+using InstapropAPI.Data;
+using InstapropAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using System.Text.Json;
 using System.Diagnostics;
 
-namespace PropertyFlipperAPI.Controllers
+namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -28,7 +28,7 @@ namespace PropertyFlipperAPI.Controllers
             {
                 _settings = new Dictionary<string, object>
                 {
-                    { "siteName", "Property Flipper" },
+                    { "siteName", "Instaprop" },
                     { "siteEmail", "admin@propertyflipper.com" },
                     { "currency", "USD" },
                     { "timezone", "UTC" },

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     /// <summary>
     /// Egyptian-specific auction filtering and sorting options

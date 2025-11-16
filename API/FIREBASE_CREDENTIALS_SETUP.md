@@ -12,7 +12,7 @@ You need to download your Firebase service account credentials and place them in
 Visit: https://console.firebase.google.com/
 
 ### 2. Select Your Project
-- Select project: `property-flipper-5164d`
+- Select project: `instaprop-5164d`
 
 ### 3. Navigate to Project Settings
 - Click the gear icon ⚙️ next to "Project Overview"
@@ -25,7 +25,7 @@ Visit: https://console.firebase.google.com/
 - Scroll down to "Firebase Admin SDK" section
 - Click "Generate new private key"
 - Click "Generate key" in the confirmation dialog
-- A JSON file will be downloaded (e.g., `property-flipper-5164d-firebase-adminsdk-xxxxx-xxxxxxxxxx.json`)
+- A JSON file will be downloaded (e.g., `instaprop-5164d-firebase-adminsdk-xxxxx-xxxxxxxxxx.json`)
 
 ### 6. Place the File in API Directory
 - Rename the downloaded file to: `firebase-credentials.json`
@@ -42,7 +42,7 @@ dotnet run
 ### 8. Verify Firestore is Enabled
 Check the API logs for this message:
 ```
-✅ Firestore initialized for project: property-flipper-5164d
+✅ Firestore initialized for project: instaprop-5164d
 ```
 
 If you see this, Firestore is working! If you see:

@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
-using PropertyFlipperAPI.Services;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
+using InstapropAPI.Services;
 
-namespace PropertyFlipperAPI.Controllers
+namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

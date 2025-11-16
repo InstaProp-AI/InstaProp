@@ -129,7 +129,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent'
-              }}>Property Flipper</h1>
+              }}>Instaprop</h1>
               <button
                 onClick={() => setSidebarOpen(false)}
                 style={{
@@ -224,7 +224,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
                   fontSize: '1.5rem',
                   fontWeight: 'bold',
                   color: 'white'
-                }}>Property Flipper</h1>
+                }}>Instaprop</h1>
               </div>
               <nav style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                 {navigation.map((item) => {

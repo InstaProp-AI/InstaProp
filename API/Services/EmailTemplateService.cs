@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Service for generating branded HTML email templates
@@ -166,22 +166,22 @@ namespace PropertyFlipperAPI.Services
 <body>
     <div class=""email-container"">
         <div class=""header"">
-            <h1>🏠 Property Flipper</h1>
+            <h1>🏠 Instaprop</h1>
             <p>Your Premier Real Estate Auction Platform</p>
         </div>
         <div class=""content"">
             {content}
         </div>
         <div class=""footer"">
-            <p><strong>Property Flipper</strong></p>
-            <p>© {DateTime.UtcNow.Year} Property Flipper. All rights reserved.</p>
+            <p><strong>Instaprop</strong></p>
+            <p>© {DateTime.UtcNow.Year} Instaprop. All rights reserved.</p>
             <p>
                 <a href=""https://propertyflipper.com/help"">Help Center</a> | 
                 <a href=""https://propertyflipper.com/contact"">Contact Us</a> | 
                 <a href=""https://propertyflipper.com/unsubscribe"">Unsubscribe</a>
             </p>
             <p style=""font-size: 12px; color: #9ca3af; margin-top: 15px;"">
-                This email was sent because you have an account with Property Flipper.<br>
+                This email was sent because you have an account with Instaprop.<br>
                 Please do not reply to this automated email.
             </p>
         </div>
@@ -196,14 +196,14 @@ namespace PropertyFlipperAPI.Services
         public string GetWelcomeEmail(string firstName)
         {
             var content = $@"
-                <h2>Welcome to Property Flipper, {firstName}! 🎉</h2>
+                <h2>Welcome to Instaprop, {firstName}! 🎉</h2>
                 <p>We're thrilled to have you join our community of real estate investors and developers.</p>
                 
                 <div class=""success-box"">
                     <p style=""margin: 0;""><strong>✅ Your account has been created successfully!</strong></p>
                 </div>
 
-                <p>Property Flipper is your gateway to discovering and bidding on premium real estate opportunities. Here's what you can do:</p>
+                <p>Instaprop is your gateway to discovering and bidding on premium real estate opportunities. Here's what you can do:</p>
                 
                 <div style=""margin: 20px 0;"">
                     <p style=""margin: 10px 0;"">🏡 <strong>Browse Properties</strong> - Explore our curated selection of properties</p>
@@ -234,10 +234,10 @@ namespace PropertyFlipperAPI.Services
 
                 <p>If you have any questions, our support team is here to help.</p>
                 <p>Happy bidding!</p>
-                <p style=""margin-top: 30px;""><strong>The Property Flipper Team</strong></p>
+                <p style=""margin-top: 30px;""><strong>The Instaprop Team</strong></p>
             ";
 
-            return GetBaseTemplate("Welcome to Property Flipper", content);
+            return GetBaseTemplate("Welcome to Instaprop", content);
         }
 
         /// <summary>
@@ -248,7 +248,7 @@ namespace PropertyFlipperAPI.Services
             var content = $@"
                 <h2>Verify Your Email Address</h2>
                 <p>Hi {firstName},</p>
-                <p>Thank you for signing up for Property Flipper! To complete your registration, please verify your email address using the code below:</p>
+                <p>Thank you for signing up for Instaprop! To complete your registration, please verify your email address using the code below:</p>
                 
                 <div class=""code-box"">
                     <p style=""margin: 0 0 10px 0; font-size: 14px; color: #6b7280;"">Your Verification Code</p>
@@ -260,15 +260,15 @@ namespace PropertyFlipperAPI.Services
 
                 <div class=""warning-box"">
                     <p style=""margin: 0; font-size: 14px;"">
-                        <strong>⚠️ Security Notice:</strong> If you didn't create an account with Property Flipper, please ignore this email.
+                        <strong>⚠️ Security Notice:</strong> If you didn't create an account with Instaprop, please ignore this email.
                     </p>
                 </div>
 
                 <p>This verification code will expire in 15 minutes for security purposes.</p>
-                <p>Best regards,<br><strong>The Property Flipper Team</strong></p>
+                <p>Best regards,<br><strong>The Instaprop Team</strong></p>
             ";
 
-            return GetBaseTemplate("Verify Your Email - Property Flipper", content);
+            return GetBaseTemplate("Verify Your Email - Instaprop", content);
         }
 
         /// <summary>
@@ -279,7 +279,7 @@ namespace PropertyFlipperAPI.Services
             var content = $@"
                 <h2>Password Reset Request</h2>
                 <p>Hi {firstName},</p>
-                <p>We received a request to reset your password for your Property Flipper account.</p>
+                <p>We received a request to reset your password for your Instaprop account.</p>
                 
                 <div class=""code-box"">
                     <p style=""margin: 0 0 10px 0; font-size: 14px; color: #6b7280;"">Your Temporary Password</p>
@@ -302,7 +302,7 @@ namespace PropertyFlipperAPI.Services
 
                 <div class=""info-box"">
                     <p style=""margin: 0; font-size: 14px;"">
-                        <strong>🔒 Security Tip:</strong> Choose a strong password that's unique to Property Flipper and includes a mix of letters, numbers, and symbols.
+                        <strong>🔒 Security Tip:</strong> Choose a strong password that's unique to Instaprop and includes a mix of letters, numbers, and symbols.
                     </p>
                 </div>
 
@@ -311,10 +311,10 @@ namespace PropertyFlipperAPI.Services
                 <p><strong>Didn't request this?</strong></p>
                 <p>If you didn't request a password reset, please contact our support team immediately at <a href=""mailto:support@propertyflipper.com"">support@propertyflipper.com</a>. Your account may be compromised.</p>
 
-                <p>Best regards,<br><strong>The Property Flipper Security Team</strong></p>
+                <p>Best regards,<br><strong>The Instaprop Security Team</strong></p>
             ";
 
-            return GetBaseTemplate("Password Reset - Property Flipper", content);
+            return GetBaseTemplate("Password Reset - Instaprop", content);
         }
 
         /// <summary>
@@ -362,10 +362,10 @@ namespace PropertyFlipperAPI.Services
                     <li>Contact our security team at <a href=""mailto:security@propertyflipper.com"">security@propertyflipper.com</a></li>
                 </ul>
 
-                <p>Best regards,<br><strong>The Property Flipper Security Team</strong></p>
+                <p>Best regards,<br><strong>The Instaprop Security Team</strong></p>
             ";
 
-            return GetBaseTemplate("Account Locked - Property Flipper", content);
+            return GetBaseTemplate("Account Locked - Instaprop", content);
         }
 
         /// <summary>
@@ -408,10 +408,10 @@ namespace PropertyFlipperAPI.Services
                 </div>
 
                 <p>Don't miss out on this opportunity!</p>
-                <p>Best regards,<br><strong>The Property Flipper Team</strong></p>
+                <p>Best regards,<br><strong>The Instaprop Team</strong></p>
             ";
 
-            return GetBaseTemplate("Auction Starting Soon - Property Flipper", content);
+            return GetBaseTemplate("Auction Starting Soon - Instaprop", content);
         }
 
         /// <summary>
@@ -448,10 +448,10 @@ namespace PropertyFlipperAPI.Services
                 </div>
 
                 <p>Good luck!</p>
-                <p>Best regards,<br><strong>The Property Flipper Team</strong></p>
+                <p>Best regards,<br><strong>The Instaprop Team</strong></p>
             ";
 
-            return GetBaseTemplate("You've Been Outbid - Property Flipper", content);
+            return GetBaseTemplate("You've Been Outbid - Instaprop", content);
         }
 
         /// <summary>
@@ -503,10 +503,10 @@ namespace PropertyFlipperAPI.Services
                 </div>
 
                 <p>Congratulations on your successful bid! We look forward to helping you with your new property.</p>
-                <p>Best regards,<br><strong>The Property Flipper Team</strong></p>
+                <p>Best regards,<br><strong>The Instaprop Team</strong></p>
             ";
 
-            return GetBaseTemplate("Congratulations! You Won - Property Flipper", content);
+            return GetBaseTemplate("Congratulations! You Won - Instaprop", content);
         }
 
         /// <summary>
@@ -553,10 +553,10 @@ namespace PropertyFlipperAPI.Services
                 " : "")}
 
                 <p>Thank you for your prompt attention to this matter.</p>
-                <p>Best regards,<br><strong>The Property Flipper Payments Team</strong></p>
+                <p>Best regards,<br><strong>The Instaprop Payments Team</strong></p>
             ";
 
-            return GetBaseTemplate("Payment Reminder - Property Flipper", content);
+            return GetBaseTemplate("Payment Reminder - Instaprop", content);
         }
     }
 }

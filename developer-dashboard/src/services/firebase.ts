@@ -6,9 +6,9 @@ import { getMessaging, isSupported } from 'firebase/messaging';
 // Pulled from Flutter firebase_options.dart to enable real-time chat
 const firebaseConfig = {
   apiKey: "AIzaSyDkpQ8vZ5kQxJ3xQN0YH1X3nZxJ8kV5kQx",
-  authDomain: "property-flipper-5164d.firebaseapp.com",
-  projectId: "property-flipper-5164d",
-  storageBucket: "property-flipper-5164d.appspot.com",
+  authDomain: "instaprop-5164d.firebaseapp.com",
+  projectId: "instaprop-5164d",
+  storageBucket: "instaprop-5164d.appspot.com",
   messagingSenderId: "897302032475",
   appId: "1:897302032475:web:abc123def456"
 };

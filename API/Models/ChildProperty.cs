@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     /// <summary>
     /// Child Property - Individual property unit that inherits from Parent Property

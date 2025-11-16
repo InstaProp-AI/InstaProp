@@ -1,6 +1,6 @@
 {
-    "name": "app1",
-    "short_name": "app1",
+    "name": "instaprop",
+    "short_name": "instaprop",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

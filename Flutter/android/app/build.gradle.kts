@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.app1"
+    namespace = "com.instaprop.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,8 +20,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.app1"
+        // Application ID for Instaprop
+        applicationId = "com.instaprop.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -32,11 +32,30 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // For demo/testing: Using debug keys (not secure for production)
+            // For production: Create a keystore and configure signing
+            // See: https://docs.flutter.dev/deployment/android#signing-the-app
             signingConfig = signingConfigs.getByName("debug")
+            
+            // Enable code shrinking and obfuscation for release builds
+            isMinifyEnabled = false
+            isShrinkResources = false
+            
+            // ProGuard rules (uncomment if enabling minification)
+            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+    
+    // Uncomment and configure for production signing:
+    // signingConfigs {
+    //     create("release") {
+    //         storeFile = file("path/to/your/keystore.jks")
+    //         storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+    //         keyAlias = "your-key-alias"
+    //         keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+    //     }
+    // }
+    // Then change release buildType to: signingConfig = signingConfigs.getByName("release")
 }
 
 flutter {

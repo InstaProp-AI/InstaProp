@@ -1,8 +1,8 @@
 using System.Net;
 using System.Text.Json;
-using PropertyFlipperAPI.Services;
+using InstapropAPI.Services;
 
-namespace PropertyFlipperAPI.Middleware
+namespace InstapropAPI.Middleware
 {
     /// <summary>
     /// Global error handling middleware that catches all unhandled exceptions

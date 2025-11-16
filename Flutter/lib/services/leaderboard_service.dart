@@ -1,4 +1,4 @@
-import 'package:app1/models/leaderboard_models.dart';
+import 'package:instaprop/models/leaderboard_models.dart';
 
 import 'api_client.dart';
 

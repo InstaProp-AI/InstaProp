@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class ImgBBService
     {

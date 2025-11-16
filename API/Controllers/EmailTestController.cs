@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using PropertyFlipperAPI.Services;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Services;
+using InstapropAPI.Models;
 using System;
 using System.Threading.Tasks;
 
-namespace PropertyFlipperAPI.Controllers
+namespace InstapropAPI.Controllers
 {
     /// <summary>
     /// Test controller for sending email template previews

@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
-using PropertyFlipperAPI.Services;
-using PropertyFlipperAPI.Models.Feed;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
+using InstapropAPI.Services;
+using InstapropAPI.Models.Feed;
 using System.Security.Claims;
 
-namespace PropertyFlipperAPI.Controllers
+namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

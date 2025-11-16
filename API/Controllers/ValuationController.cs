@@ -1,21 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 using Microsoft.AspNetCore.Authorization;
-using PropertyFlipperAPI.Services;
+using InstapropAPI.Services;
 
-namespace PropertyFlipperAPI.Controllers
+namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class ValuationController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly PropertyFlipperAPI.Services.OpenAIService _openAIService;
+        private readonly InstapropAPI.Services.OpenAIService _openAIService;
         private readonly RewardService _rewardService;
 
-        public ValuationController(AppDbContext context, PropertyFlipperAPI.Services.OpenAIService openAIService, RewardService rewardService)
+        public ValuationController(AppDbContext context, InstapropAPI.Services.OpenAIService openAIService, RewardService rewardService)
         {
             _context = context;
             _openAIService = openAIService;
@@ -141,7 +141,7 @@ namespace PropertyFlipperAPI.Controllers
             try
             {
                 // Create property data for AI
-                var propertyData = new PropertyFlipperAPI.Services.PropertyValuationData
+                var propertyData = new InstapropAPI.Services.PropertyValuationData
                 {
                     Location = request.Location ?? "",
                     Bedrooms = request.Bedrooms,
@@ -194,9 +194,9 @@ namespace PropertyFlipperAPI.Controllers
             }
         }
 
-        private async Task<List<PropertyFlipperAPI.Services.ComparablePropertyData>> GetSimilarProperties(ValuationRequest request)
+        private async Task<List<InstapropAPI.Services.ComparablePropertyData>> GetSimilarProperties(ValuationRequest request)
         {
-            var comparables = new List<PropertyFlipperAPI.Services.ComparablePropertyData>();
+            var comparables = new List<InstapropAPI.Services.ComparablePropertyData>();
 
             // Calculate size range (±20%)
             var minSqft = (int)(request.SquareFeet * 0.8);
@@ -226,7 +226,7 @@ namespace PropertyFlipperAPI.Controllers
                 var latestAuction = prop.Auctions.OrderByDescending(a => a.CreatedAt).FirstOrDefault();
                 decimal price = latestAuction?.CurrentPrice ?? latestAuction?.StartPrice ?? 0;
 
-                comparables.Add(new PropertyFlipperAPI.Services.ComparablePropertyData
+                comparables.Add(new InstapropAPI.Services.ComparablePropertyData
                 {
                     Name = prop.Name,
                     Location = prop.Location ?? "",
@@ -243,9 +243,9 @@ namespace PropertyFlipperAPI.Controllers
             return comparables;
         }
 
-        private async Task<List<PropertyFlipperAPI.Services.AuctionDataForValuation>> GetRelevantAuctions(ValuationRequest request)
+        private async Task<List<InstapropAPI.Services.AuctionDataForValuation>> GetRelevantAuctions(ValuationRequest request)
         {
-            var auctionData = new List<PropertyFlipperAPI.Services.AuctionDataForValuation>();
+            var auctionData = new List<InstapropAPI.Services.AuctionDataForValuation>();
 
             var minSqft = (int)(request.SquareFeet * 0.8);
             var maxSqft = (int)(request.SquareFeet * 1.2);
@@ -270,7 +270,7 @@ namespace PropertyFlipperAPI.Controllers
             {
                 decimal currentPrice = auction.CurrentPrice > 0 ? auction.CurrentPrice : auction.StartPrice;
                 
-                auctionData.Add(new PropertyFlipperAPI.Services.AuctionDataForValuation
+                auctionData.Add(new InstapropAPI.Services.AuctionDataForValuation
                 {
                     PropertyName = auction.Property.Name,
                     Location = auction.Property.Location,

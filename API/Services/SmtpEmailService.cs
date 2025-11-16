@@ -4,7 +4,7 @@ using MimeKit;
 using System;
 using System.Threading.Tasks;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Service for sending emails via SMTP (Gmail)
@@ -58,7 +58,7 @@ namespace PropertyFlipperAPI.Services
 
                 // From
                 var senderEmail = _configuration["Email:SenderEmail"];
-                var senderName = _configuration["Email:SenderName"] ?? "Property Flipper";
+                var senderName = _configuration["Email:SenderName"] ?? "Instaprop";
                 message.From.Add(new MailboxAddress(senderName, senderEmail));
 
                 // To

@@ -1,13 +1,13 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 using Microsoft.AspNetCore.Authorization;
-using PropertyFlipperAPI.Attributes;
-using PropertyFlipperAPI.Services;
+using InstapropAPI.Attributes;
+using InstapropAPI.Services;
 
-namespace PropertyFlipperAPI.Controllers
+namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

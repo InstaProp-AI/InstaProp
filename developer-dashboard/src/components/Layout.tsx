@@ -129,7 +129,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
-                }}>Property Flipper</h1>
+                }}>Instaprop</h1>
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>Developer Dashboard</p>
               </div>
               <button
@@ -227,7 +227,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
                   fontSize: '1.5rem',
                   fontWeight: 'bold',
                   color: 'white'
-                }}>Property Flipper</h1>
+                }}>Instaprop</h1>
                 <p style={{
                   fontSize: '0.875rem',
                   color: 'rgba(255,255,255,0.8)',

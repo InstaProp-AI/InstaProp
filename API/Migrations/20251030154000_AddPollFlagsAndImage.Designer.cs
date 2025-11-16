@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using PropertyFlipperAPI.Data;
+using InstapropAPI.Data;
 
 #nullable disable
 
-namespace PropertyFlipperAPI.Migrations
+namespace InstapropAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251030154000_AddPollFlagsAndImage")]
@@ -19,7 +19,7 @@ namespace PropertyFlipperAPI.Migrations
         {
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Poll", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Poll", b =>
                 {
                     b.Property<long>("PollId")
                         .ValueGeneratedOnAdd()
@@ -63,7 +63,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Polls");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PollVote", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PollVote", b =>
                 {
                     b.Property<long>("VoteId")
                         .ValueGeneratedOnAdd()

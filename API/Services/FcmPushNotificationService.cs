@@ -1,9 +1,9 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Models;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Firebase Cloud Messaging (FCM) service for sending push notifications to mobile devices.
@@ -244,7 +244,7 @@ namespace PropertyFlipperAPI.Services
                     break;
 
                 default:
-                    title = "Property Flipper Notification";
+                    title = "Instaprop Notification";
                     body = $"Update regarding '{propertyName}'";
                     break;
             }

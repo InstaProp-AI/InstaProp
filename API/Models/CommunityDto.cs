@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     public class CreateCommunityDto
     {

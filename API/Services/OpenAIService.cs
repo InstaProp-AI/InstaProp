@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class OpenAIService
     {

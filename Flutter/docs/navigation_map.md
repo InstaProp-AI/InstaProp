@@ -1,7 +1,7 @@
 # Flutter Navigation Map
 
 ## Entry Stack
-- `lib/main.dart` boots Firebase, wraps the app, and launches `PropertyFlipperApp`.
+- `lib/main.dart` boots Firebase, wraps the app, and launches `InstapropApp`.
 - `lib/app.dart` wires `MaterialApp` with `home: HomePage`, injects providers, and attaches `AppRouter.onGenerateRoute`.
 - `lib/core/router/app_router.dart` defines named routes used across the app (`/home`, `/auth`, `/profile`, `/valuate`, `/all-news`, `/news/{id}`) and helper navigation utilities.
 

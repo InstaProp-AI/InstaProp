@@ -48,9 +48,9 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyDkpQ8vZ5kQxJ3xQN0YH1X3nZxJ8kV5kQx',
     appId: '1:897302032475:web:abc123def456',
     messagingSenderId: '897302032475',
-    projectId: 'property-flipper-5164d',
-    authDomain: 'property-flipper-5164d.firebaseapp.com',
-    storageBucket: 'property-flipper-5164d.appspot.com',
+    projectId: 'instaprop-5164d',
+    authDomain: 'instaprop-5164d.firebaseapp.com',
+    storageBucket: 'instaprop-5164d.appspot.com',
     measurementId: 'G-XXXXXXXXXX',
   );
 
@@ -58,16 +58,16 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyDkpQ8vZ5kQxJ3xQN0YH1X3nZxJ8kV5kQx',
     appId: '1:897302032475:android:abc123def456',
     messagingSenderId: '897302032475',
-    projectId: 'property-flipper-5164d',
-    storageBucket: 'property-flipper-5164d.appspot.com',
+    projectId: 'instaprop-5164d',
+    storageBucket: 'instaprop-5164d.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDkpQ8vZ5kQxJ3xQN0YH1X3nZxJ8kV5kQx',
     appId: '1:897302032475:ios:abc123def456',
     messagingSenderId: '897302032475',
-    projectId: 'property-flipper-5164d',
-    storageBucket: 'property-flipper-5164d.appspot.com',
+    projectId: 'instaprop-5164d',
+    storageBucket: 'instaprop-5164d.appspot.com',
     iosBundleId: 'com.propertyflipper.app1',
   );
 
@@ -75,8 +75,8 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyDkpQ8vZ5kQxJ3xQN0YH1X3nZxJ8kV5kQx',
     appId: '1:897302032475:ios:abc123def456',
     messagingSenderId: '897302032475',
-    projectId: 'property-flipper-5164d',
-    storageBucket: 'property-flipper-5164d.appspot.com',
+    projectId: 'instaprop-5164d',
+    storageBucket: 'instaprop-5164d.appspot.com',
     iosBundleId: 'com.propertyflipper.app1',
   );
 }

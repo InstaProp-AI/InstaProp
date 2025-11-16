@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Error tracking service that integrates with Sentry or Application Insights.

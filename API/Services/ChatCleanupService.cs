@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
+using InstapropAPI.Data;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Background service that runs daily to delete chat messages older than 30 days

@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
-using PropertyFlipperAPI.Services;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
+using InstapropAPI.Services;
 using System.Text.Json;
 
-namespace PropertyFlipperAPI.Controllers
+namespace InstapropAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -150,7 +150,7 @@ namespace PropertyFlipperAPI.Controllers
                 // Use OpenAI to determine next response
                 var conversationHistory = aiChat.Messages
                     .OrderBy(m => m.CreatedAt)
-                    .Select(m => new PropertyFlipperAPI.Services.BrokerConversationMessage
+                    .Select(m => new InstapropAPI.Services.BrokerConversationMessage
                     {
                         Role = m.Role,
                         Content = m.Content
@@ -332,7 +332,7 @@ namespace PropertyFlipperAPI.Controllers
             }
         }
 
-        private async Task<AIBrokerResponseDto> ProcessAIResponse(AIChat chat, PropertyFlipperAPI.Services.BrokerAIResponse aiResponse, UserPreferences prefs)
+        private async Task<AIBrokerResponseDto> ProcessAIResponse(AIChat chat, InstapropAPI.Services.BrokerAIResponse aiResponse, UserPreferences prefs)
         {
             var response = new AIBrokerResponseDto { Messages = new List<AIBrokerMessageDto>() };
 

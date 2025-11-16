@@ -6142,9 +6142,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/abraam/Desktop/Business/Proerty Flipper/API/PropertyFlipperAPI.csproj",
-      "projectName": "PropertyFlipperAPI",
-      "projectPath": "/home/abraam/Desktop/Business/Proerty Flipper/API/PropertyFlipperAPI.csproj",
+      "projectUniqueName": "/home/abraam/Desktop/Business/Proerty Flipper/API/InstapropAPI.csproj",
+      "projectName": "InstapropAPI",
+      "projectPath": "/home/abraam/Desktop/Business/Proerty Flipper/API/InstapropAPI.csproj",
       "packagesPath": "/home/abraam/.nuget/packages/",
       "outputPath": "/home/abraam/Desktop/Business/Proerty Flipper/API/obj/",
       "projectStyle": "PackageReference",

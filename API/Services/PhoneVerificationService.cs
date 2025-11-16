@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class PhoneVerificationService
     {
@@ -26,7 +26,7 @@ namespace PropertyFlipperAPI.Services
             Console.WriteLine($"To: {phoneNumber}");
             Console.WriteLine($"");
             Console.WriteLine($"Hi {firstName},");
-            Console.WriteLine($"Your Property Flipper verification code is: {pin}");
+            Console.WriteLine($"Your Instaprop verification code is: {pin}");
             Console.WriteLine($"Valid for 15 minutes.");
             Console.WriteLine($"============================");
 
@@ -37,7 +37,7 @@ namespace PropertyFlipperAPI.Services
             // TwilioClient.Init(accountSid, authToken);
             // 
             // var message = await MessageResource.CreateAsync(
-            //     body: $"Your Property Flipper verification code is: {pin}. Valid for 15 minutes.",
+            //     body: $"Your Instaprop verification code is: {pin}. Valid for 15 minutes.",
             //     from: new Twilio.Types.PhoneNumber(_configuration["Twilio:PhoneNumber"]),
             //     to: new Twilio.Types.PhoneNumber(phoneNumber)
             // );

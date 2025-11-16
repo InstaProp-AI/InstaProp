@@ -1,7 +1,7 @@
 # 🚀 Admin Dashboard - Quick Start Guide
 
 ## Overview
-The Property Flipper Admin Dashboard is now fully operational and production-ready! This guide will help you get started quickly.
+The Instaprop Admin Dashboard is now fully operational and production-ready! This guide will help you get started quickly.
 
 ## 🔑 Access Requirements
 
@@ -267,6 +267,6 @@ For issues or questions:
 
 **Happy Managing! 🎉**
 
-The admin dashboard is ready to manage your entire Property Flipper platform. All features are implemented and tested. Just connect to your backend API and you're ready to go!
+The admin dashboard is ready to manage your entire Instaprop platform. All features are implemented and tested. Just connect to your backend API and you're ready to go!
 
 

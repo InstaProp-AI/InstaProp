@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     public class PropertyImage
     {

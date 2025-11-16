@@ -39,33 +39,43 @@ class ApiResponse<T> {
 }
 
 class ApiClient {
-  // ⚙️ CONFIGURATION - Change this one line based on your setup:
-  // For physical phone on same network: use your computer's IP (run: ifconfig | grep "inet ")
-  // For Android emulator: use 'http://10.0.2.2:5284'
-  // For iOS simulator or localhost: use 'http://localhost:5284'
+  // ⚙️ CONFIGURATION - Production vs Development
+  // Set this to your Railway deployment URL after deploying backend
+  // Example: 'https://your-app-name.railway.app'
+  static const String productionBaseUrl = 'https://YOUR-RAILWAY-APP-NAME.railway.app';
+  
+  // Development URLs (for local testing)
+  static const String devBaseUrlAndroid = 'http://192.168.1.5:5284';
+  static const String devBaseUrlIOS = 'http://localhost:5284';
+  static const String devBaseUrlWeb = 'http://localhost:5284';
+  
+  // Set to true when building for production (APK/IPA)
+  // Set to false for local development/testing
+  static const bool useProductionUrl = true;
 
-  // 🔧 Auto-detect best URL based on platform
+  // 🔧 Auto-detect best URL based on platform and environment
   static String get baseUrl {
-    // Check if running on physical device or emulator
-    if (kIsWeb) {
-      return 'http://localhost:5284';
-    } else if (Platform.isAndroid) {
-      // Try to detect if it's emulator or physical device
-      // For physical device, use Mac's IP
-      return 'http://192.168.1.5:5284';
-      // For emulator, uncomment: return 'http://10.0.2.2:5284';
-    } else if (Platform.isIOS) {
-      // For iOS simulator
-      return 'http://localhost:5284';
-      // For physical iOS device, use: return 'http://192.168.1.5:5284';
+    // Use production URL if enabled
+    if (useProductionUrl && productionBaseUrl != 'https://YOUR-RAILWAY-APP-NAME.railway.app') {
+      return productionBaseUrl;
     }
-    return 'http://localhost:5284';
+    
+    // Development URLs based on platform
+    if (kIsWeb) {
+      return devBaseUrlWeb;
+    } else if (Platform.isAndroid) {
+      return devBaseUrlAndroid;
+      // For Android emulator, use: return 'http://10.0.2.2:5284';
+    } else if (Platform.isIOS) {
+      return devBaseUrlIOS;
+      // For physical iOS device on same network, use your computer's IP
+    }
+    return devBaseUrlWeb;
   }
 
   // Quick reference:
-  // Physical device (same WiFi): 'http://192.168.1.5:5284'
-  // Android emulator:            'http://10.0.2.2:5284'
-  // iOS simulator/localhost:     'http://localhost:5284'
+  // Production: Set productionBaseUrl to your Railway URL and useProductionUrl = true
+  // Development: Set useProductionUrl = false and use local IPs above
 
   static const Duration timeout = Duration(seconds: 60);
 

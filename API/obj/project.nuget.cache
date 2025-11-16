@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "z7eY4VXLOB4=",
+  "dgSpecHash": "xn8uxR6KvvM=",
   "success": true,
-  "projectFilePath": "/home/abraam/Desktop/Business/Proerty Flipper/API/PropertyFlipperAPI.csproj",
+  "projectFilePath": "/home/abraam/Desktop/Business/Proerty Flipper/API/InstapropAPI.csproj",
   "expectedPackageFiles": [
     "/home/abraam/.nuget/packages/azure.core/1.38.0/azure.core.1.38.0.nupkg.sha512",
     "/home/abraam/.nuget/packages/azure.identity/1.11.4/azure.identity.1.11.4.nupkg.sha512",

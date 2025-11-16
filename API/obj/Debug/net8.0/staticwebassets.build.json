@@ -1,17 +1,17 @@
 {
   "Version": 1,
-  "Hash": "wQpnCwdEIuWz302n5aL7Y+y23KarWqFSq1zRltwwtG0=",
-  "Source": "PropertyFlipperAPI",
-  "BasePath": "_content/PropertyFlipperAPI",
+  "Hash": "U0SdwUXicFqvq604m/Y8MvQI3AsHjU3H6C0okAxt8m0=",
+  "Source": "InstapropAPI",
+  "BasePath": "_content/InstapropAPI",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
   "DiscoveryPatterns": [
     {
-      "Name": "PropertyFlipperAPI/wwwroot",
-      "Source": "PropertyFlipperAPI",
+      "Name": "InstapropAPI/wwwroot",
+      "Source": "InstapropAPI",
       "ContentRoot": "/home/abraam/Desktop/Business/Proerty Flipper/API/wwwroot/",
-      "BasePath": "_content/PropertyFlipperAPI",
+      "BasePath": "_content/InstapropAPI",
       "Pattern": "**"
     }
   ],

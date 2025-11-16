@@ -166,7 +166,7 @@ void main() async {
 
   // Run the app with extensive error handling
   try {
-    runApp(const PropertyFlipperApp());
+    runApp(const InstapropApp());
   } catch (e) {
     print('❌ Error running app: $e');
     // Fallback to a simple app if main app fails
@@ -193,7 +193,7 @@ class FallbackApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Property Flipper',
+      title: 'Instaprop',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const FallbackHomePage(),
@@ -208,7 +208,7 @@ class FallbackHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Property Flipper'),
+        title: const Text('Instaprop'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: const Center(
@@ -218,7 +218,7 @@ class FallbackHomePage extends StatelessWidget {
             Icon(Icons.home, size: 64, color: Colors.blue),
             SizedBox(height: 16),
             Text(
-              'Property Flipper',
+              'Instaprop',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),

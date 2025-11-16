@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     public enum AccountType
     {

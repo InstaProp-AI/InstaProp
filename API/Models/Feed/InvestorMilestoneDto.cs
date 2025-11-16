@@ -1,6 +1,6 @@
 using System;
 
-namespace PropertyFlipperAPI.Models.Feed
+namespace InstapropAPI.Models.Feed
 {
     public class InvestorMilestoneDto
     {

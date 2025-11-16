@@ -5,10 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class LeaderboardService
     {
@@ -370,7 +370,7 @@ namespace PropertyFlipperAPI.Services
                 Headline = period switch
                 {
                     LeaderboardPeriod.ThisWeek => $"Weekly prize pool: {CashbackPrizes.Sum():0} EGP up for grabs",
-                    LeaderboardPeriod.AllTime => "Legends of Property Flipper",
+                    LeaderboardPeriod.AllTime => "Legends of Instaprop",
                     _ => "Leaderboard"
                 },
                 Subheading = period switch

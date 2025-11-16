@@ -1,4 +1,4 @@
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     public class VerificationResult
     {

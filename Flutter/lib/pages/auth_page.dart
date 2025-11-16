@@ -498,7 +498,7 @@ class _AuthPageState extends State<AuthPage>
 
                             // Title
                             const Text(
-                              'Property Flipper',
+                              'Instaprop',
                               style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.w800,

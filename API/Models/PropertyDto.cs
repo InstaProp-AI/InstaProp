@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace PropertyFlipperAPI.Models
+namespace InstapropAPI.Models
 {
     public class PropertyDto
     {

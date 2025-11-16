@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace PropertyFlipperAPI.Migrations
+namespace InstapropAPI.Migrations
 {
     /// <inheritdoc />
     public partial class AddInstallmentSummary : Migration

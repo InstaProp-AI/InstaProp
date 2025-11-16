@@ -1,7 +1,7 @@
-# Property Flipper - Admin Dashboard
+# Instaprop - Admin Dashboard
 
 ## Overview
-A comprehensive, production-ready admin dashboard for managing the Property Flipper platform. This dashboard provides complete control over users, properties, auctions, bids, and system settings.
+A comprehensive, production-ready admin dashboard for managing the Instaprop platform. This dashboard provides complete control over users, properties, auctions, bids, and system settings.
 
 ## ✨ Features
 
@@ -268,7 +268,7 @@ VITE_API_BASE_URL=http://localhost:5001/api
 
 ## 📄 License
 
-This project is part of the Property Flipper platform.
+This project is part of the Instaprop platform.
 
 ---
 

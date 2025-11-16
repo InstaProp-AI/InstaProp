@@ -1,8 +1,8 @@
 using System;
 using System.Threading.Tasks;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Models;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     /// <summary>
     /// Service for sending auction-related email notifications

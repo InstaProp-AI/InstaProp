@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class NotificationService
     {

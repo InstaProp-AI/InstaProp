@@ -1,0 +1,58 @@
+# Build outputs
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+*.bak
+*.bak2
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+api.log
+
+# Test results
+TestResults/
+coverage/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Flutter
+../Flutter/
+
+# Dashboards
+../dashboard/
+../developer-dashboard/
+
+# Scripts
+../scripts/
+
+# Documentation
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# Other
+.env
+.env.local
+*.user
+*.suo
+

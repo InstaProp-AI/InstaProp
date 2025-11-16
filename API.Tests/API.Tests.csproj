@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\API\PropertyFlipperAPI.csproj" />
+    <ProjectReference Include="..\API\InstapropAPI.csproj" />
   </ItemGroup>
 
 </Project>

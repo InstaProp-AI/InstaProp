@@ -3,11 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using PropertyFlipperAPI.Data;
+using InstapropAPI.Data;
 
 #nullable disable
 
-namespace PropertyFlipperAPI.Migrations
+namespace InstapropAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251112201500_AddLeaderboardTables")]

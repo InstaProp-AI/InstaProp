@@ -1,8 +1,8 @@
-# Property Flipper Backend Documentation
+# Instaprop Backend Documentation
 
 ## Overview
 
-The Property Flipper backend is built with **.NET Core 8.0** using a **RESTful API** architecture. It provides a comprehensive real estate auction platform with real-time updates via **Firebase Firestore** and **FCM push notifications**.
+The Instaprop backend is built with **.NET Core 8.0** using a **RESTful API** architecture. It provides a comprehensive real estate auction platform with real-time updates via **Firebase Firestore** and **FCM push notifications**.
 
 ## Architecture
 
@@ -636,8 +636,8 @@ public async Task<IActionResult> AdminOnlyEndpoint()
   },
   "Jwt": {
     "Key": "your-secret-key-min-32-chars",
-    "Issuer": "PropertyFlipperAPI",
-    "Audience": "PropertyFlipperApp"
+    "Issuer": "InstapropAPI",
+    "Audience": "InstapropApp"
   },
   "Smtp": {
     "Host": "smtp.gmail.com",
@@ -645,7 +645,7 @@ public async Task<IActionResult> AdminOnlyEndpoint()
     "Username": "your-email",
     "Password": "app-password",
     "FromEmail": "noreply@propertyflipper.com",
-    "FromName": "Property Flipper"
+    "FromName": "Instaprop"
   },
   "Firebase": {
     "ProjectId": "your-project-id",

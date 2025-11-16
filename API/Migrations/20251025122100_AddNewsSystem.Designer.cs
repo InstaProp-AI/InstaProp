@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using PropertyFlipperAPI.Data;
+using InstapropAPI.Data;
 
 #nullable disable
 
-namespace PropertyFlipperAPI.Migrations
+namespace InstapropAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251025122100_AddNewsSystem")]
@@ -20,7 +20,7 @@ namespace PropertyFlipperAPI.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChat", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AIChat", b =>
                 {
                     b.Property<long>("AIChatId")
                         .ValueGeneratedOnAdd()
@@ -50,7 +50,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("AIChats");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChatMessage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AIChatMessage", b =>
                 {
                     b.Property<long>("MessageId")
                         .ValueGeneratedOnAdd()
@@ -98,7 +98,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("AIChatMessages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Account", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Account", b =>
                 {
                     b.Property<long>("AccountId")
                         .ValueGeneratedOnAdd()
@@ -210,7 +210,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Accounts");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Auction", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Auction", b =>
                 {
                     b.Property<long>("AuctionId")
                         .ValueGeneratedOnAdd()
@@ -249,7 +249,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Auctions");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Bid", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Bid", b =>
                 {
                     b.Property<long>("BidId")
                         .ValueGeneratedOnAdd()
@@ -276,7 +276,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Bids");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Chat", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Chat", b =>
                 {
                     b.Property<long>("ChatId")
                         .ValueGeneratedOnAdd()
@@ -311,7 +311,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Chats");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ChatMessage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ChatMessage", b =>
                 {
                     b.Property<long>("MessageId")
                         .ValueGeneratedOnAdd()
@@ -350,7 +350,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("ChatMessages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ChildProperty", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ChildProperty", b =>
                 {
                     b.Property<int>("PropertyId")
                         .ValueGeneratedOnAdd()
@@ -516,7 +516,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("ChildProperties");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperProfile", b =>
                 {
                     b.Property<long>("ProfileId")
                         .ValueGeneratedOnAdd()
@@ -557,7 +557,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("DeveloperProfiles");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperRating", b =>
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperRating", b =>
                 {
                     b.Property<long>("RatingId")
                         .ValueGeneratedOnAdd()
@@ -590,7 +590,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("DeveloperRatings");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Event", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Event", b =>
                 {
                     b.Property<long>("EventId")
                         .ValueGeneratedOnAdd()
@@ -690,7 +690,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Events");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.GoldPrice", b =>
+            modelBuilder.Entity("InstapropAPI.Models.GoldPrice", b =>
                 {
                     b.Property<int>("GoldPriceId")
                         .ValueGeneratedOnAdd()
@@ -724,7 +724,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("GoldPrices");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.NewsArticle", b =>
+            modelBuilder.Entity("InstapropAPI.Models.NewsArticle", b =>
                 {
                     b.Property<long>("NewsArticleId")
                         .ValueGeneratedOnAdd()
@@ -760,7 +760,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("NewsArticles");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.NewsImage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.NewsImage", b =>
                 {
                     b.Property<long>("NewsImageId")
                         .ValueGeneratedOnAdd()
@@ -784,7 +784,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("NewsImages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Notification", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Notification", b =>
                 {
                     b.Property<long>("NotificationId")
                         .ValueGeneratedOnAdd()
@@ -842,7 +842,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ParentProperty", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ParentProperty", b =>
                 {
                     b.Property<int>("ParentPropertyId")
                         .ValueGeneratedOnAdd()
@@ -909,7 +909,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("ParentProperties");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Project", b =>
                 {
                     b.Property<long>("ProjectId")
                         .ValueGeneratedOnAdd()
@@ -946,7 +946,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Projects");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectMilestone", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ProjectMilestone", b =>
                 {
                     b.Property<long>("MilestoneId")
                         .ValueGeneratedOnAdd()
@@ -988,7 +988,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("ProjectMilestones");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectUpdate", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ProjectUpdate", b =>
                 {
                     b.Property<long>("UpdateId")
                         .ValueGeneratedOnAdd()
@@ -1019,7 +1019,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("ProjectUpdates");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyDoc", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyDoc", b =>
                 {
                     b.Property<long>("DocId")
                         .ValueGeneratedOnAdd()
@@ -1051,7 +1051,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("PropertyDocs");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyImage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyImage", b =>
                 {
                     b.Property<long>("PropertyImageId")
                         .ValueGeneratedOnAdd()
@@ -1089,7 +1089,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("PropertyImages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyPriceHistory", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyPriceHistory", b =>
                 {
                     b.Property<int>("PriceHistoryId")
                         .ValueGeneratedOnAdd()
@@ -1133,7 +1133,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("PropertyPriceHistories");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyValuation", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyValuation", b =>
                 {
                     b.Property<int>("ValuationId")
                         .ValueGeneratedOnAdd()
@@ -1180,7 +1180,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("PropertyValuations");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyView", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyView", b =>
                 {
                     b.Property<long>("ViewId")
                         .ValueGeneratedOnAdd()
@@ -1213,7 +1213,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("PropertyViews");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Redemption", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Redemption", b =>
                 {
                     b.Property<long>("RedemptionId")
                         .ValueGeneratedOnAdd()
@@ -1251,7 +1251,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Redemptions");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Referral", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Referral", b =>
                 {
                     b.Property<long>("ReferralId")
                         .ValueGeneratedOnAdd()
@@ -1289,7 +1289,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("Referrals");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>
+            modelBuilder.Entity("InstapropAPI.Models.UserBadge", b =>
                 {
                     b.Property<long>("BadgeId")
                         .ValueGeneratedOnAdd()
@@ -1321,7 +1321,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("UserBadges");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.UserDoc", b =>
+            modelBuilder.Entity("InstapropAPI.Models.UserDoc", b =>
                 {
                     b.Property<long>("DocId")
                         .ValueGeneratedOnAdd()
@@ -1353,7 +1353,7 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("UserDocs");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.UserReward", b =>
+            modelBuilder.Entity("InstapropAPI.Models.UserReward", b =>
                 {
                     b.Property<long>("RewardId")
                         .ValueGeneratedOnAdd()
@@ -1386,9 +1386,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.ToTable("UserRewards");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChat", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AIChat", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1397,9 +1397,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChatMessage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AIChatMessage", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.AIChat", "AIChat")
+                    b.HasOne("InstapropAPI.Models.AIChat", "AIChat")
                         .WithMany("Messages")
                         .HasForeignKey("AIChatId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1408,9 +1408,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("AIChat");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Auction", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Auction", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
+                    b.HasOne("InstapropAPI.Models.ChildProperty", "Property")
                         .WithMany("Auctions")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1419,15 +1419,15 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Bid", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Bid", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Auction", "Auction")
+                    b.HasOne("InstapropAPI.Models.Auction", "Auction")
                         .WithMany("Bids")
                         .HasForeignKey("AuctionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Bidder")
+                    b.HasOne("InstapropAPI.Models.Account", "Bidder")
                         .WithMany("Bids")
                         .HasForeignKey("BidderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1438,20 +1438,20 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Bidder");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Chat", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Chat", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.Account", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                    b.HasOne("InstapropAPI.Models.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1464,20 +1464,20 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ChatMessage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ChatMessage", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Chat", "Chat")
+                    b.HasOne("InstapropAPI.Models.Chat", "Chat")
                         .WithMany("Messages")
                         .HasForeignKey("ChatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
+                    b.HasOne("InstapropAPI.Models.ChildProperty", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Sender")
+                    b.HasOne("InstapropAPI.Models.Account", "Sender")
                         .WithMany()
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1490,20 +1490,20 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Sender");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ChildProperty", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ChildProperty", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Owner")
+                    b.HasOne("InstapropAPI.Models.Account", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("PropertyFlipperAPI.Models.ParentProperty", "ParentProperty")
+                    b.HasOne("InstapropAPI.Models.ParentProperty", "ParentProperty")
                         .WithMany("ChildProperties")
                         .HasForeignKey("ParentPropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                    b.HasOne("InstapropAPI.Models.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1515,9 +1515,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperProfile", b =>
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperProfile", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.Account", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1526,15 +1526,15 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.DeveloperRating", b =>
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperRating", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.Account", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1545,9 +1545,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Event", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Event", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1556,9 +1556,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.NewsImage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.NewsImage", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.NewsArticle", "NewsArticle")
+                    b.HasOne("InstapropAPI.Models.NewsArticle", "NewsArticle")
                         .WithMany("Images")
                         .HasForeignKey("NewsArticleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1567,9 +1567,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("NewsArticle");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Notification", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Notification", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -1577,9 +1577,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ParentProperty", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ParentProperty", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                    b.HasOne("InstapropAPI.Models.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1587,9 +1587,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Project", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Project", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.Account", "Developer")
                         .WithMany("Projects")
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1598,9 +1598,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Developer");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectMilestone", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ProjectMilestone", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                    b.HasOne("InstapropAPI.Models.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1609,9 +1609,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ProjectUpdate", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ProjectUpdate", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Project", "Project")
+                    b.HasOne("InstapropAPI.Models.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1620,9 +1620,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyDoc", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyDoc", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
+                    b.HasOne("InstapropAPI.Models.ChildProperty", "Property")
                         .WithMany("PropertyDocs")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1631,9 +1631,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyImage", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyImage", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
+                    b.HasOne("InstapropAPI.Models.ChildProperty", "Property")
                         .WithMany("PropertyImages")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1642,19 +1642,19 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyPriceHistory", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyPriceHistory", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Auction", "Auction")
+                    b.HasOne("InstapropAPI.Models.Auction", "Auction")
                         .WithMany()
                         .HasForeignKey("AuctionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "ChildProperty")
+                    b.HasOne("InstapropAPI.Models.ChildProperty", "ChildProperty")
                         .WithMany()
                         .HasForeignKey("ChildPropertyId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("PropertyFlipperAPI.Models.ParentProperty", "ParentProperty")
+                    b.HasOne("InstapropAPI.Models.ParentProperty", "ParentProperty")
                         .WithMany("PriceHistories")
                         .HasForeignKey("ParentPropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1667,9 +1667,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("ParentProperty");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyValuation", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyValuation", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
+                    b.HasOne("InstapropAPI.Models.ChildProperty", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1678,15 +1678,15 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.PropertyView", b =>
+            modelBuilder.Entity("InstapropAPI.Models.PropertyView", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.ChildProperty", "Property")
+                    b.HasOne("InstapropAPI.Models.ChildProperty", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -1696,9 +1696,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Redemption", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Redemption", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.Account", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1707,14 +1707,14 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Referral", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Referral", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "ReferredUser")
+                    b.HasOne("InstapropAPI.Models.Account", "ReferredUser")
                         .WithMany()
                         .HasForeignKey("ReferredUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Referrer")
+                    b.HasOne("InstapropAPI.Models.Account", "Referrer")
                         .WithMany()
                         .HasForeignKey("ReferrerId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1725,9 +1725,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Referrer");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.UserBadge", b =>
+            modelBuilder.Entity("InstapropAPI.Models.UserBadge", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.Account", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1736,9 +1736,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.UserDoc", b =>
+            modelBuilder.Entity("InstapropAPI.Models.UserDoc", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany("UserDocs")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1747,9 +1747,9 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.UserReward", b =>
+            modelBuilder.Entity("InstapropAPI.Models.UserReward", b =>
                 {
-                    b.HasOne("PropertyFlipperAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.Account", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1758,12 +1758,12 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("Account");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.AIChat", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AIChat", b =>
                 {
                     b.Navigation("Messages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Account", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Account", b =>
                 {
                     b.Navigation("Bids");
 
@@ -1772,17 +1772,17 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("UserDocs");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Auction", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Auction", b =>
                 {
                     b.Navigation("Bids");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.Chat", b =>
+            modelBuilder.Entity("InstapropAPI.Models.Chat", b =>
                 {
                     b.Navigation("Messages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ChildProperty", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ChildProperty", b =>
                 {
                     b.Navigation("Auctions");
 
@@ -1791,12 +1791,12 @@ namespace PropertyFlipperAPI.Migrations
                     b.Navigation("PropertyImages");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.NewsArticle", b =>
+            modelBuilder.Entity("InstapropAPI.Models.NewsArticle", b =>
                 {
                     b.Navigation("Images");
                 });
 
-            modelBuilder.Entity("PropertyFlipperAPI.Models.ParentProperty", b =>
+            modelBuilder.Entity("InstapropAPI.Models.ParentProperty", b =>
                 {
                     b.Navigation("ChildProperties");
 

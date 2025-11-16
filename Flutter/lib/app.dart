@@ -104,8 +104,8 @@ class ErrorPage extends StatelessWidget {
 }
 
 /// Main app widget
-class PropertyFlipperApp extends StatelessWidget {
-  const PropertyFlipperApp({super.key});
+class InstapropApp extends StatelessWidget {
+  const InstapropApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +129,7 @@ class PropertyFlipperApp extends StatelessWidget {
             return ChangeNotifierProvider.value(
               value: appState.notificationService,
               child: MaterialApp(
-                title: 'Property Flipper',
+                title: 'Instaprop',
                 debugShowCheckedModeBanner: false,
                 theme: AppTheme.lightTheme,
                 onGenerateRoute: AppRouter.onGenerateRoute,
@@ -149,7 +149,7 @@ class PropertyFlipperApp extends StatelessWidget {
             );
           } catch (e) {
             return MaterialApp(
-              title: 'Property Flipper',
+              title: 'Instaprop',
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               home: const ErrorPage(),

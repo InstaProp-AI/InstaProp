@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using BCrypt.Net;
 using System.Text.Json;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class CompleteEgyptianSeedingService
     {

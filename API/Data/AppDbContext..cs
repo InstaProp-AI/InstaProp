@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using PropertyFlipperAPI.Models;
+using InstapropAPI.Models;
 
-namespace PropertyFlipperAPI.Data
+namespace InstapropAPI.Data
 {
     public class AppDbContext : DbContext
     {

@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using PropertyFlipperAPI.Data;
-using PropertyFlipperAPI.Models;
-using PropertyFlipperAPI.Controllers;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
+using InstapropAPI.Controllers;
 
-namespace PropertyFlipperAPI.Services
+namespace InstapropAPI.Services
 {
     public class ValuationService
     {

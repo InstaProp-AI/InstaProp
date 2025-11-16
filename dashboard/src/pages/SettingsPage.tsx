@@ -25,7 +25,7 @@ const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({
-    siteName: 'Property Flipper',
+    siteName: 'Instaprop',
     siteEmail: 'admin@propertyflipper.com',
     currency: 'USD',
     timezone: 'UTC',
