@@ -4,6 +4,7 @@ using InstapropAPI.Data;
 using InstapropAPI.Models;
 using InstapropAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
+using InstapropAPI.Services;
 
 namespace InstapropAPI.Controllers
 {
@@ -14,10 +15,12 @@ namespace InstapropAPI.Controllers
     public class AdminController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ImageFixService _imageFixService;
 
-        public AdminController(AppDbContext context)
+        public AdminController(AppDbContext context, ImageFixService imageFixService)
         {
             _context = context;
+            _imageFixService = imageFixService;
         }
 
         // GET: api/Admin/users - Get all users for admin dashboard
@@ -907,6 +910,42 @@ namespace InstapropAPI.Controllers
                 };
 
                 return Ok(analytics);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // POST: api/Admin/fix-images - Fix all broken image URLs in database
+        [HttpPost("fix-images")]
+        public async Task<ActionResult<object>> FixBrokenImages()
+        {
+            try
+            {
+                var result = await _imageFixService.FixAllBrokenImagesAsync();
+                
+                return Ok(new
+                {
+                    success = true,
+                    message = "Image fix process completed",
+                    totalChecked = result.TotalChecked,
+                    totalBroken = result.TotalBroken,
+                    totalFixed = result.TotalFixed,
+                    details = new
+                    {
+                        fixedProperties = result.FixedProperties,
+                        fixedPropertyImages = result.FixedPropertyImages,
+                        fixedPropertyDocs = result.FixedPropertyDocs,
+                        fixedUserDocs = result.FixedUserDocs,
+                        fixedProjectUpdates = result.FixedProjectUpdates,
+                        fixedNewsImages = result.FixedNewsImages,
+                        fixedCommunityPosts = result.FixedCommunityPosts,
+                        fixedDeveloperProfiles = result.FixedDeveloperProfiles,
+                        fixedEventImages = result.FixedEventImages
+                    },
+                    error = result.ErrorMessage
+                });
             }
             catch (Exception ex)
             {

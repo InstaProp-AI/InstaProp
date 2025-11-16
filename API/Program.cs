@@ -106,6 +106,7 @@ builder.Services.AddScoped<RewardService>(); // Gamification rewards
 builder.Services.AddScoped<LeaderboardService>(); // Leaderboard + cashback engine
 builder.Services.AddScoped<OpenAIService>(); // OpenAI Vision API for payment schedule scanning
 builder.Services.AddScoped<InstallmentSummaryService>();
+builder.Services.AddScoped<ImageFixService>();
 
 // Add HttpClient for FCM and ImgBB
 builder.Services.AddHttpClient();
