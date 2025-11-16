@@ -306,4 +306,12 @@ app.MapControllers();
 // Health check endpoint for monitoring
 app.MapHealthChecks("/health");
 
+// Serve Flutter web app for all non-API routes (SPA fallback)
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "app")),
+    RequestPath = ""
+});
+
 await app.RunAsync();
