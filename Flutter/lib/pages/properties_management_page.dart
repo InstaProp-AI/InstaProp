@@ -236,7 +236,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           child: _buildCompactActionButton(
                             context,
                             icon: Icons.gavel_rounded,
-                            title: 'Auction Activity',
+                            title: 'My Auctions',
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -272,7 +272,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                           child: _buildCompactActionButton(
                             context,
                             icon: Icons.calendar_today_rounded,
-                            title: 'Calendar',
+                            title: 'My Calendar',
                             onTap: () {
                               Navigator.push(
                                 context,
