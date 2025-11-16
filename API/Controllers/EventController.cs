@@ -594,6 +594,18 @@ namespace InstapropAPI.Controllers
                         continue;
                     }
 
+                    // Ensure DateTime is UTC for PostgreSQL compatibility
+                    if (paymentDate.Kind == DateTimeKind.Unspecified)
+                    {
+                        // Assume the parsed date is in local time and convert to UTC
+                        paymentDate = DateTime.SpecifyKind(paymentDate, DateTimeKind.Utc);
+                    }
+                    else if (paymentDate.Kind == DateTimeKind.Local)
+                    {
+                        paymentDate = paymentDate.ToUniversalTime();
+                    }
+                    // If already UTC, use as-is
+
                     var eventEntity = new Event
                     {
                         UserId = userId.Value,
