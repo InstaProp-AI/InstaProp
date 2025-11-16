@@ -637,10 +637,24 @@ namespace InstapropAPI.Controllers
             }
             catch (Exception ex)
             {
+                // Log full exception details for debugging
+                var errorMessage = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    errorMessage += $" | Inner: {ex.InnerException.Message}";
+                    if (ex.InnerException.InnerException != null)
+                    {
+                        errorMessage += $" | Inner2: {ex.InnerException.InnerException.Message}";
+                    }
+                }
+                
+                Console.WriteLine($"❌ Payment schedule scan error: {errorMessage}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+                
                 return StatusCode(500, new PaymentScheduleScanResult
                 {
                     Success = false,
-                    Message = $"Error processing payment schedule: {ex.Message}",
+                    Message = $"Error processing payment schedule: {errorMessage}",
                     EventsCreated = 0
                 });
             }
