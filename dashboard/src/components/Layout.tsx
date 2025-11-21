@@ -8,6 +8,7 @@ import {
   X, 
   LogOut,
   User,
+  Shield,
   Settings,
   Bell,
   Search,
@@ -17,9 +18,17 @@ import {
   Calendar,
   TrendingUp,
   DollarSign,
-  FileText
+  FileText,
+  MessageSquare,
+  Newspaper,
+  Trophy,
+  TrendingDown,
+  Gift,
+  Calculator,
+  Briefcase
 } from 'lucide-react';
 import { Account } from '../types';
+import { usePermissions } from '../contexts/PermissionContext';
 
 interface LayoutProps {
   user: Account;
@@ -30,18 +39,58 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const isAdmin = user.roleId === 9823749823749823 || user.roleName === 'Admin' || user.type === 'Admin';
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, color: 'bg-blue-500' },
-    { name: 'Users', href: '/users', icon: Users, color: 'bg-green-500' },
-    { name: 'Properties', href: '/properties', icon: Home, color: 'bg-purple-500' },
-    { name: 'Auctions', href: '/auctions', icon: Hammer, color: 'bg-orange-500' },
-    { name: 'Projects', href: '/projects', icon: FolderOpen, color: 'bg-teal-500' },
-    { name: 'Documents', href: '/documents', icon: FileText, color: 'bg-yellow-500' },
-    { name: 'Notifications', href: '/notifications', icon: Bell, color: 'bg-pink-500' },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3, color: 'bg-indigo-500' },
-    { name: 'Settings', href: '/settings', icon: Settings, color: 'bg-gray-500' },
+  // Base navigation items with permission requirements
+  const allNavigationItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, color: 'bg-blue-500', permission: null, adminOnly: false },
+    { name: 'Users', href: '/users', icon: Users, color: 'bg-green-500', permission: null, adminOnly: true },
+    { name: 'Developers', href: '/developers', icon: Shield, color: 'bg-indigo-500', permission: null, adminOnly: true },
+    { name: 'Sales', href: '/sales', icon: Briefcase, color: 'bg-orange-600', permission: null, adminOnly: false },
+    { name: 'Properties', href: '/properties', icon: Home, color: 'bg-purple-500', permission: null, adminOnly: false },
+    { name: 'Projects', href: '/projects', icon: FolderOpen, color: 'bg-teal-500', permission: null, adminOnly: false },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3, color: 'bg-indigo-500', permission: null, adminOnly: false },
+    { name: 'Auctions', href: '/auctions', icon: Hammer, color: 'bg-orange-500', permission: 'Auctions', adminOnly: false },
+    { name: 'Communities', href: '/communities', icon: Users, color: 'bg-green-600', permission: 'Communities', adminOnly: false },
+    { name: 'News', href: '/news', icon: Newspaper, color: 'bg-blue-600', permission: 'News', adminOnly: false },
+    { name: 'Chats', href: '/chats', icon: MessageSquare, color: 'bg-purple-600', permission: 'Chats', adminOnly: false },
+    { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, color: 'bg-yellow-500', permission: 'Leaderboard', adminOnly: false },
+    { name: 'Price History', href: '/price-history', icon: TrendingDown, color: 'bg-red-500', permission: 'PriceHistory', adminOnly: false },
+    { name: 'Rewards', href: '/rewards', icon: Gift, color: 'bg-pink-500', permission: 'Rewards', adminOnly: false },
+    { name: 'Valuation', href: '/valuation', icon: Calculator, color: 'bg-indigo-600', permission: 'Valuation', adminOnly: false },
+    { name: 'Documents', href: '/documents', icon: FileText, color: 'bg-yellow-500', permission: null, adminOnly: false },
+    { name: 'Notifications', href: '/notifications', icon: Bell, color: 'bg-pink-500', permission: 'Notifications', adminOnly: true },
+    { name: 'Settings', href: '/settings', icon: Settings, color: 'bg-gray-500', permission: null, adminOnly: false },
   ];
+
+  // Filter navigation based on role and permissions
+  const navigation = allNavigationItems.filter(item => {
+    // Admin sees everything except permission-protected optional features for developers
+    if (isAdmin) {
+      return true; // Admin has access to all
+    }
+    
+    // Developer: Check adminOnly first
+    if (item.adminOnly) {
+      return false; // Hide admin-only items
+    }
+    
+    // Default features are always visible
+    if (!item.permission) {
+      return true; // Default features: Dashboard, Properties, Projects, Analytics, Documents, Settings
+    }
+    
+    // Optional features: Check permission
+    if (permissionsLoading) {
+      return false; // Hide while loading
+    }
+    
+    return hasPermission(item.permission);
+  });
+  
+  // Get role display name
+  const roleDisplayName = isAdmin ? 'Administrator' : 'Developer';
 
   return (
     <>
@@ -291,7 +340,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
                   <p style={{ fontSize: '0.875rem', fontWeight: '500', color: 'white', margin: 0 }}>
                     {user.firstName} {user.lastName}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', margin: 0 }}>Administrator</p>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', margin: 0 }}>{roleDisplayName}</p>
                 </div>
                 <button
                   onClick={onLogout}
@@ -418,7 +467,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
                     <p style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827', margin: 0 }}>
                       {user.firstName} {user.lastName}
                     </p>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>Administrator</p>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>{roleDisplayName}</p>
                   </div>
                 </div>
               </div>

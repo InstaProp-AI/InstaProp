@@ -196,7 +196,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                IQueryable<Account> query = _context.Accounts.Where(a => a.Type == AccountType.User);
+                IQueryable<Account> query = _context.Accounts.Where(a => a.RoleId == Role.USER_ROLE_ID);
 
                 // Apply filters
                 if (!string.IsNullOrEmpty(filter))
@@ -271,7 +271,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var totalUsers = await _context.Accounts.CountAsync(a => a.Type == AccountType.User);
+                var totalUsers = await _context.Accounts.CountAsync(a => a.RoleId == Role.USER_ROLE_ID);
                 var propertyOwnersCount = await _context.ChildProperties.Select(p => p.OwnerId).Distinct().CountAsync();
                 var auctionOwnersCount = await _context.Auctions
                     .Where(a => a.Status == "Active" || a.Status == "Requested")
@@ -279,7 +279,7 @@ namespace InstapropAPI.Controllers
                     .Distinct()
                     .CountAsync();
                 var biddersCount = await _context.Bids.Select(b => b.BidderId).Distinct().CountAsync();
-                var verifiedCount = await _context.Accounts.CountAsync(a => a.Type == AccountType.User && a.Status == VerificationStatus.Verified);
+                var verifiedCount = await _context.Accounts.CountAsync(a => a.RoleId == Role.USER_ROLE_ID && a.Status == VerificationStatus.Verified);
 
                 return Ok(new
                 {
@@ -312,7 +312,7 @@ namespace InstapropAPI.Controllers
                 {
                     case "all_users_including_guests":
                         recipients = "all_users_including_guests";
-                        estimatedCount = await _context.Accounts.CountAsync(a => a.Type == AccountType.User);
+                        estimatedCount = await _context.Accounts.CountAsync(a => a.RoleId == Role.USER_ROLE_ID);
                         break;
 
                     case "guests_only":
@@ -322,7 +322,7 @@ namespace InstapropAPI.Controllers
 
                     case "logged_in_users":
                         recipients = "logged_in_users";
-                        estimatedCount = await _context.Accounts.CountAsync(a => a.Type == AccountType.User);
+                        estimatedCount = await _context.Accounts.CountAsync(a => a.RoleId == Role.USER_ROLE_ID);
                         break;
 
                     case "property_owners":
@@ -343,13 +343,13 @@ namespace InstapropAPI.Controllers
                     case "verified_users":
                         recipients = "verified_users";
                         estimatedCount = await _context.Accounts
-                            .CountAsync(a => a.Type == AccountType.User && a.Status == VerificationStatus.Verified);
+                            .CountAsync(a => a.RoleId == Role.USER_ROLE_ID && a.Status == VerificationStatus.Verified);
                         break;
 
                     case "unverified_users":
                         recipients = "unverified_users";
                         estimatedCount = await _context.Accounts
-                            .CountAsync(a => a.Type == AccountType.User && a.Status != VerificationStatus.Verified);
+                            .CountAsync(a => a.RoleId == Role.USER_ROLE_ID && a.Status != VerificationStatus.Verified);
                         break;
 
                     case "specific":

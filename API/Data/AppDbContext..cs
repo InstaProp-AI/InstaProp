@@ -16,6 +16,7 @@ namespace InstapropAPI.Data
                 warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         }
 
+        public DbSet<Role> Roles { get; set; }
         public DbSet<Account> Accounts { get; set; }
         // Removed: public DbSet<Property> Properties { get; set; } - Now using ChildProperty
         public DbSet<PropertyDoc> PropertyDocs { get; set; }
@@ -30,6 +31,7 @@ namespace InstapropAPI.Data
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<DeveloperProfile> DeveloperProfiles { get; set; }
         public DbSet<DeveloperRating> DeveloperRatings { get; set; }
+        public DbSet<DeveloperPermission> DeveloperPermissions { get; set; }
         
         // Phase 3: Project enhancements
         public DbSet<ProjectMilestone> ProjectMilestones { get; set; }
@@ -88,6 +90,16 @@ namespace InstapropAPI.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Configure Role
+            modelBuilder.Entity<Role>(entity =>
+            {
+                entity.HasKey(e => e.RoleId);
+                entity.Property(e => e.RoleId).ValueGeneratedNever(); // IDs are manually set (hardcoded constants)
+                entity.Property(e => e.RoleName).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.HasIndex(e => e.RoleName).IsUnique();
+            });
+
             // Configure Account
             modelBuilder.Entity<Account>(entity =>
             {
@@ -97,8 +109,14 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.LastName).HasMaxLength(100);
                 entity.Property(e => e.PhoneNumber).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
-                entity.Property(e => e.Type).HasConversion<int>();
+                entity.Property(e => e.RoleId).IsRequired();
                 entity.Property(e => e.HashedPassword).HasMaxLength(255); // Nullable for OAuth users
+                
+                // Configure Role relationship
+                entity.HasOne(e => e.Role)
+                    .WithMany(r => r.Accounts)
+                    .HasForeignKey(e => e.RoleId)
+                    .OnDelete(DeleteBehavior.Restrict); // Prevent deletion of roles that are in use
             });
 
             var propertyTypeConverter = new ValueConverter<PropertyType, string>(
@@ -328,6 +346,20 @@ namespace InstapropAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure DeveloperPermission
+            modelBuilder.Entity<DeveloperPermission>(entity =>
+            {
+                entity.HasKey(e => e.DeveloperPermissionId);
+                entity.Property(e => e.DeveloperPermissionId).ValueGeneratedOnAdd();
+                entity.Property(e => e.FeatureName).HasMaxLength(50).IsRequired();
+                entity.HasOne(e => e.Developer)
+                    .WithMany()
+                    .HasForeignKey(e => e.DeveloperId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                // Unique constraint: one permission record per developer per feature
+                entity.HasIndex(e => new { e.DeveloperId, e.FeatureName }).IsUnique();
             });
 
             // Configure ProjectMilestone

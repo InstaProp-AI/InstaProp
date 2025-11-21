@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
+using InstapropAPI.Extensions;
 using InstapropAPI.Services;
 using System.Linq;
 
@@ -36,7 +37,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<DeveloperProfileDto>> GetDeveloperProfile(long developerId)
         {
             var developer = await _context.Accounts
-                .FirstOrDefaultAsync(a => a.AccountId == developerId && a.Type == AccountType.Developer);
+                .FirstOrDefaultAsync(a => a.AccountId == developerId && a.RoleId == Role.DEVELOPER_ROLE_ID); // SECURITY: Check non-guessable RoleId
 
             if (developer == null)
                 return NotFound("Developer not found");
@@ -53,6 +54,8 @@ namespace InstapropAPI.Controllers
             var projectIdSet = new HashSet<long>(projectIds);
 
             var propertyQueryable = _context.ChildProperties
+                .Include(cp => cp.ParentProperty) // Include parent property for parent-child relationship
+                .Include(cp => cp.Project) // Include project
                 .Where(cp =>
                     (cp.ProjectId.HasValue && projectIdSet.Contains(cp.ProjectId.Value)) ||
                     cp.OwnerId == developerId);
@@ -73,6 +76,7 @@ namespace InstapropAPI.Controllers
                 .Select(cp => new PropertySummaryDto
                 {
                     PropertyId = cp.PropertyId,
+                    ParentPropertyId = cp.ParentPropertyId, // Include ParentPropertyId
                     ProjectId = cp.ProjectId,
                     Name = cp.Name,
                     Location = cp.Location,
@@ -81,7 +85,19 @@ namespace InstapropAPI.Controllers
                     Type = cp.Type.ToDisplayName(),
                     Bedrooms = cp.Bedrooms,
                     Bathrooms = cp.Bathrooms,
-                    SquareFeet = cp.SquareFeet
+                    SquareFeet = cp.SquareFeet,
+                    ParentProperty = cp.ParentProperty != null ? new
+                    {
+                        ParentPropertyId = cp.ParentProperty.ParentPropertyId,
+                        ProjectName = !string.IsNullOrWhiteSpace(cp.ParentProperty.ProjectName)
+                            ? cp.ParentProperty.ProjectName
+                            : (cp.Project != null ? cp.Project.Name : "N/A"),
+                        Type = cp.ParentProperty.Type,
+                        Bedrooms = cp.ParentProperty.Bedrooms,
+                        Bathrooms = cp.ParentProperty.Bathrooms,
+                        AreaSqm = cp.ParentProperty.AreaSqm,
+                        FinishingType = cp.ParentProperty.FinishingType.ToString()
+                    } : null
                 })
                 .Take(100)
                 .ToListAsync();
@@ -172,7 +188,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.Type != AccountType.Developer)
+            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                 return Forbid("Only developers can update developer profiles");
 
             var profile = await _context.DeveloperProfiles
@@ -210,7 +226,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.Type != AccountType.Developer)
+            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                 return Forbid("Only developers can view analytics");
 
             var projects = await _context.Projects
@@ -276,7 +292,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.Type != AccountType.Developer)
+            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                 return Forbid("Only developers can view their projects");
 
             // Return projects explicitly owned by developer OR any project that contains properties owned by the developer
@@ -288,19 +304,36 @@ namespace InstapropAPI.Controllers
             foreach (var p in projects)
             {
                 var propertiesCount = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).CountAsync();
-                var properties = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).Select(prop => new PropertySummaryDto
-                {
-                    PropertyId = prop.PropertyId,
-                    ProjectId = prop.ProjectId,
-                    Name = prop.Name,
-                    Location = prop.Location,
-                    ImageUrl = prop.ImageUrl ?? string.Empty,
-                    Status = prop.Status.ToString(),
-                    Type = prop.Type.ToDisplayName(),
-                    Bedrooms = prop.Bedrooms,
-                    Bathrooms = prop.Bathrooms,
-                    SquareFeet = prop.SquareFeet
-                }).ToListAsync();
+                var properties = await _context.ChildProperties
+                    .Where(cp => cp.ProjectId == p.ProjectId)
+                    .Include(cp => cp.ParentProperty) // Include parent property
+                    .Include(cp => cp.Project) // Include project
+                    .Select(prop => new PropertySummaryDto
+                    {
+                        PropertyId = prop.PropertyId,
+                        ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
+                        ProjectId = prop.ProjectId,
+                        Name = prop.Name,
+                        Location = prop.Location,
+                        ImageUrl = prop.ImageUrl ?? string.Empty,
+                        Status = prop.Status.ToString(),
+                        Type = prop.Type.ToDisplayName(),
+                        Bedrooms = prop.Bedrooms,
+                        Bathrooms = prop.Bathrooms,
+                        SquareFeet = prop.SquareFeet,
+                        ParentProperty = prop.ParentProperty != null ? new
+                        {
+                            ParentPropertyId = prop.ParentProperty.ParentPropertyId,
+                            ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
+                                ? prop.ParentProperty.ProjectName
+                                : (prop.Project != null ? prop.Project.Name : "N/A"),
+                            Type = prop.ParentProperty.Type,
+                            Bedrooms = prop.ParentProperty.Bedrooms,
+                            Bathrooms = prop.ParentProperty.Bathrooms,
+                            AreaSqm = prop.ParentProperty.AreaSqm,
+                            FinishingType = prop.ParentProperty.FinishingType.ToString()
+                        } : null
+                    }).ToListAsync();
 
                 projectDtos.Add(new ProjectWithPropertiesDto
                 {
@@ -328,17 +361,20 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.Type != AccountType.Developer)
+            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                 return Forbid("Only developers can view their properties");
 
             var properties = await _context.ChildProperties
                 .Where(p => p.OwnerId == accountId.Value)
                 .Include(p => p.PropertyImages)
+                .Include(p => p.ParentProperty) // Include parent property
+                .Include(p => p.Project) // Include project
                 .ToListAsync();
 
             var result = properties.Select(prop => new PropertySummaryDto
             {
                 PropertyId = prop.PropertyId,
+                ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
                 ProjectId = prop.ProjectId,
                 Name = prop.Name,
                 Location = prop.Location,
@@ -347,7 +383,19 @@ namespace InstapropAPI.Controllers
                 Type = prop.Type.ToDisplayName(),
                 Bedrooms = prop.Bedrooms,
                 Bathrooms = prop.Bathrooms,
-                SquareFeet = prop.SquareFeet
+                SquareFeet = prop.SquareFeet,
+                ParentProperty = prop.ParentProperty != null ? new
+                {
+                    ParentPropertyId = prop.ParentProperty.ParentPropertyId,
+                    ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
+                        ? prop.ParentProperty.ProjectName
+                        : (prop.Project != null ? prop.Project.Name : "N/A"),
+                    Type = prop.ParentProperty.Type,
+                    Bedrooms = prop.ParentProperty.Bedrooms,
+                    Bathrooms = prop.ParentProperty.Bathrooms,
+                    AreaSqm = prop.ParentProperty.AreaSqm,
+                    FinishingType = prop.ParentProperty.FinishingType.ToString()
+                } : null
             }).ToList();
 
             return Ok(result);
@@ -363,7 +411,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             var developer = await _context.Accounts
-                .FirstOrDefaultAsync(a => a.AccountId == dto.DeveloperId && a.Type == AccountType.Developer);
+                .FirstOrDefaultAsync(a => a.AccountId == dto.DeveloperId && a.RoleId == Role.DEVELOPER_ROLE_ID); // SECURITY: Check non-guessable RoleId
 
             if (developer == null)
                 return NotFound("Developer not found");
@@ -424,7 +472,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<IEnumerable<FeaturedDeveloperDto>>> GetFeaturedDevelopers()
         {
             var developers = await _context.Accounts
-                .Where(a => a.Type == AccountType.Developer)
+                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                 .ToListAsync();
 
             var developerIds = developers.Select(d => d.AccountId).ToList();
@@ -549,6 +597,7 @@ namespace InstapropAPI.Controllers
     public class PropertySummaryDto
     {
         public long PropertyId { get; set; }
+        public long? ParentPropertyId { get; set; }
         public long? ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Location { get; set; }
@@ -558,6 +607,7 @@ namespace InstapropAPI.Controllers
         public int Bedrooms { get; set; }
         public int Bathrooms { get; set; }
         public int SquareFeet { get; set; }
+        public object? ParentProperty { get; set; }
     }
 
     public class CreateRatingDto

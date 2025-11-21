@@ -38,8 +38,8 @@ import {
   Bath,
   Square
 } from 'lucide-react';
-import { Account } from '../types';
-import { usersApi, propertiesApi, bidsApi, auctionsApi } from '../services/api';
+import { Account, DeveloperPermissions } from '../types';
+import { usersApi, propertiesApi, bidsApi, auctionsApi, permissionsApi } from '../services/api';
 import { exportUsersToCSV } from '../utils/export';
 import { useToast } from '../contexts/ToastContext';
 import Pagination from '../components/Pagination';
@@ -60,44 +60,79 @@ const UsersPage: React.FC = () => {
   const [suspensionReason, setSuspensionReason] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [detailsTab, setDetailsTab] = useState<'info' | 'properties' | 'bids' | 'auctions' | 'documents'>('info');
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [detailsTab, setDetailsTab] = useState<'info' | 'properties' | 'bids' | 'auctions' | 'documents' | 'permissions'>('info');
   const [userProperties, setUserProperties] = useState<any[]>([]);
   const [userBids, setUserBids] = useState<any[]>([]);
   const [userAuctions, setUserAuctions] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', phoneNumber: '' });
+  const [developerPermissions, setDeveloperPermissions] = useState<DeveloperPermissions | null>(null);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentPage, itemsPerPage]);
+
+  const loadDeveloperPermissions = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setLoadingPermissions(true);
+      const permissions = await permissionsApi.getDeveloperPermissions(selectedUser.accountId);
+      setDeveloperPermissions(permissions);
+    } catch (error: any) {
+      console.error('Error loading permissions:', error);
+      toast.error(error?.response?.data?.message || 'Failed to load permissions');
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedUser || !developerPermissions) return;
+
+    try {
+      setLoadingPermissions(true);
+      await permissionsApi.updateDeveloperPermissions(selectedUser.accountId, developerPermissions);
+      toast.success('Permissions updated successfully!');
+      setDetailsTab('info');
+    } catch (error: any) {
+      console.error('Error saving permissions:', error);
+      toast.error(error?.response?.data?.message || 'Failed to save permissions');
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const data = await usersApi.getAllUsers();
+      const response = await usersApi.getAllUsers(currentPage, itemsPerPage);
+      const { data, pagination } = response;
+      
       console.log('👥 Users fetched:', data.length, 'users');
+      console.log('📊 Pagination info:', pagination);
       console.log('📋 Sample user data:', data[0]);
       
       // Detailed logging for suspended accounts
       const suspendedUsers = data.filter((u: any) => u.isSuspended);
-      console.log('🚫 Suspended users count:', suspendedUsers.length);
-      console.log('🚫 Suspended users details:', suspendedUsers.map((u: any) => ({
-        id: u.accountId,
-        name: `${u.firstName} ${u.lastName}`,
-        isSuspended: u.isSuspended,
-        suspendedUntil: u.suspendedUntil,
-        suspensionReason: u.suspensionReason
-      })));
+      console.log('🚫 Suspended users count (this page):', suspendedUsers.length);
       
       // Check for unverified email/phone
       const unverifiedEmail = data.filter((u: any) => !u.emailVerified).length;
       const unverifiedPhone = data.filter((u: any) => !u.phoneVerified).length;
-      console.log('📧 Unverified emails:', unverifiedEmail);
-      console.log('📱 Unverified phones:', unverifiedPhone);
       
       setUsers(data);
-      toast.success(`Loaded ${data.length} users (${suspendedUsers.length} suspended, ${unverifiedEmail} unverified emails, ${unverifiedPhone} unverified phones)`);
+      setTotalCount(pagination.totalCount);
+      setTotalPages(pagination.totalPages);
+      
+      // Only show toast on first load or if there are issues
+      if (currentPage === 1) {
+        toast.success(`Loaded ${pagination.totalCount} total users (page ${pagination.page} of ${pagination.totalPages})`);
+      }
     } catch (error: any) {
       console.error('❌ Error fetching users:', error);
       toast.error(error?.response?.data?.message || 'Failed to load users');
@@ -435,28 +470,25 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  // Client-side filtering for current page (server-side pagination handles the rest)
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
+      !searchTerm ||
       user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.phoneNumber.includes(searchTerm);
-    const matchesType = filterType === 'all' || user.type === filterType;
+    const matchesType = filterType === 'all' || user.roleName === filterType;
     const matchesStatus = filterStatus === 'all' 
       ? true 
       : filterStatus === 'suspended' 
         ? Boolean(user.isSuspended) === true 
         : user.status === filterStatus;
     
-    console.log('🔍 Filter check for user:', user.accountId, {
-      isSuspended: user.isSuspended,
-      filterStatus,
-      matchesStatus
-    });
-    
     return matchesSearch && matchesType && matchesStatus;
   });
 
+  // Client-side sorting for current page
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     switch (sortBy) {
       case 'newest':
@@ -470,12 +502,8 @@ const UsersPage: React.FC = () => {
     }
   });
 
-  // Pagination
-  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
-  const paginatedUsers = sortedUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Use sorted users directly (server-side pagination already handled)
+  const paginatedUsers = sortedUsers;
 
   if (loading) {
     return (
@@ -745,7 +773,7 @@ const UsersPage: React.FC = () => {
             </thead>
             <tbody>
               {paginatedUsers.map((user) => {
-                const TypeIcon = getTypeIcon(user.type);
+                const TypeIcon = getTypeIcon(user.roleName || user.type || 'User');
                 return (
                   <tr key={user.accountId} style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '1rem' }}>
@@ -996,9 +1024,13 @@ const UsersPage: React.FC = () => {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              // Reset to top of page when changing pages
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             itemsPerPage={itemsPerPage}
-            totalItems={sortedUsers.length}
+            totalItems={totalCount}
           />
         </div>
 
@@ -1188,6 +1220,34 @@ const UsersPage: React.FC = () => {
                       📄 KYC Documents
                     </div>
                   </button>
+                  {/* Permissions Tab - Only for Developers */}
+                  {(selectedUser?.roleName === 'Developer' || selectedUser?.type === 'Developer' || selectedUser?.roleId === 7823647823647823) && (
+                    <button
+                      onClick={() => {
+                        setDetailsTab('permissions');
+                        if (!developerPermissions) {
+                          loadDeveloperPermissions();
+                        }
+                      }}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        backgroundColor: detailsTab === 'permissions' ? '#f8fafc' : 'transparent',
+                        color: detailsTab === 'permissions' ? '#667eea' : '#6b7280',
+                        border: 'none',
+                        borderBottom: detailsTab === 'permissions' ? '2px solid #667eea' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        fontSize: '0.875rem',
+                        transition: 'all 0.2s',
+                        marginBottom: '-2px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Shield style={{ height: '1rem', width: '1rem' }} />
+                        Permissions
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -2057,6 +2117,124 @@ const UsersPage: React.FC = () => {
                             💡 <strong>Tip:</strong> Ensure all required documents are uploaded and verified before approving the user account. Check ID authenticity, photo quality, and document expiration dates.
                           </p>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Permissions Tab - Only for Developers */}
+                    {detailsTab === 'permissions' && selectedUser && (
+                      <div>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <h4 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '0.5rem' }}>
+                            Developer Permissions
+                          </h4>
+                          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                            Configure which optional features this developer can access
+                          </p>
+                        </div>
+
+                        {loadingPermissions ? (
+                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                            <div style={{
+                              width: '2rem',
+                              height: '2rem',
+                              border: '3px solid #e2e8f0',
+                              borderTop: '3px solid #667eea',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }} />
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{
+                              backgroundColor: '#dbeafe',
+                              borderRadius: '0.75rem',
+                              border: '2px solid #3b82f6',
+                              padding: '1rem',
+                              marginBottom: '1.5rem'
+                            }}>
+                              <p style={{ fontSize: '0.875rem', color: '#1e40af', margin: 0 }}>
+                                <strong>Default Features:</strong> Projects, Properties, and Analytics are always enabled for all developers.
+                              </p>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '1rem' }}>
+                              {['Communities', 'News', 'Auctions', 'Leaderboard', 'Notifications', 'PriceHistory', 'FullAnalytics', 'Rewards', 'Valuation', 'Chats'].map((feature) => (
+                                <label
+                                  key={feature}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '1rem',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '0.5rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                                >
+                                  <div>
+                                    <div style={{ fontWeight: '500', color: '#111827', marginBottom: '0.25rem' }}>
+                                      {feature}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                      Allow this developer to access {feature}
+                                    </div>
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={developerPermissions?.[feature] || false}
+                                    onChange={(e) => {
+                                      const updated = { ...developerPermissions, [feature]: e.target.checked };
+                                      setDeveloperPermissions(updated as DeveloperPermissions);
+                                    }}
+                                    style={{
+                                      width: '1.25rem',
+                                      height: '1.25rem',
+                                      cursor: 'pointer'
+                                    }}
+                                  />
+                                </label>
+                              ))}
+                            </div>
+
+                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                              <button
+                                onClick={() => {
+                                  setDeveloperPermissions(null);
+                                  setDetailsTab('info');
+                                }}
+                                style={{
+                                  padding: '0.75rem 1.5rem',
+                                  backgroundColor: '#f3f4f6',
+                                  color: '#374151',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '0.5rem',
+                                  cursor: 'pointer',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={handleSavePermissions}
+                                style={{
+                                  padding: '0.75rem 1.5rem',
+                                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '0.5rem',
+                                  cursor: 'pointer',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                Save Permissions
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>

@@ -333,8 +333,7 @@ namespace InstapropAPI.Controllers
                     p.Type == typeDisplayName &&
                     p.Bedrooms == request.Bedrooms &&
                     p.Bathrooms == request.Bathrooms &&
-                    // EF Core on SQLite can't translate Math.Abs for this expression,
-                    // so use a simple BETWEEN-style range instead
+                    // Match properties within 5 sqm range
                     p.AreaSqm >= request.AreaSqm - 5 &&
                     p.AreaSqm <= request.AreaSqm + 5 &&
                     p.FinishingType == request.FinishingType.ToString() &&

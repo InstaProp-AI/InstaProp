@@ -155,7 +155,8 @@ namespace InstapropAPI.Controllers
                     property.Owner.LastName,
                     property.Owner.Email,
                     property.Owner.PhoneNumber,
-                    Type = property.Owner.Type.ToString(),
+                    RoleId = property.Owner.RoleId,
+                    RoleName = property.Owner.Role != null ? property.Owner.Role.RoleName : "Unknown",
                     Status = property.Owner.Status.ToString(),
                     property.Owner.EmailVerified,
                     property.Owner.PhoneVerified
@@ -1057,10 +1058,19 @@ namespace InstapropAPI.Controllers
             return uidClaim != null ? long.Parse(uidClaim.Value) : null;
         }
 
+        // SECURITY: Check RoleId instead of Type - returns role name or null
         private string? GetCurrentAccountType()
         {
-            var typeClaim = User.FindFirst("type");
-            return typeClaim?.Value;
+            var roleIdClaim = User.FindFirst("roleId");
+            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId))
+                return null;
+            
+            // Map role IDs to role names
+            if (roleId == Role.ADMIN_ROLE_ID) return "Admin";
+            if (roleId == Role.DEVELOPER_ROLE_ID) return "Developer";
+            if (roleId == Role.USER_ROLE_ID) return "User";
+            
+            return null;
         }
 
         // POST: api/Property/estimate (Public - simple property valuation)

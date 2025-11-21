@@ -168,5 +168,65 @@ namespace InstapropAPI.Models
         Cancelled = 4,
         Completed = 5
     }
+
+    // Developer Permission Features
+    public static class FeaturePermission
+    {
+        // Default features (always enabled for developers)
+        public const string Projects = "Projects";
+        public const string Properties = "Properties";
+        public const string Analytics = "Analytics";
+
+        // Optional features (admin-configurable)
+        public const string Communities = "Communities";
+        public const string News = "News";
+        public const string Auctions = "Auctions";
+        public const string Leaderboard = "Leaderboard";
+        public const string Notifications = "Notifications";
+        public const string PriceHistory = "PriceHistory";
+        public const string FullAnalytics = "FullAnalytics";
+        public const string Rewards = "Rewards";
+        public const string Valuation = "Valuation";
+        public const string Chats = "Chats";
+
+        // Get all optional features
+        public static IReadOnlyList<string> OptionalFeatures { get; } = new[]
+        {
+            Communities,
+            News,
+            Auctions,
+            Leaderboard,
+            Notifications,
+            PriceHistory,
+            FullAnalytics,
+            Rewards,
+            Valuation,
+            Chats
+        };
+
+        // Get all features (default + optional)
+        public static IReadOnlyList<string> AllFeatures { get; } = new[]
+        {
+            Projects,
+            Properties,
+            Analytics,
+            Communities,
+            News,
+            Auctions,
+            Leaderboard,
+            Notifications,
+            PriceHistory,
+            FullAnalytics,
+            Rewards,
+            Valuation,
+            Chats
+        };
+
+        // Check if feature is optional (not default)
+        public static bool IsOptionalFeature(string featureName)
+        {
+            return OptionalFeatures.Contains(featureName, StringComparer.OrdinalIgnoreCase);
+        }
+    }
 }
 

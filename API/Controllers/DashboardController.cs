@@ -28,14 +28,13 @@ namespace InstapropAPI.Controllers
                 var oneWeekAgo = now.AddDays(-7);
                 var today = now.Date;
 
-                var totalUsers = await _context.Accounts.Where(a => a.Type == Models.AccountType.User).CountAsync();
+                var totalUsers = await _context.Accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).CountAsync();
                 var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
                 var totalBids = await _context.Bids.CountAsync();
                 var bidsLastWeek = await _context.Bids.Where(b => b.CreatedAt >= oneWeekAgo).CountAsync();
                 var bidsToday = await _context.Bids.Where(b => b.CreatedAt >= today).CountAsync();
                 
                 // Total auction volume (sum of all current prices)
-                // Load into memory to avoid SQLite decimal aggregate issues
                 var allActiveAuctions = await _context.Auctions
                     .Where(a => a.Status == "Active")
                     .ToListAsync();
@@ -104,20 +103,51 @@ namespace InstapropAPI.Controllers
                 var totalProperties = await _context.ChildProperties.CountAsync();
                 var totalAuctions = await _context.Auctions.CountAsync();
                 var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
+                var endedAuctions = await _context.Auctions.Where(a => a.Status == "Closed" || a.Status == "Completed" || a.Status == "Ended").CountAsync();
                 var totalBids = await _context.Bids.CountAsync();
+                var totalUsers = await _context.Accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).CountAsync();
                 var totalAccounts = await _context.Accounts.CountAsync();
-                var verifiedAccounts = await _context.Accounts.Where(a => a.Status == VerificationStatus.Verified).CountAsync();
-                var propertiesPendingApproval = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
 
+                // Calculate average bid value
+                var averageBidValue = totalBids > 0 
+                    ? await _context.Bids.AverageAsync(b => (double?)b.BidAmount) ?? 0
+                    : 0;
+
+                // Monthly revenue (last 30 days from ended auctions)
+                // Use CreatedAt since Auction model doesn't have UpdatedAt
+                // For ended auctions, we use the creation date as a proxy for when they ended
+                var last30Days = DateTime.UtcNow.AddDays(-30);
+                var monthlyRevenue = await _context.Auctions
+                    .Where(a => (a.Status == "Closed" || a.Status == "Completed" || a.Status == "Ended") 
+                        && a.CreatedAt >= last30Days)
+                    .SumAsync(a => (decimal?)a.CurrentPrice) ?? 0;
+
+                // Match frontend expected structure
                 var stats = new
                 {
-                    TotalProperties = totalProperties,
-                    TotalAuctions = totalAuctions,
-                    ActiveAuctions = activeAuctions,
-                    TotalBids = totalBids,
-                    TotalAccounts = totalAccounts,
-                    VerifiedAccounts = verifiedAccounts,
-                    PropertiesPendingApproval = propertiesPendingApproval
+                    properties = new
+                    {
+                        total = totalProperties
+                    },
+                    auctions = new
+                    {
+                        total = totalAuctions,
+                        active = activeAuctions,
+                        ended = endedAuctions
+                    },
+                    bids = new
+                    {
+                        total = totalBids,
+                        averageValue = Math.Round(averageBidValue, 2)
+                    },
+                    users = new
+                    {
+                        total = totalUsers
+                    },
+                    revenue = new
+                    {
+                        monthly = (double)monthlyRevenue
+                    }
                 };
 
                 return Ok(stats);
@@ -126,14 +156,12 @@ namespace InstapropAPI.Controllers
             {
                 return Ok(new
                 {
-                    TotalProperties = 0,
-                    TotalAuctions = 0,
-                    ActiveAuctions = 0,
-                    TotalBids = 0,
-                    TotalAccounts = 0,
-                    VerifiedAccounts = 0,
-                    PropertiesPendingApproval = 0,
-                    Error = "Database not properly seeded"
+                    properties = new { total = 0 },
+                    auctions = new { total = 0, active = 0, ended = 0 },
+                    bids = new { total = 0, averageValue = 0.0 },
+                    users = new { total = 0 },
+                    revenue = new { monthly = 0.0 },
+                    Error = ex.Message
                 });
             }
         }

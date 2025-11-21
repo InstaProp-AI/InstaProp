@@ -10,23 +10,27 @@ using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DB Context - Use PostgreSQL in production (Railway), SQLite in development
+// Add DB Context - Use PostgreSQL only (from DATABASE_URL or connection string)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 
-// Debug: Log environment check (only once, not during migrations)
-var isProduction = builder.Environment.IsProduction();
-if (isProduction)
+// Debug: Log environment check
+Console.WriteLine($"🔍 DATABASE_URL is {(string.IsNullOrEmpty(databaseUrl) ? "NOT SET" : "SET")}");
+if (!string.IsNullOrEmpty(databaseUrl))
 {
-    Console.WriteLine($"🔍 Environment: Production");
-    Console.WriteLine($"🔍 DATABASE_URL is {(string.IsNullOrEmpty(databaseUrl) ? "NOT SET" : "SET")}");
-    if (!string.IsNullOrEmpty(databaseUrl))
+    // Don't log full URL for security, just confirm it exists
+    try
     {
-        // Don't log full URL for security, just confirm it exists
         var uri = new Uri(databaseUrl);
         Console.WriteLine($"🔍 DATABASE_URL host: {uri.Host}, database: {uri.LocalPath.TrimStart('/')}");
     }
+    catch
+    {
+        Console.WriteLine($"🔍 DATABASE_URL format could not be parsed");
+    }
 }
+
+string finalConnectionString;
 
 // Railway provides DATABASE_URL in format: postgresql://user:password@host:port/database
 // Convert it to Npgsql connection string format if present
@@ -43,53 +47,37 @@ if (!string.IsNullOrEmpty(databaseUrl))
         var password = !string.IsNullOrEmpty(uri.UserInfo) && uri.UserInfo.Split(':').Length > 1 
             ? uri.UserInfo.Split(':')[1] : "";
         
-        connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require";
-        Console.WriteLine($"🗄️ Using PostgreSQL: {host}:{port}/{database}");
-        
-        builder.Services.AddDbContext<AppDbContext>(options =>
-        {
-            options.UseNpgsql(connectionString);
-            // Suppress pending model changes warning in production
-            options.ConfigureWarnings(warnings =>
-                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-        });
+        finalConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require";
+        Console.WriteLine($"🗄️ Using PostgreSQL from DATABASE_URL: {host}:{port}/{database}");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"⚠️ Failed to parse DATABASE_URL: {ex.Message}");
-        if (!isProduction)
-        {
-            Console.WriteLine($"⚠️ Falling back to SQLite for local development");
-            builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlite(connectionString ?? "Data Source=mydb.db"));
-        }
-        else
-        {
-            throw new Exception($"CRITICAL: DATABASE_URL is set but invalid in production. Error: {ex.Message}");
-        }
+        throw new Exception($"CRITICAL: Failed to parse DATABASE_URL environment variable. Error: {ex.Message}");
     }
 }
 else if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("Host="))
 {
     // Connection string is already in PostgreSQL format
+    finalConnectionString = connectionString;
     Console.WriteLine($"🗄️ Using PostgreSQL from connection string");
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString));
 }
 else
 {
-    // Default to SQLite for local development only
-    if (isProduction)
-    {
-        throw new Exception("CRITICAL: DATABASE_URL environment variable is not set in production. Railway PostgreSQL service must be linked.");
-    }
-    Console.WriteLine($"🗄️ Using SQLite for local development");
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlite(connectionString ?? "Data Source=mydb.db"));
+    throw new Exception("CRITICAL: No database connection configured. Set DATABASE_URL environment variable or configure PostgreSQL connection string in appsettings.json");
 }
+
+// Configure DbContext with PostgreSQL only
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(finalConnectionString);
+    // Suppress pending model changes warning
+    options.ConfigureWarnings(warnings =>
+        warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+});
 // Add Services
 //builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<CompleteEgyptianSeedingService>();
+builder.Services.AddScoped<RoleSeederService>();
 builder.Services.AddSingleton<FirestoreService>();
 builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
 builder.Services.AddScoped<EmailTemplateService>(); // HTML email templates
@@ -107,6 +95,7 @@ builder.Services.AddScoped<LeaderboardService>(); // Leaderboard + cashback engi
 builder.Services.AddScoped<OpenAIService>(); // OpenAI Vision API for payment schedule scanning
 builder.Services.AddScoped<InstallmentSummaryService>();
 builder.Services.AddScoped<ImageFixService>();
+builder.Services.AddScoped<DeveloperPermissionService>();
 
 // Add HttpClient for FCM and ImgBB
 builder.Services.AddHttpClient();
@@ -289,6 +278,10 @@ using (var scope = app.Services.CreateScope())
         throw;
     }
     
+    // Seed roles first (required for accounts)
+    var roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeederService>();
+    await roleSeeder.SeedRolesAsync();
+    
     // Check if database is empty (no accounts)
     var hasAccounts = await context.Accounts.AnyAsync();
     if (!hasAccounts)
@@ -300,6 +293,23 @@ using (var scope = app.Services.CreateScope())
     else
     {
         Console.WriteLine("ℹ️ Database already contains data. Skipping seeding.");
+        
+        // Check for command-line argument to seed chats only
+        var commandLineArgs = Environment.GetCommandLineArgs();
+        if (commandLineArgs.Contains("--seed-chats") || commandLineArgs.Contains("/seed-chats"))
+        {
+            Console.WriteLine("💬 Seeding chats and messages (command-line argument)...");
+            try
+            {
+                await seedService.SeedChatsAndMessagesAsync();
+                Console.WriteLine("✅ Chats and messages seeded successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error seeding chats: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+            }
+        }
     }
 }
 app.MapControllers();

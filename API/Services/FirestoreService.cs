@@ -320,7 +320,8 @@ namespace InstapropAPI.Services
                     ["lastName"] = account.LastName ?? "",
                     ["email"] = account.Email ?? "",
                     ["phoneNumber"] = account.PhoneNumber ?? "",
-                    ["type"] = account.Type.ToString(),
+                    ["roleId"] = account.RoleId.ToString(), // SECURITY: Non-guessable RoleId
+                    ["role"] = account.Role != null ? account.Role.RoleName : "Unknown",
                     ["status"] = account.Status.ToString(),
                     ["emailVerified"] = account.EmailVerified,
                     ["phoneVerified"] = account.PhoneVerified,

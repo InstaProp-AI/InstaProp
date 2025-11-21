@@ -70,7 +70,7 @@ namespace InstapropAPI.Controllers
         {
             var totalProperties = await _context.ChildProperties.CountAsync();
             var activeAuctions = await _context.Auctions.CountAsync(a => a.Status == "Active");
-            var totalDevelopers = await _context.Accounts.CountAsync(a => a.Type == Models.AccountType.Developer);
+            var totalDevelopers = await _context.Accounts.CountAsync(a => a.RoleId == Role.DEVELOPER_ROLE_ID);
 
             var areaPrices = await _context.ChildProperties
                 .Where(p => p.Auctions.Any())
@@ -510,7 +510,7 @@ namespace InstapropAPI.Controllers
         private async Task<List<DeveloperRankingResponse>> LoadDeveloperRankingsAsync(int limit = 10)
         {
             var developerStats = await _context.Accounts
-                .Where(a => a.Type == Models.AccountType.Developer)
+                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
                 .Select(a => new
                 {
                     a.AccountId,

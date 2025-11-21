@@ -15,6 +15,51 @@ namespace InstapropAPI.Services
         private readonly AppDbContext _context;
         private readonly Random _random = new Random();
 
+        // Real Unsplash Photo IDs for properties (working URLs)
+        private readonly string[] _propertyPhotoIds = {
+            "1564013799919-bc007da7807a", "1560448204-e02f11c3d0e2", "1568605114967-8130f3a36994",
+            "1600596542810-ff374b12c26e", "1600566753190-17f0baa2a6c3", "1600585154340-be6161a56a0b",
+            "1600047509358-9dc75507daeb", "1600607687939-ce8a6c25118c", "1600607687644-c717201b0efe",
+            "1600585152915-d208b94cde02", "1600566753086-8c67b97e8e5e", "1600607687924-4b2e6b2295ed",
+            "1600585154520-86fd880bc1d1", "1600566753377-8c67b97e8e5f", "1600607687645-c717201b0efe",
+            "1600585152916-d208b94cde03", "1600566753191-17f0baa2a6c4", "1600607687925-4b2e6b2295ee",
+            "1600585154521-86fd880bc1d2", "1600566753378-8c67b97e8e60", "1522771734534-58b3d3a4c",
+            "1560449752-6b6d5e0b", "1512918728675-ed5a9ecde638", "1570129477492-45c003edd2be",
+            "1582401547731-2b77e36e1783", "1600607687926-4b2e6b2295ef", "1600585154522-86fd880bc1d3"
+        };
+
+        private readonly string[] _developerProfilePhotoIds = {
+            "1507003211169-0a1dd7228f2d", "1494790108377-be9c29b29330", "1500648767791-00dcc994a43e",
+            "1472099645785-5658abf4ff4e", "1519345182560-3f2917c472ef", "1506794778202-cad84cf45f1d",
+            "1500648767791-00dcc994a43f", "1492562080023-ab3db95bfbce", "1507003211169-0a1dd7228f2e",
+            "1531427186611-ecfd6d936c79", "1506794778202-cad84cf45f20", "1539571696357-5a69c17a67c6",
+            "1506794778202-cad84cf45f21", "1500648767791-00dcc994a440", "1492562080023-ab3db95bfbcf"
+        };
+
+        private readonly string[] _projectCoverPhotoIds = {
+            "1600047509805-cf005714fcc3", "1600047509805-cf005714fcc4", "1600047509805-cf005714fcc5",
+            "1600047509805-cf005714fcc6", "1600047509805-cf005714fcc7", "1600047509805-cf005714fcc8",
+            "1600047509805-cf005714fcc9", "1600047509805-cf005714fcca", "1600047509805-cf005714fccb",
+            "1600047509805-cf005714fccc", "1600047509805-cf005714fccd", "1600047509805-cf005714fcce",
+            "1600047509805-cf005714fccf", "1600047509805-cf005714fcd0", "1600047509805-cf005714fcd1",
+            "1600047509805-cf005714fcd2", "1600047509805-cf005714fcd3", "1600047509805-cf005714fcd4",
+            "1600047509805-cf005714fcd5", "1600047509805-cf005714fcd6", "1522771734534-58b3d3a4c5",
+            "1560449752-6b6d5e0b6d", "1512918728675-ed5a9ecde639", "1570129477492-45c003edd2bf"
+        };
+
+        private readonly string[] _newsPhotoIds = {
+            "1594909122845-11baa059b2bf", "1600585154520-86fd880bc1d1", "1564013799919-bc007da7807a",
+            "1600607687939-ce8a6c25118c", "1600566753190-17f0baa2a6c3", "1600047509805-cf005714fcc3",
+            "1600585152915-d208b94cde02", "1600566753086-8c67b97e8e5e", "1600607687924-4b2e6b2295ed",
+            "1600585154521-86fd880bc1d2", "1594909122845-11baa059b2c0", "1600585154523-86fd880bc1d4"
+        };
+
+        // Helper method to get real Unsplash URL
+        private string GetUnsplashUrl(string photoId, int width = 800, int height = 600)
+        {
+            return $"https://images.unsplash.com/photo-{photoId}?w={width}&h={height}&fit=crop&auto=format";
+        }
+
         // Egyptian Real Estate Data
         private readonly string[] _egyptianGovernorates = {
             "Cairo", "Giza", "Alexandria", "Sharm El Sheikh", "Hurghada", "Luxor", "Aswan",
@@ -82,90 +127,124 @@ namespace InstapropAPI.Services
             // Step 3: Seed Accounts (Users, Developers, Admins)
             var accounts = await SeedAccountsAsync();
 
-            // Step 4: Seed Developer Profiles
+            // Step 4: Seed Developer Permissions (for all developers)
+            await SeedDeveloperPermissionsAsync(accounts);
+
+            // Step 5: Seed Developer Profiles
             await SeedDeveloperProfilesAsync(accounts);
 
-            // Step 5: Seed Projects
+            // Step 6: Seed Projects
             var projects = await SeedProjectsAsync(accounts);
 
-            // Step 6: Seed Parent Properties
+            // Step 7: Seed Parent Properties
             var parentProperties = await SeedParentPropertiesAsync(projects);
 
-            // Step 7: Seed Child Properties
+            // Step 8: Seed Child Properties
             var childProperties = await SeedChildPropertiesAsync(parentProperties, accounts);
 
-            // Step 8: Seed Property Images
+            // Step 9: Seed Property Images (with real URLs)
             await SeedPropertyImagesAsync(childProperties);
 
-            // Step 9: Seed Property Documents
+            // Step 10: Seed Property Documents
             await SeedPropertyDocumentsAsync(childProperties);
 
-            // Step 10: Seed Auctions
+            // Step 11: Seed Auctions
             var auctions = await SeedAuctionsAsync(childProperties);
 
-            // Step 11: Seed Bids
+            // Step 12: Seed Bids
             await SeedBidsAsync(auctions, accounts);
 
-            // Step 12: Seed Events
+            // Step 13: Seed Events
             await SeedEventsAsync(projects);
 
-            // Step 13: Seed Notifications
+            // Step 14: Seed Notifications
             await SeedNotificationsAsync(accounts);
 
-            // Step 14: Seed Chats
+            // Step 15: Seed Chats
             var chats = await SeedChatsAsync(accounts, childProperties);
 
-            // Step 15: Seed Chat Messages
+            // Step 16: Seed Chat Messages
             await SeedChatMessagesAsync(chats);
 
-            // Step 16: Seed AI Chats
+            // Step 17: Seed AI Chats
             var aiChats = await SeedAIChatsAsync(accounts);
 
-            // Step 17: Seed AI Chat Messages
+            // Step 18: Seed AI Chat Messages
             await SeedAIChatMessagesAsync(aiChats);
 
-            // Step 18: Seed Project Milestones
+            // Step 19: Seed Project Milestones
             await SeedProjectMilestonesAsync(projects);
 
-            // Step 19: Seed Project Updates
+            // Step 20: Seed Project Updates
             await SeedProjectUpdatesAsync(projects);
 
-            // Step 20: Seed User Rewards
+            // Step 21: Seed User Rewards
             await SeedUserRewardsAsync(accounts);
 
-            // Step 21: Seed User Badges
+            // Step 22: Seed User Badges
             await SeedUserBadgesAsync(accounts);
 
-            // Step 22: Seed Referrals
+            // Step 23: Seed Referrals
             await SeedReferralsAsync(accounts);
 
-            // Step 23: Seed Property Views
+            // Step 24: Seed Property Views
             await SeedPropertyViewsAsync(childProperties, accounts);
 
-            // Step 24: Seed Developer Ratings
+            // Step 25: Seed Developer Ratings
             await SeedDeveloperRatingsAsync(accounts);
 
-            // Step 25: Seed Property Price History
+            // Step 26: Seed Property Price History
             await SeedPropertyPriceHistoryAsync(parentProperties, auctions);
 
-            // Step 26: Seed User Documents
+            // Step 27: Seed User Documents
             await SeedUserDocumentsAsync(accounts);
 
-            // Step 27: Seed News Articles
+            // Step 28: Seed News Articles (with real photo URLs)
             await SeedNewsArticlesAsync();
 
-            // Step 28: Seed Communities (includes members, posts, comments, reactions, polls)
+            // Step 29: Seed Communities (includes members, posts, comments, reactions, polls)
             var communities = await SeedCommunitiesAsync(accounts, projects);
             await SeedCommunityPostsAsync(communities, accounts);
 
-            // Step 29: Seed Property Valuations
+            // Step 30: Seed Property Valuations
             await SeedPropertyValuationsAsync(childProperties);
 
-            // Step 30: Seed User Achievements
+            // Step 31: Seed User Achievements
             await SeedUserAchievementsAsync(accounts);
 
             await _context.SaveChangesAsync();
             Console.WriteLine("✅ Complete Egyptian Real Estate Data Seeding Finished!");
+        }
+
+        // Seed only chats and messages (without clearing everything)
+        public async Task SeedChatsAndMessagesAsync()
+        {
+            Console.WriteLine("💬 Seeding Chats and Messages...");
+            
+            // Get existing accounts and properties
+            var accounts = await _context.Accounts.ToListAsync();
+            var childProperties = await _context.ChildProperties.ToListAsync();
+            
+            if (!accounts.Any() || !childProperties.Any())
+            {
+                Console.WriteLine("⚠️ Cannot seed chats: No accounts or properties found. Please seed full data first.");
+                return;
+            }
+            
+            // Clear existing chats and messages
+            _context.ChatMessages.RemoveRange(_context.ChatMessages);
+            _context.Chats.RemoveRange(_context.Chats);
+            await _context.SaveChangesAsync();
+            Console.WriteLine("🗑️ Cleared existing chats and messages");
+            
+            // Seed chats
+            var chats = await SeedChatsAsync(accounts, childProperties);
+            
+            // Seed messages
+            await SeedChatMessagesAsync(chats);
+            
+            await _context.SaveChangesAsync();
+            Console.WriteLine("✅ Chats and Messages Seeding Finished!");
         }
 
         private async Task ClearAllDataAsync()
@@ -173,6 +252,9 @@ namespace InstapropAPI.Services
             Console.WriteLine("🗑️ Clearing existing data...");
             
             // Clear in reverse order to avoid foreign key constraints
+            // Developer Permissions
+            _context.DeveloperPermissions.RemoveRange(_context.DeveloperPermissions);
+            
             // Community-related entities
             _context.PollVotes.RemoveRange(_context.PollVotes);
             _context.Polls.RemoveRange(_context.Polls);
@@ -278,6 +360,7 @@ namespace InstapropAPI.Services
             
             var accounts = new List<Account>();
             
+            // SECURITY: Create accounts with non-guessable RoleId instead of Type enum
             // Create 1 Admin
             accounts.Add(new Account
             {
@@ -286,7 +369,7 @@ namespace InstapropAPI.Services
                 Email = "admin@propertyflipper.com",
                 HashedPassword = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
                 PhoneNumber = "+201234567890",
-                Type = AccountType.Admin,
+                RoleId = Role.ADMIN_ROLE_ID, // Non-guessable 64-bit ID
                 Status = VerificationStatus.Verified,
                 EmailVerified = true,
                 PhoneVerified = true,
@@ -307,7 +390,7 @@ namespace InstapropAPI.Services
                     Email = $"dev{i + 1}@{_egyptianDevelopers[i].ToLower().Replace(" ", "").Replace("developments", "").Replace("group", "").Replace("properties", "")}.com",
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("Dev123!"),
                     PhoneNumber = $"+201{_random.Next(100000000, 999999999)}",
-                    Type = AccountType.Developer,
+                    RoleId = Role.DEVELOPER_ROLE_ID, // Non-guessable 64-bit ID
                     Status = VerificationStatus.Verified,
                     EmailVerified = true,
                     PhoneVerified = true,
@@ -329,7 +412,7 @@ namespace InstapropAPI.Services
                     Email = $"user{i + 1}@gmail.com",
                     HashedPassword = BCrypt.Net.BCrypt.HashPassword("User123!"),
                     PhoneNumber = $"+201{_random.Next(100000000, 999999999)}",
-                    Type = AccountType.User,
+                    RoleId = Role.USER_ROLE_ID, // Non-guessable 64-bit ID
                     Status = _random.Next(3) == 0 ? VerificationStatus.Pending : VerificationStatus.Verified,
                     EmailVerified = _random.Next(3) != 0,
                     PhoneVerified = _random.Next(3) != 0,
@@ -343,11 +426,44 @@ namespace InstapropAPI.Services
             return accounts;
         }
 
+        private async Task SeedDeveloperPermissionsAsync(List<Account> accounts)
+        {
+            Console.WriteLine("🔐 Seeding Developer Permissions...");
+            
+            var developerAccounts = accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
+            var permissions = new List<DeveloperPermission>();
+            
+            foreach (var developer in developerAccounts)
+            {
+                // Default features are always enabled (no need to store, but we'll add for completeness)
+                // Optional features - randomly enable some for each developer
+                var optionalFeatures = FeaturePermission.OptionalFeatures;
+                
+                foreach (var feature in optionalFeatures)
+                {
+                    // Randomly enable 30-70% of optional features per developer
+                    var isEnabled = _random.Next(10) < (_random.Next(3, 8));
+                    
+                    permissions.Add(new DeveloperPermission
+                    {
+                        DeveloperId = developer.AccountId,
+                        FeatureName = feature,
+                        IsEnabled = isEnabled,
+                        CreatedAt = developer.CreatedAt,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            _context.DeveloperPermissions.AddRange(permissions);
+            await _context.SaveChangesAsync();
+        }
+
         private async Task SeedDeveloperProfilesAsync(List<Account> accounts)
         {
             Console.WriteLine("🏢 Seeding Developer Profiles...");
             
-            var developerAccounts = accounts.Where(a => a.Type == AccountType.Developer).ToList();
+            var developerAccounts = accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
             var profiles = new List<DeveloperProfile>();
             
             for (int i = 0; i < developerAccounts.Count; i++)
@@ -355,12 +471,14 @@ namespace InstapropAPI.Services
                 var account = developerAccounts[i];
                 var companyName = _egyptianDevelopers[i];
                 
+                var photoId = _developerProfilePhotoIds[i % _developerProfilePhotoIds.Length];
+                
                 profiles.Add(new DeveloperProfile
                 {
                     AccountId = account.AccountId,
                     CompanyName = companyName,
                     Bio = $"Leading real estate developer in Egypt with over {_random.Next(5, 20)} years of experience in creating premium residential and commercial projects.",
-                    ProfileImageUrl = $"https://images.unsplash.com/photo-{1500000000000 + i}?w=400&h=400&fit=crop&crop=face",
+                    ProfileImageUrl = GetUnsplashUrl(photoId, 400, 400),
                     Rating = (decimal)Math.Round(3.5 + _random.NextDouble() * 1.5, 1),
                     TotalRatings = _random.Next(10, 100),
                     PortfolioDescription = $"Specialized in luxury residential developments, commercial projects, and mixed-use communities across Egypt's most prestigious locations.",
@@ -377,7 +495,7 @@ namespace InstapropAPI.Services
         {
             Console.WriteLine("🏗️ Seeding Projects...");
             
-            var developerAccounts = accounts.Where(a => a.Type == AccountType.Developer).ToList();
+            var developerAccounts = accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
             var projects = new List<Project>();
             
             for (int i = 0; i < 25; i++)
@@ -501,7 +619,7 @@ namespace InstapropAPI.Services
                 
                 for (int i = 0; i < childCount; i++)
                 {
-                    var owner = _random.Next(3) == 0 ? accounts.Where(a => a.Type == AccountType.User).FirstOrDefault() : null;
+                    var owner = _random.Next(3) == 0 ? accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).FirstOrDefault() : null;
                     var phase = phases[_random.Next(phases.Length)];
                     var viewType = viewTypes[_random.Next(viewTypes.Length)];
                     var orientation = orientations[_random.Next(orientations.Length)];
@@ -555,7 +673,7 @@ namespace InstapropAPI.Services
                         Name = $"{parent.ProjectName} - {parent.Type} {parent.Bedrooms}BR",
                         Description = $"Beautiful {parent.Type.ToLowerInvariant()} in {parent.ProjectName} with {parent.Bedrooms} bedrooms and {parent.Bathrooms} bathrooms.",
                         Location = $"{parent.ProjectName}, Egypt",
-                        ImageUrl = $"https://images.unsplash.com/photo-{1700000000000 + childProperties.Count}?w=800&h=600&fit=crop",
+                        ImageUrl = GetUnsplashUrl(_propertyPhotoIds[childProperties.Count % _propertyPhotoIds.Length]),
                         SquareFeet = (int)(parent.AreaSqm * 10.764), // Convert to sq ft
                         YearBuilt = DateTime.UtcNow.Year - _random.Next(0, 5),
                         IsApproved = _random.Next(4) != 0,
@@ -592,10 +710,13 @@ namespace InstapropAPI.Services
                 
                 for (int i = 0; i < imageCount; i++)
                 {
+                    var photoIndex = (propertyImages.Count + i) % _propertyPhotoIds.Length;
+                    var photoId = _propertyPhotoIds[photoIndex];
+                    
                     propertyImages.Add(new PropertyImage
                     {
                         PropertyId = property.PropertyId,
-                        ImageUrl = $"https://images.unsplash.com/photo-{1800000000000 + propertyImages.Count}?w=1200&h=800&fit=crop",
+                        ImageUrl = GetUnsplashUrl(photoId, 1200, 800),
                         ImageType = i == 0 ? "Main" : (i == 1 ? "Living Room" : (i == 2 ? "Bedroom" : (i == 3 ? "Kitchen" : (i == 4 ? "Bathroom" : "Exterior")))),
                         IsMainImage = i == 0,
                         DisplayOrder = i,
@@ -622,11 +743,14 @@ namespace InstapropAPI.Services
                 
                 for (int i = 0; i < docCount; i++)
                 {
+                    var photoIndex = (propertyDocs.Count + i) % _propertyPhotoIds.Length;
+                    var photoId = _propertyPhotoIds[photoIndex];
+                    
                     propertyDocs.Add(new PropertyDoc
                     {
                         PropertyId = property.PropertyId,
                         DocType = docTypes[_random.Next(docTypes.Length)],
-                        ImgUrl = $"https://images.unsplash.com/photo-{1900000000000 + propertyDocs.Count}?w=800&h=1000&fit=crop",
+                        ImgUrl = GetUnsplashUrl(photoId, 800, 1000),
                         DeleteUrl = $"https://api.imgbb.com/1/delete/{_random.Next(100000, 999999)}",
                         UploadedAt = property.CreatedAt.AddDays(_random.Next(0, 30))
                     });
@@ -679,7 +803,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("💰 Seeding Bids...");
             
             var bids = new List<Bid>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var auction in auctions.Where(a => a.Status == "Active" || a.Status == "Closed"))
             {
@@ -777,11 +901,11 @@ namespace InstapropAPI.Services
             Console.WriteLine("💬 Seeding Chats...");
             
             var chats = new List<Chat>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
-            var developerAccounts = accounts.Where(a => a.Type == AccountType.Developer).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
+            var developerAccounts = accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
             
-            // Create 20-30 chats
-            var chatCount = _random.Next(20, 31);
+            // Create 30-50 chats for better testing
+            var chatCount = _random.Next(30, 51);
             
             for (int i = 0; i < chatCount; i++)
             {
@@ -789,12 +913,23 @@ namespace InstapropAPI.Services
                 var developer = developerAccounts[_random.Next(developerAccounts.Count)];
                 var property = childProperties[_random.Next(childProperties.Count)];
                 
+                // Assign 30-50% of chats to sales members (use developers as sales members)
+                long? salesMemberId = null;
+                if (_random.Next(10) < 4) // 40% chance
+                {
+                    // Pick a random developer to act as sales member (can be different from the developer)
+                    var salesMember = developerAccounts[_random.Next(developerAccounts.Count)];
+                    salesMemberId = salesMember.AccountId;
+                }
+                
                 chats.Add(new Chat
                 {
                     UserId = user.AccountId,
                     DeveloperId = developer.AccountId,
                     ProjectId = property.ProjectId,
+                    SalesMemberId = salesMemberId,
                     IsActive = _random.Next(4) != 0,
+                    IsSupportChat = _random.Next(5) == 0, // 20% are support chats
                     CreatedAt = DateTime.UtcNow.AddDays(-_random.Next(0, 90)),
                     LastMessageAt = DateTime.UtcNow.AddDays(-_random.Next(0, 30))
                 });
@@ -802,6 +937,7 @@ namespace InstapropAPI.Services
 
             _context.Chats.AddRange(chats);
             await _context.SaveChangesAsync();
+            Console.WriteLine($"✅ Seeded {chats.Count} chats ({chats.Count(c => c.SalesMemberId != null)} assigned to sales members)");
             return chats;
         }
 
@@ -810,7 +946,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("💭 Seeding Chat Messages...");
             
             var messages = new List<ChatMessage>();
-            var sampleMessages = new[]
+            var userMessages = new[]
             {
                 "Hello, I'm interested in this property. Can you tell me more about it?",
                 "What is the current price for this unit?",
@@ -821,19 +957,81 @@ namespace InstapropAPI.Services
                 "What about the view from this unit?",
                 "Can I schedule a site visit?",
                 "What are the maintenance fees?",
-                "Is financing available?"
+                "Is financing available?",
+                "How many bedrooms does this unit have?",
+                "What's the square footage?",
+                "Is the property ready to move in?",
+                "What's the down payment requirement?",
+                "Are pets allowed?",
+                "What about schools nearby?",
+                "Is there public transportation access?",
+                "What's the nearest shopping center?",
+                "Can I see floor plans?",
+                "What's included in the price?"
+            };
+            
+            var developerMessages = new[]
+            {
+                "Hello! Thank you for your interest. I'd be happy to help you with this property.",
+                "The current price is {price} EGP. We also offer flexible payment plans.",
+                "The project is expected to be completed by {date}. Construction is progressing well.",
+                "Yes, we have several payment plan options. Let me send you the details.",
+                "The property includes parking, 24/7 security, swimming pool, gym, and gardens.",
+                "Yes, parking is included. Each unit comes with one or two parking spaces.",
+                "The view is excellent! The unit overlooks the main garden and pool area.",
+                "Absolutely! I can schedule a site visit for you. When would be convenient?",
+                "Maintenance fees are approximately {amount} EGP per square meter annually.",
+                "Yes, financing is available through several partner banks. I can provide details.",
+                "This unit has {bedrooms} bedrooms and {bathrooms} bathrooms.",
+                "The unit is {sqft} square feet. Would you like to see the floor plan?",
+                "The property is {status}. We have both ready and off-plan units available.",
+                "The down payment is {percentage}% of the total price, payable over 12 months.",
+                "Yes, pets are allowed. The building is pet-friendly with designated areas.",
+                "There are several excellent schools within a 5-minute drive.",
+                "Yes, the metro station is just 500 meters away, very convenient.",
+                "There's a large shopping mall within walking distance, about 10 minutes.",
+                "Of course! I'll send you the floor plans via email.",
+                "The price includes finishing, kitchen appliances, and air conditioning units."
             };
             
             foreach (var chat in chats)
             {
-                // Create 3-10 messages per chat
-                var messageCount = _random.Next(3, 11);
+                // Create 5-15 messages per chat for better testing
+                var messageCount = _random.Next(5, 16);
+                var baseTime = chat.CreatedAt;
                 
                 for (int i = 0; i < messageCount; i++)
                 {
-                    var isFromUser = _random.Next(2) == 0;
+                    // Alternate between user and developer messages, but start with user
+                    var isFromUser = (i % 2) == 0;
                     var senderId = isFromUser ? chat.UserId : chat.DeveloperId;
-                    var message = sampleMessages[_random.Next(sampleMessages.Length)];
+                    
+                    // Select appropriate message template
+                    var messageTemplate = isFromUser 
+                        ? userMessages[_random.Next(userMessages.Length)]
+                        : developerMessages[_random.Next(developerMessages.Length)];
+                    
+                    // Simple template replacement for variety
+                    var message = messageTemplate
+                        .Replace("{price}", (_random.Next(2, 8) * 1000000).ToString())
+                        .Replace("{date}", DateTime.UtcNow.AddMonths(_random.Next(6, 24)).ToString("MMMM yyyy"))
+                        .Replace("{amount}", (_random.Next(50, 150)).ToString())
+                        .Replace("{bedrooms}", chat.ProjectId != null ? "3" : _random.Next(2, 5).ToString())
+                        .Replace("{bathrooms}", chat.ProjectId != null ? "2" : _random.Next(2, 4).ToString())
+                        .Replace("{sqft}", (_random.Next(1200, 3500)).ToString())
+                        .Replace("{status}", _random.Next(2) == 0 ? "ready to move in" : "under construction")
+                        .Replace("{percentage}", (_random.Next(10, 20)).ToString());
+                    
+                    // Calculate message time (spread over days since chat creation)
+                    var daysSinceChat = (DateTime.UtcNow - chat.CreatedAt).TotalDays;
+                    var messageOffset = TimeSpan.FromDays(daysSinceChat * (i / (double)messageCount));
+                    var messageTime = baseTime + messageOffset;
+                    
+                    // Ensure message time doesn't exceed last message time
+                    if (messageTime > chat.LastMessageAt)
+                    {
+                        messageTime = chat.LastMessageAt.AddMinutes(-_random.Next(0, 60));
+                    }
                     
                     messages.Add(new ChatMessage
                     {
@@ -841,13 +1039,23 @@ namespace InstapropAPI.Services
                         SenderId = senderId,
                         Content = message,
                         PropertyId = (int?)chat.ProjectId,
-                        CreatedAt = chat.CreatedAt.AddMinutes(_random.Next(0, 1440))
+                        IsRead = _random.Next(4) != 0, // 75% are read
+                        CreatedAt = messageTime,
+                        ExpiresAt = messageTime.AddDays(30)
                     });
+                }
+                
+                // Update chat's last message time
+                var lastMessage = messages.Where(m => m.ChatId == chat.ChatId).OrderByDescending(m => m.CreatedAt).FirstOrDefault();
+                if (lastMessage != null)
+                {
+                    chat.LastMessageAt = lastMessage.CreatedAt;
                 }
             }
 
             _context.ChatMessages.AddRange(messages);
             await _context.SaveChangesAsync();
+            Console.WriteLine($"✅ Seeded {messages.Count} chat messages");
         }
 
         private async Task<List<AIChat>> SeedAIChatsAsync(List<Account> accounts)
@@ -855,7 +1063,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("🤖 Seeding AI Chats...");
             
             var aiChats = new List<AIChat>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             // Create 15-25 AI chats
             var chatCount = _random.Next(15, 26);
@@ -984,12 +1192,15 @@ namespace InstapropAPI.Services
                 
                 for (int i = 0; i < updateCount; i++)
                 {
+                    var photoIndex = updates.Count % _projectCoverPhotoIds.Length;
+                    var photoId = _projectCoverPhotoIds[photoIndex];
+                    
                     updates.Add(new ProjectUpdate
                     {
                         ProjectId = project.ProjectId,
                         Title = $"Update {i + 1} - {project.Name}",
                         Content = $"Progress update for {project.Name}. Construction is proceeding according to schedule.",
-                        ImageUrl = $"https://images.unsplash.com/photo-{2000000000000 + updates.Count}?w=800&h=600&fit=crop",
+                        ImageUrl = GetUnsplashUrl(photoId, 800, 600),
                         CreatedAt = project.CreatedAt.AddDays(_random.Next(0, 90))
                     });
                 }
@@ -1006,7 +1217,7 @@ namespace InstapropAPI.Services
             var rewards = new List<UserReward>();
             var rewardTypes = new[] { "Login", "Property View", "Bid Placed", "Auction Won", "Referral" };
             
-            foreach (var account in accounts.Where(a => a.Type == AccountType.User))
+            foreach (var account in accounts.Where(a => a.RoleId == Role.USER_ROLE_ID))
             {
                 // Create 5-20 rewards per user
                 var rewardCount = _random.Next(5, 21);
@@ -1035,7 +1246,7 @@ namespace InstapropAPI.Services
             var badges = new List<UserBadge>();
             var badgeNames = new[] { "First Bid", "Property Hunter", "Auction Master", "Loyal User", "Referral King" };
             
-            foreach (var account in accounts.Where(a => a.Type == AccountType.User))
+            foreach (var account in accounts.Where(a => a.RoleId == Role.USER_ROLE_ID))
             {
                 // Create 1-5 badges per user
                 var badgeCount = _random.Next(1, 6);
@@ -1062,7 +1273,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("👥 Seeding Referrals...");
             
             var referrals = new List<Referral>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             // Create 10-20 referrals
             var referralCount = _random.Next(10, 21);
@@ -1094,7 +1305,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("👁️ Seeding Property Views...");
             
             var views = new List<PropertyView>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var property in childProperties)
             {
@@ -1123,8 +1334,8 @@ namespace InstapropAPI.Services
             Console.WriteLine("⭐ Seeding Developer Ratings...");
             
             var ratings = new List<DeveloperRating>();
-            var developerAccounts = accounts.Where(a => a.Type == AccountType.Developer).ToList();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var developerAccounts = accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var developer in developerAccounts)
             {
@@ -1189,18 +1400,21 @@ namespace InstapropAPI.Services
             var userDocs = new List<UserDoc>();
             var docTypes = new[] { "ID_Front", "ID_Back", "Passport_Front", "Passport_Back", "ProofOfAddress" };
             
-            foreach (var account in accounts.Where(a => a.Type == AccountType.User))
+            foreach (var account in accounts.Where(a => a.RoleId == Role.USER_ROLE_ID))
             {
                 // Create 2-4 documents per user
                 var docCount = _random.Next(2, 5);
                 
                 for (int i = 0; i < docCount; i++)
                 {
+                    var photoIndex = (userDocs.Count + i) % _propertyPhotoIds.Length;
+                    var photoId = _propertyPhotoIds[photoIndex];
+                    
                     userDocs.Add(new UserDoc
                     {
                         UserId = account.AccountId,
                         DocType = docTypes[_random.Next(docTypes.Length)],
-                        ImgUrl = $"https://images.unsplash.com/photo-{2100000000000 + userDocs.Count}?w=800&h=1000&fit=crop",
+                        ImgUrl = GetUnsplashUrl(photoId, 800, 1000),
                         DeleteUrl = $"https://api.imgbb.com/1/delete/{_random.Next(100000, 999999)}",
                         UploadedAt = account.CreatedAt.AddDays(_random.Next(0, 30))
                     });
@@ -1255,6 +1469,8 @@ namespace InstapropAPI.Services
             {
                 var publishedDate = DateTime.UtcNow.AddDays(-_random.Next(0, 180));
                 var isPublished = _random.Next(10) != 0; // 90% published
+                var photoIndex = i % _newsPhotoIds.Length;
+                var photoId = _newsPhotoIds[photoIndex];
                 
                 newsArticles.Add(new NewsArticle
                 {
@@ -1289,10 +1505,13 @@ namespace InstapropAPI.Services
                 
                 for (int i = 0; i < imageCount; i++)
                 {
+                    var photoIndex = (newsImages.Count + i) % _newsPhotoIds.Length;
+                    var photoId = _newsPhotoIds[photoIndex];
+                    
                     newsImages.Add(new NewsImage
                     {
                         NewsArticleId = article.NewsArticleId,
-                        ImageUrl = $"https://images.unsplash.com/photo-{2200000000000 + newsImages.Count}?w=1200&h=800&fit=crop",
+                        ImageUrl = GetUnsplashUrl(photoId, 1200, 800),
                         DisplayOrder = i
                     });
                 }
@@ -1371,7 +1590,7 @@ namespace InstapropAPI.Services
                 "Network with fellow property buyers and sellers"
             };
             
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User || a.Type == AccountType.Developer).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID || a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
             
             for (int i = 0; i < 8; i++)
             {
@@ -1390,7 +1609,7 @@ namespace InstapropAPI.Services
                 }
                 else if (scopeType == CommunityScopeType.DeveloperBased)
                 {
-                    var developerAccounts = accounts.Where(a => a.Type == AccountType.Developer).ToList();
+                    var developerAccounts = accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
                     if (developerAccounts.Any())
                     {
                         var selectedDevelopers = developerAccounts.OrderBy(x => _random.Next()).Take(_random.Next(1, 3)).Select(d => d.AccountId).ToList();
@@ -1407,7 +1626,7 @@ namespace InstapropAPI.Services
                     AccessType = accessType,
                     ProjectIds = projectIds,
                     DeveloperIds = developerIds,
-                    CoverPhotoUrl = $"https://images.unsplash.com/photo-{2300000000000 + i}?w=1200&h=600&fit=crop",
+                    CoverPhotoUrl = GetUnsplashUrl(_projectCoverPhotoIds[i % _projectCoverPhotoIds.Length], 1200, 600),
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow.AddMonths(-_random.Next(1, 12)),
                     UpdatedAt = DateTime.UtcNow
@@ -1428,7 +1647,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("👤 Seeding Community Members...");
             
             var members = new List<CommunityMember>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User || a.Type == AccountType.Developer).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID || a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
             
             foreach (var community in communities)
             {
@@ -1508,7 +1727,7 @@ namespace InstapropAPI.Services
                         CommunityId = community.CommunityId,
                         AuthorId = author.AccountId,
                         Content = postContents[_random.Next(postContents.Length)],
-                        ImageUrl = _random.Next(4) == 0 ? $"https://images.unsplash.com/photo-{2400000000000 + posts.Count}?w=800&h=600&fit=crop" : null,
+                        ImageUrl = _random.Next(4) == 0 ? GetUnsplashUrl(_propertyPhotoIds[posts.Count % _propertyPhotoIds.Length], 800, 600) : null,
                         PostType = postType,
                         IsPinned = _random.Next(20) == 0,
                         CreatedAt = createdAt,
@@ -1575,7 +1794,7 @@ namespace InstapropAPI.Services
         private async Task SeedPostLikesAsync(List<CommunityPost> posts, List<Account> accounts)
         {
             var likes = new List<PostLike>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var post in posts)
             {
@@ -1610,7 +1829,7 @@ namespace InstapropAPI.Services
         private async Task SeedPostReactionsAsync(List<CommunityPost> posts, List<Account> accounts)
         {
             var reactions = new List<PostReaction>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var post in posts.Where(p => _random.Next(3) != 0)) // 67% have reactions
             {
@@ -1643,7 +1862,7 @@ namespace InstapropAPI.Services
         private async Task SeedPostBookmarksAsync(List<CommunityPost> posts, List<Account> accounts)
         {
             var bookmarks = new List<PostBookmark>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var post in posts.Where(p => _random.Next(5) == 0)) // 20% are bookmarked
             {
@@ -1692,7 +1911,7 @@ namespace InstapropAPI.Services
                 "Thanks for the advice."
             };
             
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             // First phase: Create parent comments (no ParentCommentId)
             foreach (var post in posts)
@@ -1790,7 +2009,7 @@ namespace InstapropAPI.Services
         private async Task SeedCommentLikesAsync(List<PostComment> comments, List<Account> accounts)
         {
             var commentLikes = new List<CommentLike>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var comment in comments.Where(c => _random.Next(3) != 0)) // 67% get likes
             {
@@ -1827,7 +2046,7 @@ namespace InstapropAPI.Services
         private async Task SeedCommentReactionsAsync(List<PostComment> comments, List<Account> accounts)
         {
             var reactions = new List<CommentReaction>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var comment in comments.Where(c => _random.Next(4) == 0)) // 25% get reactions
             {
@@ -1864,7 +2083,7 @@ namespace InstapropAPI.Services
         {
             var polls = new List<Poll>();
             var pollPosts = posts.Where(p => p.PostType == PostType.Poll).ToList();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var post in pollPosts)
             {
@@ -1898,7 +2117,7 @@ namespace InstapropAPI.Services
         private async Task SeedPollVotesAsync(List<Poll> polls, List<Account> accounts)
         {
             var pollVotes = new List<PollVote>();
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var poll in polls)
             {
@@ -1915,12 +2134,19 @@ namespace InstapropAPI.Services
                     .Take(_random.Next(5, 25))
                     .ToList();
                 
-                var options = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(poll.Options);
-                if (options == null || !options.Any()) continue;
+                // Use JsonDocument to properly handle JSON deserialization
+                using var doc = JsonDocument.Parse(poll.Options);
+                var optionsList = doc.RootElement.EnumerateArray().Select(e => new Dictionary<string, object>
+                {
+                    { "optionText", e.GetProperty("optionText").GetString() ?? "" },
+                    { "voteCount", e.GetProperty("voteCount").GetInt32() }
+                }).ToList();
+                
+                if (optionsList == null || !optionsList.Any()) continue;
                 
                 foreach (var voter in voters)
                 {
-                    var optionIndex = _random.Next(0, options.Count);
+                    var optionIndex = _random.Next(0, optionsList.Count);
                     
                     pollVotes.Add(new PollVote
                     {
@@ -1931,13 +2157,10 @@ namespace InstapropAPI.Services
                     });
                     
                     // Update vote count in options JSON
-                    if (options[optionIndex].ContainsKey("voteCount"))
-                    {
-                        options[optionIndex]["voteCount"] = Convert.ToInt32(options[optionIndex]["voteCount"]) + 1;
-                    }
+                    optionsList[optionIndex]["voteCount"] = ((int)optionsList[optionIndex]["voteCount"]) + 1;
                 }
                 
-                poll.Options = JsonSerializer.Serialize(options);
+                poll.Options = JsonSerializer.Serialize(optionsList);
                 poll.TotalVotes = pollVotes.Count(pv => pv.PollId == poll.PollId);
             }
             
@@ -1965,7 +2188,7 @@ namespace InstapropAPI.Services
                 { AchievementType.ValuableInsight, "Valuable Insight" }
             };
             
-            var userAccounts = accounts.Where(a => a.Type == AccountType.User).ToList();
+            var userAccounts = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             
             foreach (var account in userAccounts)
             {

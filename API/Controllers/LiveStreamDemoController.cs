@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
+using InstapropAPI.Extensions;
 using System.Security.Claims;
 
 namespace InstapropAPI.Controllers
@@ -27,7 +28,7 @@ namespace InstapropAPI.Controllers
         {
             // Get first developer account for demo
             var developer = await _context.Accounts
-                .FirstOrDefaultAsync(a => a.Type == AccountType.Developer);
+                .FirstOrDefaultAsync(a => a.RoleId == Role.DEVELOPER_ROLE_ID); // SECURITY: Check non-guessable RoleId
 
             if (developer == null)
                 return BadRequest("No developer account found. Please create a developer account first.");

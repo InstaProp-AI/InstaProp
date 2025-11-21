@@ -359,7 +359,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<EventDto>> CreatePublicEvent(PublicEventCreateDto publicEventDto)
         {
             // Get all users to assign the public event to
-            var allUsers = await _context.Accounts.Where(a => a.Type == AccountType.User).ToListAsync();
+            var allUsers = await _context.Accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToListAsync();
             
             if (!allUsers.Any())
             {

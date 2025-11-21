@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using InstapropAPI.Models;
 using InstapropAPI.Services;
+using InstapropAPI.Attributes;
 
 namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [FeaturePermissionAttribute("Leaderboard")]
     public class LeaderboardController : ControllerBase
     {
         private readonly LeaderboardService _leaderboardService;

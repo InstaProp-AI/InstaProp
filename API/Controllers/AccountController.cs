@@ -65,6 +65,7 @@ namespace InstapropAPI.Controllers
         }
 
         // Signup - Create account without KYC
+        // SECURITY: Only User accounts can be created via signup. Admin/Developer accounts must be created/promoted by admins.
         [HttpPost("signup")]
         public async Task<IActionResult> Signup([FromBody] SignupRequest signupRequest)
         {
@@ -79,13 +80,14 @@ namespace InstapropAPI.Controllers
             if (passwordError != null)
                 return BadRequest(passwordError);
 
+            // SECURITY FIX: Always create User accounts with hardcoded non-guessable RoleId
             var account = new Account
             {
                 FirstName = signupRequest.FirstName,
                 LastName = signupRequest.LastName,
                 Email = signupRequest.Email,
                 PhoneNumber = signupRequest.PhoneNumber,
-                Type = signupRequest.Type,
+                RoleId = Role.USER_ROLE_ID, // Always User role - non-guessable 64-bit ID
                 HashedPassword = BCrypt.Net.BCrypt.HashPassword(signupRequest.Password),
                 Status = VerificationStatus.NotVerified, // Will be verified by admin after KYC review
                 CreatedAt = DateTime.UtcNow
@@ -158,7 +160,7 @@ namespace InstapropAPI.Controllers
                 LastName = request.LastName,
                 Email = request.Email,
                 PhoneNumber = "", // Will be filled later
-                Type = AccountType.User,
+                RoleId = Role.USER_ROLE_ID, // Always User role
                 GoogleId = request.GoogleId,
                 AuthProvider = "google",
                 EmailVerified = true, // Google emails are verified
@@ -534,6 +536,10 @@ namespace InstapropAPI.Controllers
 
         private string GenerateJwtToken(Account account)
         {
+            // Load role from database to get role name
+            var role = _context.Roles.FirstOrDefault(r => r.RoleId == account.RoleId);
+            var roleName = role?.RoleName ?? "User"; // Fallback to "User" if role not found
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? ""));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -543,9 +549,10 @@ namespace InstapropAPI.Controllers
                 new Claim("uid", account.AccountId.ToString()), // Keep for backward compatibility
                 new Claim(ClaimTypes.Email, account.Email),
                 new Claim("email", account.Email), // Keep for backward compatibility
-                new Claim("type", account.Type.ToString()),
+                new Claim("roleId", account.RoleId.ToString()), // SECURITY: Store non-guessable RoleId
+                new Claim("role", roleName), // Role name for backward compatibility
                 new Claim(ClaimTypes.Name, account.Email),
-                new Claim(ClaimTypes.Role, account.Type.ToString()) // Add proper Role claim: "User", "Developer", or "Admin"
+                new Claim(ClaimTypes.Role, roleName) // Role name claim
             };
 
             var token = new JwtSecurityToken(
@@ -584,7 +591,8 @@ namespace InstapropAPI.Controllers
                 account.LastName,
                 account.PhoneNumber,
                 account.Email,
-                account.Type,
+                RoleId = account.RoleId,
+                RoleName = account.Role != null ? account.Role.RoleName : "Unknown",
                 account.Status,
                 account.EmailVerified,
                 account.PhoneVerified,
@@ -697,7 +705,8 @@ namespace InstapropAPI.Controllers
                 account.LastName,
                 account.PhoneNumber,
                 account.Email,
-                account.Type,
+                RoleId = account.RoleId,
+                RoleName = account.Role != null ? account.Role.RoleName : "Unknown",
                 account.Status,
                 account.EmailVerified,
                 account.PhoneVerified,
@@ -902,7 +911,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<IEnumerable<object>>> GetPendingKycUsers()
         {
             var pendingUsers = await _context.Accounts
-                .Where(a => a.Status == VerificationStatus.Pending && a.Type == AccountType.User)
+                .Where(a => a.Status == VerificationStatus.Pending && a.RoleId == Role.USER_ROLE_ID)
                 .Select(a => new
                 {
                     a.AccountId,
@@ -1072,7 +1081,8 @@ namespace InstapropAPI.Controllers
                     account.LastName,
                     account.Email,
                     account.PhoneNumber,
-                    account.Type,
+                    RoleId = account.RoleId,
+                RoleName = account.Role != null ? account.Role.RoleName : "Unknown",
                     account.CreatedAt,
                     account.UpdatedAt
                 },
@@ -1231,7 +1241,7 @@ namespace InstapropAPI.Controllers
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public AccountType Type { get; set; } = AccountType.User;
+        // SECURITY: Type removed - all signups create User accounts only. Only admins can promote to Developer/Admin.
     }
 
     public class GoogleAuthRequest

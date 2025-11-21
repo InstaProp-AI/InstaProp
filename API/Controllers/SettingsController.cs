@@ -80,28 +80,9 @@ namespace InstapropAPI.Controllers
         [HttpPost("backup-database")]
         public ActionResult BackupDatabase()
         {
-            try
-            {
-                var backupPath = Path.Combine(Directory.GetCurrentDirectory(), "Backups");
-                Directory.CreateDirectory(backupPath);
-
-                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-                var backupFile = Path.Combine(backupPath, $"backup_{timestamp}.db");
-
-                // Copy SQLite database
-                var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "mydb.db");
-                if (System.IO.File.Exists(dbPath))
-                {
-                    System.IO.File.Copy(dbPath, backupFile, true);
-                    return Ok(new { message = "Database backup created successfully", filename = $"backup_{timestamp}.db" });
-                }
-
-                return NotFound(new { error = "Database file not found" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
+            // PostgreSQL database backups should be handled by your hosting provider (e.g., Railway, Heroku)
+            // This endpoint is disabled as we no longer use SQLite file-based databases
+            return BadRequest(new { error = "Database backups are managed by your hosting provider. PostgreSQL databases cannot be backed up via file copy." });
         }
 
         // POST: api/Settings/clear-cache

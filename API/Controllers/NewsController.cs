@@ -10,6 +10,7 @@ namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [FeaturePermissionAttribute("News")]
     public class NewsController : ControllerBase
     {
         private readonly AppDbContext _context;

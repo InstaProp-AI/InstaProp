@@ -62,7 +62,8 @@ namespace InstapropAPI.Controllers
                 communityCoverPhotoUrl = p.Community?.CoverPhotoUrl,
                 authorId = p.AuthorId,
                 authorName = p.Author != null ? $"{p.Author.FirstName} {p.Author.LastName}" : "",
-                authorType = p.Author?.Type.ToString() ?? "Owner",
+                authorRoleId = p.Author?.RoleId ?? 0, // SECURITY: Non-guessable RoleId
+                authorRoleName = p.Author != null && p.Author.Role != null ? p.Author.Role.RoleName : "Owner",
                 content = p.Content,
                 imageUrl = p.ImageUrl,
                 postType = p.PostType.ToString(),
@@ -167,7 +168,8 @@ namespace InstapropAPI.Controllers
                     firstName = a.FirstName,
                     lastName = a.LastName,
                     email = a.Email,
-                    type = a.Type.ToString(),
+                    roleId = a.RoleId, // SECURITY: Non-guessable RoleId
+                    roleName = a.Role != null ? a.Role.RoleName : "Unknown",
                     reputationPoints = a.ReputationPoints,
                     postCount = a.PostCount,
                     commentCount = a.CommentCount,
@@ -380,7 +382,8 @@ namespace InstapropAPI.Controllers
                         firstName = a.FirstName,
                         lastName = a.LastName,
                         email = a.Email,
-                        type = a.Type.ToString(),
+                        roleId = a.RoleId, // SECURITY: Non-guessable RoleId
+                    roleName = a.Role != null ? a.Role.RoleName : "Unknown",
                         reputationPoints = a.ReputationPoints,
                         postCount = a.PostCount,
                         createdAt = a.CreatedAt

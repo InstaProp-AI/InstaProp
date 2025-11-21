@@ -4,11 +4,13 @@ using InstapropAPI.Data;
 using InstapropAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using InstapropAPI.Services;
+using InstapropAPI.Attributes;
 
 namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [FeaturePermissionAttribute("Valuation")]
     public class ValuationController : ControllerBase
     {
         private readonly AppDbContext _context;

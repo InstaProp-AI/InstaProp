@@ -137,7 +137,7 @@ class AuthService extends ChangeNotifier {
           'phoneNumber': phoneNumber,
           'email': email,
           'password': password,
-          'type': 0, // User AccountType enum value
+          // SECURITY: Removed 'type' field - backend always creates User accounts with non-guessable RoleId
         },
         (data) {
           _token = data['token'] ?? data['Token'];

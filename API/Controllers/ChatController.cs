@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
 using InstapropAPI.Services;
+using InstapropAPI.Attributes;
 using System.Security.Claims;
 
 namespace InstapropAPI.Controllers
@@ -11,6 +12,7 @@ namespace InstapropAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [FeaturePermissionAttribute("Chats")]
     public class ChatController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -144,7 +146,7 @@ namespace InstapropAPI.Controllers
             if (developer == null)
                 return NotFound("Developer not found");
 
-            if (developer.Type != AccountType.Developer)
+            if (developer.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                 return BadRequest("Specified account is not a developer");
 
             // Check if chat already exists

@@ -1,4 +1,39 @@
-enum AccountType { user, developer, admin }
+enum AccountType { user, developer, admin } // DEPRECATED: Use roleId and roleName instead
+
+// SECURITY: Role ID constants matching backend (non-guessable 64-bit IDs)
+class RoleIds {
+  static const int user = 8923748923748923;
+  static const int developer = 7823647823647823;
+  static const int admin = 9823749823749823;
+  
+  // Helper to get role name from role ID
+  static String getRoleName(int roleId) {
+    switch (roleId) {
+      case admin:
+        return 'Admin';
+      case developer:
+        return 'Developer';
+      case user:
+        return 'User';
+      default:
+        return 'User';
+    }
+  }
+  
+  // Helper to get role ID from role name
+  static int getRoleId(String roleName) {
+    switch (roleName.toLowerCase()) {
+      case 'admin':
+        return admin;
+      case 'developer':
+        return developer;
+      case 'user':
+        return user;
+      default:
+        return user;
+    }
+  }
+}
 
 enum VerificationStatus { notVerified, pending, verified }
 
@@ -40,7 +75,11 @@ class Account {
   final String lastName;
   final String phoneNumber;
   final String email;
-  final AccountType type;
+  // SECURITY: Use roleId (non-guessable 64-bit ID) instead of type enum
+  final int roleId; // e.g., 9823749823749823 for Admin
+  final String roleName; // 'User', 'Developer', or 'Admin'
+  @Deprecated('Use roleId and roleName instead')
+  final AccountType type; // DEPRECATED: Kept for backward compatibility
   final VerificationStatus status;
   final bool emailVerified;
   final bool phoneVerified;
@@ -62,7 +101,9 @@ class Account {
     required this.lastName,
     required this.phoneNumber,
     required this.email,
-    required this.type,
+    required this.roleId,
+    required this.roleName,
+    required this.type, // DEPRECATED: Keep for backward compatibility
     required this.status,
     this.emailVerified = false,
     this.phoneVerified = false,
@@ -80,18 +121,43 @@ class Account {
   });
 
   factory Account.fromJson(Map<String, dynamic> json) {
+    // SECURITY: Get roleId and roleName from response (new format)
+    final roleId = json['roleId'] ?? json['RoleId'];
+    final roleName = json['roleName'] ?? json['RoleName'];
+    
+    // Determine roleId and roleName (handle both new and old formats)
+    int finalRoleId;
+    String finalRoleName;
+    AccountType finalType;
+    
+    if (roleId != null && roleName != null) {
+      // New format: Use roleId and roleName directly
+      finalRoleId = roleId is int ? roleId : int.tryParse(roleId.toString()) ?? RoleIds.user;
+      finalRoleName = roleName.toString();
+      finalType = AccountType.values.firstWhere(
+        (e) => e.toString().split('.').last.toLowerCase() == finalRoleName.toLowerCase(),
+        orElse: () => AccountType.user,
+      );
+    } else {
+      // Old format: Parse from type field
+      final typeStr = (json['type'] ?? json['Type'] ?? 'user').toString().toLowerCase();
+      finalType = AccountType.values.firstWhere(
+        (e) => e.toString().split('.').last.toLowerCase() == typeStr,
+        orElse: () => AccountType.user,
+      );
+      finalRoleId = RoleIds.getRoleId(typeStr);
+      finalRoleName = RoleIds.getRoleName(finalRoleId);
+    }
+    
     return Account(
       accountId: json['accountId'] ?? json['AccountId'] ?? 0,
       firstName: json['firstName'] ?? json['FirstName'] ?? '',
       lastName: json['lastName'] ?? json['LastName'] ?? '',
       phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'] ?? '',
       email: json['email'] ?? json['Email'] ?? '',
-      type: AccountType.values.firstWhere(
-        (e) =>
-            e.toString().split('.').last.toLowerCase() ==
-            (json['type'] ?? json['Type'] ?? 'user').toString().toLowerCase(),
-        orElse: () => AccountType.user,
-      ),
+      roleId: finalRoleId,
+      roleName: finalRoleName,
+      type: finalType,
       status: _parseVerificationStatus(json['status'] ?? json['Status']),
       emailVerified: json['emailVerified'] ?? json['EmailVerified'] ?? false,
       phoneVerified: json['phoneVerified'] ?? json['PhoneVerified'] ?? false,
@@ -165,7 +231,9 @@ class Account {
       'lastName': lastName,
       'phoneNumber': phoneNumber,
       'email': email,
-      'type': type.toString().split('.').last,
+      'roleId': roleId, // SECURITY: Use non-guessable roleId
+      'roleName': roleName,
+      'type': type.toString().split('.').last, // DEPRECATED: Keep for backward compatibility
       'status': status.index,
       'emailVerified': emailVerified,
       'phoneVerified': phoneVerified,

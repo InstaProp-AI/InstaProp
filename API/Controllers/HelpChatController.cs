@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
+using InstapropAPI.Extensions;
 using InstapropAPI.Services;
 
 namespace InstapropAPI.Controllers
@@ -211,7 +212,7 @@ namespace InstapropAPI.Controllers
                 LastName = SupportLastName,
                 Email = SupportEmail,
                 PhoneNumber = SupportPhone,
-                Type = AccountType.Developer,
+                RoleId = Role.DEVELOPER_ROLE_ID, // SECURITY: Use non-guessable RoleId
                 Status = VerificationStatus.Verified,
                 EmailVerified = true,
                 PhoneVerified = true,

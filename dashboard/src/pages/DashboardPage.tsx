@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, authApi } from '../services/api';
+import { withTimeout } from '../utils/apiTimeout';
 import RevenueChart from '../components/RevenueChart';
 import UserGrowthChart from '../components/UserGrowthChart';
+import { Account } from '../types';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -58,20 +60,85 @@ const DashboardPage: React.FC = () => {
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<Account | null>(null);
+  const [userRole, setUserRole] = useState<'Admin' | 'Developer' | null>(null);
+  const [userLoadError, setUserLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchStats();
-    fetchActivity();
+    // Get current user to determine role with timeout
+    const loadUser = async () => {
+      try {
+        const currentUser = await withTimeout(
+          authApi.getCurrentAccount(),
+          5000,
+          'Unable to load user information. The server may be slow or unavailable.'
+        );
+        setUser(currentUser);
+        // Check roleName first (from backend), then roleId, then legacy type
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const role = isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null);
+        setUserRole(role);
+        setUserLoadError(null);
+        if (!role) {
+          setUserLoadError('Your account does not have permission to access the dashboard. Please contact an administrator.');
+          console.error('Current user role:', { roleName: currentUser.roleName, roleId: currentUser.roleId, type: currentUser.type });
+        }
+      } catch (error: any) {
+        console.error('Error loading user:', error);
+        setUserLoadError(error.message || 'Unable to load user information. Please refresh the page or log in again.');
+        setLoading(false); // Clear loading if user cannot be loaded
+      }
+    };
+    loadUser();
+    
+    // Fallback: if userRole is still null after 5 seconds, show error
+    const timeoutId = setTimeout(() => {
+      if (userRole === null && !userLoadError) {
+        setUserLoadError('Unable to load user information. Please refresh the page or log in again.');
+        setLoading(false);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
+  useEffect(() => {
+    if (userRole) {
+      fetchStats();
+      fetchActivity();
+    }
+  }, [userRole]);
+
   const fetchStats = async () => {
+    if (!userRole) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await dashboardApi.getStats();
+      const data = await withTimeout(
+        dashboardApi.getStats(userRole),
+        10000,
+        'Request took too long. The server may be slow or unavailable. Please try again.'
+      );
       console.log('📊 Stats received:', data);
       
-      // Map backend data to frontend format
+      // Map backend data to frontend format - handle both Admin and Developer responses
+      if (userRole === 'Developer') {
+        // Developer analytics structure
+        setStats({
+          totalProperties: data.totalProperties || 0,
+          activeAuctions: data.activeAuctions || 0,
+          totalBids: data.totalBids || 0,
+          totalUsers: 0, // Developers don't see user stats
+          monthlyRevenue: data.totalRevenue || 0,
+          averageBidAmount: data.totalBids > 0 && data.totalRevenue > 0 
+            ? Math.round(data.totalRevenue / data.totalBids) 
+            : 0,
+          propertiesSold: data.soldProperties || 0,
+          conversionRate: data.chatConversionRate || 0
+        });
+      } else {
+        // Admin stats structure
       setStats({
         totalProperties: data.properties?.total || 0,
         activeAuctions: data.auctions?.active || 0,
@@ -87,9 +154,17 @@ const DashboardPage: React.FC = () => {
           ? Math.round((data.auctions?.total || 0) / data.properties.total * 100) 
           : 0
       });
+      }
     } catch (error: any) {
       console.error('Error fetching stats:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to load dashboard data';
+      let errorMessage = 'Failed to load dashboard data';
+      if (error.message && error.message.includes('timed out')) {
+        errorMessage = error.message;
+      } else if (error.message && error.message.includes('Cannot connect')) {
+        errorMessage = 'Cannot connect to server. Please check your connection and ensure the API is running.';
+      } else {
+        errorMessage = error.response?.data?.error || error.message || errorMessage;
+      }
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -97,8 +172,13 @@ const DashboardPage: React.FC = () => {
   };
 
   const fetchActivity = async () => {
+    if (!userRole) return;
     try {
-      const analytics = await dashboardApi.getAnalytics();
+      const analytics = await withTimeout(
+        dashboardApi.getAnalytics(userRole),
+        10000,
+        'Request took too long. The server may be slow or unavailable.'
+      );
       console.log('📈 Analytics received:', analytics);
       
       // Transform revenue data for chart
@@ -128,8 +208,19 @@ const DashboardPage: React.FC = () => {
         });
       }
       
-      // Add top properties to activity
-      if (analytics.topProperties && analytics.topProperties.length > 0) {
+      // Add top properties to activity (for Admin) or property analytics (for Developer)
+      if (userRole === 'Developer' && analytics.propertyAnalytics) {
+        analytics.propertyAnalytics.slice(0, 3).forEach((prop: any, index: number) => {
+          activities.push({
+            id: `property-${index}`,
+            type: 'property',
+            title: 'My Property',
+            description: `${prop.propertyName} - ${prop.totalBids} bids at $${prop.currentPrice?.toLocaleString() || 0}`,
+            timestamp: 'Recently',
+            status: 'info'
+          });
+        });
+      } else if (analytics.topProperties && analytics.topProperties.length > 0) {
         analytics.topProperties.slice(0, 3).forEach((prop: any, index: number) => {
           activities.push({
             id: `property-${index}`,

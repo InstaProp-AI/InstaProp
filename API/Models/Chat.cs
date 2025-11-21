@@ -35,6 +35,11 @@ namespace InstapropAPI.Models
 
         public bool IsSupportChat { get; set; } = false;
 
+        public long? SalesMemberId { get; set; }
+
+        [ForeignKey(nameof(SalesMemberId))]
+        public Account? SalesMember { get; set; }
+
         // 🔗 Relations
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
     }

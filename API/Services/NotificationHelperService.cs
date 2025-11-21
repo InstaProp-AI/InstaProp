@@ -93,7 +93,7 @@ namespace InstapropAPI.Services
 
                 case "logged_in_users":
                 case "all_users":
-                    return await _context.Accounts.CountAsync(a => a.Type == AccountType.User);
+                    return await _context.Accounts.CountAsync(a => a.RoleId == Role.USER_ROLE_ID);
 
                 case "property_owners":
                     return await _context.ChildProperties.Select(p => p.OwnerId).Distinct().CountAsync();
@@ -114,11 +114,11 @@ namespace InstapropAPI.Services
 
                 case "verified_users":
                     return await _context.Accounts
-                        .CountAsync(a => a.Type == AccountType.User && a.Status == VerificationStatus.Verified);
+                        .CountAsync(a => a.RoleId == Role.USER_ROLE_ID && a.Status == VerificationStatus.Verified);
 
                 case "unverified_users":
                     return await _context.Accounts
-                        .CountAsync(a => a.Type == AccountType.User && a.Status != VerificationStatus.Verified);
+                        .CountAsync(a => a.RoleId == Role.USER_ROLE_ID && a.Status != VerificationStatus.Verified);
 
                 default:
                     if (recipientType.StartsWith("specific:"))

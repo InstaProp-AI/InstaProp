@@ -4,12 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
 using InstapropAPI.Services;
+using InstapropAPI.Attributes;
 using System.Security.Claims;
 
 namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [FeaturePermissionAttribute("Rewards")]
     public class RedemptionController : ControllerBase
     {
         private readonly AppDbContext _context;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Send, Users, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { notificationsApi } from '../services/api';
-import { useToast } from '../hooks/useToast';
+import { useToast } from '../contexts/ToastContext';
 
 interface UserStats {
   totalUsers: number;
@@ -32,7 +32,7 @@ const NotificationDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [showUserSelector, setShowUserSelector] = useState(false);
-  const { showToast } = useToast();
+  const toast = useToast();
 
   const targetTypes = {
     all_users_including_guests: 'Everyone (Including Visitors)',
@@ -62,7 +62,7 @@ const NotificationDashboardPage: React.FC = () => {
       const data = await notificationsApi.getUserStats();
       setStats(data);
     } catch (error: any) {
-      showToast(error.message || 'Failed to load statistics', 'error');
+      toast.error(error.message || 'Failed to load statistics');
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ const NotificationDashboardPage: React.FC = () => {
       const data = await notificationsApi.getUsers();
       setUsers(data);
     } catch (error: any) {
-      showToast(error.message || 'Failed to load users', 'error');
+      toast.error(error.message || 'Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -82,12 +82,12 @@ const NotificationDashboardPage: React.FC = () => {
 
   const handleSendNotification = async () => {
     if (!title.trim() || !message.trim()) {
-      showToast('Please enter title and message', 'error');
+      toast.error('Please enter title and message');
       return;
     }
 
     if (selectedTargetType === 'specific' && selectedUserIds.length === 0) {
-      showToast('Please select at least one user', 'error');
+      toast.error('Please select at least one user');
       return;
     }
 
@@ -110,7 +110,7 @@ const NotificationDashboardPage: React.FC = () => {
 
       // Show detailed success message
       const successMsg = response.message || `✅ Notification sent successfully to ${response.estimatedRecipients || 0} user(s)!`;
-      showToast(successMsg, 'success');
+      toast.success(successMsg);
       
       // Show additional confirmation alert
       alert(
@@ -129,7 +129,7 @@ const NotificationDashboardPage: React.FC = () => {
     } catch (error: any) {
       console.error('Error sending notification:', error);
       const errorMsg = error.response?.data?.message || error.message || 'Failed to send notification';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
       alert(`❌ Error: ${errorMsg}`);
     } finally {
       setSending(false);

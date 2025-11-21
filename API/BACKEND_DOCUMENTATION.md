@@ -8,7 +8,7 @@ The Instaprop backend is built with **.NET Core 8.0** using a **RESTful API** ar
 
 ### Technology Stack
 - **Framework**: ASP.NET Core 8.0
-- **Database**: SQLite (Development) / PostgreSQL (Production Ready)
+- **Database**: PostgreSQL
 - **Real-time**: Firebase Firestore
 - **Authentication**: JWT Bearer Tokens
 - **Notifications**: Firebase Cloud Messaging (FCM)
@@ -632,7 +632,7 @@ public async Task<IActionResult> AdminOnlyEndpoint()
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=mydb.db"
+    "DefaultConnection": "Host=localhost;Port=5432;Database=propertyflipper;Username=postgres;Password=postgres"
   },
   "Jwt": {
     "Key": "your-secret-key-min-32-chars",
@@ -700,7 +700,7 @@ public async Task<IActionResult> AdminOnlyEndpoint()
 
 ### Prerequisites
 - .NET 8.0 SDK
-- SQLite (dev) or PostgreSQL (prod)
+- PostgreSQL
 - Firebase project with Firestore and FCM
 - SMTP server access
 - ImgBB API key (optional)

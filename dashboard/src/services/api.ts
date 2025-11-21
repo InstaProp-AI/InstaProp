@@ -1,10 +1,10 @@
 import axios from 'axios';
-import { Account, Project, Property, DashboardStats, CreateProjectDto, UpdateProjectDto, CreatePropertyDto, UserDocument, PropertyDocument, PropertyImage } from '../types';
+import { Account, Project, Property, DashboardStats, CreateProjectDto, UpdateProjectDto, CreatePropertyDto, UserDocument, PropertyDocument, PropertyImage, DeveloperPermissions, UpdatePermissionsDto, PaginatedResponse } from '../types';
 import { convertAccount, convertProperty } from '../utils/converters';
 
 const API_BASE_URL = 'http://localhost:5284/api';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -248,9 +248,42 @@ api.interceptors.response.use(
       data: error.response?.data
     });
     
+    // Handle 403 Forbidden - Role-based access denied
+    if (status === 403) {
+      // Get current user info to provide specific guidance
+      try {
+        const accountStr = localStorage.getItem('currentAccount');
+        if (accountStr) {
+          const account = JSON.parse(accountStr);
+          console.error('🔍 Current User Role Info:', {
+            roleId: account.roleId,
+            roleName: account.roleName,
+            type: account.type,
+            email: account.email
+          });
+          
+          // Check if user has User role (not Admin/Developer)
+          if (account.roleId === 8923748923748923 || account.roleName === 'User' || account.type === 'User') {
+            console.error('⚠️ ACCESS DENIED: Your account has User role. Dashboard requires Admin or Developer role.');
+            console.error('💡 Solution: Update your account RoleId in the database:');
+            console.error('   - Admin: UPDATE "Accounts" SET "RoleId" = 9823749823749823 WHERE "Email" = \'' + account.email + '\';');
+            console.error('   - Developer: UPDATE "Accounts" SET "RoleId" = 7823647823647823 WHERE "Email" = \'' + account.email + '\';');
+            console.error('   - See: API/SCRIPTS/fix-user-role.sql for detailed instructions');
+          }
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+      
+      console.error('🚫 403 Forbidden: You do not have permission to access this resource.');
+      console.error('   Required role: Admin or Developer');
+      console.error('   Current endpoint:', url);
+    }
+    
     if (status === 401) {
       console.warn('🔒 Unauthorized - Clearing token and redirecting to login');
       localStorage.removeItem('authToken');
+      localStorage.removeItem('currentAccount');
       window.location.href = '/';
     }
     
@@ -258,23 +291,50 @@ api.interceptors.response.use(
   }
 );
 
+// Helper function to get current user role
+const getCurrentUserRole = (): 'Admin' | 'Developer' | null => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) return null;
+    // Try to get from stored account info (if available)
+    const accountStr = localStorage.getItem('currentAccount');
+    if (accountStr) {
+      const account = JSON.parse(accountStr);
+      return account.type === 'Admin' || account.type === 'Developer' ? account.type : null;
+    }
+    // If not stored, we'll need to fetch it - but for now return null
+    // Components should pass the user role explicitly
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 // Auth API
 export const authApi = {
   login: async (email: string, password: string) => {
     const response = await api.post('/account/login', { email, password });
+    // Store account info for role-based access
+    if (response.data && response.data.account) {
+      localStorage.setItem('currentAccount', JSON.stringify(response.data.account));
+    }
     return response.data;
   },
   
   getCurrentAccount: async (): Promise<Account> => {
     const response = await api.get('/account/me');
+    // Store account info for role-based access
+    if (response.data) {
+      localStorage.setItem('currentAccount', JSON.stringify(response.data));
+    }
     return response.data;
   },
 };
 
 // Users/Accounts API - Using Admin endpoints
 export const usersApi = {
-  getAllUsers: async (): Promise<Account[]> => {
-    const response = await api.get('/admin/users');
+  getAllUsers: async (page: number = 1, pageSize: number = 10): Promise<PaginatedResponse<Account>> => {
+    const response = await api.get(`/admin/users?page=${page}&pageSize=${pageSize}`);
     return response.data;
   },
   
@@ -334,8 +394,10 @@ export const usersApi = {
   },
 };
 
-// Projects API
+// Projects API - Role-based (backend handles authorization)
 export const projectsApi = {
+  // Backend /project endpoint already handles role-based filtering
+  // Admin: all projects, Developer: only their projects
   getProjects: async (): Promise<Project[]> => {
     const response = await api.get('/project');
     return response.data;
@@ -365,11 +427,21 @@ export const projectsApi = {
   },
 };
 
-// Properties API - Using Admin endpoints
+// Properties API - Role-based endpoints
 export const propertiesApi = {
-  getProperties: async (): Promise<Property[]> => {
-    const response = await api.get('/Property');
+  // Get properties based on user role with pagination
+  // Admin: all properties (paginated), Developer: only their properties
+  getProperties: async (userRole?: 'Admin' | 'Developer', page: number = 1, pageSize: number = 10): Promise<Property[] | PaginatedResponse<Property>> => {
+    const role = userRole || getCurrentUserRole();
+    if (role === 'Developer') {
+      // Developer: get only their properties (where OwnerId == developerId)
+      const response = await api.get('/developer/properties');
+      return response.data;
+    } else {
+      // Admin: get paginated properties
+      const response = await api.get(`/admin/properties?page=${page}&pageSize=${pageSize}`);
     return response.data;
+    }
   },
   
   getProperty: async (id: number): Promise<Property> => {
@@ -382,42 +454,100 @@ export const propertiesApi = {
     return response.data;
   },
   
-  updateProperty: async (id: number, data: Partial<CreatePropertyDto & { projectId?: number | null }>): Promise<void> => {
-    // Use admin endpoint for updating property details including projectId
+  updateProperty: async (id: number, data: Partial<CreatePropertyDto & { projectId?: number | null }>, userRole?: 'Admin' | 'Developer'): Promise<void> => {
+    const role = userRole || getCurrentUserRole();
+    if (role === 'Admin') {
+      // Admin can use admin endpoint
     await api.put(`/admin/properties/${id}/update`, data);
+    } else {
+      // Developer uses standard property endpoint
+      await api.put(`/property/${id}`, data);
+    }
   },
   
   deleteProperty: async (id: number): Promise<void> => {
     await api.delete(`/property/${id}`);
   },
   
-  approveProperty: async (id: number): Promise<void> => {
+  // Admin-only functions
+  approveProperty: async (id: number, userRole?: 'Admin' | 'Developer'): Promise<void> => {
+    const role = userRole || getCurrentUserRole();
+    if (role !== 'Admin') {
+      throw new Error('Only admins can approve properties');
+    }
     await api.put(`/admin/properties/${id}/approve`);
   },
   
-  rejectProperty: async (id: number): Promise<void> => {
+  rejectProperty: async (id: number, userRole?: 'Admin' | 'Developer'): Promise<void> => {
+    const role = userRole || getCurrentUserRole();
+    if (role !== 'Admin') {
+      throw new Error('Only admins can reject properties');
+    }
     await api.put(`/admin/properties/${id}/reject`);
   },
 };
 
-// Dashboard API - Using Admin endpoints
+// Dashboard API - Role-based endpoints
 export const dashboardApi = {
-  getStats: async (): Promise<DashboardStats> => {
-    const response = await api.get('/admin/stats');
+  getStats: async (userRole?: 'Admin' | 'Developer'): Promise<DashboardStats | any> => {
+    const role = userRole || getCurrentUserRole();
+    if (role === 'Developer') {
+      // Developer: get their analytics
+      const response = await api.get('/developer/analytics');
+      return response.data;
+    } else {
+      // Admin: get admin stats from /admin/stats (matches DashboardController structure)
+      const response = await api.get('/admin/stats');
+      return response.data;
+    }
+  },
+  
+  getAnalytics: async (userRole?: 'Admin' | 'Developer') => {
+    const role = userRole || getCurrentUserRole();
+    if (role === 'Developer') {
+      // Developer: get their analytics
+      const response = await api.get('/developer/analytics');
+      return response.data;
+    } else {
+      // Admin: get admin analytics from /admin/analytics
+      const response = await api.get('/admin/analytics');
+      return response.data;
+    }
+  },
+};
+
+// Developer API - Additional developer-specific endpoints
+export const developerApi = {
+  getAnalytics: async () => {
+    const response = await api.get('/developer/analytics');
     return response.data;
   },
   
-  getAnalytics: async () => {
-    const response = await api.get('/admin/analytics');
+  getProperties: async () => {
+    const response = await api.get('/developer/properties');
+    return response.data;
+  },
+  
+  getProjects: async () => {
+    const response = await api.get('/developer/projects');
     return response.data;
   },
 };
 
-// Auctions API - Using Admin endpoints
+// Auctions API - Role-based endpoints
 export const auctionsApi = {
-  getAllAuctions: async () => {
+  getAllAuctions: async (userRole?: 'Admin' | 'Developer') => {
+    const role = userRole || getCurrentUserRole();
+    if (role === 'Admin') {
+      const response = await api.get('/admin/auctions');
+      return response.data;
+    } else {
+      // Developers can see auctions for their properties
+      // For now, use a general endpoint or filter client-side
+      // Backend may need to add /developer/auctions endpoint
     const response = await api.get('/admin/auctions');
     return response.data;
+    }
   },
   
   getAuction: async (id: number) => {
@@ -616,6 +746,208 @@ export const documentsApi = {
   // Statistics (Admin only)
   getDocumentStatistics: async () => {
     const response = await api.get('/document/statistics');
+    return response.data;
+  },
+};
+
+// Developer Permissions API
+export const permissionsApi = {
+  // Get current developer's permissions
+  getMyPermissions: async (): Promise<DeveloperPermissions> => {
+    const response = await api.get('/developerpermission/my-permissions');
+    return response.data;
+  },
+  
+  // Admin: Get developer permissions
+  getDeveloperPermissions: async (developerId: number): Promise<DeveloperPermissions> => {
+    const response = await api.get(`/admin/developers/${developerId}/permissions`);
+    return response.data;
+  },
+  
+  // Admin: Update developer permissions
+  updateDeveloperPermissions: async (developerId: number, permissions: DeveloperPermissions): Promise<DeveloperPermissions> => {
+    const response = await api.put(`/admin/developers/${developerId}/permissions`, {
+      permissions
+    });
+    return response.data.permissions || response.data;
+  },
+  
+  // Admin: Initialize developer permissions (create default records)
+  initializeDeveloperPermissions: async (developerId: number): Promise<DeveloperPermissions> => {
+    const response = await api.post(`/admin/developers/${developerId}/permissions/initialize`);
+    return response.data.permissions || response.data;
+  },
+  
+  // Admin: Get all developer permissions
+  getAllDeveloperPermissions: async (): Promise<Record<number, DeveloperPermissions>> => {
+    const response = await api.get('/admin/developers/permissions/all');
+    return response.data;
+  },
+};
+
+// Communities API
+export const communitiesApi = {
+  getCommunities: async () => {
+    const response = await api.get('/community');
+    return response.data;
+  },
+  
+  getMyCommunities: async () => {
+    const response = await api.get('/community/my');
+    return response.data;
+  },
+  
+  getRecommendedCommunities: async () => {
+    const response = await api.get('/community/recommended');
+    return response.data;
+  },
+  
+  getCommunity: async (id: number) => {
+    const response = await api.get(`/community/${id}`);
+    return response.data;
+  },
+  
+  createCommunity: async (data: any) => {
+    const response = await api.post('/community', data);
+    return response.data;
+  },
+  
+  joinCommunity: async (id: number) => {
+    await api.post(`/community/${id}/join`);
+  },
+};
+
+// News API
+export const newsApi = {
+  getNews: async (page: number = 1, pageSize: number = 10) => {
+    const response = await api.get(`/news?page=${page}&pageSize=${pageSize}`);
+    return response.data;
+  },
+  
+  getNewsById: async (id: number) => {
+    const response = await api.get(`/news/${id}`);
+    return response.data;
+  },
+  
+  getLatestNews: async (count: number = 3) => {
+    const response = await api.get(`/news/latest?count=${count}`);
+    return response.data;
+  },
+  
+  searchNews: async (query: string, page: number = 1, pageSize: number = 10) => {
+    const response = await api.get(`/news/search?query=${encodeURIComponent(query)}&page=${page}&pageSize=${pageSize}`);
+    return response.data;
+  },
+  
+  createNews: async (data: any) => {
+    const response = await api.post('/news', data);
+    return response.data;
+  },
+  
+  updateNews: async (id: number, data: any) => {
+    await api.put(`/news/${id}`, data);
+  },
+};
+
+// Chats API
+export const chatsApi = {
+  getChats: async () => {
+    const response = await api.get('/chat');
+    return response.data;
+  },
+  
+  getChat: async (chatId: number) => {
+    const response = await api.get(`/chat/${chatId}`);
+    return response.data;
+  },
+  
+  createChat: async (data: any) => {
+    const response = await api.post('/chat', data);
+    return response.data;
+  },
+  
+  sendMessage: async (chatId: number, data: any) => {
+    const response = await api.post(`/chat/${chatId}/message`, data);
+    return response.data;
+  },
+  
+  markAsRead: async (chatId: number) => {
+    await api.put(`/chat/${chatId}/read`);
+  },
+};
+
+// Leaderboard API
+export const leaderboardApi = {
+  getLeaderboard: async () => {
+    const response = await api.get('/leaderboard');
+    return response.data;
+  },
+  
+  getHighlights: async () => {
+    const response = await api.get('/leaderboard/highlights');
+    return response.data;
+  },
+};
+
+// Price History API
+export const priceHistoryApi = {
+  getPriceHistoryForParentProperty: async (parentPropertyId: number) => {
+    const response = await api.get(`/pricehistory/${parentPropertyId}`);
+    return response.data;
+  },
+  
+  getParentPriceHistoryBundle: async (parentPropertyId: number) => {
+    const response = await api.get(`/pricehistory/parent/${parentPropertyId}`);
+    return response.data;
+  },
+  
+  getParentPriceStatistics: async (parentPropertyId: number) => {
+    const response = await api.get(`/pricehistory/parent/${parentPropertyId}/stats`);
+    return response.data;
+  },
+  
+  getPriceHistoryForChildProperty: async (childPropertyId: number) => {
+    const response = await api.get(`/pricehistory/child/${childPropertyId}`);
+    return response.data;
+  },
+  
+  createPriceHistory: async (data: any) => {
+    const response = await api.post('/pricehistory', data);
+    return response.data;
+  },
+  
+  updatePriceHistory: async (priceHistoryId: number, data: any) => {
+    await api.put(`/pricehistory/${priceHistoryId}`, data);
+  },
+};
+
+// Rewards API (Redemption)
+export const rewardsApi = {
+  redeem: async (data: any) => {
+    const response = await api.post('/redemption/redeem', data);
+    return response.data;
+  },
+  
+  getRedemptionHistory: async () => {
+    const response = await api.get('/redemption/history');
+    return response.data;
+  },
+};
+
+// Valuation API
+export const valuationApi = {
+  calculate: async (data: any) => {
+    const response = await api.post('/valuation/calculate', data);
+    return response.data;
+  },
+  
+  calculateAI: async (data: any) => {
+    const response = await api.post('/valuation/calculate-ai', data);
+    return response.data;
+  },
+  
+  getValuationHistory: async () => {
+    const response = await api.get('/valuation/history');
     return response.data;
   },
 };

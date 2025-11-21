@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
 using InstapropAPI.Attributes;
+using InstapropAPI.Extensions;
 
 namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [FeaturePermissionAttribute("Communities")]
     public class CommunityController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -325,8 +327,8 @@ namespace InstapropAPI.Controllers
             if (account == null)
                 return Unauthorized();
 
-            // Only admins and developers can create communities
-            if (account.Type != AccountType.Admin && account.Type != AccountType.Developer)
+            // SECURITY: Only admins and developers can create communities - check RoleId
+            if (!account.IsDeveloperOrAdmin())
                 return Forbid();
 
             var community = new Community

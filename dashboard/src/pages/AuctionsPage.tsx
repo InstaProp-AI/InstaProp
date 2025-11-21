@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { auctionsApi, bidsApi } from '../services/api';
+import { auctionsApi, bidsApi, authApi } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { useFirestoreAuctions } from '../hooks/useFirestoreAuctions';
 import Pagination from '../components/Pagination';
+import { Account } from '../types';
 import { 
   Hammer, 
   Clock, 
@@ -71,6 +72,8 @@ const AuctionsPage: React.FC = () => {
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<Account | null>(null);
+  const [userRole, setUserRole] = useState<'Admin' | 'Developer' | null>(null);
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null);
   const [showBidModal, setShowBidModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -96,11 +99,30 @@ const AuctionsPage: React.FC = () => {
   // 2. Uncomment the useFirestoreAuctions hook below
   // 3. Comment out the useEffect that calls fetchAuctions
 
-  // Load auctions from API on mount (ONCE)
+  // Get current user to determine role
   useEffect(() => {
-    console.log('🔄 Loading auctions from API...');
-    fetchAuctions();
-  }, []); // Empty dependency array = runs only once on mount
+    const loadUser = async () => {
+      try {
+        const currentUser = await authApi.getCurrentAccount();
+        setUser(currentUser);
+        // Check roleName first (from backend), then roleId, then legacy type
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        setUserRole(isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null));
+      } catch (error) {
+        console.error('Error loading user:', error);
+      }
+    };
+    loadUser();
+  }, []);
+
+  // Load auctions from API on mount and when user role is available
+  useEffect(() => {
+    if (userRole) {
+      console.log('🔄 Loading auctions from API...');
+      fetchAuctions();
+    }
+  }, [userRole]); // Run when userRole is available
 
   const getAuctionStatus = (auction: any) => {
     const now = new Date().getTime();
@@ -131,12 +153,13 @@ const AuctionsPage: React.FC = () => {
   };
 
   const fetchAuctions = async () => {
+    if (!userRole) return;
     try {
       setLoading(true);
       console.log('🔨 Starting to fetch auctions from API...');
-      console.log('🔨 API URL: http://localhost:5284/api/admin/auctions');
+      console.log(`🔨 User Role: ${userRole}`);
       
-      const data = await auctionsApi.getAllAuctions();
+      const data = await auctionsApi.getAllAuctions(userRole);
       
       console.log('📋 Fetched auctions - Count:', data?.length || 0);
       console.log('📋 Raw auction data:', data);

@@ -229,7 +229,7 @@ namespace InstapropAPI.Controllers
                 return NotFound();
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
-            var isAdmin = account?.Type == AccountType.Admin;
+            var isAdmin = account != null && account.RoleId == Role.ADMIN_ROLE_ID; // SECURITY: Check non-guessable RoleId
             if (post.AuthorId != accountId.Value && !isAdmin)
                 return Forbid();
 
@@ -661,7 +661,8 @@ namespace InstapropAPI.Controllers
                 isUserJoinedCommunity = isUserJoinedCommunity,
                 authorId = post.AuthorId,
                 authorName = post.Author?.FirstName + " " + post.Author?.LastName,
-                authorType = post.Author?.Type.ToString() ?? "Owner",
+                authorRoleId = post.Author?.RoleId ?? 0, // SECURITY: Non-guessable RoleId
+                authorRoleName = post.Author != null && post.Author.Role != null ? post.Author.Role.RoleName : "Owner",
                 content = post.Content,
                 imageUrl = post.ImageUrl,
                 postType = post.PostType.ToString(),

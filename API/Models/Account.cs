@@ -22,8 +22,12 @@ namespace InstapropAPI.Models
         [Required, EmailAddress]
         public string Email { get; set; } = string.Empty;
 
+        // SECURITY: Use RoleId instead of Type enum - Large non-guessable 64-bit IDs
         [Required]
-        public AccountType Type { get; set; } = AccountType.User;
+        public long RoleId { get; set; } = Role.USER_ROLE_ID; // Default to User role
+
+        // Navigation property
+        public Role? Role { get; set; }
 
         // Nullable for OAuth users who don't have a password
         public string? HashedPassword { get; set; }

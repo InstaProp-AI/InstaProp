@@ -27,8 +27,9 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
-import { Property, Project } from '../types';
-import { propertiesApi, projectsApi, auctionsApi, bidsApi } from '../services/api';
+import { Property, Project, Account } from '../types';
+import { propertiesApi, projectsApi, auctionsApi, bidsApi, authApi } from '../services/api';
+import { withTimeout } from '../utils/apiTimeout';
 import { exportPropertiesToCSV } from '../utils/export';
 import { useToast } from '../contexts/ToastContext';
 import Pagination from '../components/Pagination';
@@ -39,6 +40,9 @@ const PropertiesPage: React.FC = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<Account | null>(null);
+  const [userRole, setUserRole] = useState<'Admin' | 'Developer' | null>(null);
+  const [userLoadError, setUserLoadError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<any>(null);
@@ -52,6 +56,8 @@ const PropertiesPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [gridColumns, setGridColumns] = useState(4);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [newProperty, setNewProperty] = useState({
     name: '',
@@ -68,19 +74,91 @@ const PropertiesPage: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchProperties();
-    fetchProjects();
+    // Get current user to determine role with timeout
+    const loadUser = async () => {
+      try {
+        const currentUser = await withTimeout(
+          authApi.getCurrentAccount(),
+          5000,
+          'Unable to load user information. The server may be slow or unavailable.'
+        );
+        setUser(currentUser);
+        // Check roleName first (from backend), then roleId, then legacy type
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const role = isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null);
+        setUserRole(role);
+        setUserLoadError(null);
+        if (!role) {
+          setUserLoadError('Your account does not have permission to access properties. Please contact an administrator.');
+          console.error('Current user role:', { roleName: currentUser.roleName, roleId: currentUser.roleId, type: currentUser.type });
+          setLoading(false);
+        }
+      } catch (error: any) {
+        console.error('Error loading user:', error);
+        setUserLoadError(error.message || 'Unable to load user information. Please refresh the page or log in again.');
+        setLoading(false);
+      }
+    };
+    loadUser();
+    
+    // Fallback: if userRole is still null after 5 seconds, show error
+    const timeoutId = setTimeout(() => {
+      if (userRole === null && !userLoadError) {
+        setUserLoadError('Unable to load user information. Please refresh the page or log in again.');
+        setLoading(false);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
+  useEffect(() => {
+    if (userRole) {
+    fetchProperties();
+    fetchProjects();
+    }
+  }, [userRole, currentPage, itemsPerPage]);
+
   const fetchProperties = async () => {
+    if (!userRole) return;
     try {
       setLoading(true);
-      const data = await propertiesApi.getProperties();
+      // Pass user role to API for role-based endpoint selection with pagination
+      const response = await withTimeout(
+        propertiesApi.getProperties(userRole, currentPage, itemsPerPage),
+        10000,
+        'Request took too long. The server may be slow or unavailable. Please try again.'
+      );
+      
+      if (userRole === 'Admin' && 'data' in response && 'pagination' in response) {
+        // Admin: paginated response
+        const paginatedResponse = response as any;
+        setProperties(paginatedResponse.data || []);
+        setTotalCount(paginatedResponse.pagination.totalCount || 0);
+        setTotalPages(paginatedResponse.pagination.totalPages || 0);
+        if (currentPage === 1) {
+          toast.success(`Loaded ${paginatedResponse.pagination.totalCount} total properties (page ${paginatedResponse.pagination.page} of ${paginatedResponse.pagination.totalPages})`);
+        }
+      } else {
+        // Developer: array response (non-paginated)
+        const data = response as Property[];
       setProperties(data);
+        setTotalCount(data.length);
+        setTotalPages(1);
       toast.success(`Loaded ${data.length} properties`);
+      }
     } catch (error: any) {
       console.error('Error fetching properties:', error);
-      toast.error(error?.response?.data?.message || 'Failed to load properties');
+      let errorMessage = 'Failed to load properties';
+      if (error.message && error.message.includes('timed out')) {
+        errorMessage = error.message;
+      } else if (error.message && error.message.includes('Cannot connect')) {
+        errorMessage = 'Cannot connect to server. Please check your connection and ensure the API is running.';
+      } else {
+        errorMessage = error?.response?.data?.message || error.message || errorMessage;
+      }
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -88,34 +166,41 @@ const PropertiesPage: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const data = await projectsApi.getProjects();
+      const data = await withTimeout(
+        projectsApi.getProjects(),
+        10000,
+        'Request took too long. The server may be slow or unavailable.'
+      );
       setProjects(data);
     } catch (error: any) {
       console.error('Error fetching projects:', error);
-      toast.error('Failed to load projects');
+      const errorMessage = error.message || 'Failed to load projects';
+      toast.error(errorMessage);
     }
   };
 
   const handleApproveProperty = async (propertyId: number) => {
+    if (!userRole) return;
     try {
-      await propertiesApi.approveProperty(propertyId);
+      await propertiesApi.approveProperty(propertyId, userRole);
       toast.success('Property approved successfully!');
       fetchProperties();
     } catch (error: any) {
       console.error('Error approving property:', error);
-      toast.error(error?.response?.data?.message || 'Failed to approve property');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to approve property');
     }
   };
 
   const handleRejectProperty = async (propertyId: number) => {
+    if (!userRole) return;
     if (window.confirm('Are you sure you want to reject this property?')) {
       try {
-        await propertiesApi.rejectProperty(propertyId);
+        await propertiesApi.rejectProperty(propertyId, userRole);
         toast.success('Property rejected successfully!');
         fetchProperties();
       } catch (error: any) {
         console.error('Error rejecting property:', error);
-        toast.error(error?.response?.data?.message || 'Failed to reject property');
+        toast.error(error?.response?.data?.message || error?.message || 'Failed to reject property');
       }
     }
   };
@@ -249,12 +334,10 @@ const PropertiesPage: React.FC = () => {
     }
   });
 
-  // Pagination
-  const totalPages = Math.ceil(sortedProperties.length / itemsPerPage);
-  const paginatedProperties = sortedProperties.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Client-side filtering and sorting on current page only (server-side pagination already handled)
+  // Note: For Admin, pagination is server-side. For Developers, all their properties are shown.
+  // Filtering is done on the current page of properties only
+  const paginatedProperties = sortedProperties;
 
   if (loading) {
     return (
@@ -657,6 +740,23 @@ const PropertiesPage: React.FC = () => {
                     {projects.find(p => p.projectId === property.projectId)?.name || 'Project'}
                   </div>
                 )}
+                {property.parentPropertyId && (
+                  <div style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    backgroundColor: '#e0e7ff',
+                    color: '#4338ca',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}>
+                    <Home style={{ height: '0.875rem', width: '0.875rem' }} />
+                    Parent Property
+                  </div>
+                )}
               </div>
             </div>
             
@@ -691,6 +791,66 @@ const PropertiesPage: React.FC = () => {
                   }}>
                     <MapPin style={{ height: '1rem', width: '1rem', marginRight: '0.25rem' }} />
                     {property.location}
+                  </div>
+                )}
+                {/* Parent Property Information */}
+                {property.parentProperty && (
+                  <div style={{
+                    marginTop: '0.75rem',
+                    padding: '0.75rem',
+                    backgroundColor: '#e0e7ff',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #c7d2fe'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#4338ca',
+                      marginBottom: '0.5rem'
+                    }}>
+                      <Home style={{ height: '1rem', width: '1rem', marginRight: '0.5rem' }} />
+                      Parent Property Information
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6366f1',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '0.5rem'
+                    }}>
+                      {property.parentProperty.projectName && (
+                        <div>
+                          <strong>Project:</strong> {property.parentProperty.projectName}
+                        </div>
+                      )}
+                      {property.parentProperty.type && (
+                        <div>
+                          <strong>Type:</strong> {property.parentProperty.type}
+                        </div>
+                      )}
+                      {property.parentProperty.bedrooms !== undefined && (
+                        <div>
+                          <strong>Bedrooms:</strong> {property.parentProperty.bedrooms}
+                        </div>
+                      )}
+                      {property.parentProperty.bathrooms !== undefined && (
+                        <div>
+                          <strong>Bathrooms:</strong> {property.parentProperty.bathrooms}
+                        </div>
+                      )}
+                      {property.parentProperty.areaSqm !== undefined && (
+                        <div>
+                          <strong>Area:</strong> {property.parentProperty.areaSqm} sqm
+                        </div>
+                      )}
+                      {property.parentProperty.finishingType && (
+                        <div>
+                          <strong>Finishing:</strong> {property.parentProperty.finishingType}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {/* Owner Information */}
@@ -784,7 +944,7 @@ const PropertiesPage: React.FC = () => {
                 marginTop: 'auto'
               }}>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {!property.isApproved && (
+                  {!property.isApproved && userRole === 'Admin' && (
                     <>
                       <button
                         onClick={() => handleApproveProperty(property.propertyId)}
@@ -1033,7 +1193,7 @@ const PropertiesPage: React.FC = () => {
                   borderTop: '1px solid #e5e7eb'
                 }}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {!property.isApproved && (
+                    {!property.isApproved && userRole === 'Admin' && (
                       <>
                         <button
                           onClick={() => handleApproveProperty(property.propertyId)}
@@ -1189,13 +1349,18 @@ const PropertiesPage: React.FC = () => {
             </div>
           </div>
           
+          {userRole === 'Admin' && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+              onPageChange={(page) => {
+                setCurrentPage(page);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             itemsPerPage={itemsPerPage}
-            totalItems={sortedProperties.length}
+              totalItems={totalCount}
           />
+          )}
         </div>
       )}
 
@@ -1764,7 +1929,7 @@ const PropertiesPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Grid Layout for Property Info, Owner Info, and Project */}
+                  {/* Grid Layout for Property Info, Owner Info, Project, and Parent Property */}
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',
@@ -2008,6 +2173,111 @@ const PropertiesPage: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Parent Property Information */}
+                  {selectedProperty.parentPropertyId && selectedProperty.parentProperty && (
+                    <div style={{
+                      padding: '1.5rem',
+                      backgroundColor: '#e0e7ff',
+                      borderRadius: '0.75rem',
+                      border: '2px solid #6366f1',
+                      boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.2)',
+                      gridColumn: 'span 2' // Span full width
+                    }}>
+                      <h3 style={{
+                        fontSize: '1.25rem',
+                        fontWeight: '600',
+                        color: '#111827',
+                        marginBottom: '1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <Home style={{ height: '1.25rem', width: '1.25rem', color: '#4338ca' }} />
+                        Parent Property Information
+                      </h3>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: '1rem',
+                        marginBottom: '1rem'
+                      }}>
+                        {selectedProperty.parentProperty.projectName && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
+                              Project Name
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                              {selectedProperty.parentProperty.projectName}
+                            </div>
+                          </div>
+                        )}
+                        {selectedProperty.parentProperty.type && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
+                              Property Type
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                              {selectedProperty.parentProperty.type}
+                            </div>
+                          </div>
+                        )}
+                        {selectedProperty.parentProperty.bedrooms !== undefined && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
+                              Bedrooms
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                              {selectedProperty.parentProperty.bedrooms}
+                            </div>
+                          </div>
+                        )}
+                        {selectedProperty.parentProperty.bathrooms !== undefined && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
+                              Bathrooms
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                              {selectedProperty.parentProperty.bathrooms}
+                            </div>
+                          </div>
+                        )}
+                        {selectedProperty.parentProperty.areaSqm !== undefined && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
+                              Area
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                              {selectedProperty.parentProperty.areaSqm} sqm
+                            </div>
+                          </div>
+                        )}
+                        {selectedProperty.parentProperty.finishingType && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
+                              Finishing Type
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                              {selectedProperty.parentProperty.finishingType}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{
+                        padding: '0.75rem',
+                        backgroundColor: 'white',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #c7d2fe'
+                      }}>
+                        <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
+                          Parent Property ID
+                        </div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
+                          #{selectedProperty.parentPropertyId}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Auction Information */}
@@ -2229,7 +2499,7 @@ const PropertiesPage: React.FC = () => {
                   borderTop: '2px solid #e5e7eb'
                 }}>
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    {!selectedProperty.isApproved && (
+                    {!selectedProperty.isApproved && userRole === 'Admin' && (
                       <>
                         <button
                           onClick={() => {

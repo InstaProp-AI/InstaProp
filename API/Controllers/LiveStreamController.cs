@@ -38,7 +38,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.Type != AccountType.Developer)
+            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                 return Forbid("Only developers can start live streams");
 
             var stream = new LiveStream

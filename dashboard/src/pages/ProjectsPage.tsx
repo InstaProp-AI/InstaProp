@@ -25,7 +25,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Project, Property } from '../types';
-import { projectsApi, propertiesApi } from '../services/api';
+import { projectsApi, propertiesApi, authApi } from '../services/api';
+import { withTimeout } from '../utils/apiTimeout';
 import { useToast } from '../contexts/ToastContext';
 
 const ProjectsPage: React.FC = () => {
@@ -33,6 +34,8 @@ const ProjectsPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<'Admin' | 'Developer' | null>(null);
+  const [userLoadError, setUserLoadError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -59,16 +62,85 @@ const ProjectsPage: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchData();
+    // Get current user to determine role with timeout
+    const loadUser = async () => {
+      try {
+        setLoading(true);
+        setUserLoadError(null);
+        
+        const currentUser = await withTimeout(
+          authApi.getCurrentAccount(),
+          10000,
+          'Unable to load user information. The server may be slow or unavailable.'
+        );
+        
+        // Check roleName first (from backend), then roleId, then legacy type
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const role = isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null);
+        
+        setUserRole(role);
+        setUserLoadError(null);
+        
+        if (!role) {
+          setUserLoadError('Your account does not have permission to access projects. Please contact an administrator.');
+          console.error('Current user role:', { roleName: currentUser.roleName, roleId: currentUser.roleId, type: currentUser.type });
+          setLoading(false);
+        }
+      } catch (error: any) {
+        console.error('Error loading user:', error);
+        
+        // Check if it's a 401 (unauthorized) or token issue
+        if (error.response?.status === 401 || error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          setUserLoadError('Your session has expired. Please refresh the page or log in again.');
+          // Clear token if invalid
+          localStorage.removeItem('authToken');
+        } else if (error.response?.status === 403 || error.message?.includes('403')) {
+          setUserLoadError('You do not have permission to access this page. Please contact an administrator.');
+        } else {
+          setUserLoadError(error.message || 'Unable to load user information. Please refresh the page or log in again.');
+        }
+        
+        setUserRole(null);
+        setLoading(false);
+      }
+    };
+    
+    loadUser();
   }, []);
 
+  useEffect(() => {
+    if (userRole) {
+      fetchData();
+    }
+  }, [userRole]);
+
   const fetchData = async () => {
+    if (!userRole) return;
     try {
       setLoading(true);
-      const [projectsData, propertiesData] = await Promise.all([
-        projectsApi.getProjects(),
-        propertiesApi.getProperties()
+      setUserLoadError(null); // Clear any previous errors
+      
+      const [projectsData, propertiesResponse] = await Promise.all([
+        withTimeout(
+          projectsApi.getProjects(),
+          10000,
+          'Request took too long. The server may be slow or unavailable.'
+        ),
+        withTimeout(
+          propertiesApi.getProperties(userRole),
+          10000,
+          'Request took too long. The server may be slow or unavailable.'
+        )
       ]);
+      
+      // Handle both paginated (Admin) and non-paginated (Developer) responses
+      let propertiesData: Property[];
+      if (userRole === 'Admin' && 'data' in propertiesResponse && 'pagination' in propertiesResponse) {
+        propertiesData = (propertiesResponse as any).data || [];
+      } else {
+        propertiesData = propertiesResponse as Property[];
+      }
       
       console.log('📁 Projects loaded:', projectsData.length);
       console.log('🏠 Properties loaded:', propertiesData.length);
@@ -77,7 +149,25 @@ const ProjectsPage: React.FC = () => {
       setProperties(propertiesData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
+      
+      // Check if it's an authentication error
+      if (error.response?.status === 401 || error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        setUserLoadError('Your session has expired. Please refresh the page or log in again.');
+        localStorage.removeItem('authToken');
+        setUserRole(null);
+      } else if (error.response?.status === 403 || error.message?.includes('403')) {
+        setUserLoadError('You do not have permission to access this page. Please contact an administrator.');
+      } else {
+        let errorMessage = 'Failed to load data';
+        if (error.message && error.message.includes('timed out')) {
+          errorMessage = error.message;
+        } else if (error.message && error.message.includes('Cannot connect')) {
+          errorMessage = 'Cannot connect to server. Please check your connection and ensure the API is running.';
+        } else {
+          errorMessage = error?.response?.data?.message || error.message || errorMessage;
+        }
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -248,7 +338,39 @@ const ProjectsPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
+  // Show error if user cannot be loaded
+  if (userLoadError) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '50vh',
+        flexDirection: 'column',
+        gap: '1rem',
+        padding: '2rem'
+      }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>Error Loading Projects</h2>
+        <p style={{ color: '#6b7280', textAlign: 'center', maxWidth: '500px' }}>{userLoadError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '0.75rem 1.5rem',
+            backgroundColor: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
+            fontSize: '1rem'
+          }}
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
+
+  if (loading && !userRole) {
     return (
       <div style={{
         display: 'flex',

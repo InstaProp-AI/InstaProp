@@ -3,11 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
 using Microsoft.AspNetCore.Authorization;
+using InstapropAPI.Attributes;
 
 namespace InstapropAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [FeaturePermissionAttribute("PriceHistory")]
     public class PriceHistoryController : ControllerBase
     {
         private readonly AppDbContext _context;

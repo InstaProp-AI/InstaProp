@@ -70,8 +70,8 @@ export interface FirestoreNotification {
  */
 export class FirestoreService {
   
-  // Check if Firestore is available
-  private static isAvailable(): boolean {
+  // Internal check if Firestore is available (synchronous)
+  private static isFirestoreAvailable(): boolean {
     return db !== null && db !== undefined;
   }
 
@@ -87,7 +87,7 @@ export class FirestoreService {
     onError?: (error: Error) => void
   ): Unsubscribe {
     // Check if Firestore is available
-    if (!this.isAvailable()) {
+    if (!this.isFirestoreAvailable()) {
       console.warn('⚠️ Firestore not available - returning empty unsubscribe');
       onError?.(new Error('Firestore not configured'));
       return () => {}; // Return empty unsubscribe
@@ -125,7 +125,7 @@ export class FirestoreService {
     callback: (auction: FirestoreAuction | null) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
-    if (!this.isAvailable()) {
+    if (!this.isFirestoreAvailable()) {
       onError?.(new Error('Firestore not configured'));
       return () => {};
     }
@@ -161,7 +161,7 @@ export class FirestoreService {
     callback: (auctions: FirestoreAuction[]) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
-    if (!this.isAvailable()) {
+    if (!this.isFirestoreAvailable()) {
       onError?.(new Error('Firestore not configured'));
       return () => {};
     }

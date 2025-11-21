@@ -4,7 +4,11 @@ export interface Account {
   lastName: string;
   email: string;
   phoneNumber: string;
-  type: 'User' | 'Developer' | 'Admin';
+  // SECURITY: Use roleId (non-guessable 64-bit ID) instead of type enum
+  roleId: number; // e.g., 9823749823749823 for Admin, 7823647823647823 for Developer, 8923748923748923 for User
+  roleName: 'User' | 'Developer' | 'Admin'; // For display purposes only
+  // Legacy: Keep type for backward compatibility during migration
+  type?: 'User' | 'Developer' | 'Admin'; // Deprecated - use roleName instead
   status: 'NotVerified' | 'Pending' | 'Verified';
   emailVerified?: boolean;
   phoneVerified?: boolean;
@@ -14,6 +18,27 @@ export interface Account {
   createdAt: string;
   updatedAt?: string;
 }
+
+export interface PaginationInfo {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationInfo;
+}
+
+// Role ID constants (matching backend)
+export const ROLE_IDS = {
+  USER: 8923748923748923,
+  DEVELOPER: 7823647823647823,
+  ADMIN: 9823749823749823,
+} as const;
 
 export interface Project {
   projectId: number;
@@ -28,8 +53,19 @@ export interface Project {
   properties?: Property[];
 }
 
+export interface ParentProperty {
+  parentPropertyId: number;
+  projectName?: string;
+  type?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  areaSqm?: number;
+  finishingType?: string;
+}
+
 export interface Property {
   propertyId: number;
+  parentPropertyId?: number; // Link to parent property
   ownerId: number;
   projectId?: number;
   name: string;
@@ -48,6 +84,7 @@ export interface Property {
   updatedAt?: string;
   owner?: Account;
   project?: Project;
+  parentProperty?: ParentProperty; // Parent property information
   auctions?: Auction[];
 }
 
@@ -156,4 +193,47 @@ export interface PropertyImage {
   isMainImage: boolean;
   displayOrder: number;
   createdAt: string;
+}
+
+// Developer Permission Types
+export enum FeaturePermission {
+  // Default features (always enabled for developers)
+  Projects = 'Projects',
+  Properties = 'Properties',
+  Analytics = 'Analytics',
+  
+  // Optional features (admin-configurable)
+  Communities = 'Communities',
+  News = 'News',
+  Auctions = 'Auctions',
+  Leaderboard = 'Leaderboard',
+  Notifications = 'Notifications',
+  PriceHistory = 'PriceHistory',
+  FullAnalytics = 'FullAnalytics',
+  Rewards = 'Rewards',
+  Valuation = 'Valuation',
+  Chats = 'Chats'
+}
+
+export type FeatureName = 
+  | 'Projects'
+  | 'Properties'
+  | 'Analytics'
+  | 'Communities'
+  | 'News'
+  | 'Auctions'
+  | 'Leaderboard'
+  | 'Notifications'
+  | 'PriceHistory'
+  | 'FullAnalytics'
+  | 'Rewards'
+  | 'Valuation'
+  | 'Chats';
+
+export interface DeveloperPermissions {
+  [key: string]: boolean;
+}
+
+export interface UpdatePermissionsDto {
+  permissions: DeveloperPermissions;
 }

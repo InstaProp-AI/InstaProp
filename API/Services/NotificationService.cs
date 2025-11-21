@@ -62,7 +62,7 @@ namespace InstapropAPI.Services
 
             var notificationsToSync = new List<(long userId, Notification notification)>();
 
-            // Load all bids for this auction into memory to avoid SQLite decimal aggregate issues
+            // Load all bids for this auction
             var allAuctionBids = await _context.Bids
                 .Where(b => b.AuctionId == auctionId)
                 .ToListAsync();
@@ -70,7 +70,6 @@ namespace InstapropAPI.Services
             foreach (var bidderId in previousBidders)
             {
                 // Only notify if their highest bid is lower than the new bid
-                // Use LINQ to Objects (in-memory) to avoid SQLite decimal aggregate issues
                 var bidderBids = allAuctionBids.Where(b => b.BidderId == bidderId).ToList();
                 
                 if (bidderBids.Any())
@@ -116,7 +115,7 @@ namespace InstapropAPI.Services
 
             // Get all users except the auction owner
             var users = await _context.Accounts
-                .Where(a => a.AccountId != auction.Property.OwnerId && a.Type == AccountType.User)
+                .Where(a => a.AccountId != auction.Property.OwnerId && a.RoleId == Role.USER_ROLE_ID)
                 .ToListAsync();
 
             var notificationsToSync = new List<(long userId, Notification notification)>();
@@ -233,7 +232,7 @@ namespace InstapropAPI.Services
 
             // Get all users except the event creator
             var users = await _context.Accounts
-                .Where(a => a.AccountId != eventItem.UserId && a.Type == AccountType.User)
+                .Where(a => a.AccountId != eventItem.UserId && a.RoleId == Role.USER_ROLE_ID)
                 .ToListAsync();
 
             var notificationsToSync = new List<(long userId, Notification notification)>();

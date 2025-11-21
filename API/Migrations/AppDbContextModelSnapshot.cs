@@ -210,6 +210,9 @@ namespace InstapropAPI.Migrations
                     b.Property<bool>("RequiresPasswordChange")
                         .HasColumnType("boolean");
 
+                    b.Property<long>("RoleId")
+                        .HasColumnType("bigint");
+
                     b.Property<bool>("ShowInDirectory")
                         .HasColumnType("boolean");
 
@@ -225,13 +228,12 @@ namespace InstapropAPI.Migrations
                     b.Property<int>("TotalEarnedPoints")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("AccountId");
+
+                    b.HasIndex("RoleId");
 
                     b.ToTable("Accounts");
                 });
@@ -334,6 +336,9 @@ namespace InstapropAPI.Migrations
                     b.Property<long?>("ProjectId")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("SalesMemberId")
+                        .HasColumnType("bigint");
+
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
 
@@ -342,6 +347,8 @@ namespace InstapropAPI.Migrations
                     b.HasIndex("DeveloperId");
 
                     b.HasIndex("ProjectId");
+
+                    b.HasIndex("SalesMemberId");
 
                     b.HasIndex("UserId");
 
@@ -777,6 +784,39 @@ namespace InstapropAPI.Migrations
                     b.HasIndex("CommunityId");
 
                     b.ToTable("CommunityPosts");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperPermission", b =>
+                {
+                    b.Property<long>("DeveloperPermissionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DeveloperPermissionId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("DeveloperId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FeatureName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("DeveloperPermissionId");
+
+                    b.HasIndex("DeveloperId", "FeatureName")
+                        .IsUnique();
+
+                    b.ToTable("DeveloperPermissions");
                 });
 
             modelBuilder.Entity("InstapropAPI.Models.DeveloperProfile", b =>
@@ -2081,6 +2121,31 @@ namespace InstapropAPI.Migrations
                     b.ToTable("Referrals");
                 });
 
+            modelBuilder.Entity("InstapropAPI.Models.Role", b =>
+                {
+                    b.Property<long>("RoleId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("RoleId");
+
+                    b.HasIndex("RoleName")
+                        .IsUnique();
+
+                    b.ToTable("Roles");
+                });
+
             modelBuilder.Entity("InstapropAPI.Models.StreamChatMessage", b =>
                 {
                     b.Property<long>("MessageId")
@@ -2367,6 +2432,17 @@ namespace InstapropAPI.Migrations
                     b.Navigation("AIChat");
                 });
 
+            modelBuilder.Entity("InstapropAPI.Models.Account", b =>
+                {
+                    b.HasOne("InstapropAPI.Models.Role", "Role")
+                        .WithMany("Accounts")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("InstapropAPI.Models.Auction", b =>
                 {
                     b.HasOne("InstapropAPI.Models.ChildProperty", "Property")
@@ -2410,6 +2486,10 @@ namespace InstapropAPI.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("InstapropAPI.Models.Account", "SalesMember")
+                        .WithMany()
+                        .HasForeignKey("SalesMemberId");
+
                     b.HasOne("InstapropAPI.Models.Account", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -2419,6 +2499,8 @@ namespace InstapropAPI.Migrations
                     b.Navigation("Developer");
 
                     b.Navigation("Project");
+
+                    b.Navigation("SalesMember");
 
                     b.Navigation("User");
                 });
@@ -2558,6 +2640,17 @@ namespace InstapropAPI.Migrations
                     b.Navigation("Author");
 
                     b.Navigation("Community");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperPermission", b =>
+                {
+                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                        .WithMany()
+                        .HasForeignKey("DeveloperId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Developer");
                 });
 
             modelBuilder.Entity("InstapropAPI.Models.DeveloperProfile", b =>
@@ -3124,6 +3217,11 @@ namespace InstapropAPI.Migrations
                     b.Navigation("Likes");
 
                     b.Navigation("Replies");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.Role", b =>
+                {
+                    b.Navigation("Accounts");
                 });
 
             modelBuilder.Entity("InstapropAPI.Models.WeeklyLeaderboardSnapshot", b =>

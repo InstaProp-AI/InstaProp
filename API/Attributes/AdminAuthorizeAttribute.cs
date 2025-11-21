@@ -1,7 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
+using InstapropAPI.Services;
+using InstapropAPI.Extensions;
 
 namespace InstapropAPI.Attributes
 {
@@ -16,9 +22,9 @@ namespace InstapropAPI.Attributes
                 return;
             }
 
-            // Check if user has admin role claim
-            var accountTypeClaim = context.HttpContext.User.FindFirst("type");
-            if (accountTypeClaim == null || accountTypeClaim.Value != "Admin")
+            // SECURITY: Check RoleId instead of type string - non-guessable 64-bit ID
+            var roleIdClaim = context.HttpContext.User.FindFirst("roleId");
+            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId) || roleId != Models.Role.ADMIN_ROLE_ID)
             {
                 context.Result = new ForbidResult();
                 return;
@@ -37,14 +43,101 @@ namespace InstapropAPI.Attributes
                 return;
             }
 
-            // Check if user has developer or admin role
-            var accountTypeClaim = context.HttpContext.User.FindFirst("type");
-            if (accountTypeClaim == null || 
-                (accountTypeClaim.Value != "Developer" && accountTypeClaim.Value != "Admin"))
+            // SECURITY: Check RoleId instead of type string - non-guessable 64-bit IDs
+            var roleIdClaim = context.HttpContext.User.FindFirst("roleId");
+            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId))
             {
                 context.Result = new ForbidResult();
                 return;
             }
+
+            // Allow Developer or Admin roles
+            if (roleId != Models.Role.DEVELOPER_ROLE_ID && roleId != Models.Role.ADMIN_ROLE_ID)
+            {
+                context.Result = new ForbidResult();
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Authorization attribute to check if developer has permission for a specific feature
+    /// Admins always have access, developers need explicit permission
+    /// Default features (Projects, Properties, Analytics) are always allowed for developers
+    /// </summary>
+    public class FeaturePermissionAttribute : Attribute, IAuthorizationFilter
+    {
+        private readonly string _featureName;
+
+        public FeaturePermissionAttribute(string featureName)
+        {
+            _featureName = featureName;
+        }
+
+        public void OnAuthorization(AuthorizationFilterContext context)
+        {
+            // Check if user is authenticated
+            if (!context.HttpContext.User.Identity?.IsAuthenticated ?? true)
+            {
+                context.Result = new UnauthorizedObjectResult(new { message = "Authentication required" });
+                return;
+            }
+
+            // Get account ID from claims
+            var accountIdClaim = context.HttpContext.User.FindFirst("uid");
+            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            {
+                context.Result = new UnauthorizedObjectResult(new { message = "Invalid user ID" });
+                return;
+            }
+
+            // Get role ID from claims
+            var roleIdClaim = context.HttpContext.User.FindFirst("roleId");
+            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId))
+            {
+                context.Result = new ForbidResult();
+                return;
+            }
+
+            // Admins always have access
+            if (roleId == Role.ADMIN_ROLE_ID)
+            {
+                return;
+            }
+
+            // For developers, check permissions
+            if (roleId == Role.DEVELOPER_ROLE_ID)
+            {
+                // Default features are always accessible
+                if (!FeaturePermission.IsOptionalFeature(_featureName))
+                {
+                    return; // Allow access to default features
+                }
+
+                // For optional features, check database
+                var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var permissionService = context.HttpContext.RequestServices.GetRequiredService<DeveloperPermissionService>();
+
+                // Check if developer has permission (async check in sync method - need to handle differently)
+                // Use Task.Run to check permission synchronously
+                var hasPermission = Task.Run(async () => await permissionService.HasPermission(accountId, _featureName)).Result;
+
+                if (!hasPermission)
+                {
+                    context.Result = new ObjectResult(new { 
+                        message = $"Access denied. You do not have permission to access {_featureName}." 
+                    })
+                    {
+                        StatusCode = 403
+                    };
+                    return;
+                }
+
+                return;
+            }
+
+            // Other roles (Users) are not allowed
+            context.Result = new ForbidResult();
         }
     }
 }

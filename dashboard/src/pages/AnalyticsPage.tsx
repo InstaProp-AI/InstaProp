@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import RevenueChart from '../components/RevenueChart';
 import UserGrowthChart from '../components/UserGrowthChart';
 import PropertyPerformanceChart from '../components/PropertyPerformanceChart';
-import { usersApi, propertiesApi, auctionsApi, bidsApi } from '../services/api';
+import { usersApi, propertiesApi, auctionsApi, bidsApi, dashboardApi, authApi } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
+import { Account } from '../types';
 import { 
   BarChart3,
   TrendingUp,
@@ -26,80 +27,85 @@ const AnalyticsPage: React.FC = () => {
   const [properties, setProperties] = useState<any[]>([]);
   const [auctions, setAuctions] = useState<any[]>([]);
   const [bids, setBids] = useState<any[]>([]);
+  const [user, setUser] = useState<Account | null>(null);
+  const [userRole, setUserRole] = useState<'Admin' | 'Developer' | null>(null);
 
   useEffect(() => {
-    fetchAnalyticsData();
+    // Get current user to determine role
+    const loadUser = async () => {
+      try {
+        const currentUser = await authApi.getCurrentAccount();
+        setUser(currentUser);
+        // Check roleName first (from backend), then roleId, then legacy type
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        setUserRole(isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null));
+      } catch (error) {
+        console.error('Error loading user:', error);
+      }
+    };
+    loadUser();
   }, []);
 
+  useEffect(() => {
+    if (userRole) {
+      fetchAnalyticsData();
+    }
+  }, [userRole]);
+
   const fetchAnalyticsData = async () => {
+    if (!userRole) return;
     try {
       setLoading(true);
       let hasErrors = false;
       
-      // Fetch users
+      // For developers, use developer analytics endpoint instead
+      if (userRole === 'Developer') {
+        try {
+          const analyticsData = await dashboardApi.getAnalytics(userRole);
+          // Developer analytics has different structure
+          setProperties(analyticsData.propertyAnalytics || []);
+          setAuctions([]); // Developers don't see all auctions
+          setBids([]); // Developers don't see all bids
+          setUsers([]); // Developers don't see users
+          console.log('✅ Developer analytics loaded');
+        } catch (error: any) {
+          console.error('❌ Error fetching developer analytics:', error);
+          toast.error(error?.response?.data?.message || 'Failed to load analytics');
+          hasErrors = true;
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // Admin: Get analytics from single endpoint that returns all data
       try {
-        const usersData = await usersApi.getAllUsers();
-        setUsers(usersData || []);
-        console.log('✅ Users loaded:', (usersData || []).length);
+        const analyticsData = await dashboardApi.getAnalytics(userRole);
+        console.log('✅ Analytics loaded:', analyticsData);
+        
+        // Set data from analytics response
+        setUsers(analyticsData.users || []);
+        setProperties(analyticsData.properties || []);
+        setAuctions(analyticsData.auctions || []);
+        setBids(analyticsData.bids || []);
+        
+        console.log('✅ Data loaded from analytics:', {
+          users: analyticsData.users?.length || 0,
+          properties: analyticsData.properties?.length || 0,
+          auctions: analyticsData.auctions?.length || 0,
+          bids: analyticsData.bids?.length || 0
+        });
       } catch (error: any) {
-        console.error('❌ Error fetching users:', error);
+        console.error('❌ Error fetching analytics:', error);
         console.error('Error details:', error.response?.data || error.message);
         setUsers([]);
-        if (error.response?.status === 401) {
-          toast.error('Authentication failed. Please log in again.');
-        } else {
-          toast.error(`Failed to load users: ${error.response?.data?.message || error.message}`);
-        }
-        hasErrors = true;
-      }
-
-      // Fetch properties
-      try {
-        const propertiesData = await propertiesApi.getProperties();
-        setProperties(propertiesData || []);
-        console.log('✅ Properties loaded:', (propertiesData || []).length);
-      } catch (error: any) {
-        console.error('❌ Error fetching properties:', error);
-        console.error('Error details:', error.response?.data || error.message);
         setProperties([]);
-        if (error.response?.status === 401) {
-          toast.error('Authentication failed. Please log in again.');
-        } else {
-          toast.error(`Failed to load properties: ${error.response?.data?.message || error.message}`);
-        }
-        hasErrors = true;
-      }
-
-      // Fetch auctions
-      try {
-        const auctionsData = await auctionsApi.getAllAuctions();
-        setAuctions(auctionsData || []);
-        console.log('✅ Auctions loaded:', (auctionsData || []).length);
-      } catch (error: any) {
-        console.error('❌ Error fetching auctions:', error);
-        console.error('Error details:', error.response?.data || error.message);
         setAuctions([]);
-        if (error.response?.status === 401) {
-          toast.error('Authentication failed. Please log in again.');
-        } else {
-          toast.error(`Failed to load auctions: ${error.response?.data?.message || error.message}`);
-        }
-        hasErrors = true;
-      }
-
-      // Fetch bids
-      try {
-        const bidsData = await bidsApi.getAllBids();
-        setBids(bidsData || []);
-        console.log('✅ Bids loaded:', (bidsData || []).length);
-      } catch (error: any) {
-        console.error('❌ Error fetching bids:', error);
-        console.error('Error details:', error.response?.data || error.message);
         setBids([]);
         if (error.response?.status === 401) {
           toast.error('Authentication failed. Please log in again.');
         } else {
-          toast.error(`Failed to load bids: ${error.response?.data?.message || error.message}`);
+          toast.error(`Failed to load analytics: ${error.response?.data?.message || error.message}`);
         }
         hasErrors = true;
       }

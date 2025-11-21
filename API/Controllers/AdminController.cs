@@ -16,21 +16,35 @@ namespace InstapropAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ImageFixService _imageFixService;
+        private readonly CompleteEgyptianSeedingService _seedingService;
 
-        public AdminController(AppDbContext context, ImageFixService imageFixService)
+        public AdminController(AppDbContext context, ImageFixService imageFixService, CompleteEgyptianSeedingService seedingService)
         {
             _context = context;
             _imageFixService = imageFixService;
+            _seedingService = seedingService;
         }
 
-        // GET: api/Admin/users - Get all users for admin dashboard
+        // GET: api/Admin/users - Get paginated users for admin dashboard
         [HttpGet("users")]
-        public async Task<ActionResult<IEnumerable<object>>> GetAllUsers()
+        public async Task<ActionResult<object>> GetAllUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
+                // Validate pagination parameters
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 100) pageSize = 100; // Limit max page size to prevent abuse
+
+                // Get total count
+                var totalCount = await _context.Accounts.CountAsync();
+
+                // Get paginated users
                 var users = await _context.Accounts
+                    .Include(a => a.Role)
                     .OrderByDescending(a => a.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
                     .Select(a => new
                     {
                         a.AccountId,
@@ -38,7 +52,8 @@ namespace InstapropAPI.Controllers
                         a.LastName,
                         a.Email,
                         a.PhoneNumber,
-                        Type = a.Type.ToString(), // Convert enum to string
+                        RoleId = a.RoleId, // SECURITY: Return non-guessable RoleId
+                        RoleName = a.Role != null ? a.Role.RoleName : "Unknown", // Role name for display
                         Status = a.Status.ToString(), // Convert enum to string
                         a.EmailVerified,
                         a.PhoneVerified,
@@ -50,7 +65,84 @@ namespace InstapropAPI.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(users);
+                // Return paginated response
+                return Ok(new
+                {
+                    data = users,
+                    pagination = new
+                    {
+                        page = page,
+                        pageSize = pageSize,
+                        totalCount = totalCount,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                        hasNextPage = page * pageSize < totalCount,
+                        hasPreviousPage = page > 1
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // GET: api/Admin/developers - Get paginated developers for admin dashboard
+        [HttpGet("developers")]
+        public async Task<ActionResult<object>> GetDevelopers([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                // Validate pagination parameters
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 100) pageSize = 100;
+
+                // Get total count of developers only
+                var totalCount = await _context.Accounts
+                    .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                    .CountAsync();
+
+                // Get paginated developers
+                var developers = await _context.Accounts
+                    .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                    .Include(a => a.Role)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(a => new
+                    {
+                        a.AccountId,
+                        a.FirstName,
+                        a.LastName,
+                        a.Email,
+                        a.PhoneNumber,
+                        RoleId = a.RoleId,
+                        RoleName = a.Role != null ? a.Role.RoleName : "Developer",
+                        Status = a.Status.ToString(),
+                        a.EmailVerified,
+                        a.PhoneVerified,
+                        a.IsSuspended,
+                        a.SuspendedUntil,
+                        a.SuspensionReason,
+                        a.CreatedAt,
+                        a.UpdatedAt
+                    })
+                    .ToListAsync();
+
+                // Return paginated response
+                return Ok(new
+                {
+                    data = developers,
+                    pagination = new
+                    {
+                        page = page,
+                        pageSize = pageSize,
+                        totalCount = totalCount,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                        hasNextPage = page * pageSize < totalCount,
+                        hasPreviousPage = page > 1
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -65,6 +157,7 @@ namespace InstapropAPI.Controllers
             try
             {
                 var user = await _context.Accounts
+                    .Include(a => a.Role) // Include Role for role name
                     .Include(a => a.Projects)
                         .ThenInclude(p => p.Developer)
                     .Include(a => a.Bids)
@@ -83,7 +176,8 @@ namespace InstapropAPI.Controllers
                     user.LastName,
                     user.Email,
                     user.PhoneNumber,
-                    Type = user.Type.ToString(),
+                    RoleId = user.RoleId, // SECURITY: Return non-guessable RoleId
+                    RoleName = user.Role != null ? user.Role.RoleName : "Unknown", // Role name for display
                     Status = user.Status.ToString(),
                     user.EmailVerified,
                     user.PhoneVerified,
@@ -347,7 +441,7 @@ namespace InstapropAPI.Controllers
             }
         }
 
-        // PUT: api/Admin/users/{id}/change-type - Change user account type
+        // PUT: api/Admin/users/{id}/change-type - Change user role (SECURITY: Only admins can change roles)
         [HttpPut("users/{id}/change-type")]
         public async Task<IActionResult> ChangeUserType(long id, [FromBody] ChangeTypeDto dto)
         {
@@ -357,11 +451,17 @@ namespace InstapropAPI.Controllers
                 if (user == null)
                     return NotFound(new { error = "User not found" });
 
-                user.Type = dto.Type;
+                // SECURITY: Validate that the roleId exists in the Roles table
+                var roleExists = await _context.Roles.AnyAsync(r => r.RoleId == dto.RoleId);
+                if (!roleExists)
+                    return BadRequest(new { error = "Invalid role ID. Role does not exist." });
+
+                // SECURITY: Update RoleId instead of Type - uses non-guessable 64-bit ID
+                user.RoleId = dto.RoleId;
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                return Ok(new { message = "User type changed successfully" });
+                return Ok(new { message = "User role changed successfully" });
             }
             catch (Exception ex)
             {
@@ -411,23 +511,37 @@ namespace InstapropAPI.Controllers
 
         public class ChangeTypeDto
         {
-            public AccountType Type { get; set; }
+            public long RoleId { get; set; } // SECURITY: Use non-guessable 64-bit RoleId instead of Type enum
         }
     
 
-        // GET: api/Admin/properties - Get all properties
+        // GET: api/Admin/properties - Get paginated properties for admin dashboard
         [HttpGet("properties")]
-        public async Task<ActionResult<IEnumerable<object>>> GetAllProperties()
+        public async Task<ActionResult<object>> GetAllProperties([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
+                // Validate pagination parameters
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 100) pageSize = 100; // Limit max page size to prevent abuse
+
+                // Get total count
+                var totalCount = await _context.ChildProperties.CountAsync();
+
+                // Get paginated properties
                 var properties = await _context.ChildProperties
                     .Include(p => p.Owner)
+                        .ThenInclude(o => o.Role) // Include Role for role name
                     .Include(p => p.Project)
+                    .Include(p => p.ParentProperty) // Include parent property
                     .OrderByDescending(p => p.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
                     .Select(p => new
                     {
                         p.PropertyId,
+                        p.ParentPropertyId, // Include ParentPropertyId
                         p.OwnerId,
                         p.ProjectId,
                         p.Name,
@@ -448,17 +562,43 @@ namespace InstapropAPI.Controllers
                             p.Owner.FirstName,
                             p.Owner.LastName,
                             p.Owner.Email,
-                            Type = p.Owner.Type.ToString()
+                            RoleId = p.Owner.RoleId, // SECURITY: Non-guessable RoleId
+                            RoleName = p.Owner.Role != null ? p.Owner.Role.RoleName : "Unknown"
                         } : null,
                         Project = p.Project != null ? new
                         {
                             p.Project.ProjectId,
                             p.Project.Name
+                        } : null,
+                        ParentProperty = p.ParentProperty != null ? new
+                        {
+                            p.ParentProperty.ParentPropertyId,
+                            ProjectName = !string.IsNullOrWhiteSpace(p.ParentProperty.ProjectName) 
+                                ? p.ParentProperty.ProjectName 
+                                : (p.Project != null ? p.Project.Name : "N/A"),
+                            Type = p.ParentProperty.Type,
+                            Bedrooms = p.ParentProperty.Bedrooms,
+                            Bathrooms = p.ParentProperty.Bathrooms,
+                            AreaSqm = p.ParentProperty.AreaSqm,
+                            FinishingType = p.ParentProperty.FinishingType.ToString()
                         } : null
                     })
                     .ToListAsync();
 
-                return Ok(properties);
+                // Return paginated response
+                return Ok(new
+                {
+                    data = properties,
+                    pagination = new
+                    {
+                        page = page,
+                        pageSize = pageSize,
+                        totalCount = totalCount,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                        hasNextPage = page * pageSize < totalCount,
+                        hasPreviousPage = page > 1
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -579,6 +719,7 @@ namespace InstapropAPI.Controllers
                 var auctions = await _context.Auctions
                     .Include(a => a.Property)
                         .ThenInclude(p => p.Owner)
+                            .ThenInclude(o => o.Role) // Include Role for role name
                     .OrderByDescending(a => a.CreatedAt)
                     .Select(a => new
                     {
@@ -611,7 +752,8 @@ namespace InstapropAPI.Controllers
                                 a.Property.Owner.FirstName,
                                 a.Property.Owner.LastName,
                                 a.Property.Owner.Email,
-                                Type = a.Property.Owner.Type.ToString()
+                                RoleId = a.Property.Owner.RoleId, // SECURITY: Non-guessable RoleId
+                                RoleName = a.Property.Owner.Role != null ? a.Property.Owner.Role.RoleName : "Unknown"
                             } : null
                         } : null
                     })
@@ -727,21 +869,21 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                // User statistics (Type 0 only)
-                var totalUsers = await _context.Accounts.Where(a => a.Type == AccountType.User).CountAsync();
+                // SECURITY: User statistics using non-guessable RoleId
+                var totalUsers = await _context.Accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).CountAsync();
                 var verifiedUsers = await _context.Accounts
-                    .Where(a => a.Type == AccountType.User && a.Status == VerificationStatus.Verified)
+                    .Where(a => a.RoleId == Role.USER_ROLE_ID && a.Status == VerificationStatus.Verified)
                     .CountAsync();
                 var pendingUsers = await _context.Accounts
-                    .Where(a => a.Type == AccountType.User && a.Status == VerificationStatus.Pending)
+                    .Where(a => a.RoleId == Role.USER_ROLE_ID && a.Status == VerificationStatus.Pending)
                     .CountAsync();
                 var notVerifiedUsers = await _context.Accounts
-                    .Where(a => a.Type == AccountType.User && a.Status == VerificationStatus.NotVerified)
+                    .Where(a => a.RoleId == Role.USER_ROLE_ID && a.Status == VerificationStatus.NotVerified)
                     .CountAsync();
                 
-                // Developer and Admin counts
-                var totalDevelopers = await _context.Accounts.Where(a => a.Type == AccountType.Developer).CountAsync();
-                var totalAdmins = await _context.Accounts.Where(a => a.Type == AccountType.Admin).CountAsync();
+                // Developer and Admin counts using non-guessable RoleId
+                var totalDevelopers = await _context.Accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).CountAsync();
+                var totalAdmins = await _context.Accounts.Where(a => a.RoleId == Role.ADMIN_ROLE_ID).CountAsync();
                 
                 // Property statistics
                 var totalProperties = await _context.ChildProperties.CountAsync();
@@ -758,7 +900,6 @@ namespace InstapropAPI.Controllers
                 var totalBids = await _context.Bids.CountAsync();
                 
                 // Revenue calculation (sum of all ended auction current prices)
-                // Load into memory to avoid SQLite decimal aggregate issues
                 var endedAuctionsList = await _context.Auctions
                     .Where(a => a.Status == "Closed" || a.Status == "Completed")
                     .ToListAsync();
@@ -772,7 +913,6 @@ namespace InstapropAPI.Controllers
                 var monthlyRevenue = recentEndedAuctions.Sum(a => a.CurrentPrice);
 
                 // Calculate average bid value
-                // Load into memory to avoid SQLite decimal aggregate issues
                 var averageBidValue = totalBids > 0 
                     ? (await _context.Bids.ToListAsync()).Average(b => b.BidAmount)
                     : 0;
@@ -821,7 +961,7 @@ namespace InstapropAPI.Controllers
             }
         }
 
-        // GET: api/Admin/analytics - Get detailed analytics and trends
+        // GET: api/Admin/analytics - Get comprehensive analytics with all data arrays
         [HttpGet("analytics")]
         public async Task<ActionResult<object>> GetDetailedAnalytics()
         {
@@ -830,6 +970,104 @@ namespace InstapropAPI.Controllers
                 var now = DateTime.UtcNow;
                 var last30Days = now.AddDays(-30);
                 var last7Days = now.AddDays(-7);
+
+                // Get users array (limited to 100 for performance)
+                var users = await _context.Accounts
+                    .Where(a => a.RoleId == Role.USER_ROLE_ID)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Take(100)
+                    .Select(a => new
+                    {
+                        a.AccountId,
+                        a.FirstName,
+                        a.LastName,
+                        a.Email,
+                        a.Status,
+                        a.CreatedAt
+                    })
+                    .ToListAsync();
+
+                // Get properties array (limited to 100 for performance)
+                var properties = await _context.ChildProperties
+                    .Include(p => p.Owner)
+                    .Include(p => p.Project)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(100)
+                    .Select(p => new
+                    {
+                        p.PropertyId,
+                        p.Name,
+                        p.Location,
+                        Type = PropertyTypeHelper.ToDisplayName(p.Type),
+                        Status = p.Status.ToString(),
+                        p.Bedrooms,
+                        p.Bathrooms,
+                        p.SquareFeet,
+                        p.CreatedAt,
+                        Owner = p.Owner != null ? new
+                        {
+                            p.Owner.AccountId,
+                            p.Owner.FirstName,
+                            p.Owner.LastName
+                        } : null,
+                        Project = p.Project != null ? new
+                        {
+                            p.Project.ProjectId,
+                            p.Project.Name
+                        } : null
+                    })
+                    .ToListAsync();
+
+                // Get auctions array (limited to 100 for performance)
+                var auctions = await _context.Auctions
+                    .Include(a => a.Property)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Take(100)
+                    .Select(a => new
+                    {
+                        a.AuctionId,
+                        a.PropertyId,
+                        a.StartPrice,
+                        a.CurrentPrice,
+                        a.Status,
+                        a.BidCount,
+                        a.StartAt,
+                        a.Duration,
+                        a.CreatedAt,
+                        Property = a.Property != null ? new
+                        {
+                            a.Property.PropertyId,
+                            a.Property.Name,
+                            a.Property.Location
+                        } : null
+                    })
+                    .ToListAsync();
+
+                // Get bids array (limited to 100 for performance)
+                var bids = await _context.Bids
+                    .Include(b => b.Auction)
+                    .ThenInclude(a => a.Property)
+                    .OrderByDescending(b => b.CreatedAt)
+                    .Take(100)
+                    .Select(b => new
+                    {
+                        b.BidId,
+                        b.AuctionId,
+                        b.BidderId,
+                        b.BidAmount,
+                        b.CreatedAt,
+                        Auction = b.Auction != null ? new
+                        {
+                            b.Auction.AuctionId,
+                            b.Auction.Status,
+                            Property = b.Auction.Property != null ? new
+                            {
+                                b.Auction.Property.PropertyId,
+                                b.Auction.Property.Name
+                            } : null
+                        } : null
+                    })
+                    .ToListAsync();
 
                 // Daily bid trends (last 30 days)
                 var allBids = await _context.Bids
@@ -842,14 +1080,14 @@ namespace InstapropAPI.Controllers
                     {
                         date = g.Key,
                         count = g.Count(),
-                        totalValue = g.Sum(b => b.BidAmount) // In-memory aggregation
+                        totalValue = g.Sum(b => b.BidAmount)
                     })
                     .OrderBy(x => x.date)
                     .ToList();
 
                 // Daily revenue from ended auctions (last 30 days)
                 var allEndedAuctions = await _context.Auctions
-                    .Where(a => a.Status == "Closed" || a.Status == "Completed" && a.CreatedAt >= last30Days)
+                    .Where(a => (a.Status == "Closed" || a.Status == "Completed" || a.Status == "Ended") && a.CreatedAt >= last30Days)
                     .ToListAsync();
                 
                 var dailyRevenue = allEndedAuctions
@@ -858,7 +1096,7 @@ namespace InstapropAPI.Controllers
                     {
                         date = g.Key,
                         count = g.Count(),
-                        revenue = g.Sum(a => a.CurrentPrice) // In-memory aggregation
+                        revenue = g.Sum(a => a.CurrentPrice)
                     })
                     .OrderBy(x => x.date)
                     .ToList();
@@ -872,41 +1110,36 @@ namespace InstapropAPI.Controllers
                     .Select(a => new
                     {
                         propertyId = a.PropertyId,
-                        propertyName = a.Property.Name,
+                        propertyName = a.Property != null ? a.Property.Name : "Unknown",
                         bidCount = a.BidCount,
                         currentPrice = a.CurrentPrice,
                         status = a.Status
                     })
                     .ToListAsync();
 
-                // Active users (users who placed bids in last 7 days)
-                var activeUsers = await _context.Bids
-                    .Where(b => b.CreatedAt >= last7Days)
-                    .Select(b => b.BidderId)
-                    .Distinct()
-                    .CountAsync();
-
-                // Property categories distribution
-                var categoryDistribution = await _context.ChildProperties
-                    .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
-                    .Select(g => new
-                    {
-                        category = g.Key,
-                        count = g.Count(),
-                        approved = g.Count(p => p.Status == PropertyStatus.Approved)
-                    })
-                    .ToListAsync();
-
                 var analytics = new
                 {
+                    // Main data arrays that AnalyticsPage expects
+                    users = users,
+                    properties = properties,
+                    auctions = auctions,
+                    bids = bids,
+                    // Trends for charts
                     trends = new
                     {
                         dailyBids,
                         dailyRevenue
                     },
                     topProperties,
-                    activeUsers,
-                    categoryDistribution
+                    categoryDistribution = await _context.ChildProperties
+                        .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
+                        .Select(g => new
+                        {
+                            category = g.Key,
+                            count = g.Count(),
+                            approved = g.Count(p => p.Status == PropertyStatus.Approved)
+                        })
+                        .ToListAsync()
                 };
 
                 return Ok(analytics);
@@ -950,6 +1183,21 @@ namespace InstapropAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // POST: api/Admin/seed-chats - Seed chats and messages for testing
+        [HttpPost("seed-chats")]
+        public async Task<IActionResult> SeedChats()
+        {
+            try
+            {
+                await _seedingService.SeedChatsAndMessagesAsync();
+                return Ok(new { message = "Chats and messages seeded successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
             }
         }
     }

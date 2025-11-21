@@ -1,0 +1,65 @@
+using Microsoft.EntityFrameworkCore;
+using InstapropAPI.Data;
+using InstapropAPI.Models;
+
+namespace InstapropAPI.Services
+{
+    public class RoleSeederService
+    {
+        private readonly AppDbContext _context;
+
+        public RoleSeederService(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task SeedRolesAsync()
+        {
+            Console.WriteLine("🔐 Seeding Roles with non-guessable 64-bit IDs...");
+
+            // Check if roles already exist
+            var hasRoles = await _context.Roles.AnyAsync();
+            if (hasRoles)
+            {
+                Console.WriteLine("ℹ️ Roles already exist. Skipping seeding.");
+                return;
+            }
+
+            var roles = new List<Role>
+            {
+                new Role
+                {
+                    RoleId = Role.USER_ROLE_ID, // 8923748923748923
+                    RoleName = "User",
+                    Description = "Regular user account",
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Role
+                {
+                    RoleId = Role.DEVELOPER_ROLE_ID, // 7823647823647823
+                    RoleName = "Developer",
+                    Description = "Developer account with project management permissions",
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Role
+                {
+                    RoleId = Role.ADMIN_ROLE_ID, // 9823749823749823
+                    RoleName = "Admin",
+                    Description = "Administrator account with full system access",
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            _context.Roles.AddRange(roles);
+            await _context.SaveChangesAsync();
+            
+            Console.WriteLine($"✅ Seeded {roles.Count} roles with non-guessable IDs:");
+            foreach (var role in roles)
+            {
+                Console.WriteLine($"   - {role.RoleName}: {role.RoleId}");
+            }
+        }
+    }
+}
+
+

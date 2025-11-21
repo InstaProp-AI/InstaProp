@@ -24,14 +24,14 @@ export default function DocumentsPage() {
       setLoading(true);
       console.log('📊 Loading document management data...');
       
-      const [usersData, propertiesData, statsData] = await Promise.all([
-        usersApi.getAllUsers().catch((err) => {
+      const [usersResponse, propertiesResponse, statsData] = await Promise.all([
+        usersApi.getAllUsers(1, 100).catch((err) => {
           console.error('Failed to load users:', err);
-          return [];
+          return { data: [], pagination: { totalCount: 0, totalPages: 0 } };
         }),
-        propertiesApi.getProperties().catch((err) => {
+        propertiesApi.getProperties('Admin', 1, 100).catch((err) => {
           console.error('Failed to load properties:', err);
-          return [];
+          return { data: [], pagination: { totalCount: 0 } };
         }),
         documentsApi.getDocumentStatistics().catch((err) => {
           console.warn('Failed to load statistics:', err);
@@ -39,6 +39,9 @@ export default function DocumentsPage() {
         })
       ]);
       
+      const usersData = usersResponse?.data || [];
+      // Handle paginated response for properties
+      const propertiesData = 'data' in propertiesResponse ? propertiesResponse.data : (Array.isArray(propertiesResponse) ? propertiesResponse : []);
       console.log('✅ Data loaded:', { users: usersData.length, properties: propertiesData.length });
       
       setUsers(usersData);

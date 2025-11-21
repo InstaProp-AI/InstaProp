@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
+using InstapropAPI.Extensions;
 
 namespace InstapropAPI.Controllers
 {
@@ -129,7 +130,7 @@ namespace InstapropAPI.Controllers
             // Check if user is author, community moderator, or admin
             var account = await _context.Accounts.FindAsync(accountId.Value);
             var isCreator = comment.AuthorId == accountId.Value;
-            var isAdmin = account?.Type == AccountType.Admin;
+            var isAdmin = account != null && account.RoleId == Role.ADMIN_ROLE_ID; // SECURITY: Check non-guessable RoleId
             
             // TODO: Check if user is community moderator
 
@@ -202,14 +203,15 @@ namespace InstapropAPI.Controllers
             };
         }
 
+        // SECURITY: Check RoleId instead of Type - non-guessable 64-bit IDs
         private string GetAuthorType(Account? author)
         {
             if (author == null) return "Owner";
             
-            if (author.Type == AccountType.Admin)
+            if (author.RoleId == Role.ADMIN_ROLE_ID)
                 return "Admin";
             
-            if (author.Type == AccountType.Developer)
+            if (author.RoleId == Role.DEVELOPER_ROLE_ID)
                 return "Developer";
             
             return "Owner";

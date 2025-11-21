@@ -5,6 +5,7 @@ using InstapropAPI.Data;
 using InstapropAPI.Models;
 using System.Security.Claims;
 using InstapropAPI.Attributes;
+using InstapropAPI.Extensions;
 
 namespace InstapropAPI.Controllers
 {
@@ -36,14 +37,14 @@ namespace InstapropAPI.Controllers
                 return Unauthorized("User not found");
             }
 
-            // Allow both Developers and Admins to access projects
-            if (account.Type != Models.AccountType.Developer && account.Type != Models.AccountType.Admin)
+            // SECURITY: Allow both Developers and Admins to access projects - check RoleId instead of Type
+            if (!account.IsDeveloperOrAdmin())
             {
                 return StatusCode(403, new { message = "Only developers and admins can access projects" });
             }
 
             // Admins can see all projects, developers can only see their own
-            var projects = account.Type == Models.AccountType.Admin
+            var projects = account.IsAdmin()
                 ? await _context.Projects.ToListAsync()
                 : await _context.Projects
                     .Where(p => p.DeveloperId == accountId)
@@ -69,8 +70,8 @@ namespace InstapropAPI.Controllers
                 return Unauthorized("User not found");
             }
 
-            // Admins can access any project, developers can only access their own
-            var project = account.Type == Models.AccountType.Admin
+            // SECURITY: Admins can access any project, developers can only access their own - check RoleId
+            var project = account.IsAdmin()
                 ? await _context.Projects
                     .FirstOrDefaultAsync(p => p.ProjectId == id)
                 : await _context.Projects
@@ -101,8 +102,8 @@ namespace InstapropAPI.Controllers
                 return Unauthorized("User not found");
             }
 
-            // Allow both Developers and Admins to create projects
-            if (account.Type != Models.AccountType.Developer && account.Type != Models.AccountType.Admin)
+            // SECURITY: Allow both Developers and Admins to create projects - check RoleId
+            if (!account.IsDeveloperOrAdmin())
             {
                 return StatusCode(403, new { message = "Only developers and admins can create projects" });
             }
@@ -140,8 +141,8 @@ namespace InstapropAPI.Controllers
                 return Unauthorized("User not found");
             }
 
-            // Admins can update any project, developers can only update their own
-            var project = account.Type == Models.AccountType.Admin
+            // SECURITY: Admins can update any project, developers can only update their own - check RoleId
+            var project = account.IsAdmin()
                 ? await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == id)
                 : await _context.Projects
                     .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
@@ -203,8 +204,8 @@ namespace InstapropAPI.Controllers
                 return Unauthorized("User not found");
             }
 
-            // Admins can view properties of any project, developers can only view their own
-            var project = account.Type == Models.AccountType.Admin
+            // SECURITY: Admins can view properties of any project, developers can only view their own - check RoleId
+            var project = account.IsAdmin()
                 ? await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == id)
                 : await _context.Projects
                     .FirstOrDefaultAsync(p => p.ProjectId == id && p.DeveloperId == accountId);
