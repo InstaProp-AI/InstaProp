@@ -2,7 +2,31 @@ import axios from 'axios';
 import { Account, Project, Property, DashboardStats, CreateProjectDto, UpdateProjectDto, CreatePropertyDto, UserDocument, PropertyDocument, PropertyImage, DeveloperPermissions, UpdatePermissionsDto, PaginatedResponse } from '../types';
 import { convertAccount, convertProperty } from '../utils/converters';
 
-const API_BASE_URL = 'http://localhost:5284/api';
+// Determine API base URL based on environment
+// In production (Railway), dashboard and API are served from the same domain, so use relative URL
+// In development, use localhost
+const getApiBaseUrl = (): string => {
+  // Check if we're in development mode (Vite sets this)
+  if (import.meta.env.DEV) {
+    // Development: use localhost
+    return import.meta.env.VITE_API_BASE_URL || 'http://localhost:5284/api';
+  }
+  
+  // Production: use relative URL since dashboard and API are on the same domain
+  // Railway serves both from the same container, so /api will work
+  return '/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Log API configuration (only in development)
+if (import.meta.env.DEV) {
+  console.log('🔧 API Configuration:', {
+    mode: import.meta.env.MODE,
+    baseURL: API_BASE_URL,
+    isDev: import.meta.env.DEV,
+  });
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -441,6 +465,7 @@ export const salesApi = {
     phone?: string; // Accept both phone and phoneNumber for compatibility
     password: string;
     developerId?: number; // Required for admin, auto-assigned for developer
+    teamId?: number; // Optional sales team ID
   }): Promise<Account> => {
     // Use phoneNumber if provided, otherwise fall back to phone
     const phoneNumber = data.phoneNumber || data.phone;

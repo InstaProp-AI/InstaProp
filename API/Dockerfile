@@ -1,5 +1,6 @@
 # Multi-stage build for React Dashboard + .NET API
 # Build context: Repository root directory
+# This Dockerfile builds ONLY the React Dashboard (Flutter is not included)
 
 # ============================================
 # Stage 1: Build React Dashboard

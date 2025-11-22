@@ -259,7 +259,7 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// Enable Swagger in all environments - MUST come before error handling
+// Enable Swagger in all environments - MUST come before error handling and SPA fallback
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -267,6 +267,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger"; // Swagger UI will be available at /swagger
     c.ConfigObject.AdditionalItems.Add("syntaxHighlight", false); // Disable syntax highlighting for better compatibility
 });
+Console.WriteLine("✅ Swagger UI available at /swagger");
+Console.WriteLine("✅ Swagger JSON available at /swagger/v1/swagger.json");
 
 app.UseCors("AppCors");
 
@@ -279,7 +281,7 @@ app.UseErrorHandling();
 // Uncomment when needed:
 // app.UseRateLimiting(maxRequestsPerWindow: 1000, timeWindowSeconds: 60);
 
-// Serve admin dashboard from dashboard/dist (default web app)
+// Serve React dashboard from dashboard/dist (default web app)
 // Try multiple paths: same directory (Docker), parent directory (local dev)
 var dashboardPaths = new[]
 {
@@ -304,11 +306,11 @@ if (dashboardPath != null)
         FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(dashboardPath),
         RequestPath = ""
     });
-    Console.WriteLine($"✅ Admin Dashboard served from: {dashboardPath}");
+    Console.WriteLine($"✅ React Dashboard served from: {dashboardPath}");
 }
 else
 {
-    Console.WriteLine($"⚠️ Dashboard not found. Checked paths:");
+    Console.WriteLine($"⚠️ React Dashboard not found. Checked paths:");
     foreach (var path in dashboardPaths)
     {
         Console.WriteLine($"   - {path}");
@@ -382,12 +384,15 @@ using (var scope = app.Services.CreateScope())
         // Don't throw - allow app to start even if seeding fails
     }
 }
+// Map API controllers - MUST be before fallback to ensure /api/* routes work
 app.MapControllers();
+Console.WriteLine("✅ API Controllers mapped at /api/*");
 
 // Health check endpoint for monitoring
 app.MapHealthChecks("/health");
+Console.WriteLine("✅ Health check endpoint available at /health");
 
-// Serve admin dashboard for all non-API routes (SPA fallback)
+// Serve React dashboard for all non-API routes (SPA fallback)
 // Use the same path resolution as static files
 var dashboardDistPaths = new[]
 {
@@ -412,26 +417,16 @@ if (dashboardDistPath != null)
         FileProvider = new PhysicalFileProvider(dashboardDistPath),
         RequestPath = ""
     });
-    Console.WriteLine($"✅ Admin Dashboard fallback configured from: {dashboardDistPath}");
+    Console.WriteLine($"✅ React Dashboard fallback configured from: {dashboardDistPath}");
 }
 else
 {
-    Console.WriteLine($"⚠️ Dashboard dist folder not found. Checked paths:");
+    Console.WriteLine($"❌ ERROR: React Dashboard dist folder not found. Checked paths:");
     foreach (var path in dashboardDistPaths)
     {
         Console.WriteLine($"   - {path}");
     }
-    // Fallback to Flutter if dashboard not available
-    var flutterPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "app");
-    if (Directory.Exists(flutterPath))
-    {
-        app.MapFallbackToFile("index.html", new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(flutterPath),
-            RequestPath = ""
-        });
-        Console.WriteLine($"⚠️ Falling back to Flutter app");
-    }
+    Console.WriteLine($"❌ Application will not serve a frontend. Please ensure the dashboard is built.");
 }
 
 await app.RunAsync();
