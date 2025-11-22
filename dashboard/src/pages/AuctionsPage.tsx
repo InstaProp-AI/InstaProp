@@ -357,7 +357,9 @@ const AuctionsPage: React.FC = () => {
     }, 1000);
   };
 
-  const handleStartAuction = async (auctionId: number) => {
+  const handleStartAuction = async (e: React.MouseEvent, auctionId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await auctionsApi.startAuction(auctionId);
       toast.success('Auction started successfully!');
@@ -368,7 +370,9 @@ const AuctionsPage: React.FC = () => {
     }
   };
 
-  const handleEndAuction = async (auctionId: number) => {
+  const handleEndAuction = async (e: React.MouseEvent, auctionId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (window.confirm('Are you sure you want to end this auction?')) {
       try {
         await auctionsApi.endAuction(auctionId);
@@ -412,7 +416,9 @@ const AuctionsPage: React.FC = () => {
     setShowRelistModal(true);
   };
 
-  const handleApproveAuction = async (auctionId: number) => {
+  const handleApproveAuction = async (e: React.MouseEvent, auctionId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
       await auctionsApi.approveAuction(auctionId);
       toast.success('Auction approved successfully!');
@@ -423,7 +429,9 @@ const AuctionsPage: React.FC = () => {
     }
   };
 
-  const handleRejectAuction = async (auctionId: number) => {
+  const handleRejectAuction = async (e: React.MouseEvent, auctionId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (window.confirm('Are you sure you want to reject this auction?')) {
       try {
         await auctionsApi.rejectAuction(auctionId);
@@ -1056,7 +1064,8 @@ const AuctionsPage: React.FC = () => {
                   {auction.status === 'requested' && (
                     <>
                       <button
-                        onClick={() => handleApproveAuction(auction.auctionId)}
+                        type="button"
+                        onClick={(e) => handleApproveAuction(e, auction.auctionId)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -1075,7 +1084,8 @@ const AuctionsPage: React.FC = () => {
                         Approve
                       </button>
                       <button
-                        onClick={() => handleRejectAuction(auction.auctionId)}
+                        type="button"
+                        onClick={(e) => handleRejectAuction(e, auction.auctionId)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -1097,7 +1107,8 @@ const AuctionsPage: React.FC = () => {
                   )}
                   {(auction.status === 'upcoming' || auction.status === 'starting-soon') && (
                     <button
-                      onClick={() => handleStartAuction(auction.auctionId)}
+                      type="button"
+                      onClick={(e) => handleStartAuction(e, auction.auctionId)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1118,7 +1129,8 @@ const AuctionsPage: React.FC = () => {
                   )}
                   {auction.status === 'active' && (
                     <button
-                      onClick={() => handleEndAuction(auction.auctionId)}
+                      type="button"
+                      onClick={(e) => handleEndAuction(e, auction.auctionId)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1139,6 +1151,7 @@ const AuctionsPage: React.FC = () => {
                   )}
                   {auction.status === 'ended' && (
                     <button
+                      type="button"
                       onClick={() => openRelistModal(auction)}
                       style={{
                         display: 'flex',
@@ -1392,7 +1405,8 @@ const AuctionsPage: React.FC = () => {
                     {auction.status === 'requested' && (
                       <>
                         <button
-                          onClick={() => handleApproveAuction(auction.auctionId)}
+                          type="button"
+                          onClick={(e) => handleApproveAuction(e, auction.auctionId)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -1411,7 +1425,8 @@ const AuctionsPage: React.FC = () => {
                           Approve
                         </button>
                         <button
-                          onClick={() => handleRejectAuction(auction.auctionId)}
+                          type="button"
+                          onClick={(e) => handleRejectAuction(e, auction.auctionId)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -1433,7 +1448,8 @@ const AuctionsPage: React.FC = () => {
                     )}
                     {auction.status === 'active' && (
                       <button
-                        onClick={() => handleEndAuction(auction.auctionId)}
+                        type="button"
+                        onClick={(e) => handleEndAuction(e, auction.auctionId)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -1454,6 +1470,7 @@ const AuctionsPage: React.FC = () => {
                     )}
                     {auction.status === 'ended' && (
                       <button
+                        type="button"
                         onClick={() => openRelistModal(auction)}
                         style={{
                           display: 'flex',

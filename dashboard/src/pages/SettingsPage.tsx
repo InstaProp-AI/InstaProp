@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { settingsApi } from '../services/api';
+import { settingsApi, adminSeedingApi } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { 
   Settings,
@@ -17,13 +17,17 @@ import {
   Download,
   Upload,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Newspaper,
+  MessageSquare
 } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(false);
+  const [seedingNews, setSeedingNews] = useState(false);
+  const [seedingChats, setSeedingChats] = useState(false);
   const [settings, setSettings] = useState({
     siteName: 'Instaprop',
     siteEmail: 'admin@propertyflipper.com',
@@ -87,6 +91,40 @@ const SettingsPage: React.FC = () => {
       toast.success('Cache cleared successfully!');
     } catch (error: any) {
       toast.error('Failed to clear cache');
+    }
+  };
+
+  const handleSeedDeveloperNews = async () => {
+    if (!confirm('This will seed 3-5 news articles for each developer. Continue?')) {
+      return;
+    }
+
+    try {
+      setSeedingNews(true);
+      const result = await adminSeedingApi.seedDeveloperNews();
+      toast.success(`Successfully seeded ${result.totalArticles} news articles for ${result.developerCount} developers!`);
+    } catch (error: any) {
+      console.error('Failed to seed developer news:', error);
+      toast.error(error?.response?.data?.error || 'Failed to seed developer news articles');
+    } finally {
+      setSeedingNews(false);
+    }
+  };
+
+  const handleSeedChats = async () => {
+    if (!confirm('This will seed demo chats with messages for all developers. Continue?')) {
+      return;
+    }
+
+    try {
+      setSeedingChats(true);
+      const result = await adminSeedingApi.seedChats();
+      toast.success(`Successfully seeded ${result.totalChats} chats with ${result.totalMessages} messages for ${result.developerCount} developers!`);
+    } catch (error: any) {
+      console.error('Failed to seed chats:', error);
+      toast.error(error?.response?.data?.error || 'Failed to seed chats and messages');
+    } finally {
+      setSeedingChats(false);
     }
   };
 
@@ -539,6 +577,68 @@ const SettingsPage: React.FC = () => {
                     >
                       <RefreshCw style={{ height: '1rem', width: '1rem' }} />
                       Clear Cache
+                    </button>
+                    <button
+                      onClick={handleSeedDeveloperNews}
+                      disabled={seedingNews}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        padding: '0.75rem 1rem',
+                        backgroundColor: seedingNews ? '#d1d5db' : '#d1fae5',
+                        color: seedingNews ? '#9ca3af' : '#065f46',
+                        border: `1px solid ${seedingNews ? '#d1d5db' : '#a7f3d0'}`,
+                        borderRadius: '0.5rem',
+                        cursor: seedingNews ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        opacity: seedingNews ? 0.6 : 1
+                      }}
+                    >
+                      {seedingNews ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600" />
+                          Seeding...
+                        </>
+                      ) : (
+                        <>
+                          <Newspaper style={{ height: '1rem', width: '1rem' }} />
+                          Seed Developer News
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleSeedChats}
+                      disabled={seedingChats}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        padding: '0.75rem 1rem',
+                        backgroundColor: seedingChats ? '#d1d5db' : '#e0e7ff',
+                        color: seedingChats ? '#9ca3af' : '#3730a3',
+                        border: `1px solid ${seedingChats ? '#d1d5db' : '#c7d2fe'}`,
+                        borderRadius: '0.5rem',
+                        cursor: seedingChats ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        opacity: seedingChats ? 0.6 : 1
+                      }}
+                    >
+                      {seedingChats ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600" />
+                          Seeding...
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare style={{ height: '1rem', width: '1rem' }} />
+                          Seed Demo Chats
+                        </>
+                      )}
                     </button>
                     <button style={{
                       display: 'flex',

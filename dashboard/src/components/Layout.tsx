@@ -56,7 +56,6 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
     { name: 'News', href: '/news', icon: Newspaper, color: 'bg-blue-600', permission: 'News', adminOnly: false },
     { name: 'Chats', href: '/chats', icon: MessageSquare, color: 'bg-purple-600', permission: 'Chats', adminOnly: false },
     { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, color: 'bg-yellow-500', permission: 'Leaderboard', adminOnly: false },
-    { name: 'Price History', href: '/price-history', icon: TrendingDown, color: 'bg-red-500', permission: 'PriceHistory', adminOnly: false },
     { name: 'Rewards', href: '/rewards', icon: Gift, color: 'bg-pink-500', permission: 'Rewards', adminOnly: false },
     { name: 'Valuation', href: '/valuation', icon: Calculator, color: 'bg-indigo-600', permission: 'Valuation', adminOnly: false },
     { name: 'Documents', href: '/documents', icon: FileText, color: 'bg-yellow-500', permission: null, adminOnly: false },

@@ -28,6 +28,12 @@ namespace InstapropAPI.Models
 
         public bool IsPublished { get; set; } = true;
 
+        // Developer assignment (nullable - null means admin post)
+        public long? DeveloperId { get; set; }
+
+        [ForeignKey(nameof(DeveloperId))]
+        public virtual Account? Developer { get; set; }
+
         // Navigation property for images
         public virtual ICollection<NewsImage> Images { get; set; } = new List<NewsImage>();
     }

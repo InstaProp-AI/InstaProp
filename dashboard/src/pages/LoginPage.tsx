@@ -11,22 +11,30 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
+    // Validate inputs manually
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password');
+      return;
+    }
+    
     setLoading(true);
     setError('');
 
     try {
-      const response = await authApi.login(email, password);
+      const response = await authApi.login(email.trim(), password);
       localStorage.setItem('authToken', response.token);
       onLogin(response.account);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError('Email or password is incorrect');
+      // Email and password state are preserved - don't clear them
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div style={{
@@ -76,7 +84,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           borderRadius: '0.5rem'
         }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label htmlFor="email" style={{
@@ -93,7 +101,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  required
                   style={{
                     width: '100%',
                     padding: '0.5rem 0.75rem',
@@ -106,6 +113,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleLogin();
+                    }
+                  }}
                 />
               </div>
               <div>
@@ -118,25 +131,88 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 }}>
                   Password
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
-                    outline: 'none',
-                    transition: 'all 0.2s'
-                  }}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 2.5rem 0.5rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      transition: 'all 0.2s'
+                    }}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleLogin();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '0.5rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#6b7280',
+                      transition: 'color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#374151';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#6b7280';
+                    }}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                    ) : (
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -154,7 +230,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
             <div>
               <button
-                type="submit"
+                type="button"
+                onClick={handleLogin}
                 disabled={loading}
                 style={{
                   width: '100%',
@@ -164,7 +241,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   padding: '0.5rem 1rem',
                   borderRadius: '0.5rem',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
                   boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
                   opacity: loading ? 0.5 : 1
@@ -173,7 +250,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 {loading ? 'Signing in...' : 'Sign in'}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

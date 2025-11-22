@@ -19,7 +19,6 @@ import CommunitiesPage from './pages/CommunitiesPage';
 import NewsPage from './pages/NewsPage';
 import ChatsPage from './pages/ChatsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
-import PriceHistoryPage from './pages/PriceHistoryPage';
 import RewardsPage from './pages/RewardsPage';
 import ValuationPage from './pages/ValuationPage';
 import SalesPage from './pages/SalesPage';
@@ -133,7 +132,6 @@ function App() {
               <Route path="/auctions" element={<PermissionRoute featureName="Auctions"><AuctionsPage /></PermissionRoute>} />
               <Route path="/chats" element={<PermissionRoute featureName="Chats"><ChatsPage /></PermissionRoute>} />
               <Route path="/leaderboard" element={<PermissionRoute featureName="Leaderboard"><LeaderboardPage /></PermissionRoute>} />
-              <Route path="/price-history" element={<PermissionRoute featureName="PriceHistory"><PriceHistoryPage /></PermissionRoute>} />
               <Route path="/rewards" element={<PermissionRoute featureName="Rewards"><RewardsPage /></PermissionRoute>} />
               <Route path="/valuation" element={<PermissionRoute featureName="Valuation"><ValuationPage /></PermissionRoute>} />
               {/* Admin-only and default features */}

@@ -3,6 +3,7 @@ using System;
 using InstapropAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace InstapropAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251122123009_AddSalesTeamsTable")]
+    partial class AddSalesTeamsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1334,9 +1337,6 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long?>("DeveloperId")
-                        .HasColumnType("bigint");
-
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
 
@@ -1352,8 +1352,6 @@ namespace InstapropAPI.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("NewsArticleId");
-
-                    b.HasIndex("DeveloperId");
 
                     b.ToTable("NewsArticles");
                 });
@@ -2788,16 +2786,6 @@ namespace InstapropAPI.Migrations
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Developer");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.NewsArticle", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
-                        .WithMany()
-                        .HasForeignKey("DeveloperId")
-                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Developer");
                 });

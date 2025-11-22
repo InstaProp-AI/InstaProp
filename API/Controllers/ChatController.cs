@@ -41,7 +41,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/chat - Get user's chat list
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ChatDto>>> GetChats()
+        public async Task<ActionResult<IEnumerable<ChatDto>>> GetChats([FromQuery] long? developerId = null)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -64,6 +64,18 @@ namespace InstapropAPI.Controllers
                         c.SalesMemberId == accountId || // Chats I've taken
                         (c.DeveloperId == account.AssignedDeveloperId.Value && c.SalesMemberId == null) // Available chats for my developer
                     );
+            }
+            else if (account.RoleId == Role.ADMIN_ROLE_ID)
+            {
+                // Admins can see all chats or filter by developerId
+                if (developerId.HasValue)
+                {
+                    chatQuery = _context.Chats.Where(c => c.DeveloperId == developerId.Value);
+                }
+                else
+                {
+                    chatQuery = _context.Chats; // All chats for admin
+                }
             }
             else
             {
@@ -113,9 +125,14 @@ namespace InstapropAPI.Controllers
             if (accountId == null)
                 return Unauthorized();
 
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
             var chat = await _context.Chats
                 .Include(c => c.User)
                 .Include(c => c.Developer)
+                .Include(c => c.SalesMember)
                 .Include(c => c.Project)
                 .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
                     .ThenInclude(m => m.Sender)
@@ -126,8 +143,11 @@ namespace InstapropAPI.Controllers
             if (chat == null)
                 return NotFound("Chat not found");
 
-            // Verify user has access to this chat (user, developer, or assigned sales)
-            if (chat.UserId != accountId && chat.DeveloperId != accountId && chat.SalesMemberId != accountId)
+            // Verify user has access to this chat (user, developer, assigned sales, or admin)
+            if (account.RoleId != Role.ADMIN_ROLE_ID && 
+                chat.UserId != accountId && 
+                chat.DeveloperId != accountId && 
+                chat.SalesMemberId != accountId)
                 return Forbid();
 
             var chatDetails = new ChatDetailsDto
@@ -143,6 +163,8 @@ namespace InstapropAPI.Controllers
                 LastMessageAt = chat.LastMessageAt,
                 IsActive = chat.IsActive,
                 IsSupportChat = chat.IsSupportChat,
+                SalesMemberId = chat.SalesMemberId,
+                SalesMemberName = chat.SalesMember != null ? FormatAccountName(chat.SalesMember) : null,
                 Messages = chat.Messages.Select(m => new MessageDto
                 {
                     MessageId = m.MessageId,
@@ -243,6 +265,10 @@ namespace InstapropAPI.Controllers
             if (accountId == null)
                 return Unauthorized();
 
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
             var chat = await _context.Chats
                 .Include(c => c.User)
                 .Include(c => c.Developer)
@@ -251,8 +277,11 @@ namespace InstapropAPI.Controllers
             if (chat == null)
                 return NotFound("Chat not found");
 
-            // Verify user has access to this chat (user, developer, or assigned sales member)
-            if (chat.UserId != accountId && chat.DeveloperId != accountId && chat.SalesMemberId != accountId)
+            // Verify user has access to this chat (user, developer, assigned sales member, or admin)
+            if (account.RoleId != Role.ADMIN_ROLE_ID && 
+                chat.UserId != accountId && 
+                chat.DeveloperId != accountId && 
+                chat.SalesMemberId != accountId)
                 return Forbid();
 
             // Check if this is the first message in the chat
@@ -441,6 +470,10 @@ namespace InstapropAPI.Controllers
             if (accountId == null)
                 return Unauthorized();
 
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
             var chat = await _context.Chats
                 .Include(c => c.Messages)
                 .FirstOrDefaultAsync(c => c.ChatId == chatId);
@@ -448,8 +481,11 @@ namespace InstapropAPI.Controllers
             if (chat == null)
                 return NotFound("Chat not found");
 
-            // Verify user has access to this chat (user, developer, or assigned sales)
-            if (chat.UserId != accountId && chat.DeveloperId != accountId && chat.SalesMemberId != accountId)
+            // Verify user has access to this chat (user, developer, assigned sales, or admin)
+            if (account.RoleId != Role.ADMIN_ROLE_ID && 
+                chat.UserId != accountId && 
+                chat.DeveloperId != accountId && 
+                chat.SalesMemberId != accountId)
                 return Forbid();
 
             // Mark all unread messages from the other person as read
@@ -468,6 +504,173 @@ namespace InstapropAPI.Controllers
             await _firestoreService.MarkChatMessagesAsReadAsync(chatId, accountId.Value);
 
             return NoContent();
+        }
+
+        // PUT: api/chat/{chatId}/assign - Assign or unassign sales member to chat (Admin or Developer)
+        [HttpPut("{chatId}/assign")]
+        public async Task<IActionResult> AssignSalesMember(long chatId, [FromBody] AssignSalesMemberDto dto)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
+            var chat = await _context.Chats
+                .Include(c => c.Developer)
+                .Include(c => c.SalesMember)
+                .FirstOrDefaultAsync(c => c.ChatId == chatId);
+
+            if (chat == null)
+                return NotFound("Chat not found");
+
+            // Only admin or the developer who owns the chat can assign sales members
+            if (account.RoleId != Role.ADMIN_ROLE_ID && chat.DeveloperId != accountId)
+                return Forbid("Only admins or the chat's developer can assign sales members");
+
+            // If salesMemberId is provided, verify it's a valid sales member assigned to this developer
+            if (dto.SalesMemberId.HasValue)
+            {
+                var salesMember = await _context.Accounts.FindAsync(dto.SalesMemberId.Value);
+                if (salesMember == null || salesMember.RoleId != Role.SALES_ROLE_ID)
+                    return BadRequest("Invalid sales member");
+
+                // Verify sales member is assigned to this developer (unless admin)
+                if (account.RoleId != Role.ADMIN_ROLE_ID && salesMember.AssignedDeveloperId != chat.DeveloperId)
+                    return BadRequest("Sales member must be assigned to this developer");
+            }
+
+            chat.SalesMemberId = dto.SalesMemberId;
+            await _context.SaveChangesAsync();
+
+            // Reload to get updated sales member name
+            await _context.Entry(chat).Reference(c => c.SalesMember).LoadAsync();
+
+            return Ok(new
+            {
+                chatId = chat.ChatId,
+                salesMemberId = chat.SalesMemberId,
+                salesMemberName = chat.SalesMember != null ? FormatAccountName(chat.SalesMember) : null
+            });
+        }
+
+        // GET: api/chat/developers - Get developers with chat counts (for admin folder view)
+        [HttpGet("developers")]
+        public async Task<ActionResult<List<DeveloperChatCountDto>>> GetDevelopersWithChats()
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
+            // Only admins can see all developers
+            if (account.RoleId != Role.ADMIN_ROLE_ID)
+                return Forbid("Only admins can view all developers");
+
+            // Get developers and order by FirstName, then LastName (EF can translate this)
+            var developers = await _context.Accounts
+                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                .OrderBy(a => a.FirstName)
+                .ThenBy(a => a.LastName)
+                .Select(a => new DeveloperChatCountDto
+                {
+                    DeveloperId = a.AccountId,
+                    DeveloperName = $"{a.FirstName} {a.LastName}",
+                    Email = a.Email,
+                    ChatCount = _context.Chats.Count(c => c.DeveloperId == a.AccountId && c.IsActive)
+                })
+                .ToListAsync();
+
+            return Ok(developers);
+        }
+
+        // GET: api/chat/{developerId}/sales-members - Get sales members for a developer
+        [HttpGet("{developerId}/sales-members")]
+        public async Task<ActionResult<List<SalesMemberDto>>> GetSalesMembersForDeveloper(long developerId)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
+            // Verify developer exists
+            var developer = await _context.Accounts.FindAsync(developerId);
+            if (developer == null || developer.RoleId != Role.DEVELOPER_ROLE_ID)
+                return NotFound("Developer not found");
+
+            // Only admin or the developer can see their sales members
+            if (account.RoleId != Role.ADMIN_ROLE_ID && accountId != developerId)
+                return Forbid();
+
+            var salesMembers = await _context.Accounts
+                .Where(a => a.RoleId == Role.SALES_ROLE_ID && a.AssignedDeveloperId == developerId)
+                .Select(a => new SalesMemberDto
+                {
+                    AccountId = a.AccountId,
+                    FirstName = a.FirstName,
+                    LastName = a.LastName,
+                    Email = a.Email
+                })
+                .OrderBy(s => s.FirstName)
+                .ToListAsync();
+
+            return Ok(salesMembers);
+        }
+
+        // GET: api/chat/stats - Get chat statistics
+        [HttpGet("stats")]
+        public async Task<ActionResult<ChatStatsDto>> GetChatStats([FromQuery] long? developerId = null)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
+            IQueryable<Chat> chatQuery = _context.Chats.Where(c => c.IsActive);
+
+            // Filter by developer if provided or if current user is a developer
+            if (developerId.HasValue)
+            {
+                chatQuery = chatQuery.Where(c => c.DeveloperId == developerId.Value);
+            }
+            else if (account.RoleId == Role.DEVELOPER_ROLE_ID)
+            {
+                chatQuery = chatQuery.Where(c => c.DeveloperId == accountId.Value);
+            }
+            else if (account.RoleId != Role.ADMIN_ROLE_ID)
+            {
+                // Regular users only see their own chats
+                chatQuery = chatQuery.Where(c => c.UserId == accountId.Value);
+            }
+
+            var chats = await chatQuery.ToListAsync();
+            var chatIds = chats.Select(c => c.ChatId).ToList();
+
+            var stats = new ChatStatsDto
+            {
+                TotalChats = chats.Count,
+                TotalMessages = await _context.ChatMessages.CountAsync(m => chatIds.Contains(m.ChatId)),
+                TotalUsers = chats.Select(c => c.UserId).Distinct().Count(),
+                AssignedChats = chats.Count(c => c.SalesMemberId.HasValue),
+                UnassignedChats = chats.Count(c => !c.SalesMemberId.HasValue),
+                TotalSalesMembers = chats.Where(c => c.SalesMemberId.HasValue)
+                    .Select(c => c.SalesMemberId!.Value)
+                    .Distinct()
+                    .Count()
+            };
+
+            return Ok(stats);
         }
 
         // DELETE: api/chat/cleanup - Auto-delete messages older than 30 days
@@ -544,6 +747,8 @@ namespace InstapropAPI.Controllers
         public DateTime LastMessageAt { get; set; }
         public bool IsActive { get; set; }
         public bool IsSupportChat { get; set; }
+        public long? SalesMemberId { get; set; }
+        public string? SalesMemberName { get; set; }
         public List<MessageDto> Messages { get; set; } = new();
     }
 
@@ -571,6 +776,37 @@ namespace InstapropAPI.Controllers
     {
         public string Content { get; set; } = string.Empty;
         public long? PropertyId { get; set; }
+    }
+
+    public class AssignSalesMemberDto
+    {
+        public long? SalesMemberId { get; set; } // null to unassign
+    }
+
+    public class DeveloperChatCountDto
+    {
+        public long DeveloperId { get; set; }
+        public string DeveloperName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public int ChatCount { get; set; }
+    }
+
+    public class ChatStatsDto
+    {
+        public int TotalChats { get; set; }
+        public int TotalMessages { get; set; }
+        public int TotalUsers { get; set; }
+        public int AssignedChats { get; set; }
+        public int UnassignedChats { get; set; }
+        public int TotalSalesMembers { get; set; }
+    }
+
+    public class SalesMemberDto
+    {
+        public long AccountId { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? Email { get; set; }
     }
 }
 

@@ -1,9 +1,0 @@
-## Plan
-
-1. Reconcile `API/Controllers/FeedController.cs` so the explore feed pulls *all* premium blocks (deal highlights, project stories, investor milestones) **and** the new valuation/payout cards in one pass. That means merging both branches’ fetch lists and ensuring each helper (`GetDealHighlights()`, `GetValuationPrompts()`, etc.) remains referenced in `contentPool` construction and cached response logic.
-2. Merge `Flutter/lib/models/feed_item.dart` by unifying the enum so every feed type (`dealHighlight`, `livestream`, `valuationPrompt`, …) survives. Confirm any downstream `switch` statements handle the full set.
-3. Resolve `Flutter/lib/pages/explore_page.dart` by keeping the navigation/sliver layout and controller hooks from the “full app navigation” work while reintegrating the new cards: `FeedPostComposer`, `FeedLiveStreamCard`, `FeedValuationPromptCard`, `FeedPaymentReminderCard`, plus related imports (`live_stream_player_page.dart`, valuation/payment models). Make sure `_buildFeedItem` and the sliver sections surface the new types without losing featured deal/project story sections.
-4. Update `Flutter/lib/services/feed_service.dart` so `FeedResponseDto.fromJson` and the fallback generator both know about the combined feed types. Add any missing `appendContent` blocks or ID builders so valuations/reminders/milestones appear alongside the existing content when the backend is empty.
-5. Take the richer interactions from the feature branch’s `Flutter/lib/widgets/post_card.dart` (reactions, inline comments, sharing) and reintroduce the progressive image handling/import used elsewhere in the UI. Ensure the merged widget still wires to `widget.onTap` and existing services/providers, including `FeedPostComposer` and poll support.
-6. After resolving conflicts, run a quick sanity check (`flutter analyze` or at least `flutter pub get`) and `git status` to confirm the merge is clean before staging.
-

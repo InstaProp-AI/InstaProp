@@ -237,3 +237,26 @@ export interface DeveloperPermissions {
 export interface UpdatePermissionsDto {
   permissions: DeveloperPermissions;
 }
+
+export interface SalesTeam {
+  teamId: number;
+  teamName: string;
+  developerId: number;
+  developerName?: string;
+  developerEmail?: string;
+  memberCount?: number;
+  activeMemberCount?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TeamStats {
+  totalMembers: number;
+  activeMembers: number;
+  totalAssignedUsers: number;
+  totalChats: number;
+  totalDealsFinished: number;
+  totalRevenue: number;
+  averageResponseTimeHours?: number;
+  conversionRate: number;
+}

@@ -71,10 +71,30 @@ const UsersPage: React.FC = () => {
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', phoneNumber: '' });
   const [developerPermissions, setDeveloperPermissions] = useState<DeveloperPermissions | null>(null);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
+  // Statistics state - total counts from database
+  const [userStats, setUserStats] = useState({
+    total: 0,
+    verified: 0,
+    pending: 0,
+    notVerified: 0,
+    suspended: 0
+  });
 
   useEffect(() => {
     fetchUsers();
+    fetchUserStatistics();
   }, [currentPage, itemsPerPage]);
+
+  // Fetch total user statistics (separate from paginated user list)
+  const fetchUserStatistics = async () => {
+    try {
+      const stats = await usersApi.getUserStatistics();
+      setUserStats(stats);
+    } catch (error: any) {
+      console.error('Error fetching user statistics:', error);
+      // Don't show toast for stats errors, just log it
+    }
+  };
 
   const loadDeveloperPermissions = async () => {
     if (!selectedUser) return;
@@ -146,6 +166,7 @@ const UsersPage: React.FC = () => {
       await usersApi.verifyUser(accountId);
       toast.success('User verified successfully!');
       fetchUsers(); // Refresh the list
+      fetchUserStatistics(); // Refresh statistics
     } catch (error: any) {
       console.error('Error verifying user:', error);
       toast.error(error?.response?.data?.message || 'Failed to verify user');
@@ -158,6 +179,7 @@ const UsersPage: React.FC = () => {
         await usersApi.rejectUser(accountId);
         toast.success('User rejected successfully!');
         fetchUsers(); // Refresh the list
+        fetchUserStatistics(); // Refresh statistics
       } catch (error: any) {
         console.error('Error rejecting user:', error);
         toast.error(error?.response?.data?.message || 'Failed to reject user');
@@ -171,6 +193,7 @@ const UsersPage: React.FC = () => {
         await usersApi.banUser(accountId);
         toast.success('User banned successfully!');
         fetchUsers(); // Refresh the list
+        fetchUserStatistics(); // Refresh statistics
       } catch (error: any) {
         console.error('Error banning user:', error);
         toast.error(error?.response?.data?.message || 'Failed to ban user');
@@ -197,6 +220,7 @@ const UsersPage: React.FC = () => {
       setSuspensionDuration('7');
       setSuspensionReason('');
       fetchUsers();
+      fetchUserStatistics(); // Refresh statistics
     } catch (error: any) {
       console.error('Error suspending user:', error);
       toast.error(error?.response?.data?.message || 'Failed to suspend user');
@@ -209,6 +233,7 @@ const UsersPage: React.FC = () => {
         await usersApi.unsuspendUser(accountId);
         toast.success('User unsuspended successfully!');
         fetchUsers();
+        fetchUserStatistics(); // Refresh statistics
       } catch (error: any) {
         console.error('Error unsuspending user:', error);
         toast.error(error?.response?.data?.message || 'Failed to unsuspend user');
@@ -572,35 +597,35 @@ const UsersPage: React.FC = () => {
           {[
             {
               title: 'Total Users',
-              value: users.length,
+              value: userStats.total,
               icon: Users,
               color: '#3b82f6',
               bgColor: '#dbeafe'
             },
             {
               title: 'Verified',
-              value: users.filter(u => u.status === 'Verified').length,
+              value: userStats.verified,
               icon: CheckCircle,
               color: '#10b981',
               bgColor: '#dcfce7'
             },
             {
               title: 'Pending',
-              value: users.filter(u => u.status === 'Pending').length,
+              value: userStats.pending,
               icon: Clock,
               color: '#f59e0b',
               bgColor: '#fef3c7'
             },
             {
               title: 'Suspended',
-              value: users.filter(u => u.isSuspended).length,
+              value: userStats.suspended,
               icon: Ban,
               color: '#d97706',
               bgColor: '#fef3c7'
             },
             {
               title: 'Not Verified',
-              value: users.filter(u => u.status === 'NotVerified').length,
+              value: userStats.notVerified,
               icon: AlertTriangle,
               color: '#ef4444',
               bgColor: '#fef2f2'

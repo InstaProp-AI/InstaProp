@@ -589,6 +589,30 @@ namespace InstapropAPI.Controllers
                 });
             }
 
+            // If SalesTeamId is provided, verify it belongs to the assigned developer
+            long? salesTeamId = signupRequest.SalesTeamId;
+            if (salesTeamId.HasValue)
+            {
+                var team = await _context.SalesTeams
+                    .FirstOrDefaultAsync(t => t.TeamId == salesTeamId.Value && t.DeveloperId == assignedDeveloperId);
+                if (team == null)
+                {
+                    return BadRequest("Invalid sales team ID or team does not belong to the assigned developer.");
+                }
+            }
+            else
+            {
+                // Auto-assign to first team of developer if exists
+                var firstTeam = await _context.SalesTeams
+                    .Where(t => t.DeveloperId == assignedDeveloperId)
+                    .OrderBy(t => t.CreatedAt)
+                    .FirstOrDefaultAsync();
+                if (firstTeam != null)
+                {
+                    salesTeamId = firstTeam.TeamId;
+                }
+            }
+
             // Create Sales account (skip email/phone verification requirements)
             var account = new Account
             {
@@ -598,6 +622,7 @@ namespace InstapropAPI.Controllers
                 PhoneNumber = normalizedPhone,
                 RoleId = Role.SALES_ROLE_ID,
                 AssignedDeveloperId = assignedDeveloperId,
+                SalesTeamId = salesTeamId,
                 HashedPassword = BCrypt.Net.BCrypt.HashPassword(signupRequest.Password),
                 Status = VerificationStatus.Verified, // Sales accounts are auto-verified
                 EmailVerified = true, // Skip email verification for sales
@@ -2066,6 +2091,7 @@ namespace InstapropAPI.Controllers
         public string PhoneNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public long? DeveloperId { get; set; } // Required if admin, ignored if developer (auto-assigned)
+        public long? SalesTeamId { get; set; } // Optional: assign to specific team
     }
 }
 

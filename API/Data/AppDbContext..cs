@@ -18,6 +18,7 @@ namespace InstapropAPI.Data
 
         public DbSet<Role> Roles { get; set; }
         public DbSet<Account> Accounts { get; set; }
+        public DbSet<SalesTeam> SalesTeams { get; set; }
         // Removed: public DbSet<Property> Properties { get; set; } - Now using ChildProperty
         public DbSet<PropertyDoc> PropertyDocs { get; set; }
         public DbSet<PropertyImage> PropertyImages { get; set; }
@@ -98,6 +99,22 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.RoleName).HasMaxLength(50).IsRequired();
                 entity.Property(e => e.Description).HasMaxLength(500);
                 entity.HasIndex(e => e.RoleName).IsUnique();
+            });
+
+            // Configure SalesTeam
+            modelBuilder.Entity<SalesTeam>(entity =>
+            {
+                entity.HasKey(e => e.TeamId);
+                entity.Property(e => e.TeamId).ValueGeneratedOnAdd();
+                entity.Property(e => e.TeamName).HasMaxLength(200).IsRequired();
+                entity.HasOne(e => e.Developer)
+                    .WithMany()
+                    .HasForeignKey(e => e.DeveloperId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasMany(e => e.SalesMembers)
+                    .WithOne(a => a.SalesTeam)
+                    .HasForeignKey(a => a.SalesTeamId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure Account
@@ -567,6 +584,10 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.PublishedDate).IsRequired();
                 entity.Property(e => e.CreatedAt).IsRequired();
                 entity.Property(e => e.IsPublished).IsRequired();
+                entity.HasOne(e => e.Developer)
+                    .WithMany()
+                    .HasForeignKey(e => e.DeveloperId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure NewsImage

@@ -105,6 +105,324 @@ namespace InstapropAPI.Services
             Console.WriteLine("✅ Realistic Egyptian Real Estate Data Seeding Completed!");
         }
 
+        // Public method to seed news articles only
+        public async Task<List<NewsArticle>> SeedNewsOnlyAsync()
+        {
+            Console.WriteLine("📰 Seeding News Articles...");
+            var articles = await SeedNewsArticlesAsync();
+            await SeedNewsImagesAsync(articles);
+            Console.WriteLine($"✅ Successfully seeded {articles.Count} news articles with images");
+            return articles;
+        }
+
+        // Public method to seed news articles for each developer (3-5 articles per developer)
+        public async Task<Dictionary<long, List<NewsArticle>>> SeedDeveloperNewsAsync()
+        {
+            Console.WriteLine("📰 Seeding News Articles for Developers...");
+            
+            // Get all developers
+            var developers = await _context.Accounts
+                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                .ToListAsync();
+
+            if (!developers.Any())
+            {
+                Console.WriteLine("⚠️ No developers found. Skipping developer news seeding.");
+                return new Dictionary<long, List<NewsArticle>>();
+            }
+
+            var allArticles = new List<NewsArticle>();
+            var developerNewsMap = new Dictionary<long, List<NewsArticle>>();
+            var random = new Random();
+
+            // News templates for developers
+            var newsTemplates = new[]
+            {
+                new { Title = "New Property Launch in {Location}", Category = "Projects", Content = "We are excited to announce the launch of our new property development in {Location}. This project features modern architecture, premium finishes, and excellent location advantages.\n\nKey Features:\n• Prime location with easy access to main roads\n• Modern design with high-quality materials\n• Flexible payment plans available\n• Expected delivery within 18-24 months\n\nContact us for more information and to schedule a site visit." },
+                new { Title = "Market Update: {Location} Real Estate Trends", Category = "Market Updates", Content = "The real estate market in {Location} continues to show strong growth potential. Recent infrastructure developments and government investments have contributed to increased property values.\n\nMarket Highlights:\n• Average price increase of 12-15% in the past year\n• High demand for residential units\n• Growing interest from international investors\n• Positive outlook for the next 2-3 years\n\nOur team is closely monitoring market trends to provide the best investment opportunities." },
+                new { Title = "Investment Opportunity: {ProjectName} Phase 2", Category = "Investment", Content = "We are pleased to announce Phase 2 of our {ProjectName} development. Building on the success of Phase 1, Phase 2 offers even more amenities and improved designs.\n\nPhase 2 Features:\n• Enhanced unit layouts\n• Additional recreational facilities\n• Improved parking solutions\n• Better connectivity\n\nEarly bird discounts available for the first 50 reservations. Don't miss this opportunity!" },
+                new { Title = "Construction Update: {ProjectName} Progress", Category = "Projects", Content = "We are happy to share the latest progress on {ProjectName}. Construction is proceeding on schedule with excellent quality standards.\n\nCurrent Status:\n• Foundation work: 100% complete\n• Structural work: 65% complete\n• MEP installations: 40% complete\n• Expected completion: On track for scheduled delivery\n\nWe will continue to provide regular updates on the project's progress." },
+                new { Title = "Special Offer: Limited Time Investment Package", Category = "Investment", Content = "Take advantage of our limited-time investment package for {ProjectName}. This exclusive offer includes:\n\nPackage Benefits:\n• Flexible payment plans (up to 10 years)\n• Special pricing for early investors\n• Free parking space included\n• Premium finishing options\n• Guaranteed rental yield for first 2 years\n\nThis offer is valid for a limited time only. Contact our sales team to learn more." }
+            };
+
+            var newsImageIds = new[]
+            {
+                "1564013799919-bc007da7807a", "1560448204-e02f11c3d0e2", "1568605114967-8130f3a36994",
+                "1600596542810-ff374b12c26e", "1600566753190-17f0baa2a6c3", "1600585154340-be6161a56a0b",
+                "1600602045025-4a982f829bcf", "1600602045025-4a982f829bcf", "1600602045025-4a982f829bcf"
+            };
+
+            foreach (var developer in developers)
+            {
+                var developerArticles = new List<NewsArticle>();
+                var articleCount = random.Next(3, 6); // 3-5 articles per developer
+                var developerName = $"{developer.FirstName} {developer.LastName}".Trim();
+                var locations = new[] { "New Administrative Capital", "6th October City", "Sheikh Zayed", "Madinaty", "Rehab City" };
+                var projectNames = new[] { "Elite Residences", "Premium Heights", "Luxury Gardens", "Modern Living", "Elite Towers" };
+
+                for (int i = 0; i < articleCount; i++)
+                {
+                    var template = newsTemplates[random.Next(newsTemplates.Length)];
+                    var location = locations[random.Next(locations.Length)];
+                    var projectName = projectNames[random.Next(projectNames.Length)];
+                    
+                    var title = template.Title
+                        .Replace("{Location}", location)
+                        .Replace("{ProjectName}", projectName);
+                    
+                    var content = template.Content
+                        .Replace("{Location}", location)
+                        .Replace("{ProjectName}", projectName);
+
+                    var article = new NewsArticle
+                    {
+                        Title = title,
+                        Content = content,
+                        Category = template.Category,
+                        PublishedDate = DateTime.UtcNow.AddDays(-random.Next(1, 30)),
+                        IsPublished = true,
+                        CreatedAt = DateTime.UtcNow.AddDays(-random.Next(2, 31)),
+                        DeveloperId = developer.AccountId
+                    };
+
+                    developerArticles.Add(article);
+                    allArticles.Add(article);
+                }
+
+                developerNewsMap[developer.AccountId] = developerArticles;
+            }
+
+            // Save all articles
+            await _context.NewsArticles.AddRangeAsync(allArticles);
+            await _context.SaveChangesAsync();
+
+            // Add images to articles
+            var images = new List<NewsImage>();
+            var imageIndex = 0;
+            foreach (var article in allArticles)
+            {
+                var imageId = newsImageIds[imageIndex % newsImageIds.Length];
+                images.Add(new NewsImage
+                {
+                    NewsArticleId = article.NewsArticleId,
+                    ImageUrl = GetUnsplashUrl(imageId, 1200, 600),
+                    DisplayOrder = 0
+                });
+                imageIndex++;
+            }
+
+            await _context.NewsImages.AddRangeAsync(images);
+            await _context.SaveChangesAsync();
+
+            Console.WriteLine($"✅ Successfully seeded {allArticles.Count} news articles for {developers.Count} developers");
+            return developerNewsMap;
+        }
+
+        // Public method to seed chats with messages for all developers
+        public async Task<Dictionary<long, List<Chat>>> SeedChatsWithMessagesAsync()
+        {
+            Console.WriteLine("💬 Seeding Chats and Messages for Developers...");
+            
+            // Get all developers
+            var developers = await _context.Accounts
+                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                .ToListAsync();
+
+            if (!developers.Any())
+            {
+                Console.WriteLine("⚠️ No developers found. Skipping chat seeding.");
+                return new Dictionary<long, List<Chat>>();
+            }
+
+            // Get all regular users
+            var users = await _context.Accounts
+                .Where(a => a.RoleId == Role.USER_ROLE_ID)
+                .ToListAsync();
+
+            if (!users.Any())
+            {
+                Console.WriteLine("⚠️ No users found. Skipping chat seeding.");
+                return new Dictionary<long, List<Chat>>();
+            }
+
+            // Get projects for developers
+            var projects = await _context.Projects
+                .Where(p => p.IsActive)
+                .ToListAsync();
+
+            // Get sales team members
+            var salesMembers = await _context.Accounts
+                .Where(a => a.RoleId == Role.SALES_ROLE_ID && a.AssignedDeveloperId.HasValue)
+                .ToListAsync();
+
+            var allChats = new List<Chat>();
+            var developerChatMap = new Dictionary<long, List<Chat>>();
+            var random = new Random();
+
+            // Message templates
+            var userMessageTemplates = new[]
+            {
+                "Hello, I'm interested in your properties. Can you tell me more?",
+                "What properties do you have available in {Location}?",
+                "I'm looking for a {Type} property. What are my options?",
+                "What's the price range for properties in {Project}?",
+                "Can I schedule a site visit?",
+                "Are there any special offers or discounts available?",
+                "What payment plans do you offer?",
+                "When will {Project} be completed?",
+                "What amenities are included in the project?",
+                "Is financing available through banks?",
+                "What's the down payment requirement?",
+                "Are there any maintenance fees?",
+                "Can you send me more details about the property?",
+                "What's the square footage of the units?",
+                "Is parking included?"
+            };
+
+            var developerMessageTemplates = new[]
+            {
+                "Hello! Thank you for your interest. I'd be happy to help you find the perfect property.",
+                "We have several properties available in {Location}. Let me share some options with you.",
+                "Our {Project} project offers {Type} units with modern finishes and excellent location.",
+                "The price range for properties in {Project} starts from {Price} EGP.",
+                "Absolutely! I can schedule a site visit for you. When would be convenient?",
+                "Yes, we have special offers for early investors. Let me provide you with the details.",
+                "We offer flexible payment plans up to 10 years with competitive interest rates.",
+                "{Project} is expected to be completed by {Date}. Construction is progressing well.",
+                "The project includes parking, 24/7 security, swimming pool, gym, and beautiful gardens.",
+                "Yes, financing is available through several partner banks. I can provide details.",
+                "The down payment is 15% of the total price, payable over 12 months.",
+                "Maintenance fees are approximately 80 EGP per square meter annually.",
+                "I'll send you detailed information about the property right away.",
+                "The units range from 100 to 300 square meters, depending on the type.",
+                "Yes, parking is included. Each unit comes with one or two parking spaces."
+            };
+
+            var locations = new[] { "New Administrative Capital", "6th October City", "Sheikh Zayed", "Madinaty", "Rehab City", "New Cairo" };
+            var propertyTypes = new[] { "Apartment", "Villa", "Townhouse", "Duplex", "Penthouse" };
+            var prices = new[] { "2,500,000", "3,500,000", "5,000,000", "7,500,000", "10,000,000" };
+            var dates = new[] { "December 2024", "March 2025", "June 2025", "September 2025" };
+
+            foreach (var developer in developers)
+            {
+                var developerChats = new List<Chat>();
+                var chatCount = random.Next(3, 8); // 3-7 chats per developer
+                var developerProjects = projects.Where(p => p.DeveloperId == developer.AccountId).ToList();
+                var developerSalesMembers = salesMembers.Where(s => s.AssignedDeveloperId == developer.AccountId).ToList();
+
+                for (int i = 0; i < chatCount; i++)
+                {
+                    // Select a random user
+                    var user = users[random.Next(users.Count)];
+                    
+                    // Select a random project (or null)
+                    Project? project = null;
+                    if (developerProjects.Any())
+                    {
+                        project = developerProjects[random.Next(developerProjects.Count)];
+                    }
+
+                    // Create chat
+                    var chat = new Chat
+                    {
+                        UserId = user.AccountId,
+                        DeveloperId = developer.AccountId,
+                        ProjectId = project?.ProjectId,
+                        CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 30)),
+                        LastMessageAt = DateTime.UtcNow.AddHours(-random.Next(1, 72)),
+                        IsActive = true,
+                        IsSupportChat = false,
+                        SalesMemberId = developerSalesMembers.Any() && random.Next(100) < 60 
+                            ? developerSalesMembers[random.Next(developerSalesMembers.Count)].AccountId 
+                            : null // 60% chance of having a sales member assigned
+                    };
+
+                    developerChats.Add(chat);
+                    allChats.Add(chat);
+                }
+
+                developerChatMap[developer.AccountId] = developerChats;
+            }
+
+            // Save all chats
+            await _context.Chats.AddRangeAsync(allChats);
+            await _context.SaveChangesAsync();
+
+            // Add messages to each chat
+            var allMessages = new List<ChatMessage>();
+            foreach (var chat in allChats)
+            {
+                var messageCount = random.Next(3, 10); // 3-9 messages per chat
+                var chatCreatedAt = chat.CreatedAt;
+                var lastMessageTime = chatCreatedAt;
+
+                for (int i = 0; i < messageCount; i++)
+                {
+                    var isUserMessage = i % 2 == 0; // Alternate between user and developer
+                    var senderId = isUserMessage ? chat.UserId : chat.DeveloperId;
+                    
+                    string content;
+                    if (isUserMessage)
+                    {
+                        var template = userMessageTemplates[random.Next(userMessageTemplates.Length)];
+                        var location = locations[random.Next(locations.Length)];
+                        var propertyType = propertyTypes[random.Next(propertyTypes.Length)];
+                        var projectName = chat.Project?.Name ?? "our project";
+                        
+                        content = template
+                            .Replace("{Location}", location)
+                            .Replace("{Type}", propertyType)
+                            .Replace("{Project}", projectName);
+                    }
+                    else
+                    {
+                        var template = developerMessageTemplates[random.Next(developerMessageTemplates.Length)];
+                        var location = locations[random.Next(locations.Length)];
+                        var propertyType = propertyTypes[random.Next(propertyTypes.Length)];
+                        var projectName = chat.Project?.Name ?? "our project";
+                        var price = prices[random.Next(prices.Length)];
+                        var date = dates[random.Next(dates.Length)];
+                        
+                        content = template
+                            .Replace("{Location}", location)
+                            .Replace("{Type}", propertyType)
+                            .Replace("{Project}", projectName)
+                            .Replace("{Price}", price)
+                            .Replace("{Date}", date);
+                    }
+
+                    // Increment message time (messages spread over time)
+                    lastMessageTime = lastMessageTime.AddMinutes(random.Next(30, 480)); // 30 minutes to 8 hours between messages
+                    if (lastMessageTime > DateTime.UtcNow)
+                    {
+                        lastMessageTime = DateTime.UtcNow.AddHours(-random.Next(1, 24));
+                    }
+
+                    var message = new ChatMessage
+                    {
+                        ChatId = chat.ChatId,
+                        SenderId = senderId,
+                        Content = content,
+                        CreatedAt = lastMessageTime,
+                        IsRead = i < messageCount - 1 || random.Next(100) < 70, // 70% chance last message is read
+                        ExpiresAt = lastMessageTime.AddDays(30)
+                    };
+
+                    allMessages.Add(message);
+                }
+
+                // Update chat's last message time
+                chat.LastMessageAt = lastMessageTime;
+            }
+
+            // Save all messages
+            await _context.ChatMessages.AddRangeAsync(allMessages);
+            await _context.SaveChangesAsync();
+
+            Console.WriteLine($"✅ Successfully seeded {allChats.Count} chats with {allMessages.Count} messages for {developers.Count} developers");
+            return developerChatMap;
+        }
+
         private async Task ClearAllDataAsync()
         {
             Console.WriteLine("🗑️ Clearing existing data...");
@@ -2038,7 +2356,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("📰 Seeding News Articles...");
             var articles = new List<NewsArticle>();
 
-            // News 1: Market update
+            // News 1: Market update (Admin post)
             var news1 = new NewsArticle
             {
                 Title = "Egypt Real Estate Prices Rise 15% in Q1 2024",
@@ -2046,11 +2364,12 @@ namespace InstapropAPI.Services
                 Category = "Market Updates",
                 PublishedDate = DateTime.UtcNow.AddDays(-20),
                 IsPublished = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-21)
+                CreatedAt = DateTime.UtcNow.AddDays(-21),
+                DeveloperId = null // Admin post
             };
             articles.Add(news1);
 
-            // News 2: New project launch
+            // News 2: New project launch (Admin post)
             var news2 = new NewsArticle
             {
                 Title = "New Residential Project Launched in Administrative Capital Worth 5 Billion EGP",
@@ -2058,11 +2377,12 @@ namespace InstapropAPI.Services
                 Category = "Projects",
                 PublishedDate = DateTime.UtcNow.AddDays(-15),
                 IsPublished = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-16)
+                CreatedAt = DateTime.UtcNow.AddDays(-16),
+                DeveloperId = null // Admin post
             };
             articles.Add(news2);
 
-            // News 3: Investment tips
+            // News 3: Investment tips (Admin post)
             var news3 = new NewsArticle
             {
                 Title = "5 Golden Tips for Successful Real Estate Investment in Egypt",
@@ -2070,11 +2390,12 @@ namespace InstapropAPI.Services
                 Category = "Tips",
                 PublishedDate = DateTime.UtcNow.AddDays(-10),
                 IsPublished = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-11)
+                CreatedAt = DateTime.UtcNow.AddDays(-11),
+                DeveloperId = null // Admin post
             };
             articles.Add(news3);
 
-            // News 4: Infrastructure update
+            // News 4: Infrastructure update (Admin post)
             var news4 = new NewsArticle
             {
                 Title = "Monorail Station Opens in New Administrative Capital",
@@ -2082,11 +2403,12 @@ namespace InstapropAPI.Services
                 Category = "Infrastructure",
                 PublishedDate = DateTime.UtcNow.AddDays(-5),
                 IsPublished = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-6)
+                CreatedAt = DateTime.UtcNow.AddDays(-6),
+                DeveloperId = null // Admin post
             };
             articles.Add(news4);
 
-            // News 5: Legal update
+            // News 5: Legal update (Admin post)
             var news5 = new NewsArticle
             {
                 Title = "New Legal Updates for Property Owners in Egypt",
@@ -2094,7 +2416,8 @@ namespace InstapropAPI.Services
                 Category = "Legal",
                 PublishedDate = DateTime.UtcNow.AddDays(-2),
                 IsPublished = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-3)
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                DeveloperId = null // Admin post
             };
             articles.Add(news5);
 

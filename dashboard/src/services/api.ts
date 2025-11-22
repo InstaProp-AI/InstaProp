@@ -281,10 +281,14 @@ api.interceptors.response.use(
     }
     
     if (status === 401) {
-      console.warn('🔒 Unauthorized - Clearing token and redirecting to login');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('currentAccount');
-      window.location.href = '/';
+      // Don't redirect on login endpoint errors - let the login page handle it
+      const isLoginEndpoint = url?.includes('/account/login');
+      if (!isLoginEndpoint) {
+        console.warn('🔒 Unauthorized - Clearing token and redirecting to login');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentAccount');
+        window.location.href = '/';
+      }
     }
     
     return Promise.reject(error);
@@ -333,6 +337,18 @@ export const authApi = {
 
 // Users/Accounts API - Using Admin endpoints
 export const usersApi = {
+  // Get user statistics (total counts)
+  getUserStatistics: async (): Promise<{
+    total: number;
+    verified: number;
+    pending: number;
+    notVerified: number;
+    suspended: number;
+  }> => {
+    const response = await api.get('/admin/stats');
+    return response.data.users;
+  },
+  
   getAllUsers: async (page: number = 1, pageSize: number = 10): Promise<PaginatedResponse<Account>> => {
     const response = await api.get(`/admin/users?page=${page}&pageSize=${pageSize}`);
     return response.data;
@@ -397,7 +413,7 @@ export const usersApi = {
 // Sales API
 export const salesApi = {
   // Get all sales team members
-  getSalesTeam: async (): Promise<Account[]> => {
+  getSalesTeamMembers: async (): Promise<Account[]> => {
     const response = await api.get('/admin/users', {
       params: { roleId: 6723546723546723, pageSize: 1000 } // Sales role ID, large page size to get all
     });
@@ -421,21 +437,33 @@ export const salesApi = {
     firstName: string;
     lastName: string;
     email: string;
-    phoneNumber: string;
+    phoneNumber?: string;
+    phone?: string; // Accept both phone and phoneNumber for compatibility
     password: string;
     developerId?: number; // Required for admin, auto-assigned for developer
   }): Promise<Account> => {
-    // Map to backend expected format (camelCase to PascalCase)
+    // Use phoneNumber if provided, otherwise fall back to phone
+    const phoneNumber = data.phoneNumber || data.phone;
+    if (!phoneNumber) {
+      throw new Error('Phone number is required');
+    }
+    
+    // ASP.NET Core by default uses camelCase JSON serialization
+    // The backend model binding will map camelCase to PascalCase properties
     const requestData: any = {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
-      phoneNumber: data.phoneNumber,
+      phoneNumber: phoneNumber,
       password: data.password,
     };
-    // Include DeveloperId if provided (backend expects PascalCase)
+    // Include developerId if provided
     if (data.developerId !== undefined) {
       requestData.developerId = data.developerId;
+    }
+    // Include teamId if provided
+    if (data.teamId !== undefined) {
+      requestData.salesTeamId = data.teamId;
     }
     const response = await api.post('/account/signup-sales', requestData);
     return response.data.account || response.data;
@@ -466,6 +494,46 @@ export const salesApi = {
   deleteSalesAccount: async (id: number): Promise<void> => {
     await api.delete(`/admin/users/${id}`);
   },
+
+  // Sales Team API
+  getSalesTeams: async (): Promise<any[]> => {
+    const response = await api.get('/SalesTeam');
+    return response.data || [];
+  },
+
+  getSalesTeam: async (id: number): Promise<any> => {
+    const response = await api.get(`/SalesTeam/${id}`);
+    return response.data;
+  },
+
+  getTeamMembers: async (teamId: number): Promise<Account[]> => {
+    const response = await api.get(`/SalesTeam/${teamId}/members`);
+    return response.data || [];
+  },
+
+  getTeamStats: async (teamId: number): Promise<any> => {
+    const response = await api.get(`/SalesTeam/${teamId}/stats`);
+    return response.data;
+  },
+
+  getDeveloperTeams: async (developerId: number): Promise<any[]> => {
+    const response = await api.get(`/SalesTeam/developers/${developerId}/teams`);
+    return response.data || [];
+  },
+
+  createSalesTeam: async (data: { teamName?: string; developerId: number }): Promise<any> => {
+    const response = await api.post('/SalesTeam', data);
+    return response.data;
+  },
+
+  updateSalesTeam: async (id: number, data: { teamName?: string; developerId?: number }): Promise<any> => {
+    const response = await api.put(`/SalesTeam/${id}`, data);
+    return response.data;
+  },
+
+  deleteSalesTeam: async (id: number): Promise<void> => {
+    await api.delete(`/SalesTeam/${id}`);
+  },
 };
 
 // Projects API - Role-based (backend handles authorization)
@@ -474,6 +542,11 @@ export const projectsApi = {
   // Admin: all projects, Developer: only their projects
   getProjects: async (): Promise<Project[]> => {
     const response = await api.get('/project');
+    return response.data;
+  },
+  
+  getProjectsByDeveloper: async (developerId: number): Promise<Project[]> => {
+    const response = await api.get(`/project/by-developer/${developerId}`);
     return response.data;
   },
   
@@ -841,7 +914,7 @@ export const permissionsApi = {
   // Admin: Update developer permissions
   updateDeveloperPermissions: async (developerId: number, permissions: DeveloperPermissions): Promise<DeveloperPermissions> => {
     const response = await api.put(`/admin/developers/${developerId}/permissions`, {
-      permissions
+      Permissions: permissions
     });
     return response.data.permissions || response.data;
   },
@@ -891,10 +964,34 @@ export const communitiesApi = {
   },
 };
 
+// Admin Seeding API
+export const adminSeedingApi = {
+  seedDeveloperNews: async () => {
+    const response = await api.post('/admin/seed-developer-news');
+    return response.data;
+  },
+  seedChats: async () => {
+    const response = await api.post('/admin/seed-chats');
+    return response.data;
+  },
+};
+
 // News API
 export const newsApi = {
-  getNews: async (page: number = 1, pageSize: number = 10) => {
-    const response = await api.get(`/news?page=${page}&pageSize=${pageSize}`);
+  getNews: async (page: number = 1, pageSize: number = 10, developerId?: number) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
+    if (developerId !== undefined) {
+      params.append('developerId', developerId.toString());
+    }
+    const response = await api.get(`/news?${params.toString()}`);
+    return response.data;
+  },
+  
+  getDevelopersWithNews: async () => {
+    const response = await api.get('/news/developers');
     return response.data;
   },
   
@@ -921,12 +1018,22 @@ export const newsApi = {
   updateNews: async (id: number, data: any) => {
     await api.put(`/news/${id}`, data);
   },
+  
+  deleteNews: async (id: number) => {
+    await api.delete(`/news/${id}`);
+  },
 };
+
 
 // Chats API
 export const chatsApi = {
-  getChats: async () => {
-    const response = await api.get('/chat');
+  getChats: async (developerId?: number) => {
+    const params = new URLSearchParams();
+    if (developerId !== undefined) {
+      params.append('developerId', developerId.toString());
+    }
+    const url = params.toString() ? `/chat?${params.toString()}` : '/chat';
+    const response = await api.get(url);
     return response.data;
   },
   
@@ -947,6 +1054,27 @@ export const chatsApi = {
   
   markAsRead: async (chatId: number) => {
     await api.put(`/chat/${chatId}/read`);
+  },
+  
+  assignSalesMember: async (chatId: number, salesMemberId: number | null) => {
+    const response = await api.put(`/chat/${chatId}/assign`, { salesMemberId });
+    return response.data;
+  },
+  
+  getDevelopersWithChats: async () => {
+    const response = await api.get('/chat/developers');
+    return response.data;
+  },
+  
+  getChatStats: async (developerId?: number) => {
+    const params = developerId !== undefined ? `?developerId=${developerId}` : '';
+    const response = await api.get(`/chat/stats${params}`);
+    return response.data;
+  },
+  
+  getSalesMembersForDeveloper: async (developerId: number) => {
+    const response = await api.get(`/chat/${developerId}/sales-members`);
+    return response.data;
   },
 };
 
@@ -1022,6 +1150,40 @@ export const valuationApi = {
   
   getValuationHistory: async () => {
     const response = await api.get('/valuation/history');
+    return response.data;
+  },
+};
+
+// Property Financials API
+export const propertyFinancialsApi = {
+  getPropertyFinancials: async (propertyId: number, marketValue?: number) => {
+    const params = marketValue ? `?marketValue=${marketValue}` : '';
+    const response = await api.get(`/property/${propertyId}/financials${params}`);
+    return response.data;
+  },
+};
+
+// Parent Property API
+export const parentPropertyApi = {
+  getParentProperty: async (parentPropertyId: number) => {
+    const response = await api.get(`/parentproperty/${parentPropertyId}`);
+    return response.data;
+  },
+  
+  getParentChildren: async (parentPropertyId: number) => {
+    const response = await api.get(`/parentproperty/${parentPropertyId}/children`);
+    return response.data;
+  },
+};
+
+// Gold Comparison API
+export const goldApi = {
+  compareWithProperty: async (parentPropertyId: number, propertyPrice?: number) => {
+    let url = `/goldprice/compare-property?parentPropertyId=${parentPropertyId}`;
+    if (propertyPrice) {
+      url += `&propertyPrice=${propertyPrice}`;
+    }
+    const response = await api.get(url);
     return response.data;
   },
 };

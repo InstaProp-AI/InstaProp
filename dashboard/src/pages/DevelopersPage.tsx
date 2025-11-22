@@ -120,7 +120,14 @@ const DevelopersPage: React.FC = () => {
 
     try {
       setLoadingPermissions(true);
-      await permissionsApi.updateDeveloperPermissions(selectedDeveloper.accountId, developerPermissions);
+      // Filter to only include optional features (backend rejects default features: Projects, Properties, Analytics)
+      const optionalPermissions: DeveloperPermissions = {};
+      optionalFeatures.forEach(feature => {
+        if (developerPermissions[feature] !== undefined) {
+          optionalPermissions[feature] = developerPermissions[feature];
+        }
+      });
+      await permissionsApi.updateDeveloperPermissions(selectedDeveloper.accountId, optionalPermissions);
       toast.success('Permissions updated successfully!');
       setShowPermissionsModal(false);
     } catch (error: any) {

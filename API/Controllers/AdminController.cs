@@ -6,6 +6,7 @@ using InstapropAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using InstapropAPI.Services;
 using BCrypt.Net;
+using System.Linq;
 
 namespace InstapropAPI.Controllers
 {
@@ -913,6 +914,9 @@ namespace InstapropAPI.Controllers
                 var notVerifiedUsers = await _context.Accounts
                     .Where(a => a.RoleId == Role.USER_ROLE_ID && a.Status == VerificationStatus.NotVerified)
                     .CountAsync();
+                var suspendedUsers = await _context.Accounts
+                    .Where(a => a.RoleId == Role.USER_ROLE_ID && a.IsSuspended)
+                    .CountAsync();
                 
                 // Developer and Admin counts using non-guessable RoleId
                 var totalDevelopers = await _context.Accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).CountAsync();
@@ -958,6 +962,7 @@ namespace InstapropAPI.Controllers
                         verified = verifiedUsers,
                         pending = pendingUsers,
                         notVerified = notVerifiedUsers,
+                        suspended = suspendedUsers,
                         developers = totalDevelopers,
                         admins = totalAdmins
                     },
@@ -1164,7 +1169,9 @@ namespace InstapropAPI.Controllers
                         dailyRevenue
                     },
                     topProperties,
-                    categoryDistribution = await _context.ChildProperties
+                    categoryDistribution = (await _context.ChildProperties
+                        .Select(p => new { p.Type, p.Status })
+                        .ToListAsync())
                         .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
                         .Select(g => new
                         {
@@ -1172,7 +1179,7 @@ namespace InstapropAPI.Controllers
                             count = g.Count(),
                             approved = g.Count(p => p.Status == PropertyStatus.Approved)
                         })
-                        .ToListAsync()
+                        .ToList()
                 };
 
                 return Ok(analytics);
@@ -1225,8 +1232,73 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                // Chat seeding can be added later if needed
-                return Ok(new { message = "Chats and messages seeded successfully" });
+                var developerChatMap = await _seedingService.SeedChatsWithMessagesAsync();
+                var totalChats = developerChatMap.Values.Sum(list => list.Count);
+                var totalMessages = await _context.ChatMessages.CountAsync();
+                
+                return Ok(new { 
+                    message = "Chats and messages seeded successfully", 
+                    developerCount = developerChatMap.Count,
+                    totalChats = totalChats,
+                    totalMessages = totalMessages,
+                    developers = developerChatMap.Select(kvp => new {
+                        developerId = kvp.Key,
+                        chatCount = kvp.Value.Count
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
+            }
+        }
+
+        // POST: api/Admin/seed-news - Seed news articles for testing
+        [HttpPost("seed-news")]
+        public async Task<IActionResult> SeedNews()
+        {
+            try
+            {
+                var articles = await _seedingService.SeedNewsOnlyAsync();
+                return Ok(new { 
+                    message = "News articles seeded successfully", 
+                    count = articles.Count,
+                    articles = articles.Select(a => new { 
+                        id = a.NewsArticleId, 
+                        title = a.Title, 
+                        category = a.Category 
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
+            }
+        }
+
+        // POST: api/Admin/seed-developer-news - Seed 3-5 news articles for each developer
+        [HttpPost("seed-developer-news")]
+        public async Task<IActionResult> SeedDeveloperNews()
+        {
+            try
+            {
+                var developerNewsMap = await _seedingService.SeedDeveloperNewsAsync();
+                var totalArticles = developerNewsMap.Values.Sum(list => list.Count);
+                
+                return Ok(new { 
+                    message = "Developer news articles seeded successfully", 
+                    developerCount = developerNewsMap.Count,
+                    totalArticles = totalArticles,
+                    developers = developerNewsMap.Select(kvp => new {
+                        developerId = kvp.Key,
+                        articleCount = kvp.Value.Count,
+                        articles = kvp.Value.Select(a => new {
+                            id = a.NewsArticleId,
+                            title = a.Title,
+                            category = a.Category
+                        })
+                    })
+                });
             }
             catch (Exception ex)
             {

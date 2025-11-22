@@ -35,6 +35,12 @@ namespace InstapropAPI.Models
         [ForeignKey(nameof(AssignedDeveloperId))]
         public Account? AssignedDeveloper { get; set; }
 
+        // Sales Team Assignment - Only populated for sales accounts
+        public long? SalesTeamId { get; set; }
+
+        [ForeignKey(nameof(SalesTeamId))]
+        public SalesTeam? SalesTeam { get; set; }
+
         // Nullable for OAuth users who don't have a password
         public string? HashedPassword { get; set; }
 

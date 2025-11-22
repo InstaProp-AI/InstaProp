@@ -31,7 +31,24 @@ const LeaderboardPage: React.FC = () => {
           'Request took too long. The server may be slow or unavailable.'
         )
       ]);
-      setLeaderboard(leaderboardData || []);
+      // The API returns an object with an Entries property, not a direct array
+      // Ensure we always get an array - handle both camelCase and PascalCase
+      let entries: any[] = [];
+      if (leaderboardData) {
+        // Check for camelCase 'entries' first (common in JSON responses)
+        if (Array.isArray(leaderboardData.entries)) {
+          entries = leaderboardData.entries;
+        } 
+        // Check for PascalCase 'Entries' (if JSON serialization preserves case)
+        else if (Array.isArray(leaderboardData.Entries)) {
+          entries = leaderboardData.Entries;
+        } 
+        // If the data itself is an array
+        else if (Array.isArray(leaderboardData)) {
+          entries = leaderboardData;
+        }
+      }
+      setLeaderboard(entries);
       setHighlights(highlightsData);
     } catch (error: any) {
       console.error('Error fetching leaderboard:', error);
@@ -114,16 +131,16 @@ const LeaderboardPage: React.FC = () => {
 
       {highlights && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {highlights.winner && (
+          {highlights.ThisWeek?.First && (
             <div className="bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg p-6 text-white">
               <div className="flex items-center justify-between mb-4">
                 <Trophy className="h-8 w-8" />
                 <span className="font-bold text-lg">#1</span>
               </div>
-              <h3 className="font-bold text-xl mb-2">{highlights.winner.userName}</h3>
+              <h3 className="font-bold text-xl mb-2">{highlights.ThisWeek.First.DisplayName || 'Unknown'}</h3>
               <div className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
-                <span className="text-lg font-semibold">{highlights.winner.totalPoints || 0} points</span>
+                <span className="text-lg font-semibold">{highlights.ThisWeek.First.Points || 0} points</span>
               </div>
             </div>
           )}
@@ -148,27 +165,27 @@ const LeaderboardPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {leaderboard.map((entry, index) => (
-                <tr key={entry.accountId || entry.userId || index} className="hover:bg-gray-50">
+              {Array.isArray(leaderboard) && leaderboard.map((entry, index) => (
+                <tr key={entry.AccountId || entry.accountId || entry.userId || index} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      {getRankIcon(index + 1)}
-                      <span className="font-medium">#{index + 1}</span>
+                      {getRankIcon(entry.Rank || index + 1)}
+                      <span className="font-medium">#{entry.Rank || index + 1}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{entry.userName || entry.name || 'Unknown'}</div>
+                    <div className="text-sm font-medium text-gray-900">{entry.DisplayName || entry.userName || entry.name || 'Unknown'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-900">{entry.totalPoints || entry.points || 0}</span>
+                      <span className="text-sm text-gray-900">{entry.Points || entry.totalPoints || entry.points || 0}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-gray-900">{entry.activityCount || 0}</span>
+                      <span className="text-sm text-gray-900">{entry.TotalRewards || entry.activityCount || 0}</span>
                     </div>
                   </td>
                 </tr>

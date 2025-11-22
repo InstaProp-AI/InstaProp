@@ -20,14 +20,80 @@ namespace InstapropAPI.Controllers
             _context = context;
         }
 
-        // GET: api/news?page=1&pageSize=10
-        [HttpGet]
-        public async Task<ActionResult<PaginatedNewsResponse>> GetNews([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        private long? GetCurrentAccountId()
         {
+            var accountIdClaim = User.FindFirst("uid");
+            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
+            {
+                return accountId;
+            }
+            return null;
+        }
+
+        private async Task<Account?> GetCurrentAccountAsync()
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null) return null;
+            return await _context.Accounts.FindAsync(accountId.Value);
+        }
+
+        // GET: api/news?page=1&pageSize=10&developerId=
+        [HttpGet]
+        [Authorize]
+        public async Task<ActionResult<PaginatedNewsResponse>> GetNews(
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] long? developerId = null)
+        {
+            var account = await GetCurrentAccountAsync();
+            if (account == null)
+                return Unauthorized("User not authenticated");
+
             var query = _context.NewsArticles
-                .Where(n => n.IsPublished)
                 .Include(n => n.Images)
-                .OrderByDescending(n => n.PublishedDate);
+                .AsQueryable();
+
+            // Filter by developer if specified (for admin folder view)
+            // Use -1 as special value to indicate admin posts (DeveloperId = null)
+            if (developerId.HasValue)
+            {
+                if (developerId.Value == -1)
+                {
+                    // Special value: Show only admin posts (DeveloperId = null)
+                    query = query.Where(n => n.DeveloperId == null);
+                }
+                else
+                {
+                    // Admin viewing specific developer's folder
+                    query = query.Where(n => n.DeveloperId == developerId.Value);
+                }
+            }
+            // If developer, only show their own news
+            else if (account.RoleId == Role.DEVELOPER_ROLE_ID)
+            {
+                var currentAccountId = GetCurrentAccountId();
+                query = query.Where(n => n.DeveloperId == currentAccountId);
+            }
+            // If admin and no developerId specified, show all news (including admin posts)
+            // This is the default view for admin
+
+            // For published/unpublished filtering
+            if (account.RoleId == Role.DEVELOPER_ROLE_ID)
+            {
+                // Developers see all their news (published and unpublished)
+                // Already filtered above
+            }
+            else if (account.RoleId == Role.ADMIN_ROLE_ID)
+            {
+                // Admins see all news (no published filter)
+            }
+            else
+            {
+                // Other users only see published news
+                query = query.Where(n => n.IsPublished);
+            }
+
+            query = query.OrderByDescending(n => n.PublishedDate);
 
             var totalCount = await query.CountAsync();
             var items = await query
@@ -43,6 +109,7 @@ namespace InstapropAPI.Controllers
                     CreatedAt = n.CreatedAt,
                     UpdatedAt = n.UpdatedAt,
                     IsPublished = n.IsPublished,
+                    DeveloperId = n.DeveloperId,
                     Images = n.Images.OrderBy(i => i.DisplayOrder).Select(i => i.ImageUrl).ToList()
                 })
                 .ToListAsync();
@@ -179,9 +246,17 @@ namespace InstapropAPI.Controllers
         // POST: api/news
         [HttpPost]
         [Authorize]
-        [AdminAuthorize]
         public async Task<ActionResult<NewsArticleDto>> CreateNews([FromBody] CreateNewsDto createNewsDto)
         {
+            var account = await GetCurrentAccountAsync();
+            if (account == null)
+                return Unauthorized("User not authenticated");
+
+            // Only admins and developers can create news
+            if (account.RoleId != Role.ADMIN_ROLE_ID && account.RoleId != Role.DEVELOPER_ROLE_ID)
+                return Forbid("Only admins and developers can create news");
+
+            var accountId = GetCurrentAccountId();
             var newsArticle = new NewsArticle
             {
                 Title = createNewsDto.Title,
@@ -189,7 +264,9 @@ namespace InstapropAPI.Controllers
                 Category = createNewsDto.Category,
                 PublishedDate = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
-                IsPublished = createNewsDto.IsPublished
+                IsPublished = createNewsDto.IsPublished,
+                // Set DeveloperId: null for admin, accountId for developer
+                DeveloperId = account.RoleId == Role.ADMIN_ROLE_ID ? null : accountId
             };
 
             _context.NewsArticles.Add(newsArticle);
@@ -235,15 +312,26 @@ namespace InstapropAPI.Controllers
         // PUT: api/news/{id}
         [HttpPut("{id}")]
         [Authorize]
-        [AdminAuthorize]
         public async Task<IActionResult> UpdateNews(long id, [FromBody] UpdateNewsDto updateNewsDto)
         {
+            var account = await GetCurrentAccountAsync();
+            if (account == null)
+                return Unauthorized("User not authenticated");
+
             var newsArticle = await _context.NewsArticles
                 .Include(n => n.Images)
                 .FirstOrDefaultAsync(n => n.NewsArticleId == id);
 
             if (newsArticle == null)
                 return NotFound("News article not found");
+
+            // Check permissions: Admin can edit any, Developer can only edit their own
+            var accountId = GetCurrentAccountId();
+            if (account.RoleId == Role.DEVELOPER_ROLE_ID && newsArticle.DeveloperId != accountId)
+                return Forbid("You can only edit your own news articles");
+
+            if (account.RoleId != Role.ADMIN_ROLE_ID && account.RoleId != Role.DEVELOPER_ROLE_ID)
+                return Forbid("Only admins and developers can update news");
 
             // Update basic properties
             newsArticle.Title = updateNewsDto.Title;
@@ -275,9 +363,12 @@ namespace InstapropAPI.Controllers
         // DELETE: api/news/{id}
         [HttpDelete("{id}")]
         [Authorize]
-        [AdminAuthorize]
         public async Task<IActionResult> DeleteNews(long id)
         {
+            var account = await GetCurrentAccountAsync();
+            if (account == null)
+                return Unauthorized("User not authenticated");
+
             var newsArticle = await _context.NewsArticles
                 .Include(n => n.Images)
                 .FirstOrDefaultAsync(n => n.NewsArticleId == id);
@@ -285,9 +376,56 @@ namespace InstapropAPI.Controllers
             if (newsArticle == null)
                 return NotFound("News article not found");
 
+            // Check permissions: Admin can delete any, Developer can only delete their own
+            var accountId = GetCurrentAccountId();
+            if (account.RoleId == Role.DEVELOPER_ROLE_ID && newsArticle.DeveloperId != accountId)
+                return Forbid("You can only delete your own news articles");
+
+            if (account.RoleId != Role.ADMIN_ROLE_ID && account.RoleId != Role.DEVELOPER_ROLE_ID)
+                return Forbid("Only admins and developers can delete news");
+
             _context.NewsArticles.Remove(newsArticle); // Images will be deleted due to cascade
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        // GET: api/news/developers - Get developers with news counts (for admin folder view)
+        [HttpGet("developers")]
+        [Authorize]
+        public async Task<ActionResult<List<DeveloperNewsCountDto>>> GetDevelopersWithNewsCounts()
+        {
+            var account = await GetCurrentAccountAsync();
+            if (account == null)
+                return Unauthorized("User not authenticated");
+
+            // Only admins can see this
+            if (account.RoleId != Role.ADMIN_ROLE_ID)
+                return Forbid("Only admins can view developer news counts");
+
+            // Get all developers with their news counts
+            var allDevelopers = await _context.Accounts
+                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                .ToListAsync();
+
+            var newsCounts = await _context.NewsArticles
+                .Where(n => n.DeveloperId.HasValue)
+                .GroupBy(n => n.DeveloperId.Value)
+                .Select(g => new { DeveloperId = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var countLookup = newsCounts.ToDictionary(x => x.DeveloperId, x => x.Count);
+
+            var developers = allDevelopers.Select(a => new DeveloperNewsCountDto
+            {
+                DeveloperId = a.AccountId,
+                DeveloperName = $"{a.FirstName} {a.LastName}",
+                Email = a.Email,
+                NewsCount = countLookup.TryGetValue(a.AccountId, out var count) ? count : 0
+            })
+            .OrderBy(d => d.DeveloperName)
+            .ToList();
+
+            return Ok(developers);
         }
     }
 
@@ -320,7 +458,16 @@ namespace InstapropAPI.Controllers
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsPublished { get; set; }
+        public long? DeveloperId { get; set; }
         public List<string> Images { get; set; } = new();
+    }
+
+    public class DeveloperNewsCountDto
+    {
+        public long DeveloperId { get; set; }
+        public string DeveloperName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public int NewsCount { get; set; }
     }
 
     public class PaginatedNewsResponse
