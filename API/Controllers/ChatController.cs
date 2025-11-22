@@ -47,10 +47,35 @@ namespace InstapropAPI.Controllers
             if (accountId == null)
                 return Unauthorized();
 
-            var chats = await _context.Chats
-                .Where(c => c.UserId == accountId || c.DeveloperId == accountId)
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null)
+                return Unauthorized();
+
+            IQueryable<Chat> chatQuery;
+
+            // Sales accounts see: chats they're assigned to OR available chats for their developer
+            if (account.RoleId == Role.SALES_ROLE_ID)
+            {
+                if (!account.AssignedDeveloperId.HasValue)
+                    return Ok(new List<ChatDto>()); // Sales without developer assignment see nothing
+
+                chatQuery = _context.Chats
+                    .Where(c => 
+                        c.SalesMemberId == accountId || // Chats I've taken
+                        (c.DeveloperId == account.AssignedDeveloperId.Value && c.SalesMemberId == null) // Available chats for my developer
+                    );
+            }
+            else
+            {
+                // Regular users and developers see their own chats
+                chatQuery = _context.Chats
+                    .Where(c => c.UserId == accountId || c.DeveloperId == accountId);
+            }
+
+            var chats = await chatQuery
                 .Include(c => c.User)
                 .Include(c => c.Developer)
+                .Include(c => c.SalesMember)
                 .Include(c => c.Project)
                 .Include(c => c.Messages.OrderByDescending(m => m.CreatedAt).Take(1))
                 .OrderByDescending(c => c.IsSupportChat)
@@ -71,7 +96,10 @@ namespace InstapropAPI.Controllers
                 IsActive = c.IsActive,
                 LastMessage = c.Messages.FirstOrDefault()?.Content,
                 UnreadCount = c.Messages.Count(m => !m.IsRead && m.SenderId != accountId),
-                IsSupportChat = c.IsSupportChat
+                IsSupportChat = c.IsSupportChat,
+                SalesMemberId = c.SalesMemberId,
+                SalesMemberName = c.SalesMember != null ? FormatAccountName(c.SalesMember) : null,
+                IsAvailable = account.RoleId == Role.SALES_ROLE_ID && c.SalesMemberId == null // Available for sales to take
             }).ToList();
 
             return Ok(chatDtos);
@@ -98,8 +126,8 @@ namespace InstapropAPI.Controllers
             if (chat == null)
                 return NotFound("Chat not found");
 
-            // Verify user has access to this chat
-            if (chat.UserId != accountId && chat.DeveloperId != accountId)
+            // Verify user has access to this chat (user, developer, or assigned sales)
+            if (chat.UserId != accountId && chat.DeveloperId != accountId && chat.SalesMemberId != accountId)
                 return Forbid();
 
             var chatDetails = new ChatDetailsDto
@@ -223,9 +251,13 @@ namespace InstapropAPI.Controllers
             if (chat == null)
                 return NotFound("Chat not found");
 
-            // Verify user has access to this chat
-            if (chat.UserId != accountId && chat.DeveloperId != accountId)
+            // Verify user has access to this chat (user, developer, or assigned sales member)
+            if (chat.UserId != accountId && chat.DeveloperId != accountId && chat.SalesMemberId != accountId)
                 return Forbid();
+
+            // Check if this is the first message in the chat
+            var existingMessageCount = await _context.ChatMessages.CountAsync(m => m.ChatId == chatId);
+            var isFirstMessage = existingMessageCount == 0;
 
             // Verify property exists if provided
             ChildProperty? property = null;
@@ -275,6 +307,63 @@ namespace InstapropAPI.Controllers
                 $"New message from {sender?.FirstName} {sender?.LastName}",
                 dto.Content.Length > 100 ? dto.Content.Substring(0, 100) + "..." : dto.Content);
 
+            // If this is the first message from a user to a developer, notify all sales team members
+            if (isFirstMessage && chat.UserId == accountId && chat.SalesMemberId == null)
+            {
+                // Get all sales accounts assigned to this developer
+                var salesTeam = await _context.Accounts
+                    .Where(a => a.RoleId == Role.SALES_ROLE_ID && a.AssignedDeveloperId == chat.DeveloperId)
+                    .ToListAsync();
+
+                var senderAccount = await _context.Accounts.FindAsync(accountId.Value);
+                var senderName = senderAccount != null ? $"{senderAccount.FirstName} {senderAccount.LastName}" : "A user";
+
+                // Create notifications and send push notifications to all sales team members
+                foreach (var salesMember in salesTeam)
+                {
+                    // Create in-app notification
+                    var notification = new Notification
+                    {
+                        UserId = salesMember.AccountId,
+                        Title = "New Chat Available",
+                        Message = $"{senderName} sent a message to {chat.Developer.FirstName} {chat.Developer.LastName}. Click to take this chat.",
+                        Type = NotificationType.General,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Notifications.Add(notification);
+
+                    // Send push notification
+                    await _fcmService.SendChatNotificationAsync(
+                        salesMember.AccountId,
+                        "New Chat Available",
+                        $"{senderName} needs assistance. Take this chat now!");
+                }
+
+                // Save all notifications
+                await _context.SaveChangesAsync();
+
+                // Sync notifications to Firestore
+                foreach (var salesMember in salesTeam)
+                {
+                    var notification = await _context.Notifications
+                        .Where(n => n.UserId == salesMember.AccountId)
+                        .OrderByDescending(n => n.CreatedAt)
+                        .FirstOrDefaultAsync();
+                    
+                    if (notification != null)
+                    {
+                        try
+                        {
+                            await _firestoreService.UpdateUserNotificationAsync(salesMember.AccountId, notification);
+                        }
+                        catch
+                        {
+                            // Log but don't fail if Firestore sync fails
+                        }
+                    }
+                }
+            }
+
             // Load the sender for response
             var messageWithSender = await _context.ChatMessages
                 .Include(m => m.Sender)
@@ -296,6 +385,54 @@ namespace InstapropAPI.Controllers
             });
         }
 
+        // POST: api/chat/{chatId}/take - Sales takes an available chat
+        [HttpPost("{chatId}/take")]
+        public async Task<IActionResult> TakeChat(long chatId)
+        {
+            var accountId = GetCurrentAccountId();
+            if (accountId == null)
+                return Unauthorized();
+
+            var account = await _context.Accounts.FindAsync(accountId.Value);
+            if (account == null || account.RoleId != Role.SALES_ROLE_ID)
+                return Forbid("Only sales team members can take chats.");
+
+            if (!account.AssignedDeveloperId.HasValue)
+                return BadRequest("Sales account must be assigned to a developer.");
+
+            var chat = await _context.Chats
+                .Include(c => c.Developer)
+                .FirstOrDefaultAsync(c => c.ChatId == chatId);
+
+            if (chat == null)
+                return NotFound("Chat not found");
+
+            // Verify chat is for the sales member's assigned developer
+            if (chat.DeveloperId != account.AssignedDeveloperId.Value)
+                return Forbid("You can only take chats for your assigned developer.");
+
+            // Check if chat is already taken
+            if (chat.SalesMemberId.HasValue)
+            {
+                if (chat.SalesMemberId == accountId)
+                    return Ok(new { message = "You already have this chat.", chatId = chat.ChatId });
+                return BadRequest("This chat has already been taken by another sales member.");
+            }
+
+            // Assign chat to this sales member
+            chat.SalesMemberId = accountId.Value;
+            await _context.SaveChangesAsync();
+
+            // Note: Firestore will be updated when messages are sent/received
+            // No need to update Firestore here as chat structure doesn't change significantly
+
+            return Ok(new { 
+                message = "Chat taken successfully.", 
+                chatId = chat.ChatId,
+                salesMemberId = accountId.Value
+            });
+        }
+
         // PUT: api/chat/{chatId}/read - Mark messages as read
         [HttpPut("{chatId}/read")]
         public async Task<IActionResult> MarkAsRead(long chatId)
@@ -311,8 +448,8 @@ namespace InstapropAPI.Controllers
             if (chat == null)
                 return NotFound("Chat not found");
 
-            // Verify user has access to this chat
-            if (chat.UserId != accountId && chat.DeveloperId != accountId)
+            // Verify user has access to this chat (user, developer, or assigned sales)
+            if (chat.UserId != accountId && chat.DeveloperId != accountId && chat.SalesMemberId != accountId)
                 return Forbid();
 
             // Mark all unread messages from the other person as read
@@ -389,6 +526,9 @@ namespace InstapropAPI.Controllers
         public string? LastMessage { get; set; }
         public int UnreadCount { get; set; }
         public bool IsSupportChat { get; set; }
+        public long? SalesMemberId { get; set; }
+        public string? SalesMemberName { get; set; }
+        public bool IsAvailable { get; set; } // For sales: indicates if chat is available to take
     }
 
     public class ChatDetailsDto

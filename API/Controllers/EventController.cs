@@ -498,7 +498,7 @@ namespace InstapropAPI.Controllers
         // POST: api/Event/scan-payment-schedule
         [HttpPost("scan-payment-schedule")]
         [Authorize]
-        public async Task<ActionResult<PaymentScheduleScanResult>> ScanPaymentSchedule([FromForm] IFormFile image, [FromForm] long propertyId, [FromForm] int? reminderMinutes, [FromForm] decimal? buyingPrice)
+        public async Task<ActionResult<PaymentScheduleScanResult>> ScanPaymentSchedule(IFormFile image, [FromForm] long propertyId, [FromForm] int? reminderMinutes, [FromForm] decimal? buyingPrice)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)

@@ -36,11 +36,13 @@ namespace InstapropAPI.Controllers
         [HttpGet("profile/{developerId}")]
         public async Task<ActionResult<DeveloperProfileDto>> GetDeveloperProfile(long developerId)
         {
-            var developer = await _context.Accounts
-                .FirstOrDefaultAsync(a => a.AccountId == developerId && a.RoleId == Role.DEVELOPER_ROLE_ID); // SECURITY: Check non-guessable RoleId
+            try
+            {
+                var developer = await _context.Accounts
+                    .FirstOrDefaultAsync(a => a.AccountId == developerId && a.RoleId == Role.DEVELOPER_ROLE_ID); // SECURITY: Check non-guessable RoleId
 
-            if (developer == null)
-                return NotFound("Developer not found");
+                if (developer == null)
+                    return NotFound("Developer not found");
 
             var profile = await _context.DeveloperProfiles
                 .FirstOrDefaultAsync(p => p.AccountId == developerId);
@@ -147,11 +149,19 @@ namespace InstapropAPI.Controllers
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
+            // Use company name if available, otherwise use developer's actual name
+            var displayName = profile?.CompanyName;
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                var fullName = $"{developer.FirstName} {developer.LastName}".Trim();
+                displayName = !string.IsNullOrWhiteSpace(fullName) ? fullName : $"Developer #{developer.AccountId}";
+            }
+
             return Ok(new DeveloperProfileDto
             {
                 DeveloperId = developer.AccountId,
-                FirstName = profile?.CompanyName ?? "Unknown Developer",
-                LastName = "",
+                FirstName = !string.IsNullOrWhiteSpace(developer.FirstName) ? developer.FirstName : displayName,
+                LastName = developer.LastName ?? "",
                 Email = developer.Email,
                 PhoneNumber = developer.PhoneNumber,
                 Bio = profile?.Bio,
@@ -176,6 +186,11 @@ namespace InstapropAPI.Controllers
                     CreatedAt = r.CreatedAt
                 }).ToList()
             });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error loading developer profile", message = ex.Message });
+            }
         }
 
         // PUT: api/developer/profile - Update own profile (Developers only)
@@ -221,65 +236,81 @@ namespace InstapropAPI.Controllers
         [Authorize]
         public async Task<ActionResult<DeveloperAnalyticsDto>> GetAnalytics()
         {
-            var accountId = GetCurrentAccountId();
-            if (accountId == null)
-                return Unauthorized();
-
-            var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                return Forbid("Only developers can view analytics");
-
-            var projects = await _context.Projects
-                .Where(p => p.DeveloperId == accountId.Value)
-                .ToListAsync();
-
-            var properties = await _context.ChildProperties
-                .Where(cp => projects.Select(p => p.ProjectId).Contains(cp.ProjectId.Value))
-                .ToListAsync();
-            var auctions = properties.SelectMany(p => p.Auctions).ToList();
-            
-            var activeAuctions = auctions.Count(a => a.Status == "Active");
-            var totalBids = await _context.Bids
-                .Where(b => properties.Select(p => p.PropertyId).Contains(b.Auction.PropertyId))
-                .CountAsync();
-
-            var soldProperties = properties.Count(p => p.Auctions.Any(a => a.Status == "Sold"));
-            var totalRevenue = auctions.Where(a => a.Status == "Sold").Sum(a => a.CurrentPrice);
-
-            var chats = await _context.Chats
-                .Where(c => c.DeveloperId == accountId.Value)
-                .ToListAsync();
-
-            var chatInquiries = chats.Count;
-            var chatConversionRate = chatInquiries > 0 
-                ? Math.Round((double)soldProperties / chatInquiries * 100, 2) 
-                : 0;
-
-            // Property-level analytics
-            var propertyAnalytics = properties.Select(p => new PropertyAnalyticsDto
+            try
             {
-                PropertyId = p.PropertyId,
-                PropertyName = p.Name,
-                PropertyLocation = p.Location,
-                Views = 0, // TODO: Implement view tracking
-                ChatInquiries = chats.Count(c => c.Messages.Any(m => m.PropertyId == p.PropertyId)),
-                TotalBids = p.Auctions.SelectMany(a => a.Bids).Count(),
-                CurrentPrice = p.Auctions.FirstOrDefault(a => a.Status == "Active")?.CurrentPrice ?? 0,
-                Status = p.Status.ToString()
-            }).ToList();
+                var accountId = GetCurrentAccountId();
+                if (accountId == null)
+                    return Unauthorized();
 
-            return Ok(new DeveloperAnalyticsDto
+                var account = await _context.Accounts.FindAsync(accountId.Value);
+                if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
+                    return Forbid("Only developers can view analytics");
+
+                var projects = await _context.Projects
+                    .Where(p => p.DeveloperId == accountId.Value)
+                    .ToListAsync();
+
+                var projectIds = projects.Select(p => p.ProjectId).ToList();
+                var properties = projectIds.Any()
+                    ? await _context.ChildProperties
+                        .Where(cp => cp.ProjectId.HasValue && projectIds.Contains(cp.ProjectId.Value))
+                        .Include(cp => cp.Auctions)
+                        .ToListAsync()
+                    : new List<ChildProperty>();
+
+                var auctions = properties.SelectMany(p => p.Auctions ?? new List<Auction>()).ToList();
+                
+                var activeAuctions = auctions.Count(a => a.Status == "Active");
+                var propertyIds = properties.Select(p => p.PropertyId).ToList();
+                var totalBids = propertyIds.Any()
+                    ? await _context.Bids
+                        .Where(b => propertyIds.Contains(b.Auction.PropertyId))
+                        .CountAsync()
+                    : 0;
+
+                var soldProperties = properties.Count(p => (p.Auctions ?? new List<Auction>()).Any(a => a.Status == "Sold"));
+                var totalRevenue = auctions.Where(a => a.Status == "Sold").Sum(a => a.CurrentPrice);
+
+                var chats = await _context.Chats
+                    .Where(c => c.DeveloperId == accountId.Value)
+                    .Include(c => c.Messages)
+                    .ToListAsync();
+
+                var chatInquiries = chats.Count;
+                var chatConversionRate = chatInquiries > 0 
+                    ? Math.Round((double)soldProperties / chatInquiries * 100, 2) 
+                    : 0;
+
+                // Property-level analytics
+                var propertyAnalytics = properties.Select(p => new PropertyAnalyticsDto
+                {
+                    PropertyId = p.PropertyId,
+                    PropertyName = p.Name ?? "Unnamed Property",
+                    PropertyLocation = p.Location,
+                    Views = 0, // TODO: Implement view tracking
+                    ChatInquiries = chats.Count(c => c.Messages != null && c.Messages.Any(m => m.PropertyId == p.PropertyId)),
+                    TotalBids = (p.Auctions ?? new List<Auction>()).SelectMany(a => a.Bids != null ? a.Bids : new List<Bid>()).Count(),
+                    CurrentPrice = (p.Auctions ?? new List<Auction>()).FirstOrDefault(a => a.Status == "Active")?.CurrentPrice ?? 0,
+                    Status = p.Status.ToString()
+                }).ToList();
+
+                return Ok(new DeveloperAnalyticsDto
+                {
+                    TotalProjects = projects.Count,
+                    TotalProperties = properties.Count,
+                    ActiveAuctions = activeAuctions,
+                    SoldProperties = soldProperties,
+                    TotalRevenue = totalRevenue,
+                    TotalBids = totalBids,
+                    ChatInquiries = chatInquiries,
+                    ChatConversionRate = chatConversionRate,
+                    PropertyAnalytics = propertyAnalytics
+                });
+            }
+            catch (Exception ex)
             {
-                TotalProjects = projects.Count(),
-                TotalProperties = properties.Count(),
-                ActiveAuctions = activeAuctions,
-                SoldProperties = soldProperties,
-                TotalRevenue = totalRevenue,
-                TotalBids = totalBids,
-                ChatInquiries = chatInquiries,
-                ChatConversionRate = chatConversionRate,
-                PropertyAnalytics = propertyAnalytics
-            });
+                return StatusCode(500, new { error = "Error loading analytics", message = ex.Message });
+            }
         }
 
         // GET: api/developer/projects - Get developer's projects with properties
@@ -287,68 +318,75 @@ namespace InstapropAPI.Controllers
         [Authorize]
         public async Task<ActionResult<IEnumerable<ProjectWithPropertiesDto>>> GetProjects()
         {
-            var accountId = GetCurrentAccountId();
-            if (accountId == null)
-                return Unauthorized();
-
-            var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                return Forbid("Only developers can view their projects");
-
-            // Return projects explicitly owned by developer OR any project that contains properties owned by the developer
-            var projects = await _context.Projects
-                .Where(p => p.DeveloperId == accountId.Value)
-                .ToListAsync();
-
-            var projectDtos = new List<ProjectWithPropertiesDto>();
-            foreach (var p in projects)
+            try
             {
-                var propertiesCount = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).CountAsync();
-                var properties = await _context.ChildProperties
-                    .Where(cp => cp.ProjectId == p.ProjectId)
-                    .Include(cp => cp.ParentProperty) // Include parent property
-                    .Include(cp => cp.Project) // Include project
-                    .Select(prop => new PropertySummaryDto
-                    {
-                        PropertyId = prop.PropertyId,
-                        ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
-                        ProjectId = prop.ProjectId,
-                        Name = prop.Name,
-                        Location = prop.Location,
-                        ImageUrl = prop.ImageUrl ?? string.Empty,
-                        Status = prop.Status.ToString(),
-                        Type = prop.Type.ToDisplayName(),
-                        Bedrooms = prop.Bedrooms,
-                        Bathrooms = prop.Bathrooms,
-                        SquareFeet = prop.SquareFeet,
-                        ParentProperty = prop.ParentProperty != null ? new
-                        {
-                            ParentPropertyId = prop.ParentProperty.ParentPropertyId,
-                            ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
-                                ? prop.ParentProperty.ProjectName
-                                : (prop.Project != null ? prop.Project.Name : "N/A"),
-                            Type = prop.ParentProperty.Type,
-                            Bedrooms = prop.ParentProperty.Bedrooms,
-                            Bathrooms = prop.ParentProperty.Bathrooms,
-                            AreaSqm = prop.ParentProperty.AreaSqm,
-                            FinishingType = prop.ParentProperty.FinishingType.ToString()
-                        } : null
-                    }).ToListAsync();
+                var accountId = GetCurrentAccountId();
+                if (accountId == null)
+                    return Unauthorized();
 
-                projectDtos.Add(new ProjectWithPropertiesDto
+                var account = await _context.Accounts.FindAsync(accountId.Value);
+                if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
+                    return Forbid("Only developers can view their projects");
+
+                // Return projects explicitly owned by developer OR any project that contains properties owned by the developer
+                var projects = await _context.Projects
+                    .Where(p => p.DeveloperId == accountId.Value)
+                    .ToListAsync();
+
+                var projectDtos = new List<ProjectWithPropertiesDto>();
+                foreach (var p in projects)
                 {
-                    ProjectId = p.ProjectId,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Location = p.Location,
-                    CreatedAt = p.CreatedAt,
-                    IsActive = p.IsActive,
-                    PropertiesCount = propertiesCount,
-                    Properties = properties
-                });
-            }
+                    var propertiesCount = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).CountAsync();
+                    var properties = await _context.ChildProperties
+                        .Where(cp => cp.ProjectId == p.ProjectId)
+                        .Include(cp => cp.ParentProperty) // Include parent property
+                        .Include(cp => cp.Project) // Include project
+                        .Select(prop => new PropertySummaryDto
+                        {
+                            PropertyId = prop.PropertyId,
+                            ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
+                            ProjectId = prop.ProjectId,
+                            Name = prop.Name ?? "Unnamed Property",
+                            Location = prop.Location,
+                            ImageUrl = prop.ImageUrl ?? string.Empty,
+                            Status = prop.Status.ToString(),
+                            Type = prop.Type.ToDisplayName(),
+                            Bedrooms = prop.Bedrooms,
+                            Bathrooms = prop.Bathrooms,
+                            SquareFeet = prop.SquareFeet,
+                            ParentProperty = prop.ParentProperty != null ? new
+                            {
+                                ParentPropertyId = prop.ParentProperty.ParentPropertyId,
+                                ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
+                                    ? prop.ParentProperty.ProjectName
+                                    : (prop.Project != null ? prop.Project.Name : "N/A"),
+                                Type = prop.ParentProperty.Type,
+                                Bedrooms = prop.ParentProperty.Bedrooms,
+                                Bathrooms = prop.ParentProperty.Bathrooms,
+                                AreaSqm = prop.ParentProperty.AreaSqm,
+                                FinishingType = prop.ParentProperty.FinishingType.ToString()
+                            } : null
+                        }).ToListAsync();
 
-            return Ok(projectDtos);
+                    projectDtos.Add(new ProjectWithPropertiesDto
+                    {
+                        ProjectId = p.ProjectId,
+                        Name = p.Name ?? "Unnamed Project",
+                        Description = p.Description,
+                        Location = p.Location,
+                        CreatedAt = p.CreatedAt,
+                        IsActive = p.IsActive,
+                        PropertiesCount = propertiesCount,
+                        Properties = properties
+                    });
+                }
+
+                return Ok(projectDtos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error loading projects", message = ex.Message });
+            }
         }
 
         // GET: api/developer/properties - Get all properties owned by the developer (including standalone)
@@ -356,49 +394,56 @@ namespace InstapropAPI.Controllers
         [Authorize]
         public async Task<ActionResult<IEnumerable<PropertySummaryDto>>> GetDeveloperProperties()
         {
-            var accountId = GetCurrentAccountId();
-            if (accountId == null)
-                return Unauthorized();
-
-            var account = await _context.Accounts.FindAsync(accountId.Value);
-            if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                return Forbid("Only developers can view their properties");
-
-            var properties = await _context.ChildProperties
-                .Where(p => p.OwnerId == accountId.Value)
-                .Include(p => p.PropertyImages)
-                .Include(p => p.ParentProperty) // Include parent property
-                .Include(p => p.Project) // Include project
-                .ToListAsync();
-
-            var result = properties.Select(prop => new PropertySummaryDto
+            try
             {
-                PropertyId = prop.PropertyId,
-                ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
-                ProjectId = prop.ProjectId,
-                Name = prop.Name,
-                Location = prop.Location,
-                ImageUrl = prop.ImageUrl ?? string.Empty,
-                Status = prop.Status.ToString(),
-                Type = prop.Type.ToDisplayName(),
-                Bedrooms = prop.Bedrooms,
-                Bathrooms = prop.Bathrooms,
-                SquareFeet = prop.SquareFeet,
-                ParentProperty = prop.ParentProperty != null ? new
-                {
-                    ParentPropertyId = prop.ParentProperty.ParentPropertyId,
-                    ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
-                        ? prop.ParentProperty.ProjectName
-                        : (prop.Project != null ? prop.Project.Name : "N/A"),
-                    Type = prop.ParentProperty.Type,
-                    Bedrooms = prop.ParentProperty.Bedrooms,
-                    Bathrooms = prop.ParentProperty.Bathrooms,
-                    AreaSqm = prop.ParentProperty.AreaSqm,
-                    FinishingType = prop.ParentProperty.FinishingType.ToString()
-                } : null
-            }).ToList();
+                var accountId = GetCurrentAccountId();
+                if (accountId == null)
+                    return Unauthorized();
 
-            return Ok(result);
+                var account = await _context.Accounts.FindAsync(accountId.Value);
+                if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
+                    return Forbid("Only developers can view their properties");
+
+                var properties = await _context.ChildProperties
+                    .Where(p => p.OwnerId == accountId.Value)
+                    .Include(p => p.PropertyImages)
+                    .Include(p => p.ParentProperty) // Include parent property
+                    .Include(p => p.Project) // Include project
+                    .ToListAsync();
+
+                var result = properties.Select(prop => new PropertySummaryDto
+                {
+                    PropertyId = prop.PropertyId,
+                    ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
+                    ProjectId = prop.ProjectId,
+                    Name = prop.Name ?? "Unnamed Property",
+                    Location = prop.Location,
+                    ImageUrl = prop.ImageUrl ?? string.Empty,
+                    Status = prop.Status.ToString(),
+                    Type = prop.Type.ToDisplayName(),
+                    Bedrooms = prop.Bedrooms,
+                    Bathrooms = prop.Bathrooms,
+                    SquareFeet = prop.SquareFeet,
+                    ParentProperty = prop.ParentProperty != null ? new
+                    {
+                        ParentPropertyId = prop.ParentProperty.ParentPropertyId,
+                        ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
+                            ? prop.ParentProperty.ProjectName
+                            : (prop.Project != null ? prop.Project.Name : "N/A"),
+                        Type = prop.ParentProperty.Type,
+                        Bedrooms = prop.ParentProperty.Bedrooms,
+                        Bathrooms = prop.ParentProperty.Bathrooms,
+                        AreaSqm = prop.ParentProperty.AreaSqm,
+                        FinishingType = prop.ParentProperty.FinishingType.ToString()
+                    } : null
+                }).ToList();
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error loading properties", message = ex.Message });
+            }
         }
 
         // POST: api/developer/rating - Rate a developer
@@ -471,9 +516,11 @@ namespace InstapropAPI.Controllers
         [HttpGet("featured")]
         public async Task<ActionResult<IEnumerable<FeaturedDeveloperDto>>> GetFeaturedDevelopers()
         {
-            var developers = await _context.Accounts
-                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                .ToListAsync();
+            try
+            {
+                var developers = await _context.Accounts
+                    .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
+                    .ToListAsync();
 
             var developerIds = developers.Select(d => d.AccountId).ToList();
 
@@ -493,11 +540,19 @@ namespace InstapropAPI.Controllers
                     var profile = profiles.FirstOrDefault(p => p.AccountId == d.AccountId);
                     var projectCount = projectCounts.FirstOrDefault(pc => pc.DeveloperId == d.AccountId)?.Count ?? 0;
 
+                    // Use company name if available, otherwise use developer's actual name
+                    var displayName = profile?.CompanyName;
+                    if (string.IsNullOrWhiteSpace(displayName))
+                    {
+                        var fullName = $"{d.FirstName} {d.LastName}".Trim();
+                        displayName = !string.IsNullOrWhiteSpace(fullName) ? fullName : $"Developer #{d.AccountId}";
+                    }
+
                     return new FeaturedDeveloperDto
                     {
                         DeveloperId = d.AccountId,
-                        FirstName = profile?.CompanyName ?? "Unknown Developer",
-                        LastName = "",
+                        FirstName = !string.IsNullOrWhiteSpace(d.FirstName) ? d.FirstName : displayName,
+                        LastName = d.LastName ?? "",
                         CompanyName = profile?.CompanyName,
                         ProfileImageUrl = profile?.ProfileImageUrl,
                         Rating = profile?.Rating ?? 0,
@@ -512,7 +567,12 @@ namespace InstapropAPI.Controllers
                 .Take(10)
                 .ToList();
 
-            return Ok(featuredDevelopers);
+                return Ok(featuredDevelopers);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error loading featured developers", message = ex.Message });
+            }
         }
     }
 

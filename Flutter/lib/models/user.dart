@@ -1,11 +1,16 @@
-enum AccountType { user, developer, admin } // DEPRECATED: Use roleId and roleName instead
+enum AccountType {
+  user,
+  developer,
+  admin,
+} // DEPRECATED: Use roleId and roleName instead
 
 // SECURITY: Role ID constants matching backend (non-guessable 64-bit IDs)
 class RoleIds {
   static const int user = 8923748923748923;
   static const int developer = 7823647823647823;
   static const int admin = 9823749823749823;
-  
+  static const int sales = 6723546723546723;
+
   // Helper to get role name from role ID
   static String getRoleName(int roleId) {
     switch (roleId) {
@@ -15,11 +20,13 @@ class RoleIds {
         return 'Developer';
       case user:
         return 'User';
+      case sales:
+        return 'Sales';
       default:
         return 'User';
     }
   }
-  
+
   // Helper to get role ID from role name
   static int getRoleId(String roleName) {
     switch (roleName.toLowerCase()) {
@@ -29,6 +36,8 @@ class RoleIds {
         return developer;
       case 'user':
         return user;
+      case 'sales':
+        return sales;
       default:
         return user;
     }
@@ -124,23 +133,29 @@ class Account {
     // SECURITY: Get roleId and roleName from response (new format)
     final roleId = json['roleId'] ?? json['RoleId'];
     final roleName = json['roleName'] ?? json['RoleName'];
-    
+
     // Determine roleId and roleName (handle both new and old formats)
     int finalRoleId;
     String finalRoleName;
     AccountType finalType;
-    
+
     if (roleId != null && roleName != null) {
       // New format: Use roleId and roleName directly
-      finalRoleId = roleId is int ? roleId : int.tryParse(roleId.toString()) ?? RoleIds.user;
+      finalRoleId = roleId is int
+          ? roleId
+          : int.tryParse(roleId.toString()) ?? RoleIds.user;
       finalRoleName = roleName.toString();
       finalType = AccountType.values.firstWhere(
-        (e) => e.toString().split('.').last.toLowerCase() == finalRoleName.toLowerCase(),
+        (e) =>
+            e.toString().split('.').last.toLowerCase() ==
+            finalRoleName.toLowerCase(),
         orElse: () => AccountType.user,
       );
     } else {
       // Old format: Parse from type field
-      final typeStr = (json['type'] ?? json['Type'] ?? 'user').toString().toLowerCase();
+      final typeStr = (json['type'] ?? json['Type'] ?? 'user')
+          .toString()
+          .toLowerCase();
       finalType = AccountType.values.firstWhere(
         (e) => e.toString().split('.').last.toLowerCase() == typeStr,
         orElse: () => AccountType.user,
@@ -148,7 +163,7 @@ class Account {
       finalRoleId = RoleIds.getRoleId(typeStr);
       finalRoleName = RoleIds.getRoleName(finalRoleId);
     }
-    
+
     return Account(
       accountId: json['accountId'] ?? json['AccountId'] ?? 0,
       firstName: json['firstName'] ?? json['FirstName'] ?? '',
@@ -233,7 +248,10 @@ class Account {
       'email': email,
       'roleId': roleId, // SECURITY: Use non-guessable roleId
       'roleName': roleName,
-      'type': type.toString().split('.').last, // DEPRECATED: Keep for backward compatibility
+      'type': type
+          .toString()
+          .split('.')
+          .last, // DEPRECATED: Keep for backward compatibility
       'status': status.index,
       'emailVerified': emailVerified,
       'phoneVerified': phoneVerified,
@@ -249,4 +267,34 @@ class Account {
   bool get isNotVerified => status == VerificationStatus.notVerified;
 
   String get fullName => '$firstName $lastName';
+
+  // Helper methods to check user role (matching React dashboard logic)
+  bool get isAdmin {
+    // SECURITY: Check roleName first (from backend), then roleId, then legacy type
+    return roleName == 'Admin' ||
+        roleId == RoleIds.admin ||
+        type == AccountType.admin;
+  }
+
+  bool get isDeveloper {
+    // SECURITY: Check roleName first (from backend), then roleId, then legacy type
+    return roleName == 'Developer' ||
+        roleId == RoleIds.developer ||
+        type == AccountType.developer;
+  }
+
+  bool get isUser {
+    // SECURITY: Check roleName first (from backend), then roleId, then legacy type
+    return roleName == 'User' ||
+        roleId == RoleIds.user ||
+        type == AccountType.user;
+  }
+
+  bool get isSales {
+    // SECURITY: Check roleName first (from backend), then roleId
+    return roleName == 'Sales' || roleId == RoleIds.sales;
+  }
+
+  // Check if user can access admin/developer features
+  bool get canAccessAdminFeatures => isAdmin || isDeveloper;
 }

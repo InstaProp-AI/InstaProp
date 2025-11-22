@@ -13,6 +13,7 @@ import 'phone_verification_page.dart';
 import 'forgot_password_dialog.dart';
 import 'force_change_password_page.dart';
 import 'profile_completion_page.dart';
+import 'sales_chats_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -190,11 +191,19 @@ class _AuthPageState extends State<AuthPage>
             (route) => false,
           );
         } else {
-          // Navigate to home page and remove all previous routes
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const HomePage()),
-            (route) => false,
-          );
+          // Check if user is sales - redirect to sales chats page
+          if (appState.user?.isSales == true) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const SalesChatsPage()),
+              (route) => false,
+            );
+          } else {
+            // Navigate to home page and remove all previous routes
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const HomePage()),
+              (route) => false,
+            );
+          }
 
           // Show welcome message
           Future.delayed(const Duration(milliseconds: 500), () {

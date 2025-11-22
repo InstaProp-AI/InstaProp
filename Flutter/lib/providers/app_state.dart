@@ -29,6 +29,12 @@ class AppState extends ChangeNotifier {
   String? get token => _authService.token;
   AuthService get authService => _authService;
 
+  // Role-based access helpers (matching React dashboard logic)
+  bool get isAdmin => user?.isAdmin ?? false;
+  bool get isDeveloper => user?.isDeveloper ?? false;
+  bool get isUser => user?.isUser ?? false;
+  bool get canAccessAdminFeatures => user?.canAccessAdminFeatures ?? false;
+
   // Data caches
   List<Auction> _auctions = [];
   List<Property> _properties = [];

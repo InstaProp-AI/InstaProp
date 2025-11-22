@@ -24,6 +24,8 @@ class AuthService extends ChangeNotifier {
       final response = await ApiClient.get('/api/account/me', Account.fromJson);
       if (response.success && response.data != null) {
         _user = response.data;
+        // Note: We don't restrict access here - let the app decide what features to show
+        // based on user role (isAdmin, isDeveloper, etc.)
       } else {
         // Token is invalid, clear it
         await logout();

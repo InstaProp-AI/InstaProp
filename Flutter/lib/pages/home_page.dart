@@ -17,6 +17,7 @@ import 'developer_profile_page.dart';
 import 'market_page.dart';
 import 'community_feed_page.dart';
 import 'explore_page.dart';
+import 'sales_chats_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -54,13 +55,20 @@ class _HomePageState extends State<HomePage>
 
       WidgetsBinding.instance.addObserver(this);
 
-      // Load notifications when home page opens with delay
+      // Check if user is sales and redirect
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted) {
             try {
               final appState = Provider.of<AppState>(context, listen: false);
               if (appState.isLoggedIn && appState.user != null) {
+                // Redirect sales users to sales chats page
+                if (appState.user?.isSales == true) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const SalesChatsPage()),
+                  );
+                  return;
+                }
                 appState.notificationService.getNotifications();
               }
             } catch (e) {
@@ -680,7 +688,9 @@ class _HomePageState extends State<HomePage>
                   : null,
               child: developer.profileImageUrl == null
                   ? Text(
-                      (developer.companyName ?? developer.firstName)[0],
+                      (developer.companyName ?? developer.fullName).isNotEmpty
+                          ? (developer.companyName ?? developer.fullName)[0]
+                          : 'D',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
@@ -690,7 +700,7 @@ class _HomePageState extends State<HomePage>
             ),
             const SizedBox(height: 12),
             Text(
-              developer.companyName ?? developer.firstName,
+              developer.companyName ?? developer.fullName,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,

@@ -40,7 +40,7 @@ namespace InstapropAPI.Controllers
         [HttpPost("public/upload")]
         [AllowAnonymous]
         public async Task<IActionResult> UploadPublicDocument(
-            [FromForm] IFormFile file, 
+            IFormFile file, 
             [FromForm] string docType,
             [FromForm] string email)
         {
@@ -144,7 +144,7 @@ namespace InstapropAPI.Controllers
         /// Status flow: NotVerified -> Pending (when any doc uploaded)
         /// </summary>
         [HttpPost("user/upload")]
-        public async Task<IActionResult> UploadUserDocument([FromForm] IFormFile file, [FromForm] string docType)
+        public async Task<IActionResult> UploadUserDocument(IFormFile file, [FromForm] string docType)
         {
             var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             
@@ -345,7 +345,7 @@ namespace InstapropAPI.Controllers
         /// Upload a property document
         /// </summary>
         [HttpPost("property/{propertyId}/upload")]
-        public async Task<IActionResult> UploadPropertyDocument(long propertyId, [FromForm] IFormFile file, [FromForm] string docType)
+        public async Task<IActionResult> UploadPropertyDocument(long propertyId, IFormFile file, [FromForm] string docType)
         {
             try
             {
@@ -502,7 +502,7 @@ namespace InstapropAPI.Controllers
         [HttpPost("property/{propertyId}/upload-image")]
         public async Task<IActionResult> UploadPropertyImage(
             long propertyId,
-            [FromForm] IFormFile file,
+            IFormFile file,
             [FromForm] string imageType,
             [FromForm] bool isMainImage = false,
             [FromForm] int displayOrder = 0)

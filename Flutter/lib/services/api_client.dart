@@ -46,13 +46,14 @@ class ApiClient {
       'https://instaprop-production.up.railway.app';
 
   // Development URLs (for local testing)
-  static const String devBaseUrlAndroid = 'http://192.168.1.5:5284';
+  static const String devBaseUrlAndroid =
+      'http://10.0.2.2:5284'; // Android emulator
   static const String devBaseUrlIOS = 'http://localhost:5284';
   static const String devBaseUrlWeb = 'http://localhost:5284';
 
   // Set to true when building for production (APK/IPA)
   // Set to false for local development/testing
-  static const bool useProductionUrl = true;
+  static const bool useProductionUrl = false; // ✅ Changed to use localhost
 
   // 🔧 Auto-detect best URL based on platform and environment
   static String get baseUrl {
@@ -62,7 +63,7 @@ class ApiClient {
       // This allows the API to serve both the web app and API endpoints
       return '';
     }
-    
+
     // Use production URL if enabled
     if (useProductionUrl &&
         productionBaseUrl != 'https://YOUR-RAILWAY-APP-NAME.railway.app') {

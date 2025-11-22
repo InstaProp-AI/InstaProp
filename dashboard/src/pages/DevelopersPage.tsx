@@ -275,11 +275,11 @@ const DevelopersPage: React.FC = () => {
                         fontWeight: '600',
                         fontSize: '0.875rem'
                       }}>
-                        {dev.firstName[0]}{dev.lastName[0]}
+                        {(dev.firstName?.[0] || 'D')}{(dev.lastName?.[0] || '')}
                       </div>
                       <div>
                         <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>
-                          {dev.firstName} {dev.lastName}
+                          {dev.firstName || 'Unknown'} {dev.lastName || ''}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                           ID: #{dev.accountId}

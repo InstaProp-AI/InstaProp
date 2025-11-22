@@ -362,34 +362,35 @@ class _AuctionsPageState extends State<AuctionsPage>
       backgroundColor: Colors.white,
       body: Consumer<AppState>(
         builder: (context, appState, child) {
-          print(
-            'AuctionsPage builder - loadingAuctions: ${appState.loadingAuctions}, auctions length: ${appState.auctions.length}',
-          );
+          try {
+            print(
+              'AuctionsPage builder - loadingAuctions: ${appState.loadingAuctions}, auctions length: ${appState.auctions.length}',
+            );
 
-          // Track auction updates for highlighting
-          _trackAuctionUpdates(appState.auctions);
+            // Track auction updates for highlighting
+            _trackAuctionUpdates(appState.auctions);
 
-          // Re-apply filters when AppState auctions actually change
-          // Use a hash to detect if auction data changed
-          final currentHash = appState.auctions.fold<int>(
-            0,
-            (hash, auction) =>
-                hash ^
-                auction.auctionId.hashCode ^
-                auction.currentPrice.hashCode ^
-                auction.bidCount.hashCode,
-          );
+            // Re-apply filters when AppState auctions actually change
+            // Use a hash to detect if auction data changed
+            final currentHash = appState.auctions.fold<int>(
+              0,
+              (hash, auction) =>
+                  hash ^
+                  auction.auctionId.hashCode ^
+                  auction.currentPrice.hashCode ^
+                  auction.bidCount.hashCode,
+            );
 
-          if (currentHash != _lastAuctionsHash) {
-            _lastAuctionsHash = currentHash;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _applyFilters();
-              }
-            });
-          }
+            if (currentHash != _lastAuctionsHash) {
+              _lastAuctionsHash = currentHash;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _applyFilters();
+                }
+              });
+            }
 
-          return CustomScrollView(
+            return CustomScrollView(
             slivers: [
               // Minimal Header
               SliverAppBar(
@@ -515,6 +516,60 @@ class _AuctionsPageState extends State<AuctionsPage>
                 ),
             ],
           );
+          } catch (e, stackTrace) {
+            print('Error in AuctionsPage build: $e');
+            print('Stack trace: $stackTrace');
+            return CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  pinned: true,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title: const Text(
+                    'Auctions',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Error loading auctions',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          e.toString(),
+                          style: const TextStyle(color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () {
+                            final appState = context.read<AppState>();
+                            appState.loadAuctions();
+                          },
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
         },
       ),
     );
@@ -916,20 +971,6 @@ class _AuctionsPageState extends State<AuctionsPage>
                       ),
                       const SizedBox(width: 8),
                       SizedBox(
-                        width: 85, // Fixed width for time left
-                        child: Text(
-                          isUpcoming
-                              ? 'Starts In'
-                              : (isLive ? 'Time Left' : 'Ended'),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
                         width: 100, // Fixed width for type
                         child: Text(
                           'Type',
@@ -950,6 +991,25 @@ class _AuctionsPageState extends State<AuctionsPage>
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: SizedBox(
+                            width: 85, // Fixed width for time left
+                            child: Text(
+                              isUpcoming
+                                  ? 'Starts In'
+                                  : (isLive ? 'Time Left' : 'Ended'),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -1169,30 +1229,6 @@ class _AuctionsPageState extends State<AuctionsPage>
               ),
               const SizedBox(width: 8),
               SizedBox(
-                width: 85, // Fixed width for time left/ended
-                child: isUpcoming
-                    ? _buildStartsInWidget(auction)
-                    : (isLive
-                          ? AuctionTimer(
-                              auction: auction,
-                              textStyle: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.primary,
-                                fontSize: 10,
-                              ),
-                              onAuctionEnded: onAuctionEnded,
-                            )
-                          : Text(
-                              'Ended',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.primary,
-                                fontSize: 10,
-                              ),
-                            )),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
                 width: 100, // Fixed width for type
                 child: _buildPropertyTypeTag(auction.property?.listingType),
               ),
@@ -1200,6 +1236,35 @@ class _AuctionsPageState extends State<AuctionsPage>
               SizedBox(
                 width: 70,
                 child: _buildDocsCell(auction),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 85, // Fixed width for time left/ended
+                    child: isUpcoming
+                        ? _buildStartsInWidget(auction)
+                        : (isLive
+                              ? AuctionTimer(
+                                  auction: auction,
+                                  textStyle: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.primary,
+                                    fontSize: 10,
+                                  ),
+                                  onAuctionEnded: onAuctionEnded,
+                                )
+                              : Text(
+                                  'Ended',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.primary,
+                                    fontSize: 10,
+                                  ),
+                                )),
+                  ),
+                ),
               ),
             ],
           ),

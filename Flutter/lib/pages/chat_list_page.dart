@@ -42,16 +42,28 @@ class _ChatListPageState extends State<ChatListPage> {
 
     try {
       final chats = await chatService.getChats();
-      final aiChatsResponse = await AIBrokerService.getMyAIChats();
-
-      setState(() {
-        _chats = chats;
-        _aiChats = aiChatsResponse.data ?? [];
-        _loading = false;
+      final aiChatsResponse = await AIBrokerService.getMyAIChats().catchError((e) {
+        print('Error loading AI chats: $e');
+        return ApiResponse<List<AIBrokerChatSummary>>.error('Failed to load AI chats');
       });
-    } catch (e) {
+
+      if (mounted) {
+        setState(() {
+          _chats = chats;
+          _aiChats = aiChatsResponse.data ?? [];
+          _loading = false;
+        });
+      }
+    } catch (e, stackTrace) {
       print('Error loading chats: $e');
-      setState(() => _loading = false);
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _chats = [];
+          _aiChats = [];
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -60,13 +72,21 @@ class _ChatListPageState extends State<ChatListPage> {
 
     try {
       final developers = await developerService.getFeaturedDevelopers();
-      setState(() {
-        _featuredDevelopers = developers;
-        _loadingDevelopers = false;
-      });
-    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _featuredDevelopers = developers;
+          _loadingDevelopers = false;
+        });
+      }
+    } catch (e, stackTrace) {
       print('Error loading featured developers: $e');
-      setState(() => _loadingDevelopers = false);
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _featuredDevelopers = [];
+          _loadingDevelopers = false;
+        });
+      }
     }
   }
 

@@ -6,8 +6,13 @@ import '../models/child_property.dart';
 import '../models/property_image.dart';
 import '../models/parent_property.dart';
 import '../models/price_history.dart';
+import '../models/installment_summary.dart';
 import '../services/property_service.dart';
+import '../services/api_client.dart';
+import '../services/analytics_service.dart';
 import '../widgets/property_image_carousel.dart';
+import 'developers_list_page.dart';
+import 'auction_details_page.dart';
 
 class PropertyDetailsPage extends StatefulWidget {
   final int propertyId;
@@ -23,6 +28,9 @@ class PropertyDetailsPage extends StatefulWidget {
 
 class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   PropertyMarketBundle? _bundle;
+  Map<String, dynamic>? _financials;
+  MarketOverviewResponse? _marketOverview;
+  List<PriceTrendResponse>? _priceTrends;
   bool _isLoading = true;
   String? _error;
 
@@ -38,19 +46,52 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       _error = null;
     });
 
-    final response =
-        await PropertyService.getPropertyMarketBundle(widget.propertyId);
+    try {
+      // Load property bundle, financials, and market data in parallel
+      final property = await PropertyService.getPropertyMarketBundle(widget.propertyId);
+      if (!property.success || property.data == null) {
+        setState(() {
+          _error = property.error ?? 'Failed to load property details.';
+          _isLoading = false;
+        });
+        return;
+      }
 
-    if (!mounted) return;
+      final bundle = property.data!;
+      
+      // Load financials and market data in parallel
+      final results = await Future.wait([
+        PropertyService.getPropertyFinancials(widget.propertyId).catchError((e) {
+          return ApiResponse<Map<String, dynamic>>.error('Not available');
+        }),
+        AnalyticsService.getMarketOverview().catchError((e) => null),
+        AnalyticsService.getPriceTrends(
+          parentPropertyId: bundle.property.parentPropertyId,
+          propertyType: bundle.property.typeLabel,
+          location: bundle.property.location,
+          months: 12,
+        ).catchError((e) => null),
+      ]);
 
-    if (response.success && response.data != null) {
+      if (!mounted) return;
+
+      final financialsResponse = results[0] as ApiResponse<Map<String, dynamic>>;
+      final marketOverview = results[1] as MarketOverviewResponse?;
+      final priceTrends = results[2] as List<PriceTrendResponse>?;
+
       setState(() {
-        _bundle = response.data;
+        _bundle = bundle;
+        if (financialsResponse.success && financialsResponse.data != null) {
+          _financials = financialsResponse.data;
+        }
+        _marketOverview = marketOverview;
+        _priceTrends = priceTrends;
         _isLoading = false;
       });
-    } else {
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = response.error ?? 'Failed to load property details.';
+        _error = 'Failed to load property details: $e';
         _isLoading = false;
       });
     }
@@ -137,6 +178,26 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
         const SizedBox(height: 16),
         _buildMarketIndicators(bundle.marketAnalytics!),
       ],
+      // Investment Analysis Section
+      const SizedBox(height: 16),
+      _buildInvestmentAnalysis(bundle.property, bundle.marketAnalytics),
+      // Payment Plan Section
+      if (bundle.property.installmentSummary != null) ...[
+        const SizedBox(height: 16),
+        _buildPaymentPlan(bundle.property.installmentSummary!),
+      ],
+      // Enhanced Market Analysis (even with limited data)
+      const SizedBox(height: 16),
+      _buildEnhancedMarketAnalysis(
+        bundle.property, 
+        bundle.marketAnalytics, 
+        bundle.siblings,
+        _marketOverview,
+        _priceTrends,
+      ),
+      // Action Buttons
+      const SizedBox(height: 16),
+      _buildActionButtons(bundle.property),
       const SizedBox(height: 48),
     ];
 
@@ -909,6 +970,732 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       return '${(value / 1e3).toStringAsFixed(0)}K';
     }
     return value.toStringAsFixed(0);
+  }
+
+  Widget _buildInvestmentAnalysis(
+    ChildProperty property,
+    PropertyMarketAnalytics? analytics,
+  ) {
+    // Use real financials data from backend
+    dynamic buyingPriceNum = _financials?['buyingPrice'];
+    if (buyingPriceNum == null) buyingPriceNum = _financials?['contractedPrice'];
+    if (buyingPriceNum == null) buyingPriceNum = property.buyingPrice;
+    final buyingPrice = buyingPriceNum is num ? buyingPriceNum.toDouble() : 0.0;
+    
+    dynamic marketValueNum = _financials?['marketValue'];
+    if (marketValueNum == null) {
+      final avgPrice = analytics?.priceStats?.statistics.averagePrice ?? 0;
+      marketValueNum = avgPrice;
+    }
+    final marketValue = marketValueNum is num ? marketValueNum.toDouble() : 0.0;
+    
+    dynamic roiPercentNum = _financials?['roiPercent'];
+    final roiPercent = roiPercentNum is num ? roiPercentNum.toDouble() : null;
+    
+    String? paybackPeriod;
+    
+    // Calculate payback period if we have ROI
+    if (roiPercent != null && roiPercent > 0) {
+      // Estimate based on annual appreciation rate (6% average)
+      final annualAppreciation = 0.06;
+      final yearsToDouble = (72 / (roiPercent * annualAppreciation)).abs();
+      paybackPeriod = yearsToDouble < 1 
+          ? '${(yearsToDouble * 12).toStringAsFixed(0)} months'
+          : '${yearsToDouble.toStringAsFixed(1)} years';
+    } else if (buyingPrice > 0 && marketValue > 0) {
+      // Calculate ROI if not provided
+      final calculatedROI = ((marketValue - buyingPrice) / buyingPrice) * 100;
+      if (calculatedROI > 0) {
+        final annualAppreciation = 0.06;
+        final yearsToDouble = (72 / (calculatedROI * annualAppreciation)).abs();
+        paybackPeriod = yearsToDouble < 1 
+            ? '${(yearsToDouble * 12).toStringAsFixed(0)} months'
+            : '${yearsToDouble.toStringAsFixed(1)} years';
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.trending_up,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Investment Analysis',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (buyingPrice > 0 && marketValue > 0) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildAnalysisTile(
+                        label: 'Market Value',
+                        value: _formatCurrency(marketValue),
+                        icon: Icons.price_check,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildAnalysisTile(
+                        label: 'ROI',
+                        value: roiPercent != null 
+                            ? '${roiPercent.toStringAsFixed(1)}%'
+                            : buyingPrice > 0 && marketValue > 0
+                                ? '${((marketValue - buyingPrice) / buyingPrice * 100).toStringAsFixed(1)}%'
+                                : 'N/A',
+                        icon: Icons.percent,
+                        color: (roiPercent ?? ((marketValue - buyingPrice) / buyingPrice * 100)) >= 0 
+                            ? Colors.green 
+                            : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (paybackPeriod != null)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.schedule, color: Colors.blue.shade700),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Estimated Payback Period',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              Text(
+                                paybackPeriod,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.blue.shade900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.grey.shade600),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Investment analysis will be available once purchase price is set.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentPlan(InstallmentSummary summary) {
+    final monthlyPayment = summary.termYears != null && summary.termYears! > 0
+        ? (summary.remainingBalance / (summary.termYears! * 12)).toDouble()
+        : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.payment,
+                      color: Colors.green,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Payment Plan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildAnalysisTile(
+                      label: 'Down Payment',
+                      value: _formatCurrency(summary.downPaymentAmount),
+                      icon: Icons.account_balance_wallet,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildAnalysisTile(
+                      label: 'Remaining',
+                      value: _formatCurrency(summary.remainingBalance),
+                      icon: Icons.credit_card,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+              if (monthlyPayment > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.green.shade50,
+                        Colors.green.shade100,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_month, color: Colors.green.shade700),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Monthly Installment',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green.shade900,
+                              ),
+                            ),
+                            Text(
+                              _formatCurrency(monthlyPayment),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.green.shade900,
+                              ),
+                            ),
+                            if (summary.termYears != null)
+                              Text(
+                                'Over ${summary.termYears} years',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoChip(
+                      'Total Paid',
+                      _formatCurrency(summary.totalPaid),
+                      Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildInfoChip(
+                      'Progress',
+                      '${((summary.totalPaid / summary.contractedPrice) * 100).toStringAsFixed(0)}%',
+                      Colors.purple,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnhancedMarketAnalysis(
+    ChildProperty property,
+    PropertyMarketAnalytics? analytics,
+    List<ChildProperty> siblings,
+    MarketOverviewResponse? marketOverview,
+    List<PriceTrendResponse>? priceTrends,
+  ) {
+    // Use real data from multiple sources
+    final hasAnalyticsData = analytics?.hasData ?? false;
+    final hasMarketOverview = marketOverview?.hasData ?? false;
+    final hasPriceTrends = priceTrends?.isNotEmpty ?? false;
+    
+    // Get average price from real data
+    double avgPrice = 0;
+    double priceChange = 0;
+    
+    if (hasAnalyticsData && analytics != null && analytics.priceStats != null) {
+      avgPrice = analytics.priceStats!.statistics.averagePrice.toDouble();
+      priceChange = analytics.priceStats!.statistics.priceChangePercent.toDouble();
+    } else if (hasMarketOverview) {
+      final overview = marketOverview!;
+      if (overview.areaPrices.isNotEmpty) {
+        // Find matching area price
+        final areaPrice = overview.areaPrices.firstWhere(
+          (ap) => ap.area.toLowerCase().contains(property.location.toLowerCase()) ||
+                  property.location.toLowerCase().contains(ap.area.toLowerCase()),
+          orElse: () => overview.areaPrices.first,
+        );
+        avgPrice = areaPrice.averagePrice;
+      }
+    } else if (hasPriceTrends) {
+      final trends = priceTrends!;
+      if (trends.isNotEmpty) {
+        // Calculate from price trends
+        final prices = trends.map((pt) => pt.price).toList();
+        avgPrice = prices.reduce((a, b) => a + b) / prices.length;
+        if (prices.length > 1) {
+          final firstPrice = prices.first;
+          final lastPrice = prices.last;
+          priceChange = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice * 100) : 0;
+        }
+      }
+    }
+    
+    final hasData = hasAnalyticsData || hasMarketOverview || hasPriceTrends;
+    final siblingCount = siblings.length;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.analytics,
+                      color: Colors.purple,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Market Analysis',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (hasData && avgPrice > 0) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildAnalysisTile(
+                        label: 'Market Avg',
+                        value: _formatCurrency(avgPrice),
+                        icon: Icons.show_chart,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildAnalysisTile(
+                        label: '12M Trend',
+                        value: '${priceChange.toStringAsFixed(1)}%',
+                        icon: priceChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                        color: priceChange >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.amber.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Limited Market Data',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'This is a sampling unit. Market analysis will be available as more data is collected.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.amber.shade800,
+                        ),
+                      ),
+                      if (siblingCount > 0) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Icon(Icons.apartment, size: 16, color: Colors.amber.shade700),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$siblingCount similar units available',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.amber.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              // Price per sqft analysis
+              if (property.buyingPrice != null && property.buyingPrice! > 0 && property.squareFeet > 0) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.square_foot, color: Colors.blue.shade700),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Price per sqft',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black54,
+                              ),
+                            ),
+                            Text(
+                              _formatCurrency(property.buyingPrice! / property.squareFeet),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.blue.shade900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(ChildProperty property) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Take Action',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // Navigate to developers list page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DevelopersListPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.people),
+                  label: const Text('Send to Developers'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // Schedule viewing
+                    // TODO: Implement viewing schedule
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Schedule viewing feature coming soon'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: const Text('Schedule Viewing'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (property.hasActiveAuction) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Navigate to auction details
+                  if (property.auctions != null && property.auctions!.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AuctionDetailsPage(
+                          auction: property.auctions!.first,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.gavel),
+                label: const Text('View Live Auction'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalysisTile({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _getShadeColor(color, 700),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: _getShadeColor(color, 900),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getShadeColor(Color color, int shade) {
+    // For MaterialColor, use the shade index
+    if (color is MaterialColor) {
+      return color[shade] ?? color;
+    }
+    // For regular colors, return a darker/lighter variant
+    if (shade == 700) {
+      return Color.fromRGBO(
+        (color.red * 0.7).round(),
+        (color.green * 0.7).round(),
+        (color.blue * 0.7).round(),
+        1.0,
+      );
+    } else if (shade == 900) {
+      return Color.fromRGBO(
+        (color.red * 0.5).round(),
+        (color.green * 0.5).round(),
+        (color.blue * 0.5).round(),
+        1.0,
+      );
+    }
+    return color;
   }
 }
 

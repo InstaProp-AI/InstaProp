@@ -114,6 +114,30 @@ class ChatService {
     }
   }
 
+  // Take chat (for sales team members)
+  Future<void> takeChat(int chatId) async {
+    if (token == null) {
+      throw Exception('Authentication required');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/chat/$chatId/take'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return; // Success
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to take chat: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error taking chat: $e');
+      throw Exception('Failed to take chat');
+    }
+  }
+
   // Mark chat messages as read
   Future<void> markAsRead(int chatId) async {
     if (token == null) {

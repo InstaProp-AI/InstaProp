@@ -11,6 +11,7 @@ import '../models/bid.dart';
 import '../services/bid_service.dart';
 import '../services/auction_service.dart';
 import '../services/firestore_service.dart';
+import '../services/analytics_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
@@ -37,6 +38,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   String? _errorMessage;
   String? _successMessage;
   List<Bid> _bids = [];
+  MarketOverviewResponse? _marketOverview;
+  List<BestInvestmentResponse>? _bestInvestments;
 
   InstallmentSummary? get _installmentSummary =>
       _currentAuction?.property?.installmentSummary;
@@ -244,8 +247,32 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         _startFirestoreListeners();
       });
     });
+    // Load market data for strategies
+    _loadMarketData();
     // Start fallback polling as backup (less frequent)
     _startFallbackPolling();
+  }
+
+  Future<void> _loadMarketData() async {
+    if (_currentAuction?.property == null) return;
+    
+    try {
+      // Load market data in parallel
+      final results = await Future.wait([
+        AnalyticsService.getMarketOverview().catchError((e) => null),
+        AnalyticsService.getBestInvestments(limit: 10).catchError((e) => null),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _marketOverview = results[0] as MarketOverviewResponse?;
+        _bestInvestments = results[1] as List<BestInvestmentResponse>?;
+      });
+    } catch (e) {
+      print('Error loading market data: $e');
+      // Don't show error, just silently fail - market data is optional
+    }
   }
 
   /// Start Firestore real-time listeners for instant updates
@@ -654,6 +681,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 _buildBiddingSection(),
                 _buildLeaderboard(),
                 _buildChartsSection(),
+                _buildMarketStrategiesAndPricing(),
                 _buildPropertyDescription(),
                 const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
@@ -1968,6 +1996,439 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       }
     } catch (_) {}
     return baseName;
+  }
+
+  Widget _buildMarketStrategiesAndPricing() {
+    final property = _currentAuction?.property;
+    if (property == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final currentPrice = _currentAuction!.currentPrice;
+    final startPrice = _currentAuction!.startPrice;
+    final priceIncrease = currentPrice - startPrice;
+    final priceIncreasePercent = startPrice > 0 ? (priceIncrease / startPrice * 100).toDouble() : 0.0;
+    final pricePerSqft = property.squareFeet > 0 ? (currentPrice / property.squareFeet).toDouble() : 0.0;
+    final timeRemaining = _currentAuction!.endAt.difference(DateTime.now());
+    final isActive = _currentAuction!.isActive;
+    final bidCount = _currentAuction!.bidCount;
+
+    // Get real market data for comparison
+    double? marketAvgPrice;
+    double? marketAvgPricePerSqft;
+    
+    if (_marketOverview != null && _marketOverview!.areaPrices.isNotEmpty) {
+      // Find matching area or use overall average
+      final matchingArea = _marketOverview!.areaPrices.firstWhere(
+        (ap) => ap.area.toLowerCase().contains(property.location.toLowerCase()) ||
+                property.location.toLowerCase().contains(ap.area.toLowerCase()),
+        orElse: () => _marketOverview!.areaPrices.first,
+      );
+      marketAvgPrice = matchingArea.averagePrice;
+    }
+    
+    if (_bestInvestments != null && _bestInvestments!.isNotEmpty) {
+      // Find similar properties in best investments
+      final propertyTypeLabel = property.typeLabel;
+      final similarProperties = _bestInvestments!.where((inv) =>
+        inv.propertyType.toLowerCase() == propertyTypeLabel.toLowerCase() ||
+        inv.location.toLowerCase().contains(property.location.toLowerCase())
+      ).toList();
+      
+      if (similarProperties.isNotEmpty) {
+        marketAvgPricePerSqft = similarProperties
+            .map((inv) => inv.pricePerSqm)
+            .reduce((a, b) => a + b) / similarProperties.length;
+      }
+    }
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Market Strategies Card
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.lightbulb_outline,
+                            color: Colors.blue.shade700,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Market Strategies & Insights',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Pricing Analysis
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary.withOpacity(0.1),
+                            AppColors.primary.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Pricing Analysis',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildPricingMetric(
+                                  'Current Bid',
+                                  _formatCurrency(currentPrice),
+                                  Icons.price_check,
+                                  AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildPricingMetric(
+                                  'Price/Sqft',
+                                  _formatCurrency(pricePerSqft),
+                                  Icons.square_foot,
+                                  Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildPricingMetric(
+                                  'From Start',
+                                  '${priceIncreasePercent.toStringAsFixed(1)}%',
+                                  priceIncreasePercent >= 0 
+                                      ? Icons.trending_up 
+                                      : Icons.trending_down,
+                                  priceIncreasePercent >= 0 
+                                      ? Colors.green 
+                                      : Colors.red,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildPricingMetric(
+                                  'Total Bids',
+                                  '$bidCount',
+                                  Icons.gavel,
+                                  Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Bidding Strategies
+                    const Text(
+                      'Bidding Strategies',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildStrategyTip(
+                      Icons.timer,
+                      'Timing Strategy',
+                      isActive && timeRemaining.inHours < 2
+                          ? 'Last hour bidding! Prices typically increase 15-25% in final hour.'
+                          : isActive
+                              ? 'Early bidding establishes your presence. Consider strategic bids.'
+                              : 'Auction ${_currentAuction!.isEnded ? "ended" : "not started yet"}.',
+                      Colors.orange,
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStrategyTip(
+                      Icons.psychology,
+                      'Smart Bidding',
+                      _getSmartBiddingTip(bidCount, currentPrice, marketAvgPrice),
+                      Colors.blue,
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStrategyTip(
+                      Icons.trending_up,
+                      'Market Position',
+                      priceIncreasePercent > 20
+                          ? 'Strong momentum! Property is gaining value rapidly.'
+                          : priceIncreasePercent > 10
+                              ? 'Steady growth. Good investment potential.'
+                              : 'Early stage. Opportunity for early entry.',
+                      Colors.green,
+                    ),
+                    const SizedBox(height: 16),
+                    // Investment Potential with real market data
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.insights, color: Colors.purple.shade700, size: 24),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Investment Potential',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _getInvestmentPotential(
+                              pricePerSqft, 
+                              priceIncreasePercent, 
+                              bidCount,
+                              marketAvgPrice,
+                              marketAvgPricePerSqft,
+                            ),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.purple.shade800,
+                              height: 1.4,
+                            ),
+                          ),
+                          if (marketAvgPrice != null && marketAvgPrice > 0) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    currentPrice < marketAvgPrice 
+                                        ? Icons.trending_down 
+                                        : Icons.trending_up,
+                                    size: 16,
+                                    color: currentPrice < marketAvgPrice 
+                                        ? Colors.green 
+                                        : Colors.orange,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Market avg: ${_formatCurrency(marketAvgPrice)} '
+                                      '(${currentPrice < marketAvgPrice ? "Below" : "Above"} market)',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPricingMetric(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStrategyTip(IconData icon, String title, String description, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _getDarkerColor(color),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getDarkerColor(Color color) {
+    if (color is MaterialColor) {
+      return color[900] ?? color;
+    }
+    return Color.fromRGBO(
+      (color.red * 0.5).round(),
+      (color.green * 0.5).round(),
+      (color.blue * 0.5).round(),
+      1.0,
+    );
+  }
+
+  String _getSmartBiddingTip(int bidCount, double currentPrice, double? marketAvgPrice) {
+    if (marketAvgPrice != null && marketAvgPrice > 0) {
+      final priceDiff = ((currentPrice - marketAvgPrice) / marketAvgPrice * 100);
+      if (priceDiff < -5) {
+        return 'Great value! Current bid is ${priceDiff.abs().toStringAsFixed(1)}% below market average. Strong opportunity.';
+      } else if (priceDiff > 10) {
+        return 'Premium pricing. Current bid is ${priceDiff.toStringAsFixed(1)}% above market. High demand property.';
+      } else {
+        return 'Fair market pricing. Aligned with market average. Good investment opportunity.';
+      }
+    }
+    
+    // Fallback to bid count analysis
+    if (bidCount > 5) {
+      return 'High competition detected. Consider bidding above market average if you\'re serious.';
+    } else if (bidCount > 2) {
+      return 'Moderate competition. You have a good chance with strategic bidding.';
+    } else {
+      return 'Low competition. Early stage auction with good opportunity.';
+    }
+  }
+
+  String _getInvestmentPotential(
+    double pricePerSqft, 
+    double priceIncreasePercent, 
+    int bidCount,
+    double? marketAvgPrice,
+    double? marketAvgPricePerSqft,
+  ) {
+    // Use real market data for assessment
+    if (marketAvgPricePerSqft != null && marketAvgPricePerSqft > 0) {
+      final sqftDiff = ((pricePerSqft - marketAvgPricePerSqft) / marketAvgPricePerSqft * 100);
+      if (sqftDiff < -10 && priceIncreasePercent > 15 && bidCount > 8) {
+        return '🔥 Exceptional value! Price per sqft is ${sqftDiff.abs().toStringAsFixed(1)}% below market with strong momentum. High demand property.';
+      } else if (sqftDiff < -5 && priceIncreasePercent > 10) {
+        return '✅ Great investment opportunity. Below market pricing with steady growth potential.';
+      } else if (sqftDiff > 15) {
+        return '💎 Premium property. Above market pricing indicates high-end location/features.';
+      }
+    }
+    
+    // Fallback to original logic
+    if (pricePerSqft > 0 && priceIncreasePercent > 15 && bidCount > 8) {
+      return '🔥 High demand property with strong price appreciation. Competitive bidding expected.';
+    } else if (priceIncreasePercent > 10 && bidCount > 5) {
+      return '✅ Good investment opportunity with steady growth and moderate competition.';
+    } else if (bidCount < 3) {
+      return '💡 Early stage auction. Lower competition means better chance to secure at good price.';
+    } else {
+      return '📊 Moderate investment potential. Monitor bidding activity closely.';
+    }
   }
 
   Widget _buildPropertyDescription() {

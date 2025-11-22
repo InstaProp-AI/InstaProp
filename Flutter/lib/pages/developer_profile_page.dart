@@ -41,13 +41,24 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
       final profile = await developerService.getDeveloperProfile(
         widget.developerId,
       );
-      setState(() {
-        _profile = profile;
-        _loading = false;
-      });
-    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _loading = false;
+        });
+      }
+    } catch (e, stackTrace) {
       print('Error loading developer profile: $e');
-      setState(() => _loading = false);
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load developer profile: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

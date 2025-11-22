@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Search, 
@@ -12,9 +12,12 @@ import {
   CheckCircle,
   XCircle,
   X,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { salesApi, authApi } from '../services/api';
+import { Account } from '../types';
 
 interface SalesMember {
   id: number;
@@ -24,71 +27,81 @@ interface SalesMember {
   status: 'Active' | 'Inactive';
   assignedChatsCount: number;
   joinDate: string;
+  developerId?: number;
+  developerName?: string;
 }
 
 const SalesPage: React.FC = () => {
   const toast = useToast();
   
-  // Mock data - stored in component state only
-  const [salesMembers, setSalesMembers] = useState<SalesMember[]>([
-    {
-      id: 1,
-      name: 'Ahmed Saleh',
-      email: 'ahmed.saleh@example.com',
-      phone: '+20 100 123 4567',
-      status: 'Active',
-      assignedChatsCount: 12,
-      joinDate: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Sarah Mohamed',
-      email: 'sarah.mohamed@example.com',
-      phone: '+20 101 234 5678',
-      status: 'Active',
-      assignedChatsCount: 8,
-      joinDate: '2024-02-20'
-    },
-    {
-      id: 3,
-      name: 'Mohamed Ali',
-      email: 'mohamed.ali@example.com',
-      phone: '+20 102 345 6789',
-      status: 'Inactive',
-      assignedChatsCount: 0,
-      joinDate: '2024-03-10'
-    },
-    {
-      id: 4,
-      name: 'Fatma Hassan',
-      email: 'fatma.hassan@example.com',
-      phone: '+20 103 456 7890',
-      status: 'Active',
-      assignedChatsCount: 15,
-      joinDate: '2024-01-05'
-    },
-    {
-      id: 5,
-      name: 'Omar Youssef',
-      email: 'omar.youssef@example.com',
-      phone: '+20 104 567 8901',
-      status: 'Active',
-      assignedChatsCount: 6,
-      joinDate: '2024-04-12'
-    }
-  ]);
-
+  const [salesMembers, setSalesMembers] = useState<SalesMember[]>([]);
+  const [developers, setDevelopers] = useState<Account[]>([]);
+  const [currentUser, setCurrentUser] = useState<Account | null>(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedSalesMember, setSelectedSalesMember] = useState<SalesMember | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [formData, setFormData] = useState<Omit<SalesMember, 'id' | 'assignedChatsCount' | 'joinDate'>>({
-    name: '',
+  const [formData, setFormData] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+    developerId?: number;
+  }>({
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
-    status: 'Active'
+    password: '',
+    developerId: undefined
   });
+
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get current user to determine role
+      const user = await authApi.getCurrentAccount();
+      setCurrentUser(user);
+
+      // Load sales team
+      const sales = await salesApi.getSalesTeam();
+      
+      // Get assigned chats count for each sales member (would need a new endpoint, for now use 0)
+      const salesWithCounts: SalesMember[] = sales.map(s => ({
+        id: s.accountId,
+        name: `${s.firstName} ${s.lastName}`,
+        email: s.email,
+        phone: s.phoneNumber,
+        status: s.isSuspended ? 'Inactive' : 'Active',
+        assignedChatsCount: 0, // TODO: Get from API
+        joinDate: s.createdAt,
+        developerId: (s as any).assignedDeveloperId,
+        developerName: (s as any).assignedDeveloperName
+      }));
+      
+      setSalesMembers(salesWithCounts);
+
+      // Load developers if admin
+      if (user.roleId === 9823749823749823) { // Admin role ID
+        const devs = await salesApi.getDevelopers();
+        setDevelopers(devs);
+      }
+    } catch (error: any) {
+      console.error('Error loading sales data:', error);
+      toast.error(error.response?.data?.message || 'Failed to load sales team');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter and search
   const filteredMembers = salesMembers.filter(member => {
@@ -100,60 +113,93 @@ const SalesPage: React.FC = () => {
   });
 
   const handleAdd = () => {
-    setFormData({ name: '', email: '', phone: '', status: 'Active' });
+    setFormData({ 
+      firstName: '', 
+      lastName: '', 
+      email: '', 
+      phone: '', 
+      password: '',
+      developerId: currentUser?.roleId === 7823647823647823 ? currentUser.accountId : undefined // Auto-assign if developer
+    });
     setShowAddModal(true);
   };
 
   const handleEdit = (member: SalesMember) => {
     setSelectedSalesMember(member);
+    const nameParts = member.name.split(' ');
     setFormData({
-      name: member.name,
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || '',
       email: member.email,
       phone: member.phone,
-      status: member.status
+      password: '', // Don't pre-fill password
+      developerId: member.developerId
     });
     setShowEditModal(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this sales member?')) {
-      setSalesMembers(salesMembers.filter(m => m.id !== id));
-      toast.success('Sales member deleted successfully');
+      try {
+        await salesApi.deleteSalesAccount(id);
+        await loadData();
+        toast.success('Sales member deleted successfully');
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to delete sales member');
+      }
     }
   };
 
-  const handleSaveAdd = () => {
-    if (!formData.name || !formData.email || !formData.phone) {
+  const handleSaveAdd = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const newMember: SalesMember = {
-      id: Math.max(...salesMembers.map(m => m.id), 0) + 1,
-      ...formData,
-      assignedChatsCount: 0,
-      joinDate: new Date().toISOString().split('T')[0]
-    };
+    // If developer, auto-assign to current user
+    if (currentUser?.roleId === 7823647823647823) {
+      formData.developerId = currentUser.accountId;
+    } else if (!formData.developerId) {
+      toast.error('Please select a developer');
+      return;
+    }
 
-    setSalesMembers([...salesMembers, newMember]);
-    setShowAddModal(false);
-    toast.success('Sales member added successfully');
+    try {
+      await salesApi.createSalesAccount(formData);
+      await loadData();
+      setShowAddModal(false);
+      toast.success('Sales member added successfully');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to create sales member');
+    }
   };
 
-  const handleSaveEdit = () => {
-    if (!selectedSalesMember || !formData.name || !formData.email || !formData.phone) {
+  const handleSaveEdit = async () => {
+    if (!selectedSalesMember || !formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    setSalesMembers(salesMembers.map(m => 
-      m.id === selectedSalesMember.id 
-        ? { ...m, ...formData }
-        : m
-    ));
-    setShowEditModal(false);
-    setSelectedSalesMember(null);
-    toast.success('Sales member updated successfully');
+    try {
+      const updateData: any = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phoneNumber: formData.phone
+      };
+      
+      if (formData.developerId) {
+        updateData.developerId = formData.developerId;
+      }
+
+      await salesApi.updateSalesAccount(selectedSalesMember.id, updateData);
+      await loadData();
+      setShowEditModal(false);
+      setSelectedSalesMember(null);
+      toast.success('Sales member updated successfully');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update sales member');
+    }
   };
 
   return (
@@ -200,39 +246,47 @@ const SalesPage: React.FC = () => {
 
       {/* Sales Members Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Assigned Chats
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Join Date
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredMembers.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    <Users className="mx-auto h-12 w-12 mb-2 text-gray-400" />
-                    <p>No sales members found</p>
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Developer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Assigned Chats
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Join Date
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ) : (
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                      <Users className="mx-auto h-12 w-12 mb-2 text-gray-400" />
+                      <p>No sales members found</p>
+                    </td>
+                  </tr>
+                ) : (
                 filteredMembers.map((member) => (
                   <tr key={member.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -250,6 +304,11 @@ const SalesPage: React.FC = () => {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Phone className="h-4 w-4 text-gray-400" />
                         {member.phone}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {member.developerName || 'Not assigned'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -302,6 +361,7 @@ const SalesPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Add Modal */}
@@ -320,14 +380,26 @@ const SalesPage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
+                  First Name *
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Full name"
+                  placeholder="First name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Last name"
                 />
               </div>
               <div>
@@ -356,17 +428,48 @@ const SalesPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
+                  Password *
                 </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
+                  placeholder="Password"
+                />
               </div>
+              {currentUser?.roleId === 9823749823749823 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Developer *
+                  </label>
+                  <select
+                    value={formData.developerId || ''}
+                    onChange={(e) => setFormData({ ...formData, developerId: e.target.value ? parseInt(e.target.value) : undefined })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a developer</option>
+                    {developers.map(dev => (
+                      <option key={dev.accountId} value={dev.accountId}>
+                        {dev.firstName} {dev.lastName} ({dev.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {currentUser?.roleId === 7823647823647823 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Developer
+                  </label>
+                  <input
+                    type="text"
+                    value={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : ''}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                  />
+                </div>
+              )}
             </div>
             <div className="mt-6 flex gap-3 justify-end">
               <button
@@ -402,12 +505,23 @@ const SalesPage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
+                  First Name *
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -433,19 +547,25 @@ const SalesPage: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+              {currentUser?.roleId === 9823749823749823 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Developer
+                  </label>
+                  <select
+                    value={formData.developerId || ''}
+                    onChange={(e) => setFormData({ ...formData, developerId: e.target.value ? parseInt(e.target.value) : undefined })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a developer</option>
+                    {developers.map(dev => (
+                      <option key={dev.accountId} value={dev.accountId}>
+                        {dev.firstName} {dev.lastName} ({dev.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="mt-6 flex gap-3 justify-end">
               <button

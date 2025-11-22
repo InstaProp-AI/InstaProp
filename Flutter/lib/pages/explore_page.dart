@@ -33,6 +33,7 @@ import 'post_details_page.dart';
 import 'auction_details_page.dart';
 import 'community_details_page.dart';
 import 'community_list_page.dart';
+import 'property_details_page.dart';
 import 'chat_list_page.dart';
 import 'project_details_page.dart';
 import 'news_detail_page.dart';
@@ -844,7 +845,19 @@ class _ExplorePageState extends State<ExplorePage> {
           final auction = item.data as Auction;
           card = FeedAuctionCard(
             auction: auction,
+            onPropertyTap: () {
+              // Navigate to property details page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PropertyDetailsPage(
+                    propertyId: auction.propertyId,
+                  ),
+                ),
+              );
+            },
             onTap: () {
+              // Navigate to auction details/bidding page (or ended auction page)
               Navigator.push(
                 context,
                 MaterialPageRoute(

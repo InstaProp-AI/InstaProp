@@ -14,6 +14,9 @@ class Chat {
   final String? lastMessage;
   final int unreadCount;
   final bool isSupportChat;
+  final int? salesMemberId;
+  final String? salesMemberName;
+  final bool isAvailable; // For sales: indicates if chat is available to take
 
   Chat({
     required this.chatId,
@@ -29,6 +32,9 @@ class Chat {
     this.lastMessage,
     required this.unreadCount,
     this.isSupportChat = false,
+    this.salesMemberId,
+    this.salesMemberName,
+    this.isAvailable = false,
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -50,6 +56,9 @@ class Chat {
       lastMessage: json['lastMessage'],
       unreadCount: json['unreadCount'] ?? 0,
       isSupportChat: json['isSupportChat'] ?? false,
+      salesMemberId: json['salesMemberId'],
+      salesMemberName: json['salesMemberName'],
+      isAvailable: json['isAvailable'] ?? false,
     );
   }
 
@@ -68,6 +77,9 @@ class Chat {
       'lastMessage': lastMessage,
       'unreadCount': unreadCount,
       'isSupportChat': isSupportChat,
+      'salesMemberId': salesMemberId,
+      'salesMemberName': salesMemberName,
+      'isAvailable': isAvailable,
     };
   }
 }

@@ -50,16 +50,37 @@ namespace InstapropAPI.Services
                 }
             };
 
-            _context.Roles.AddRange(roles);
-            await _context.SaveChangesAsync();
-            
-            Console.WriteLine($"✅ Seeded {roles.Count} roles with non-guessable IDs:");
-            foreach (var role in roles)
+            // Use a transaction to ensure atomicity
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                Console.WriteLine($"   - {role.RoleName}: {role.RoleId}");
+                // Double check inside transaction
+                var existingRoles = await _context.Roles.CountAsync();
+                if (existingRoles > 0)
+                {
+                    Console.WriteLine("ℹ️ Roles already exist (detected in transaction). Skipping seeding.");
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                _context.Roles.AddRange(roles);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                
+                Console.WriteLine($"✅ Seeded {roles.Count} roles with non-guessable IDs:");
+                foreach (var role in roles)
+                {
+                    Console.WriteLine($"   - {role.RoleName}: {role.RoleId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Role seeding failed (possibly already seeded): {ex.Message}");
+                await transaction.RollbackAsync();
             }
         }
     }
 }
+
 
 

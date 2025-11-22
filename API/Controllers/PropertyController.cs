@@ -657,7 +657,7 @@ namespace InstapropAPI.Controllers
         // POST: api/Property/{id}/documents
         [HttpPost("{id}/documents")]
         [Authorize]
-        public async Task<ActionResult> UploadPropertyDocument(int id, [FromForm] IFormFile file, [FromForm] string docType)
+        public async Task<ActionResult> UploadPropertyDocument(int id, IFormFile file, [FromForm] string docType)
         {
             try
             {
@@ -757,7 +757,7 @@ namespace InstapropAPI.Controllers
         // POST: api/Property/{id}/images
         [HttpPost("{id}/images")]
         [Authorize]
-        public async Task<ActionResult> UploadPropertyImages(int id, [FromForm] List<IFormFile> images, [FromForm] string? imageType = "Gallery")
+        public async Task<ActionResult> UploadPropertyImages(int id, List<IFormFile> images, [FromForm] string? imageType = "Gallery")
         {
             try
             {

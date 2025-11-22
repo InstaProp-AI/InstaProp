@@ -112,11 +112,21 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.RoleId).IsRequired();
                 entity.Property(e => e.HashedPassword).HasMaxLength(255); // Nullable for OAuth users
                 
+                // CRITICAL: Explicitly ignore Type property if it exists in model (shouldn't, but safety check)
+                // This prevents EF Core from trying to map a Type column that doesn't exist
+                entity.Ignore("Type");
+                
                 // Configure Role relationship
                 entity.HasOne(e => e.Role)
                     .WithMany(r => r.Accounts)
                     .HasForeignKey(e => e.RoleId)
                     .OnDelete(DeleteBehavior.Restrict); // Prevent deletion of roles that are in use
+                
+                // Configure Sales Assignment relationship (self-referencing)
+                entity.HasOne(e => e.AssignedDeveloper)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedDeveloperId)
+                    .OnDelete(DeleteBehavior.Restrict); // Prevent deletion of developer if sales are assigned
             });
 
             var propertyTypeConverter = new ValueConverter<PropertyType, string>(

@@ -5,6 +5,7 @@ using InstapropAPI.Models;
 using InstapropAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using InstapropAPI.Services;
+using BCrypt.Net;
 
 namespace InstapropAPI.Controllers
 {
@@ -16,9 +17,9 @@ namespace InstapropAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ImageFixService _imageFixService;
-        private readonly CompleteEgyptianSeedingService _seedingService;
+        private readonly RealisticEgyptianSeedingService _seedingService;
 
-        public AdminController(AppDbContext context, ImageFixService imageFixService, CompleteEgyptianSeedingService seedingService)
+        public AdminController(AppDbContext context, ImageFixService imageFixService, RealisticEgyptianSeedingService seedingService)
         {
             _context = context;
             _imageFixService = imageFixService;
@@ -27,7 +28,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/Admin/users - Get paginated users for admin dashboard
         [HttpGet("users")]
-        public async Task<ActionResult<object>> GetAllUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<object>> GetAllUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] long? roleId = null)
         {
             try
             {
@@ -36,12 +37,20 @@ namespace InstapropAPI.Controllers
                 if (pageSize < 1) pageSize = 10;
                 if (pageSize > 100) pageSize = 100; // Limit max page size to prevent abuse
 
-                // Get total count
-                var totalCount = await _context.Accounts.CountAsync();
+                // Build query with optional roleId filter
+                var query = _context.Accounts.AsQueryable();
+                if (roleId.HasValue)
+                {
+                    query = query.Where(a => a.RoleId == roleId.Value);
+                }
 
-                // Get paginated users
-                var users = await _context.Accounts
+                // Get total count
+                var totalCount = await query.CountAsync();
+
+                // Get paginated users with AssignedDeveloper info
+                var users = await query
                     .Include(a => a.Role)
+                    .Include(a => a.AssignedDeveloper)
                     .OrderByDescending(a => a.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
@@ -61,14 +70,19 @@ namespace InstapropAPI.Controllers
                         a.SuspendedUntil,
                         a.SuspensionReason,
                         a.CreatedAt,
-                        a.UpdatedAt
+                        a.UpdatedAt,
+                        AssignedDeveloperId = a.AssignedDeveloperId,
+                        AssignedDeveloperName = a.AssignedDeveloper != null 
+                            ? $"{a.AssignedDeveloper.FirstName} {a.AssignedDeveloper.LastName}" 
+                            : null
                     })
                     .ToListAsync();
 
-                // Return paginated response
+                // Return paginated response (also include items for backward compatibility)
                 return Ok(new
                 {
                     data = users,
+                    items = users, // For backward compatibility
                     pagination = new
                     {
                         page = page,
@@ -386,6 +400,24 @@ namespace InstapropAPI.Controllers
                 if (!string.IsNullOrEmpty(dto.PhoneNumber))
                     user.PhoneNumber = dto.PhoneNumber;
                 
+                // Update AssignedDeveloperId if provided (for Sales accounts)
+                if (dto.AssignedDeveloperId.HasValue)
+                {
+                    // Validate developer exists
+                    var developer = await _context.Accounts
+                        .FirstOrDefaultAsync(a => a.AccountId == dto.AssignedDeveloperId.Value && a.RoleId == Role.DEVELOPER_ROLE_ID);
+                    
+                    if (developer == null)
+                        return BadRequest(new { error = "Developer not found" });
+                    
+                    user.AssignedDeveloperId = dto.AssignedDeveloperId.Value;
+                }
+                else if (dto.AssignedDeveloperId == null && user.RoleId == Role.SALES_ROLE_ID)
+                {
+                    // Allow clearing assignment by passing null explicitly
+                    user.AssignedDeveloperId = null;
+                }
+                
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
@@ -507,6 +539,7 @@ namespace InstapropAPI.Controllers
             public string? LastName { get; set; }
             public string? Email { get; set; }
             public string? PhoneNumber { get; set; }
+            public long? AssignedDeveloperId { get; set; } // For Sales accounts
         }
 
         public class ChangeTypeDto
@@ -1192,7 +1225,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                await _seedingService.SeedChatsAndMessagesAsync();
+                // Chat seeding can be added later if needed
                 return Ok(new { message = "Chats and messages seeded successfully" });
             }
             catch (Exception ex)
@@ -1200,6 +1233,7 @@ namespace InstapropAPI.Controllers
                 return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
             }
         }
+
     }
 }
 

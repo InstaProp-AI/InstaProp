@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
+using InstapropAPI.Models;
 using InstapropAPI.Services;
 using InstapropAPI.Middleware;
+using InstapropAPI.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Reflection;
+using System.Linq;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,7 +79,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 // Add Services
 //builder.Services.AddScoped<SeedDataService>();
-builder.Services.AddScoped<CompleteEgyptianSeedingService>();
+builder.Services.AddScoped<RealisticEgyptianSeedingService>();
 builder.Services.AddScoped<RoleSeederService>();
 builder.Services.AddSingleton<FirestoreService>();
 builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
@@ -133,14 +136,52 @@ builder.Services.AddSwaggerGen(c =>
     // Handle circular references by using unique schema IDs based on full name
     c.CustomSchemaIds(type =>
     {
-        if (type.IsGenericType)
+        try
         {
-            var name = type.Name.Substring(0, type.Name.IndexOf('`'));
-            var args = type.GetGenericArguments().Select(t => t.Name);
-            return $"{name}Of{string.Join("And", args)}";
+            if (type.IsGenericType)
+            {
+                var name = type.Name.Substring(0, type.Name.IndexOf('`'));
+                var args = type.GetGenericArguments().Select(t => t.Name);
+                return $"{name}Of{string.Join("And", args)}";
+            }
+            return type.FullName?.Replace("+", ".") ?? type.Name;
         }
-        return type.FullName?.Replace("+", ".") ?? type.Name;
+        catch
+        {
+            // Fallback to simple name if schema ID generation fails
+            return type.Name;
+        }
     });
+    
+    // Ignore circular references in navigation properties
+    c.IgnoreObsoleteProperties();
+    
+    // Map types to avoid circular reference issues
+    c.MapType<DateTime>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+    {
+        Type = "string",
+        Format = "date-time"
+    });
+    
+    // Map IFormFile to prevent parameter generation errors
+    c.MapType<IFormFile>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+    
+    // Filter out problematic schema types that cause generation errors
+    c.SchemaFilter<SwaggerSchemaFilter>();
+    
+    // Add operation filter to handle errors gracefully
+    c.OperationFilter<SwaggerOperationFilter>();
+    
+    // Add filter to handle file upload endpoints (IFormFile)
+    c.OperationFilter<SwaggerFileUploadFilter>();
+    
+    // Suppress schema warnings and errors
+    c.IgnoreObsoleteActions();
+    c.IgnoreObsoleteProperties();
     
     // Include XML comments if available (optional)
     try
@@ -156,9 +197,6 @@ builder.Services.AddSwaggerGen(c =>
     {
         // Ignore if XML file doesn't exist
     }
-    
-    // Ignore obsolete properties
-    c.IgnoreObsoleteProperties();
 });
 
 // CORS - Allow all origins for mobile apps (both development and production)
@@ -241,75 +279,107 @@ app.UseErrorHandling();
 // Uncomment when needed:
 // app.UseRateLimiting(maxRequestsPerWindow: 1000, timeWindowSeconds: 60);
 
-// Serve Flutter web app from wwwroot/app
-app.UseStaticFiles(new StaticFileOptions
+// Serve admin dashboard from dashboard/dist (default web app)
+// Try multiple paths: same directory (Docker), parent directory (local dev)
+var dashboardPaths = new[]
 {
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "app")),
-    RequestPath = ""
-});
+    Path.Combine(builder.Environment.ContentRootPath, "dashboard", "dist"), // Docker container
+    Path.Combine(builder.Environment.ContentRootPath, "..", "dashboard", "dist"), // Local development
+};
+
+string? dashboardPath = null;
+foreach (var path in dashboardPaths)
+{
+    if (Directory.Exists(path))
+    {
+        dashboardPath = path;
+        break;
+    }
+}
+
+if (dashboardPath != null)
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(dashboardPath),
+        RequestPath = ""
+    });
+    Console.WriteLine($"✅ Admin Dashboard served from: {dashboardPath}");
+}
+else
+{
+    Console.WriteLine($"⚠️ Dashboard not found. Checked paths:");
+    foreach (var path in dashboardPaths)
+    {
+        Console.WriteLine($"   - {path}");
+    }
+}
 
 // Serve other static files from wwwroot (uploads, etc.)
 app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed data - Complete Egyptian Real Estate Data
-// Seed the database if it's empty
+// Database Setup: Seed Roles and Seed Data (migrations should be applied manually)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var seedService = scope.ServiceProvider.GetRequiredService<CompleteEgyptianSeedingService>();
+    var seedService = scope.ServiceProvider.GetRequiredService<RealisticEgyptianSeedingService>();
+    var roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeederService>();
 
     try
     {
-        Console.WriteLine("📦 Applying migrations...");
-        // Suppress detailed migration logging to avoid Railway rate limits
-        await context.Database.MigrateAsync();
-        Console.WriteLine("✅ Migrations completed.");
+        // Step 1: Seed Roles (required before any accounts can be created)
+        Console.WriteLine("🔐 Seeding Roles...");
+        await roleSeeder.SeedRolesAsync();
+        
+        // Verify roles were created
+        var rolesCount = await context.Roles.CountAsync();
+        if (rolesCount == 0)
+        {
+            Console.WriteLine("⚠️ WARNING: Roles table is empty. Make sure migrations are applied first.");
+        }
+        else
+        {
+            Console.WriteLine($"✅ Seeded {rolesCount} roles successfully.");
+        }
+
+        // Step 2: Check if database needs seeding (only if empty)
+        var hasAccounts = await context.Accounts.AnyAsync();
+        if (!hasAccounts)
+        {
+            Console.WriteLine("🌱 Database is empty. Starting comprehensive data seeding...");
+            await seedService.SeedAllDataAsync(skipClear: true);
+            Console.WriteLine("✅ All data seeding completed successfully!");
+
+            // Final verification
+            var accountsCount = await context.Accounts.CountAsync();
+            var propertiesCount = await context.ChildProperties.CountAsync();
+            var auctionsCount = await context.Auctions.CountAsync();
+            var communitiesCount = await context.Communities.CountAsync();
+            var newsCount = await context.NewsArticles.CountAsync();
+            
+            Console.WriteLine("📊 Database Summary:");
+            Console.WriteLine($"   - Accounts: {accountsCount}");
+            Console.WriteLine($"   - Properties: {propertiesCount}");
+            Console.WriteLine($"   - Auctions: {auctionsCount}");
+            Console.WriteLine($"   - Communities: {communitiesCount}");
+            Console.WriteLine($"   - News Articles: {newsCount}");
+        }
+        else
+        {
+            Console.WriteLine("ℹ️ Database already contains data. Skipping seeding.");
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Migration failed: {ex.Message}");
+        Console.WriteLine($"❌ Database setup failed: {ex.Message}");
         if (ex.InnerException != null)
         {
-            Console.WriteLine($"   Inner: {ex.InnerException.Message}");
+            Console.WriteLine($"   Inner Exception: {ex.InnerException.Message}");
         }
-        throw;
-    }
-    
-    // Seed roles first (required for accounts)
-    var roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeederService>();
-    await roleSeeder.SeedRolesAsync();
-    
-    // Check if database is empty (no accounts)
-    var hasAccounts = await context.Accounts.AnyAsync();
-    if (!hasAccounts)
-    {
-        Console.WriteLine("🌱 Database is empty. Starting seeding process...");
-        await seedService.SeedAllDataAsync();
-        Console.WriteLine("✅ Seeding completed!");
-    }
-    else
-    {
-        Console.WriteLine("ℹ️ Database already contains data. Skipping seeding.");
-        
-        // Check for command-line argument to seed chats only
-        var commandLineArgs = Environment.GetCommandLineArgs();
-        if (commandLineArgs.Contains("--seed-chats") || commandLineArgs.Contains("/seed-chats"))
-        {
-            Console.WriteLine("💬 Seeding chats and messages (command-line argument)...");
-            try
-            {
-                await seedService.SeedChatsAndMessagesAsync();
-                Console.WriteLine("✅ Chats and messages seeded successfully!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Error seeding chats: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
-            }
-        }
+        Console.WriteLine($"   Stack Trace: {ex.StackTrace}");
+        // Don't throw - allow app to start even if seeding fails
     }
 }
 app.MapControllers();
@@ -317,12 +387,51 @@ app.MapControllers();
 // Health check endpoint for monitoring
 app.MapHealthChecks("/health");
 
-// Serve Flutter web app for all non-API routes (SPA fallback)
-app.MapFallbackToFile("index.html", new StaticFileOptions
+// Serve admin dashboard for all non-API routes (SPA fallback)
+// Use the same path resolution as static files
+var dashboardDistPaths = new[]
 {
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "app")),
-    RequestPath = ""
-});
+    Path.Combine(builder.Environment.ContentRootPath, "dashboard", "dist"), // Docker container
+    Path.Combine(builder.Environment.ContentRootPath, "..", "dashboard", "dist"), // Local development
+};
+
+string? dashboardDistPath = null;
+foreach (var path in dashboardDistPaths)
+{
+    if (Directory.Exists(path))
+    {
+        dashboardDistPath = path;
+        break;
+    }
+}
+
+if (dashboardDistPath != null)
+{
+    app.MapFallbackToFile("index.html", new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(dashboardDistPath),
+        RequestPath = ""
+    });
+    Console.WriteLine($"✅ Admin Dashboard fallback configured from: {dashboardDistPath}");
+}
+else
+{
+    Console.WriteLine($"⚠️ Dashboard dist folder not found. Checked paths:");
+    foreach (var path in dashboardDistPaths)
+    {
+        Console.WriteLine($"   - {path}");
+    }
+    // Fallback to Flutter if dashboard not available
+    var flutterPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "app");
+    if (Directory.Exists(flutterPath))
+    {
+        app.MapFallbackToFile("index.html", new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(flutterPath),
+            RequestPath = ""
+        });
+        Console.WriteLine($"⚠️ Falling back to Flutter app");
+    }
+}
 
 await app.RunAsync();

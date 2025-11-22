@@ -136,7 +136,19 @@ namespace InstapropAPI.Attributes
                 return;
             }
 
-            // Other roles (Users) are not allowed
+            // Regular users should have access to chats
+            if (roleId == Role.USER_ROLE_ID && _featureName == "Chats")
+            {
+                return; // Allow regular users to access chats
+            }
+
+            // Sales members should have access to chats
+            if (roleId == Role.SALES_ROLE_ID && _featureName == "Chats")
+            {
+                return; // Allow sales members to access chats
+            }
+
+            // Other roles are not allowed
             context.Result = new ForbidResult();
         }
     }

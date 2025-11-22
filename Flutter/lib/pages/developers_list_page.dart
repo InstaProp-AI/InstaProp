@@ -32,9 +32,21 @@ class _DevelopersListPageState extends State<DevelopersListPage> {
         _developers = developers;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error loading developers: $e');
-      setState(() => _isLoading = false);
+      print('Stack trace: $stackTrace');
+      setState(() {
+        _developers = [];
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load developers: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -184,7 +196,7 @@ class _DevelopersListPageState extends State<DevelopersListPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      developer.companyName ?? developer.firstName,
+                      developer.companyName ?? developer.fullName,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,

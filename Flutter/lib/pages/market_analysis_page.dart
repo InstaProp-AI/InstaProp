@@ -34,26 +34,47 @@ class _MarketAnalysisPageState extends State<MarketAnalysisPage> {
 
     try {
       final results = await Future.wait([
-        AnalyticsService.getMarketOverview(),
-        AnalyticsService.getPriceTrends(months: 12),
-        AnalyticsService.getGoldComparison(months: 12),
-        AnalyticsService.getDeveloperRankings(),
-        AnalyticsService.getBestInvestments(limit: 5),
+        AnalyticsService.getMarketOverview().catchError((e) {
+          print('Error getting market overview: $e');
+          return null;
+        }),
+        AnalyticsService.getPriceTrends(months: 12).catchError((e) {
+          print('Error getting price trends: $e');
+          return null;
+        }),
+        AnalyticsService.getGoldComparison(months: 12).catchError((e) {
+          print('Error getting gold comparison: $e');
+          return null;
+        }),
+        AnalyticsService.getDeveloperRankings().catchError((e) {
+          print('Error getting developer rankings: $e');
+          return null;
+        }),
+        AnalyticsService.getBestInvestments(limit: 5).catchError((e) {
+          print('Error getting best investments: $e');
+          return null;
+        }),
       ]);
 
-      setState(() {
-        _marketOverview = results[0] as MarketOverviewResponse?;
-        _priceTrends = results[1] as List<PriceTrendResponse>?;
-        _goldComparison = results[2] as GoldComparisonResponse?;
-        _developerRankings = results[3] as List<DeveloperRankingResponse>?;
-        _bestInvestments = results[4] as List<BestInvestmentResponse>?;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _marketOverview = results[0] as MarketOverviewResponse?;
+          _priceTrends = results[1] as List<PriceTrendResponse>?;
+          _goldComparison = results[2] as GoldComparisonResponse?;
+          _developerRankings = results[3] as List<DeveloperRankingResponse>?;
+          _bestInvestments = results[4] as List<BestInvestmentResponse>?;
+          _isLoading = false;
+        });
+      }
+    } catch (e, stackTrace) {
+      print('Error loading market data: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 

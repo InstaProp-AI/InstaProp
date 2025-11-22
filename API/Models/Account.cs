@@ -29,6 +29,12 @@ namespace InstapropAPI.Models
         // Navigation property
         public Role? Role { get; set; }
 
+        // Sales Assignment - Only populated for sales accounts
+        public long? AssignedDeveloperId { get; set; }
+
+        [ForeignKey(nameof(AssignedDeveloperId))]
+        public Account? AssignedDeveloper { get; set; }
+
         // Nullable for OAuth users who don't have a password
         public string? HashedPassword { get; set; }
 

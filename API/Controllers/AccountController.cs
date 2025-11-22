@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -64,15 +66,26 @@ namespace InstapropAPI.Controllers
             return Ok(new { exists });
         }
 
-        // Signup - Create account without KYC
-        // SECURITY: Only User accounts can be created via signup. Admin/Developer accounts must be created/promoted by admins.
+        // User Signup - Create regular user account
         [HttpPost("signup")]
         public async Task<IActionResult> Signup([FromBody] SignupRequest signupRequest)
         {
-            if (await _context.Accounts.AnyAsync(a => a.Email == signupRequest.Email))
+            // Normalize email and phone for comparison
+            var normalizedEmail = signupRequest.Email?.Trim().ToLowerInvariant();
+            var normalizedPhone = signupRequest.PhoneNumber?.Trim();
+            
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+                return BadRequest("Email is required.");
+            
+            if (string.IsNullOrWhiteSpace(normalizedPhone))
+                return BadRequest("Phone number is required.");
+            
+            // Check for existing email (case-insensitive)
+            if (await _context.Accounts.AnyAsync(a => a.Email.ToLower() == normalizedEmail))
                 return BadRequest("Email already exists.");
 
-            if (await _context.Accounts.AnyAsync(a => a.PhoneNumber == signupRequest.PhoneNumber))
+            // Check for existing phone number
+            if (await _context.Accounts.AnyAsync(a => a.PhoneNumber == normalizedPhone))
                 return BadRequest("Phone number already exists.");
 
             // Validate password
@@ -80,13 +93,79 @@ namespace InstapropAPI.Controllers
             if (passwordError != null)
                 return BadRequest(passwordError);
 
+            // Ensure User Role exists (required for foreign key constraint)
+            var userRole = await _context.Roles.FindAsync(Role.USER_ROLE_ID);
+            if (userRole == null)
+            {
+                // Role doesn't exist - create it
+                try
+                {
+                    userRole = new Role
+                    {
+                        RoleId = Role.USER_ROLE_ID,
+                        RoleName = "User",
+                        Description = "Regular user account",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Roles.Add(userRole);
+                    
+                    // Also ensure other roles exist
+                    var adminRole = await _context.Roles.FindAsync(Role.ADMIN_ROLE_ID);
+                    if (adminRole == null)
+                    {
+                        _context.Roles.Add(new Role
+                        {
+                            RoleId = Role.ADMIN_ROLE_ID,
+                            RoleName = "Admin",
+                            Description = "Administrator account with full system access",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    
+                    var developerRole = await _context.Roles.FindAsync(Role.DEVELOPER_ROLE_ID);
+                    if (developerRole == null)
+                    {
+                        _context.Roles.Add(new Role
+                        {
+                            RoleId = Role.DEVELOPER_ROLE_ID,
+                            RoleName = "Developer",
+                            Description = "Developer account with project management permissions",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception roleEx)
+                {
+                    var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                    logger.LogError(roleEx, "Failed to create roles: {Message}", roleEx.Message);
+                    return StatusCode(500, new { 
+                        error = "Database configuration error",
+                        message = "Failed to initialize required system roles. Please contact support.",
+                        details = roleEx.InnerException?.Message ?? roleEx.Message
+                    });
+                }
+            }
+            
+            // Double-check role exists before proceeding
+            userRole = await _context.Roles.FindAsync(Role.USER_ROLE_ID);
+            if (userRole == null)
+            {
+                return StatusCode(500, new { 
+                    error = "Database configuration error",
+                    message = "User role does not exist in database. Please run migrations and seed roles.",
+                    details = $"RoleId {Role.USER_ROLE_ID} not found"
+                });
+            }
+
             // SECURITY FIX: Always create User accounts with hardcoded non-guessable RoleId
             var account = new Account
             {
-                FirstName = signupRequest.FirstName,
-                LastName = signupRequest.LastName,
-                Email = signupRequest.Email,
-                PhoneNumber = signupRequest.PhoneNumber,
+                FirstName = signupRequest.FirstName?.Trim() ?? string.Empty,
+                LastName = signupRequest.LastName?.Trim() ?? string.Empty,
+                Email = normalizedEmail,
+                PhoneNumber = normalizedPhone,
                 RoleId = Role.USER_ROLE_ID, // Always User role - non-guessable 64-bit ID
                 HashedPassword = BCrypt.Net.BCrypt.HashPassword(signupRequest.Password),
                 Status = VerificationStatus.NotVerified, // Will be verified by admin after KYC review
@@ -94,13 +173,526 @@ namespace InstapropAPI.Controllers
             };
 
             _context.Accounts.Add(account);
-            await _context.SaveChangesAsync();
+            
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                // Log the full exception for debugging
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogError(ex, "Database error during signup: {Message}", ex.Message);
+                
+                // Get detailed error message from inner exception
+                var innerException = ex.InnerException;
+                var errorMessage = ex.Message;
+                var detailedMessage = innerException?.Message ?? errorMessage;
+                
+                // Check for specific constraint violations
+                if (detailedMessage.Contains("duplicate key") || detailedMessage.Contains("UNIQUE constraint"))
+                {
+                    if (detailedMessage.Contains("Email") || detailedMessage.Contains("email"))
+                    {
+                        return BadRequest("Email already exists.");
+                    }
+                    if (detailedMessage.Contains("PhoneNumber") || detailedMessage.Contains("phone"))
+                    {
+                        return BadRequest("Phone number already exists.");
+                    }
+                    return BadRequest("An account with this information already exists.");
+                }
+                
+                if (detailedMessage.Contains("foreign key") || detailedMessage.Contains("FOREIGN KEY"))
+                {
+                    return StatusCode(500, new { 
+                        error = "Database configuration error",
+                        message = "Required system data is missing. Please contact support.",
+                        details = detailedMessage
+                    });
+                }
+                
+                // Return detailed error for debugging
+                return StatusCode(500, new { 
+                    error = "An error occurred while creating your account",
+                    message = detailedMessage,
+                    type = ex.GetType().Name,
+                    innerType = innerException?.GetType().Name
+                });
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogError(ex, "Unexpected error during signup: {Message}", ex.Message);
+                return StatusCode(500, new { 
+                    error = "An unexpected error occurred",
+                    message = ex.Message
+                });
+            }
 
-            // Sync new user to Firestore for real-time dashboard updates
-            await _firestoreService.SyncUserAsync(account.AccountId, account);
+            // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
+            var role = await _context.Roles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.RoleId == account.RoleId);
+            
+            if (role != null)
+            {
+                // Set navigation property - EF Core will handle the relationship through RoleId
+                // Don't manually track it to avoid conflicts
+                account.Role = role;
+            }
+
+            // Sync new user to Firestore for real-time dashboard updates (don't fail signup if this fails)
+            try
+            {
+                await _firestoreService.SyncUserAsync(account.AccountId, account);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail signup if Firestore sync fails
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogWarning(ex, "Firestore sync failed for account {AccountId}, but signup succeeded", account.AccountId);
+            }
 
             var token = GenerateJwtToken(account);
-            return Ok(new AuthResponse { Token = token, Account = account });
+            
+            // Return account with roleId and roleName explicitly for Flutter compatibility
+            var accountResponse = new
+            {
+                account.AccountId,
+                account.FirstName,
+                account.LastName,
+                account.PhoneNumber,
+                account.Email,
+                RoleId = account.RoleId,
+                RoleName = account.Role?.RoleName ?? "User",
+                account.Status,
+                account.EmailVerified,
+                account.PhoneVerified,
+                account.CreatedAt,
+                account.UpdatedAt
+            };
+            
+            return Ok(new { Token = token, Account = accountResponse });
+        }
+
+        // Developer Signup - Create developer account (Admin only)
+        [HttpPost("signup-developer")]
+        [AdminAuthorize]
+        public async Task<IActionResult> SignupDeveloper([FromBody] SignupRequest signupRequest)
+        {
+            // Normalize email and phone for comparison
+            var normalizedEmail = signupRequest.Email?.Trim().ToLowerInvariant();
+            var normalizedPhone = signupRequest.PhoneNumber?.Trim();
+            
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+                return BadRequest("Email is required.");
+            
+            if (string.IsNullOrWhiteSpace(normalizedPhone))
+                return BadRequest("Phone number is required.");
+            
+            // Check for existing email (case-insensitive)
+            if (await _context.Accounts.AnyAsync(a => a.Email.ToLower() == normalizedEmail))
+                return BadRequest("Email already exists.");
+
+            // Check for existing phone number
+            if (await _context.Accounts.AnyAsync(a => a.PhoneNumber == normalizedPhone))
+                return BadRequest("Phone number already exists.");
+
+            // Validate password
+            var passwordError = ValidatePassword(signupRequest.Password);
+            if (passwordError != null)
+                return BadRequest(passwordError);
+
+            // Ensure Developer Role exists (required for foreign key constraint)
+            var developerRole = await _context.Roles.FindAsync(Role.DEVELOPER_ROLE_ID);
+            if (developerRole == null)
+            {
+                // Role doesn't exist - create it
+                try
+                {
+                    developerRole = new Role
+                    {
+                        RoleId = Role.DEVELOPER_ROLE_ID,
+                        RoleName = "Developer",
+                        Description = "Developer account with project management permissions",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Roles.Add(developerRole);
+                    
+                    // Also ensure other roles exist
+                    var userRole = await _context.Roles.FindAsync(Role.USER_ROLE_ID);
+                    if (userRole == null)
+                    {
+                        _context.Roles.Add(new Role
+                        {
+                            RoleId = Role.USER_ROLE_ID,
+                            RoleName = "User",
+                            Description = "Regular user account",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    
+                    var adminRole = await _context.Roles.FindAsync(Role.ADMIN_ROLE_ID);
+                    if (adminRole == null)
+                    {
+                        _context.Roles.Add(new Role
+                        {
+                            RoleId = Role.ADMIN_ROLE_ID,
+                            RoleName = "Admin",
+                            Description = "Administrator account with full system access",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception roleEx)
+                {
+                    var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                    logger.LogError(roleEx, "Failed to create roles: {Message}", roleEx.Message);
+                    return StatusCode(500, new { 
+                        error = "Database configuration error",
+                        message = "Failed to initialize required system roles. Please contact support.",
+                        details = roleEx.InnerException?.Message ?? roleEx.Message
+                    });
+                }
+            }
+            
+            // Double-check role exists before proceeding
+            developerRole = await _context.Roles.FindAsync(Role.DEVELOPER_ROLE_ID);
+            if (developerRole == null)
+            {
+                return StatusCode(500, new { 
+                    error = "Database configuration error",
+                    message = "Developer role does not exist in database. Please run migrations and seed roles.",
+                    details = $"RoleId {Role.DEVELOPER_ROLE_ID} not found"
+                });
+            }
+
+            // Create Developer account
+            var account = new Account
+            {
+                FirstName = signupRequest.FirstName?.Trim() ?? string.Empty,
+                LastName = signupRequest.LastName?.Trim() ?? string.Empty,
+                Email = normalizedEmail,
+                PhoneNumber = normalizedPhone,
+                RoleId = Role.DEVELOPER_ROLE_ID, // Developer role
+                HashedPassword = BCrypt.Net.BCrypt.HashPassword(signupRequest.Password),
+                Status = VerificationStatus.NotVerified, // Will be verified by admin after KYC review
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Accounts.Add(account);
+            
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                // Log the full exception for debugging
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogError(ex, "Database error during developer signup: {Message}", ex.Message);
+                
+                // Get detailed error message from inner exception
+                var innerException = ex.InnerException;
+                var errorMessage = ex.Message;
+                var detailedMessage = innerException?.Message ?? errorMessage;
+                
+                // Check for specific constraint violations
+                if (detailedMessage.Contains("duplicate key") || detailedMessage.Contains("UNIQUE constraint"))
+                {
+                    if (detailedMessage.Contains("Email") || detailedMessage.Contains("email"))
+                    {
+                        return BadRequest("Email already exists.");
+                    }
+                    if (detailedMessage.Contains("PhoneNumber") || detailedMessage.Contains("phone"))
+                    {
+                        return BadRequest("Phone number already exists.");
+                    }
+                    return BadRequest("An account with this information already exists.");
+                }
+                
+                if (detailedMessage.Contains("foreign key") || detailedMessage.Contains("FOREIGN KEY"))
+                {
+                    return StatusCode(500, new { 
+                        error = "Database configuration error",
+                        message = "Required system data is missing. Please contact support.",
+                        details = detailedMessage
+                    });
+                }
+                
+                // Return detailed error for debugging
+                return StatusCode(500, new { 
+                    error = "An error occurred while creating your developer account",
+                    message = detailedMessage,
+                    type = ex.GetType().Name,
+                    innerType = innerException?.GetType().Name
+                });
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogError(ex, "Unexpected error during developer signup: {Message}", ex.Message);
+                return StatusCode(500, new { 
+                    error = "An unexpected error occurred",
+                    message = ex.Message
+                });
+            }
+
+            // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
+            var devSignupRole = await _context.Roles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.RoleId == account.RoleId);
+            
+            if (devSignupRole != null)
+            {
+                // Set navigation property - EF Core will handle the relationship through RoleId
+                account.Role = devSignupRole;
+            }
+
+            // Sync new developer to Firestore for real-time dashboard updates (don't fail signup if this fails)
+            try
+            {
+                await _firestoreService.SyncUserAsync(account.AccountId, account);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail signup if Firestore sync fails
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogWarning(ex, "Firestore sync failed for developer account {AccountId}, but signup succeeded", account.AccountId);
+            }
+
+            var token = GenerateJwtToken(account);
+            
+            // Return account with roleId and roleName explicitly for Flutter compatibility
+            var accountResponse = new
+            {
+                account.AccountId,
+                account.FirstName,
+                account.LastName,
+                account.PhoneNumber,
+                account.Email,
+                RoleId = account.RoleId,
+                RoleName = account.Role?.RoleName ?? "Developer",
+                account.Status,
+                account.EmailVerified,
+                account.PhoneVerified,
+                account.CreatedAt,
+                account.UpdatedAt
+            };
+            
+            return Ok(new { Token = token, Account = accountResponse });
+        }
+
+        // Sales Signup - Create sales account (Admin or Developer only)
+        [HttpPost("signup-sales")]
+        [DeveloperOrAdminAuthorize]
+        public async Task<IActionResult> SignupSales([FromBody] SalesSignupRequest signupRequest)
+        {
+            var currentAccountId = GetCurrentAccountId();
+            if (currentAccountId == null)
+                return Unauthorized();
+
+            var currentAccount = await _context.Accounts.FindAsync(currentAccountId.Value);
+            if (currentAccount == null)
+                return Unauthorized("Current account not found");
+
+            // Determine developer assignment
+            long? assignedDeveloperId = null;
+            
+            // If current user is admin, require developerId in request
+            if (currentAccount.RoleId == Role.ADMIN_ROLE_ID)
+            {
+                if (!signupRequest.DeveloperId.HasValue)
+                    return BadRequest("Developer ID is required when creating sales account as admin.");
+
+                // Verify developer exists and is actually a developer
+                var developer = await _context.Accounts
+                    .FirstOrDefaultAsync(a => a.AccountId == signupRequest.DeveloperId.Value && a.RoleId == Role.DEVELOPER_ROLE_ID);
+                
+                if (developer == null)
+                    return BadRequest("Invalid developer ID. Developer not found.");
+
+                assignedDeveloperId = signupRequest.DeveloperId.Value;
+            }
+            // If current user is developer, auto-assign to themselves
+            else if (currentAccount.RoleId == Role.DEVELOPER_ROLE_ID)
+            {
+                assignedDeveloperId = currentAccountId.Value;
+            }
+            else
+            {
+                return Forbid("Only admins and developers can create sales accounts.");
+            }
+
+            // Normalize email and phone for comparison
+            var normalizedEmail = signupRequest.Email?.Trim().ToLowerInvariant();
+            var normalizedPhone = signupRequest.PhoneNumber?.Trim();
+            
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+                return BadRequest("Email is required.");
+            
+            if (string.IsNullOrWhiteSpace(normalizedPhone))
+                return BadRequest("Phone number is required.");
+            
+            // Check for existing email (case-insensitive)
+            if (await _context.Accounts.AnyAsync(a => a.Email.ToLower() == normalizedEmail))
+                return BadRequest("Email already exists.");
+
+            // Check for existing phone number
+            if (await _context.Accounts.AnyAsync(a => a.PhoneNumber == normalizedPhone))
+                return BadRequest("Phone number already exists.");
+
+            // Validate password
+            var passwordError = ValidatePassword(signupRequest.Password);
+            if (passwordError != null)
+                return BadRequest(passwordError);
+
+            // Ensure Sales Role exists
+            var salesRole = await _context.Roles.FindAsync(Role.SALES_ROLE_ID);
+            if (salesRole == null)
+            {
+                try
+                {
+                    salesRole = new Role
+                    {
+                        RoleId = Role.SALES_ROLE_ID,
+                        RoleName = "Sales",
+                        Description = "Sales team member assigned to a developer",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Roles.Add(salesRole);
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception roleEx)
+                {
+                    var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                    logger.LogError(roleEx, "Failed to create Sales role: {Message}", roleEx.Message);
+                    return StatusCode(500, new { 
+                        error = "Database configuration error",
+                        message = "Failed to initialize Sales role. Please contact support.",
+                        details = roleEx.InnerException?.Message ?? roleEx.Message
+                    });
+                }
+            }
+            
+            // Double-check role exists
+            salesRole = await _context.Roles.FindAsync(Role.SALES_ROLE_ID);
+            if (salesRole == null)
+            {
+                return StatusCode(500, new { 
+                    error = "Database configuration error",
+                    message = "Sales role does not exist in database. Please run migrations and seed roles.",
+                    details = $"RoleId {Role.SALES_ROLE_ID} not found"
+                });
+            }
+
+            // Create Sales account (skip email/phone verification requirements)
+            var account = new Account
+            {
+                FirstName = signupRequest.FirstName?.Trim() ?? string.Empty,
+                LastName = signupRequest.LastName?.Trim() ?? string.Empty,
+                Email = normalizedEmail,
+                PhoneNumber = normalizedPhone,
+                RoleId = Role.SALES_ROLE_ID,
+                AssignedDeveloperId = assignedDeveloperId,
+                HashedPassword = BCrypt.Net.BCrypt.HashPassword(signupRequest.Password),
+                Status = VerificationStatus.Verified, // Sales accounts are auto-verified
+                EmailVerified = true, // Skip email verification for sales
+                PhoneVerified = true, // Skip phone verification for sales
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Accounts.Add(account);
+            
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogError(ex, "Database error during sales signup: {Message}", ex.Message);
+                
+                var innerException = ex.InnerException;
+                var detailedMessage = innerException?.Message ?? ex.Message;
+                
+                if (detailedMessage.Contains("duplicate key") || detailedMessage.Contains("UNIQUE constraint"))
+                {
+                    if (detailedMessage.Contains("Email") || detailedMessage.Contains("email"))
+                        return BadRequest("Email already exists.");
+                    if (detailedMessage.Contains("PhoneNumber") || detailedMessage.Contains("phone"))
+                        return BadRequest("Phone number already exists.");
+                    return BadRequest("An account with this information already exists.");
+                }
+                
+                if (detailedMessage.Contains("foreign key") || detailedMessage.Contains("FOREIGN KEY"))
+                {
+                    return StatusCode(500, new { 
+                        error = "Database configuration error",
+                        message = "Required system data is missing. Please contact support.",
+                        details = detailedMessage
+                    });
+                }
+                
+                return StatusCode(500, new { 
+                    error = "An error occurred while creating the sales account",
+                    message = detailedMessage
+                });
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogError(ex, "Unexpected error during sales signup: {Message}", ex.Message);
+                return StatusCode(500, new { 
+                    error = "An unexpected error occurred",
+                    message = ex.Message
+                });
+            }
+
+            // Load Role
+            var loadedRole = await _context.Roles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.RoleId == account.RoleId);
+            
+            if (loadedRole != null)
+            {
+                account.Role = loadedRole;
+            }
+
+            // Sync to Firestore (optional, don't fail if it fails)
+            try
+            {
+                await _firestoreService.SyncUserAsync(account.AccountId, account);
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogWarning(ex, "Firestore sync failed for sales account {AccountId}, but signup succeeded", account.AccountId);
+            }
+
+            var token = GenerateJwtToken(account);
+            
+            var accountResponse = new
+            {
+                account.AccountId,
+                account.FirstName,
+                account.LastName,
+                account.PhoneNumber,
+                account.Email,
+                RoleId = account.RoleId,
+                RoleName = account.Role?.RoleName ?? "Sales",
+                AssignedDeveloperId = account.AssignedDeveloperId,
+                account.Status,
+                account.EmailVerified,
+                account.PhoneVerified,
+                account.CreatedAt,
+                account.UpdatedAt
+            };
+            
+            return Ok(new { Token = token, Account = accountResponse });
         }
 
         // Google OAuth Sign-In/Sign-Up
@@ -110,6 +702,20 @@ namespace InstapropAPI.Controllers
             // Check if account exists with this Google ID
             var existingAccount = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.GoogleId == request.GoogleId || a.Email == request.Email);
+            
+            // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
+            if (existingAccount != null)
+            {
+                var existingRole = await _context.Roles
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.RoleId == existingAccount.RoleId);
+                
+                if (existingRole != null)
+                {
+                    // Set navigation property - EF Core will handle the relationship through RoleId
+                    existingAccount.Role = existingRole;
+                }
+            }
 
             if (existingAccount != null)
             {
@@ -149,8 +755,27 @@ namespace InstapropAPI.Controllers
                 
                 await _context.SaveChangesAsync();
 
+                // Role is already loaded via Include above, no need to load again
                 var token = GenerateJwtToken(existingAccount);
-                return Ok(new AuthResponse { Token = token, Account = existingAccount });
+                
+                // Return account with roleId and roleName explicitly for Flutter compatibility
+                var accountResponse = new
+                {
+                    existingAccount.AccountId,
+                    existingAccount.FirstName,
+                    existingAccount.LastName,
+                    existingAccount.PhoneNumber,
+                    existingAccount.Email,
+                    RoleId = existingAccount.RoleId,
+                    RoleName = existingAccount.Role?.RoleName ?? "User",
+                    existingAccount.Status,
+                    existingAccount.EmailVerified,
+                    existingAccount.PhoneVerified,
+                    existingAccount.CreatedAt,
+                    existingAccount.UpdatedAt
+                };
+                
+                return Ok(new { Token = token, Account = accountResponse });
             }
 
             // Create new account - minimal info from Google
@@ -171,13 +796,42 @@ namespace InstapropAPI.Controllers
             _context.Accounts.Add(newAccount);
             await _context.SaveChangesAsync();
 
+            // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
+            var googleRole = await _context.Roles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.RoleId == newAccount.RoleId);
+            
+            if (googleRole != null)
+            {
+                // Set navigation property - EF Core will handle the relationship through RoleId
+                newAccount.Role = googleRole;
+            }
+
             // Sync new user to Firestore
             await _firestoreService.SyncUserAsync(newAccount.AccountId, newAccount);
 
             var newToken = GenerateJwtToken(newAccount);
-            return Ok(new AuthResponse { 
+            
+            // Return account with roleId and roleName explicitly for Flutter compatibility
+            var newAccountResponse = new
+            {
+                newAccount.AccountId,
+                newAccount.FirstName,
+                newAccount.LastName,
+                newAccount.PhoneNumber,
+                newAccount.Email,
+                RoleId = newAccount.RoleId,
+                RoleName = newAccount.Role?.RoleName ?? "User",
+                newAccount.Status,
+                newAccount.EmailVerified,
+                newAccount.PhoneVerified,
+                newAccount.CreatedAt,
+                newAccount.UpdatedAt
+            };
+            
+            return Ok(new { 
                 Token = newToken, 
-                Account = newAccount,
+                Account = newAccountResponse,
                 RequiresProfileCompletion = true // Indicate that profile needs completion
             });
         }
@@ -309,7 +963,9 @@ namespace InstapropAPI.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
-            var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Email == req.Email);
+            var account = await _context.Accounts
+                .Include(a => a.Role) // Load role with the account
+                .FirstOrDefaultAsync(a => a.Email == req.Email);
             
             // Check if account exists
             if (account == null)
@@ -421,8 +1077,27 @@ namespace InstapropAPI.Controllers
 
             await _context.SaveChangesAsync();
 
+            // Role is already loaded via Include above, no need to load again
             var token = GenerateJwtToken(account);
-            return Ok(new AuthResponse { Token = token, Account = account });
+            
+            // Return account with roleId and roleName explicitly for Flutter compatibility
+            var accountResponse = new
+            {
+                account.AccountId,
+                account.FirstName,
+                account.LastName,
+                account.PhoneNumber,
+                account.Email,
+                RoleId = account.RoleId,
+                RoleName = account.Role?.RoleName ?? "User",
+                account.Status,
+                account.EmailVerified,
+                account.PhoneVerified,
+                account.CreatedAt,
+                account.UpdatedAt
+            };
+            
+            return Ok(new { Token = token, Account = accountResponse });
         }
 
         // Forgot Password - Generate temporary password and send via email
@@ -564,6 +1239,29 @@ namespace InstapropAPI.Controllers
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        // GET: api/Account/debug-auth (for debugging authentication issues)
+        [HttpGet("debug-auth")]
+        public ActionResult DebugAuth()
+        {
+            var authHeader = Request.Headers["Authorization"].ToString();
+            var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+            var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+            
+            return Ok(new
+            {
+                hasAuthHeader = !string.IsNullOrEmpty(authHeader),
+                authHeaderFormat = string.IsNullOrEmpty(authHeader) ? "Missing" : 
+                    (authHeader.StartsWith("Bearer ") ? "Correct (Bearer)" : "Incorrect (should start with 'Bearer ')"),
+                isAuthenticated,
+                claimsCount = claims.Count,
+                claims = claims,
+                userId = GetCurrentAccountId(),
+                message = isAuthenticated 
+                    ? "Authentication successful" 
+                    : "Authentication failed - Check Authorization header format: 'Bearer {token}'"
+            });
         }
 
         // GET: api/Account/current
@@ -947,7 +1645,7 @@ namespace InstapropAPI.Controllers
             await _context.SaveChangesAsync();
 
             // Send email
-            await _emailVerificationService.SendVerificationEmail(
+            var emailSent = await _emailVerificationService.SendVerificationEmail(
                 account.Email, 
                 pin, 
                 account.FirstName);
@@ -998,11 +1696,41 @@ namespace InstapropAPI.Controllers
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
-                return Unauthorized();
+            {
+                return Unauthorized(new { 
+                    message = "Authentication failed. Please ensure you are logged in and your token is valid.",
+                    error = "UNAUTHORIZED"
+                });
+            }
 
             var account = await _context.Accounts.FindAsync(accountId);
             if (account == null)
-                return NotFound("Account not found");
+                return NotFound(new { 
+                    message = "Account not found",
+                    error = "ACCOUNT_NOT_FOUND"
+                });
+
+            // Validate phone number exists
+            if (string.IsNullOrWhiteSpace(account.PhoneNumber))
+            {
+                return BadRequest(new { 
+                    message = "Phone number is required. Please update your profile with a phone number first.",
+                    error = "PHONE_NUMBER_MISSING",
+                    requiresPhoneNumber = true
+                });
+            }
+
+            // Validate phone number format (basic check)
+            var phoneDigits = account.PhoneNumber.Where(char.IsDigit).Count();
+            if (phoneDigits < 10)
+            {
+                return BadRequest(new { 
+                    message = "Phone number appears to be invalid. Please ensure it includes country code (e.g., +1234567890 or +201234567890).",
+                    error = "PHONE_NUMBER_INVALID",
+                    phoneNumber = account.PhoneNumber,
+                    digitCount = phoneDigits
+                });
+            }
 
             // Generate PIN and set expiry
             var pin = _phoneVerificationService.GeneratePhonePin();
@@ -1012,12 +1740,23 @@ namespace InstapropAPI.Controllers
             await _context.SaveChangesAsync();
 
             // Send SMS
-            await _phoneVerificationService.SendVerificationSMS(
+            var smsSent = await _phoneVerificationService.SendVerificationSMS(
                 account.PhoneNumber, 
                 pin, 
                 account.FirstName);
 
-            return Ok(new { message = "Verification PIN sent to your phone" });
+            if (!smsSent)
+            {
+                return StatusCode(500, new { 
+                    message = "Failed to send verification SMS. Please try again later or contact support.",
+                    error = "SMS_SEND_FAILED"
+                });
+            }
+
+            return Ok(new { 
+                message = "Verification PIN sent to your phone",
+                phoneNumber = account.PhoneNumber // Return masked phone number for confirmation
+            });
         }
 
         // POST: api/Account/verify-phone
@@ -1317,6 +2056,16 @@ namespace InstapropAPI.Controllers
     {
         public string Password { get; set; } = string.Empty;
         public string Reason { get; set; } = string.Empty;
+    }
+
+    public class SalesSignupRequest
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public long? DeveloperId { get; set; } // Required if admin, ignored if developer (auto-assigned)
     }
 }
 

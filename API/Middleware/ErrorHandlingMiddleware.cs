@@ -21,6 +21,13 @@ namespace InstapropAPI.Middleware
 
         public async Task InvokeAsync(HttpContext context, ErrorTrackingService errorTracking)
         {
+            // Skip error handling for Swagger endpoints to allow Swagger to show its own errors
+            if (context.Request.Path.StartsWithSegments("/swagger"))
+            {
+                await _next(context);
+                return;
+            }
+            
             try
             {
                 await _next(context);
@@ -57,15 +64,25 @@ namespace InstapropAPI.Middleware
         private static Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             var code = HttpStatusCode.InternalServerError;
+            
+            // Get inner exception message for database errors
+            var innerMessage = exception.InnerException?.Message ?? exception.Message;
+            var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+            
             var result = JsonSerializer.Serialize(new
             {
                 error = "An error occurred while processing your request",
-                message = exception.Message,
+                message = innerMessage, // Show inner exception message
                 type = exception.GetType().Name,
+                innerType = exception.InnerException?.GetType().Name,
+                // Include inner exception details for database errors
+                innerException = exception.InnerException != null ? new
+                {
+                    message = exception.InnerException.Message,
+                    type = exception.InnerException.GetType().Name
+                } : null,
                 // Only include stack trace in development
-                stackTrace = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" 
-                    ? exception.StackTrace 
-                    : null
+                stackTrace = isDevelopment ? exception.StackTrace : null
             });
 
             context.Response.ContentType = "application/json";

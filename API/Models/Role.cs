@@ -25,7 +25,10 @@ namespace InstapropAPI.Models
         public const long USER_ROLE_ID = 8923748923748923L;        // User role ID
         public const long DEVELOPER_ROLE_ID = 7823647823647823L;  // Developer role ID  
         public const long ADMIN_ROLE_ID = 9823749823749823L;      // Admin role ID
+        public const long SALES_ROLE_ID = 6723546723546723L;      // Sales role ID
     }
 }
+
+
 
 

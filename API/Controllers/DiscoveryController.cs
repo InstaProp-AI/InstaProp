@@ -28,8 +28,8 @@ namespace InstapropAPI.Controllers
             var accountId = GetCurrentAccountId();
 
             // Recalculate trending scores for all posts (in production, do this periodically)
+            // Note: Removed Include(p => p.Author) to avoid Type column reference
             var posts = await _context.CommunityPosts
-                .Include(p => p.Author)
                 .Include(p => p.Likes)
                 .Include(p => p.Categories)
                 .Include(p => p.Community)
@@ -42,8 +42,8 @@ namespace InstapropAPI.Controllers
 
             await _context.SaveChangesAsync();
 
+            // Note: Removed Include(p => p.Author) to avoid Type column reference
             var trendingPosts = await _context.CommunityPosts
-                .Include(p => p.Author)
                 .Include(p => p.Likes)
                 .Include(p => p.Categories)
                 .Include(p => p.Community)
@@ -315,7 +315,6 @@ namespace InstapropAPI.Controllers
             if (type == null || type == "posts")
             {
                 var posts = await _context.CommunityPosts
-                    .Include(p => p.Author)
                     .Include(p => p.Community)
                     .Include(p => p.Likes)
                     .Include(p => p.Categories)
@@ -330,7 +329,11 @@ namespace InstapropAPI.Controllers
                         communityId = p.CommunityId,
                         communityName = p.Community.Name,
                         authorId = p.AuthorId,
-                        authorName = p.Author != null ? $"{p.Author.FirstName} {p.Author.LastName}" : "",
+                        // Load author name separately to avoid Type column reference
+                        authorName = _context.Accounts
+                            .Where(a => a.AccountId == p.AuthorId)
+                            .Select(a => a.FirstName + " " + a.LastName)
+                            .FirstOrDefault() ?? "",
                         content = p.Content,
                         imageUrl = p.ImageUrl,
                         likeCount = p.LikeCount,

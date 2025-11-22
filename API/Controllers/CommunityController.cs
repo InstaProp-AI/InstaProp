@@ -11,7 +11,6 @@ namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [FeaturePermissionAttribute("Communities")]
     public class CommunityController : ControllerBase
     {
         private readonly AppDbContext _context;

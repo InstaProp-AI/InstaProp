@@ -394,6 +394,80 @@ export const usersApi = {
   },
 };
 
+// Sales API
+export const salesApi = {
+  // Get all sales team members
+  getSalesTeam: async (): Promise<Account[]> => {
+    const response = await api.get('/admin/users', {
+      params: { roleId: 6723546723546723, pageSize: 1000 } // Sales role ID, large page size to get all
+    });
+    // Handle paginated response structure
+    const users = response.data?.data || response.data?.items || response.data || [];
+    return Array.isArray(users) ? users : [];
+  },
+
+  // Get developers list (for admin dropdown)
+  getDevelopers: async (): Promise<Account[]> => {
+    const response = await api.get('/admin/users', {
+      params: { roleId: 7823647823647823, pageSize: 1000 } // Developer role ID, large page size to get all
+    });
+    // Handle paginated response structure
+    const users = response.data?.data || response.data?.items || response.data || [];
+    return Array.isArray(users) ? users : [];
+  },
+
+  // Create sales account
+  createSalesAccount: async (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    password: string;
+    developerId?: number; // Required for admin, auto-assigned for developer
+  }): Promise<Account> => {
+    // Map to backend expected format (camelCase to PascalCase)
+    const requestData: any = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      password: data.password,
+    };
+    // Include DeveloperId if provided (backend expects PascalCase)
+    if (data.developerId !== undefined) {
+      requestData.developerId = data.developerId;
+    }
+    const response = await api.post('/account/signup-sales', requestData);
+    return response.data.account || response.data;
+  },
+
+  // Update sales account
+  updateSalesAccount: async (id: number, data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phoneNumber?: string;
+    developerId?: number;
+  }): Promise<void> => {
+    const updateData: any = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+    };
+    // Include AssignedDeveloperId if provided
+    if (data.developerId !== undefined) {
+      updateData.assignedDeveloperId = data.developerId;
+    }
+    await api.put(`/admin/users/${id}/update`, updateData);
+  },
+
+  // Delete sales account
+  deleteSalesAccount: async (id: number): Promise<void> => {
+    await api.delete(`/admin/users/${id}`);
+  },
+};
+
 // Projects API - Role-based (backend handles authorization)
 export const projectsApi = {
   // Backend /project endpoint already handles role-based filtering

@@ -8,7 +8,8 @@ import 'countdown_timer.dart';
 /// Premium Instagram-style auction card with hero images and rich interactions
 class FeedAuctionCard extends StatefulWidget {
   final Auction auction;
-  final VoidCallback? onTap;
+  final VoidCallback? onTap; // For bidding/auction details navigation
+  final VoidCallback? onPropertyTap; // For property details navigation
   final VoidCallback? onSave;
   final VoidCallback? onShare;
 
@@ -16,6 +17,7 @@ class FeedAuctionCard extends StatefulWidget {
     super.key,
     required this.auction,
     this.onTap,
+    this.onPropertyTap,
     this.onSave,
     this.onShare,
   });
@@ -95,18 +97,17 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero Image with Overlay
-          Stack(
-            children: [
-              GestureDetector(
-                onTap: widget.onTap,
-                child: ImageCarousel(
+          // Hero Image with Overlay - Tappable for property details
+          GestureDetector(
+            onTap: widget.onPropertyTap,
+            child: Stack(
+              children: [
+                ImageCarousel(
                   images: images,
                   height: 400,
                   fit: BoxFit.cover,
-                  onTap: widget.onTap,
+                  onTap: widget.onPropertyTap,
                 ),
-              ),
 
               // Gradient Overlay
               Positioned.fill(
@@ -242,11 +243,11 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                 ),
               ),
 
-              // Countdown Timer (bottom left) - only show for live auctions
+              // Countdown Timer (bottom right) - only show for live auctions
               if (isLive)
                 Positioned(
                   bottom: 12,
-                  left: 12,
+                  right: 12,
                   child: CountdownTimer(
                     endTime: widget.auction.endAt,
                     accentColor: statusColor,
@@ -256,7 +257,7 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
               else if (isEnded)
                 Positioned(
                   bottom: 12,
-                  left: 12,
+                  right: 12,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -327,15 +328,18 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                   ],
                 ),
               ),
-            ],
+              ],
+            ),
           ),
 
-          // Info Section
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          // Info Section - Tappable for property details
+          GestureDetector(
+            onTap: widget.onPropertyTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Current Bid Display
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -600,41 +604,49 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                   }),
                   const SizedBox(height: 16),
                 ],
+                ],
+              ),
+            ),
+          ),
 
-                // Primary Action Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isLive ? widget.onTap : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isLive
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.gavel, size: 22),
-                        const SizedBox(width: 8),
-                        Text(
-                          isLive ? 'Place Bid Now' : 'Auction Ended',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
+          // Primary Action Button - Separate tap handler for bidding/auction navigation
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: widget.onTap, // Always allow tap, even for ended auctions
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isLive
+                      ? AppColors.primary
+                      : Colors.grey.shade600, // Gray for ended auctions
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  elevation: isLive ? 2 : 0, // No elevation for ended auctions
+                  disabledBackgroundColor: Colors.grey.shade600,
                 ),
-              ],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isLive ? Icons.gavel : Icons.block,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isLive ? 'Live auction? Lord, please bid now' : 'Auction Ended',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
 

@@ -30,6 +30,20 @@ class PropertyService {
     );
   }
 
+  // GET: api/Property/{id}/financials
+  static Future<ApiResponse<Map<String, dynamic>>> getPropertyFinancials(
+    int propertyId, {
+    double? marketValue,
+  }) async {
+    final queryParams = marketValue != null
+        ? '?marketValue=$marketValue'
+        : '';
+    return await ApiClient.get(
+      '/api/property/$propertyId/financials$queryParams',
+      (json) => json as Map<String, dynamic>,
+    );
+  }
+
   static Future<ApiResponse<InstallmentSummary>>
       upsertPropertyInstallmentSummary(
     int propertyId,

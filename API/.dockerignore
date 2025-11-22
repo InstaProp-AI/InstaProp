@@ -35,8 +35,9 @@ packages/
 # Flutter
 ../Flutter/
 
-# Dashboards
-../dashboard/
+# Dashboards - Allow dashboard source for building, but exclude node_modules
+../dashboard/node_modules/
+../dashboard/dist/
 ../developer-dashboard/
 
 # Scripts
