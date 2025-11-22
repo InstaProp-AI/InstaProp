@@ -34,7 +34,7 @@ interface SalesMember {
   email: string;
   phoneNumber: string;
   status: string;
-  isSuspended: boolean;
+  isSuspended?: boolean;
   createdAt: string;
 }
 
