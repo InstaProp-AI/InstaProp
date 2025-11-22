@@ -173,7 +173,18 @@ const SalesPage: React.FC = () => {
       if (!selectedTeam) return;
       
       const members = await salesApi.getTeamMembers(selectedTeam.teamId);
-      setTeamMembers(members);
+      // Map Account[] to SalesMember[] with proper type conversion
+      const salesMembers: SalesMember[] = members.map(account => ({
+        accountId: account.accountId,
+        firstName: account.firstName,
+        lastName: account.lastName,
+        email: account.email,
+        phoneNumber: account.phoneNumber,
+        status: account.status,
+        isSuspended: account.isSuspended ?? false,
+        createdAt: account.createdAt
+      }));
+      setTeamMembers(salesMembers);
     } catch (error: any) {
       console.error('Error loading team members:', error);
       toast.error(getErrorMessage(error, 'Failed to load team members'));
