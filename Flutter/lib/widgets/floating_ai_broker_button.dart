@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../theme/app_colors.dart';
 import 'floating_chat_window.dart';
+import '../pages/auth_page.dart';
 
 /// A floating circular button that appears on all pages, similar to Facebook Messenger
 /// Shows the AI Broker icon with unread message count badge
@@ -122,16 +124,117 @@ class _FloatingAIBrokerButtonState extends State<FloatingAIBrokerButton>
       return;
     }
 
+    // Check if user is authenticated
+    final appState = Provider.of<AppState>(context, listen: false);
+    if (appState.token == null || appState.token!.isEmpty) {
+      debugPrint('🔵 User not authenticated, showing login dialog');
+      _showLoginRequiredDialog();
+      return;
+    }
+
     debugPrint('🔵 Opening chat window...');
     setState(() => _isChatOpen = true);
 
     // Load active chat in background
     try {
-      final appState = Provider.of<AppState>(context, listen: false);
       await appState.notificationService.markAllAsRead();
     } catch (e) {
       debugPrint('🔵 Error in background tasks: $e');
     }
+  }
+
+  /// Show login required dialog with login button
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.login, color: AppColors.primary, size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Login Required',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You need to be logged in to use the AI Broker bot.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Please log in to continue.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AuthPage(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.login, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Go to Login',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -140,6 +243,11 @@ class _FloatingAIBrokerButtonState extends State<FloatingAIBrokerButton>
       builder: (context, appState, child) {
         // Don't show button if hidden
         if (appState.isFloatingButtonHidden) {
+          return const SizedBox.shrink();
+        }
+        
+        // Don't show button for sales persons
+        if (appState.isSales) {
           return const SizedBox.shrink();
         }
 

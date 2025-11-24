@@ -51,7 +51,7 @@ class LeaderboardActivitySlice {
 }
 
 class LeaderboardEntry {
-  final int accountId;
+  final String accountId;
   final String displayName;
   final String? avatarInitials;
   final int rank;
@@ -88,11 +88,19 @@ class LeaderboardEntry {
   });
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     final activityJson = json['activity'] as List<dynamic>? ?? [];
     final rewardTypeJson = json['rewardTypeCounts'] as Map<String, dynamic>? ?? {};
 
     return LeaderboardEntry(
-      accountId: json['accountId'] ?? 0,
+      accountId: parseId(json['accountId']),
       displayName: json['displayName'] ?? 'Player',
       avatarInitials: json['avatarInitials'],
       rank: json['rank'] ?? 0,

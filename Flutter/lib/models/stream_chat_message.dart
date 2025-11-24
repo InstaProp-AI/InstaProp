@@ -1,7 +1,7 @@
 class StreamChatMessage {
-  final int messageId;
-  final int streamId;
-  final int userId;
+  final String messageId;
+  final String streamId;
+  final String userId;
   final String userName;
   final String? userProfileImageUrl;
   final String message;
@@ -18,10 +18,18 @@ class StreamChatMessage {
   });
 
   factory StreamChatMessage.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return StreamChatMessage(
-      messageId: json['messageId'] ?? 0,
-      streamId: json['streamId'] ?? 0,
-      userId: json['userId'] ?? 0,
+      messageId: parseId(json['messageId']),
+      streamId: parseId(json['streamId']),
+      userId: parseId(json['userId']),
       userName: json['userName'] ?? 'Unknown User',
       userProfileImageUrl: json['userProfileImageUrl'],
       message: json['message'] ?? '',

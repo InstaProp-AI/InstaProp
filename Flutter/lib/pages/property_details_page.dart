@@ -11,11 +11,10 @@ import '../services/property_service.dart';
 import '../services/api_client.dart';
 import '../services/analytics_service.dart';
 import '../widgets/property_image_carousel.dart';
-import 'developers_list_page.dart';
-import 'auction_details_page.dart';
+import '../widgets/country_flag.dart';
 
 class PropertyDetailsPage extends StatefulWidget {
-  final int propertyId;
+  final String propertyId;
 
   const PropertyDetailsPage({
     super.key,
@@ -195,9 +194,6 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
         _marketOverview,
         _priceTrends,
       ),
-      // Action Buttons
-      const SizedBox(height: 16),
-      _buildActionButtons(bundle.property),
       const SizedBox(height: 48),
     ];
 
@@ -253,6 +249,14 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           Row(
             children: [
               const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
+              const SizedBox(width: 6),
+              // Country Flag
+              CountryFlag(
+                countryCode: CountryFlag.extractCountryCodeFromLocation(
+                  property.location,
+                ),
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -1492,107 +1496,6 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     );
   }
 
-  Widget _buildActionButtons(ChildProperty property) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Take Action',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Navigate to developers list page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DevelopersListPage(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.people),
-                  label: const Text('Send to Developers'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // Schedule viewing
-                    // TODO: Implement viewing schedule
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Schedule viewing feature coming soon'),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.calendar_today),
-                  label: const Text('Schedule Viewing'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: AppColors.primary),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (property.hasActiveAuction) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Navigate to auction details
-                  if (property.auctions != null && property.auctions!.isNotEmpty) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AuctionDetailsPage(
-                          auction: property.auctions!.first,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.gavel),
-                label: const Text('View Live Auction'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _buildAnalysisTile({
     required String label,

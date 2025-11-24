@@ -1,6 +1,6 @@
 class InstallmentSummary {
-  final int summaryId;
-  final int propertyId;
+  final String summaryId;
+  final String propertyId;
   final double contractedPrice;
   final double totalPaid;
   final double downPaymentPercent;
@@ -34,9 +34,17 @@ class InstallmentSummary {
         ? (json['downPaymentAmount'] as num).toDouble()
         : contracted * (downPercent / 100);
 
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return InstallmentSummary(
-      summaryId: json['summaryId'] ?? 0,
-      propertyId: json['propertyId'] ?? 0,
+      summaryId: parseId(json['summaryId']),
+      propertyId: parseId(json['propertyId']),
       contractedPrice: contracted,
       totalPaid: (json['totalPaid'] ?? 0).toDouble(),
       downPaymentPercent: downPercent,

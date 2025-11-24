@@ -43,6 +43,7 @@ class _AuthPageState extends State<AuthPage>
   final _signupPasswordController = TextEditingController();
   final _signupConfirmPasswordController = TextEditingController();
   String _selectedGender = 'Male';
+  String? _selectedTimeZone; // User's preferred timezone
 
   bool _isLoading = false;
   bool _isGoogleLoading = false;
@@ -276,6 +277,7 @@ class _AuthPageState extends State<AuthPage>
         phoneNumber: _signupPhoneController.text.trim(),
         email: _signupEmailController.text.trim(),
         password: _signupPasswordController.text,
+        timeZone: _selectedTimeZone,
       );
 
       if (success && mounted) {

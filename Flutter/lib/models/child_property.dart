@@ -6,10 +6,10 @@ import 'property_type.dart';
 import 'installment_summary.dart';
 
 class ChildProperty {
-  final int propertyId; // Keep same name for compatibility
-  final int? parentPropertyId;
+  final String propertyId; // Keep same name for compatibility
+  final String? parentPropertyId;
   final ParentProperty? parent; // Embedded parent data
-  final int? ownerId;
+  final String? ownerId;
 
   // Phase information (moved from parent to child)
   final String? phase; // "Phase 1", "Phase 2", "Phase 3", "Phase 4"
@@ -151,13 +151,28 @@ class ChildProperty {
   });
 
   factory ChildProperty.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ChildProperty(
-      propertyId: json['propertyId'] ?? 0,
-      parentPropertyId: json['parentPropertyId'],
+      propertyId: parseId(json['propertyId']),
+      parentPropertyId: parseOptionalId(json['parentPropertyId']),
       parent: json['parent'] != null
           ? ParentProperty.fromJson(json['parent'])
           : null,
-      ownerId: json['ownerId'],
+      ownerId: parseOptionalId(json['ownerId']),
       phase: json['phase'],
       floorNumber: json['floorNumber'],
       unitNumber: json['unitNumber'],

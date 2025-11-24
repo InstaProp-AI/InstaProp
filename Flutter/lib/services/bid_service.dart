@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 
 class BidService {
-  static Future<ApiResponse<List<Bid>>> getBids(int auctionId) async {
+  static Future<ApiResponse<List<Bid>>> getBids(String auctionId) async {
     return await ApiClient.getList(
       '/api/bids/by-auction/$auctionId',
       Bid.fromJson,
@@ -13,7 +13,7 @@ class BidService {
   }
 
   static Future<ApiResponse<Bid>> placeBid({
-    required int auctionId,
+    required String auctionId,
     required double bidAmount,
     required BuildContext context,
   }) async {
@@ -43,7 +43,7 @@ class BidService {
 
   // Helper method to check if user can place a bid
   static Future<ApiResponse<bool>> _canPlaceBid(
-    int auctionId,
+    String auctionId,
     BuildContext context,
   ) async {
     try {
@@ -117,7 +117,7 @@ class BidService {
 
   // Public method to check if user can place a bid (useful for UI state)
   static Future<ApiResponse<bool>> canUserBid(
-    int auctionId,
+    String auctionId,
     BuildContext context,
   ) async {
     return await _canPlaceBid(auctionId, context);
@@ -138,7 +138,7 @@ class BidService {
   // PUBLIC ENDPOINTS (No authentication required)
 
   // Get bid history for an auction (Public - No auth required)
-  static Future<ApiResponse<List<Bid>>> getBidsPublic(int auctionId) async {
+  static Future<ApiResponse<List<Bid>>> getBidsPublic(String auctionId) async {
     return await ApiClient.getList(
       '/api/bids/by-auction/$auctionId',
       Bid.fromJson,

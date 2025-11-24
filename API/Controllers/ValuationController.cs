@@ -288,16 +288,16 @@ namespace InstapropAPI.Controllers
             return auctionData;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var uidClaim = User.FindFirst("uid");
-            return uidClaim != null ? long.Parse(uidClaim.Value) : null;
+            return uidClaim != null && Guid.TryParse(uidClaim.Value, out Guid accountId) ? accountId : null;
         }
     }
 
     public class ValuationRequest
     {
-        public long? PropertyId { get; set; }
+        public Guid? PropertyId { get; set; }
         public string? Location { get; set; }
         public int Bedrooms { get; set; }
         public int Bathrooms { get; set; }
@@ -318,7 +318,7 @@ namespace InstapropAPI.Controllers
 
     public class ValuationHistory
     {
-        public long PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public string PropertyName { get; set; } = string.Empty;
         public string? Location { get; set; }
         public decimal CalculatedValue { get; set; }

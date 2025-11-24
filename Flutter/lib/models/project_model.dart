@@ -1,12 +1,13 @@
 class ProjectModel {
-  final int projectId;
+  final String projectId;
   final String name;
   final String? description;
   final String? location;
+  final String? country; // ISO 3166-1 alpha-2 country code
   final DateTime createdAt;
   final int propertiesCount;
   final String? featuredImageUrl;
-  final int developerId;
+  final String developerId;
   final String developerName;
   final String? developerCompany;
   final double developerRating;
@@ -17,6 +18,7 @@ class ProjectModel {
     required this.name,
     this.description,
     this.location,
+    this.country,
     required this.createdAt,
     required this.propertiesCount,
     this.featuredImageUrl,
@@ -28,17 +30,26 @@ class ProjectModel {
   });
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ProjectModel(
-      projectId: json['projectId'] ?? 0,
+      projectId: parseId(json['projectId']),
       name: json['name'] ?? '',
       description: json['description'],
       location: json['location'],
+      country: json['country'],
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),
       ),
       propertiesCount: json['propertiesCount'] ?? 0,
       featuredImageUrl: json['featuredImageUrl'],
-      developerId: json['developerId'] ?? 0,
+      developerId: parseId(json['developerId']),
       developerName: json['developerName'] ?? '',
       developerCompany: json['developerCompany'],
       developerRating: (json['developerRating'] ?? 0.0).toDouble(),
@@ -52,6 +63,7 @@ class ProjectModel {
       'name': name,
       'description': description,
       'location': location,
+      'country': country,
       'createdAt': createdAt.toIso8601String(),
       'propertiesCount': propertiesCount,
       'featuredImageUrl': featuredImageUrl,
@@ -65,12 +77,13 @@ class ProjectModel {
 }
 
 class ProjectDetailsModel {
-  final int projectId;
+  final String projectId;
   final String name;
   final String? description;
   final String? location;
+  final String? country; // ISO 3166-1 alpha-2 country code
   final DateTime createdAt;
-  final int developerId;
+  final String developerId;
   final String developerName;
   final String? developerCompany;
   final double developerRating;
@@ -83,6 +96,7 @@ class ProjectDetailsModel {
     required this.name,
     this.description,
     this.location,
+    this.country,
     required this.createdAt,
     required this.developerId,
     required this.developerName,
@@ -94,15 +108,24 @@ class ProjectDetailsModel {
   });
 
   factory ProjectDetailsModel.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ProjectDetailsModel(
-      projectId: json['projectId'] ?? 0,
+      projectId: parseId(json['projectId']),
       name: json['name'] ?? '',
       description: json['description'],
       location: json['location'],
+      country: json['country'],
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),
       ),
-      developerId: json['developerId'] ?? 0,
+      developerId: parseId(json['developerId']),
       developerName: json['developerName'] ?? '',
       developerCompany: json['developerCompany'],
       developerRating: (json['developerRating'] ?? 0.0).toDouble(),
@@ -118,7 +141,7 @@ class ProjectDetailsModel {
 }
 
 class ProjectProperty {
-  final int propertyId;
+  final String propertyId;
   final String name;
   final String? description;
   final String? location;
@@ -147,8 +170,16 @@ class ProjectProperty {
   });
 
   factory ProjectProperty.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ProjectProperty(
-      propertyId: json['propertyId'] ?? 0,
+      propertyId: parseId(json['propertyId']),
       name: json['name'] ?? '',
       description: json['description'],
       location: json['location'],

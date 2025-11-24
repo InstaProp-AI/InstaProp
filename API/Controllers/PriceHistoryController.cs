@@ -21,7 +21,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/pricehistory/{parentPropertyId}
         [HttpGet("{parentPropertyId}")]
-        public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForParentProperty(int parentPropertyId)
+        public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForParentProperty(Guid parentPropertyId)
         {
             try
             {
@@ -47,7 +47,7 @@ namespace InstapropAPI.Controllers
         }
 
         [HttpGet("parent/{parentPropertyId}")]
-        public async Task<IActionResult> GetParentPriceHistoryBundle(int parentPropertyId)
+        public async Task<IActionResult> GetParentPriceHistoryBundle(Guid parentPropertyId)
         {
             var history = await _context.PropertyPriceHistories
                 .Where(ph => ph.ParentPropertyId == parentPropertyId)
@@ -77,7 +77,7 @@ namespace InstapropAPI.Controllers
         }
 
         [HttpGet("parent/{parentPropertyId}/stats")]
-        public async Task<IActionResult> GetParentPriceStatistics(int parentPropertyId)
+        public async Task<IActionResult> GetParentPriceStatistics(Guid parentPropertyId)
         {
             var history = await _context.PropertyPriceHistories
                 .Where(ph => ph.ParentPropertyId == parentPropertyId)
@@ -102,7 +102,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/pricehistory/child/{childPropertyId}
         [HttpGet("child/{childPropertyId}")]
-        public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForChildProperty(int childPropertyId)
+        public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForChildProperty(Guid childPropertyId)
         {
             try
             {
@@ -193,7 +193,7 @@ namespace InstapropAPI.Controllers
         // PUT: api/pricehistory/{priceHistoryId}
         [HttpPut("{priceHistoryId}")]
         [Authorize]
-        public async Task<IActionResult> UpdatePriceHistory(int priceHistoryId, [FromBody] UpdatePriceHistoryRequest request)
+        public async Task<IActionResult> UpdatePriceHistory(Guid priceHistoryId, [FromBody] UpdatePriceHistoryRequest request)
         {
             try
             {
@@ -224,7 +224,7 @@ namespace InstapropAPI.Controllers
         // DELETE: api/pricehistory/{priceHistoryId}
         [HttpDelete("{priceHistoryId}")]
         [Authorize]
-        public async Task<IActionResult> DeletePriceHistory(int priceHistoryId)
+        public async Task<IActionResult> DeletePriceHistory(Guid priceHistoryId)
         {
             try
             {
@@ -249,7 +249,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/pricehistory/analytics/{parentPropertyId}
         [HttpGet("analytics/{parentPropertyId}")]
-        public async Task<ActionResult<PriceAnalyticsResponse>> GetPriceAnalytics(int parentPropertyId)
+        public async Task<ActionResult<PriceAnalyticsResponse>> GetPriceAnalytics(Guid parentPropertyId)
         {
             try
             {
@@ -419,12 +419,12 @@ namespace InstapropAPI.Controllers
     // Request/Response Models
     public class CreatePriceHistoryRequest
     {
-        public int ParentPropertyId { get; set; }
+        public Guid ParentPropertyId { get; set; }
         public decimal Price { get; set; }
         public DateTime PriceDate { get; set; }
         public string Source { get; set; } = string.Empty;
-        public long? AuctionId { get; set; }
-        public int? ChildPropertyId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? ChildPropertyId { get; set; }
     }
 
     public class UpdatePriceHistoryRequest
@@ -432,13 +432,13 @@ namespace InstapropAPI.Controllers
         public decimal Price { get; set; }
         public DateTime PriceDate { get; set; }
         public string Source { get; set; } = string.Empty;
-        public long? AuctionId { get; set; }
-        public int? ChildPropertyId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? ChildPropertyId { get; set; }
     }
 
     public class PriceAnalyticsResponse
     {
-        public int ParentPropertyId { get; set; }
+        public Guid ParentPropertyId { get; set; }
         public int TotalDataPoints { get; set; }
         public decimal MinPrice { get; set; }
         public decimal MaxPrice { get; set; }
@@ -465,7 +465,7 @@ namespace InstapropAPI.Controllers
         public DateTime Date { get; set; }
         public decimal Price { get; set; }
         public string Source { get; set; } = string.Empty;
-        public long? AuctionId { get; set; }
-        public int? ChildPropertyId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? ChildPropertyId { get; set; }
     }
 }

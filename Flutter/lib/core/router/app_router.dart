@@ -88,12 +88,12 @@ class AppRouter {
 
       case addPropertyFinancial:
         final args = settings.arguments;
-        int? propertyId;
+        String? propertyId;
         String? propertyName;
         if (args is Map<String, dynamic>) {
-          propertyId = args['propertyId'] as int?;
+          propertyId = args['propertyId'] as String?;
           propertyName = args['propertyName'] as String?;
-        } else if (args is int) {
+        } else if (args is String) {
           propertyId = args;
         }
         return MaterialPageRoute(
@@ -110,7 +110,7 @@ class AppRouter {
           // For now, we'll create a placeholder news article
           // In a real app, you'd fetch the news article by ID
           final news = NewsArticle(
-            newsArticleId: int.tryParse(newsId) ?? 0,
+            newsArticleId: newsId,
             title: 'Loading...',
             content: 'Loading article...',
             publishedDate: DateTime.now(),

@@ -126,7 +126,7 @@ class NewsService {
         'Finance',
         'Investment',
         'Development',
-        'Community',
+        // Community category removed
       ];
     } catch (e) {
       print('Error fetching categories: $e');

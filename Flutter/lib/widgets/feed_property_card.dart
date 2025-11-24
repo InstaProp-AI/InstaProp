@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/property.dart';
 import '../theme/app_colors.dart';
 import 'image_carousel.dart';
+import 'country_flag.dart';
 
 class FeedPropertyCard extends StatelessWidget {
   final Property property;
@@ -76,6 +77,14 @@ class FeedPropertyCard extends StatelessWidget {
                                   Icons.location_on,
                                   size: 16,
                                   color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 4),
+                                // Country Flag
+                                CountryFlag(
+                                  countryCode: CountryFlag.extractCountryCodeFromLocation(
+                                    property.location,
+                                  ),
+                                  size: 16,
                                 ),
                                 const SizedBox(width: 4),
                                 Flexible(

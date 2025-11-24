@@ -12,6 +12,8 @@ import '../services/bid_service.dart';
 import '../services/auction_service.dart';
 import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
+import '../services/project_service.dart';
+import '../services/api_client.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
 import '../widgets/auction_timer.dart';
@@ -19,6 +21,10 @@ import '../widgets/property_image_carousel.dart';
 import '../widgets/reward_popup.dart';
 import '../models/installment_summary.dart';
 import '../models/property_doc.dart';
+import '../widgets/country_flag.dart';
+import 'property_details_page.dart';
+import 'project_details_page.dart';
+import 'developer_profile_page.dart';
 
 class AuctionDetailsPage extends StatefulWidget {
   final Auction auction;
@@ -316,9 +322,17 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           (bids) {
             if (mounted) {
               print('🔥 Firestore: Received ${bids.length} bids');
-              setState(() {
-                _bids = bids;
-              });
+              
+              // If Firebase returns 0 bids, verify with database to ensure
+              // there wasn't an error storing them in Firebase
+              if (bids.isEmpty) {
+                print('⚠️ Firebase returned 0 bids, verifying with database...');
+                _verifyBidsWithDatabase();
+              } else {
+                setState(() {
+                  _bids = bids;
+                });
+              }
             }
           },
           onError: (error) {
@@ -378,6 +392,54 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
       setState(() {
         _bids = [];
       });
+    }
+  }
+
+  /// Verify bids with database when Firebase returns 0 bids
+  /// This ensures we catch cases where bids exist in database but weren't synced to Firebase
+  Future<void> _verifyBidsWithDatabase() async {
+    try {
+      print('🔍 Verifying bids with database for auction ${_currentAuction!.auctionId}');
+      final response = await BidService.getBids(_currentAuction!.auctionId);
+      
+      if (response.success && response.data != null) {
+        final dbBidCount = response.data!.length;
+        print('📊 Database has $dbBidCount bids');
+        
+        if (dbBidCount > 0) {
+          // Database has bids but Firebase returned 0 - use database data
+          print('⚠️ Database has $dbBidCount bids but Firebase returned 0. Using database data.');
+          if (mounted) {
+            setState(() {
+              _bids = response.data!;
+            });
+          }
+        } else {
+          // Database also has 0 bids - Firebase is correct
+          print('✅ Database confirms: 0 bids (Firebase was correct)');
+          if (mounted) {
+            setState(() {
+              _bids = [];
+            });
+          }
+        }
+      } else {
+        print('⚠️ Could not verify bids with database: ${response.error}');
+        // Keep Firebase result (empty) if database check fails
+        if (mounted) {
+          setState(() {
+            _bids = [];
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error verifying bids with database: $e');
+      // Keep Firebase result (empty) if database check fails
+      if (mounted) {
+        setState(() {
+          _bids = [];
+        });
+      }
     }
   }
 
@@ -676,6 +738,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             child: CustomScrollView(
               slivers: [
                 _buildModernAppBar(),
+                _buildNavigationButtons(),
                 if (_hasFinancialSummary) _buildFinancialSummary(),
                 _buildPropertyDetails(),
                 _buildBiddingSection(),
@@ -768,14 +831,28 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      _currentAuction!.property?.location ?? '',
-                      style: TextStyle(
-                        color: AppColors.secondary,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        // Country Flag
+                        CountryFlag(
+                          countryCode: CountryFlag.extractCountryCodeFromLocation(
+                            _currentAuction!.property?.location,
+                          ),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _currentAuction!.property?.location ?? '',
+                            style: TextStyle(
+                              color: AppColors.secondary,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Container(
@@ -810,6 +887,136 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationButtons() {
+    if (_currentAuction == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final property = _currentAuction!.property;
+    final propertyId = _currentAuction!.propertyId;
+    final projectId = property?.projectId;
+
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Quick Navigation',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                // Property Details Button
+                _buildNavigationButton(
+                  icon: Icons.home,
+                  label: 'Property Details',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PropertyDetailsPage(
+                          propertyId: propertyId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // Project Details Button (if project exists)
+                if (projectId != null && projectId.isNotEmpty)
+                  _buildNavigationButton(
+                    icon: Icons.business,
+                    label: 'Project',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProjectDetailsPage(
+                            projectId: projectId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                // Developer Profile Button (if project exists, we'll get developer from project)
+                if (projectId != null && projectId.isNotEmpty)
+                  _buildNavigationButton(
+                    icon: Icons.person,
+                    label: 'Developer',
+                    onTap: () async {
+                      // Fetch project to get developer ID
+                      try {
+                        final projectService = ProjectService(ApiClient.baseUrl);
+                        final project = await projectService.getProjectDetails(projectId);
+                        if (mounted && project.developerId.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DeveloperProfilePage(
+                                developerId: project.developerId,
+                              ),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to load developer: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 20),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 2,
       ),
     );
   }
@@ -1842,7 +2049,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
   List<Bid> _getTopBidders() {
     // Get unique bidders with their highest bids
-    final Map<int, Bid> topBids = {};
+    final Map<String, Bid> topBids = {};
     for (final bid in _bids) {
       if (!topBids.containsKey(bid.bidderId) ||
           bid.bidAmount > topBids[bid.bidderId]!.bidAmount) {
@@ -2647,12 +2854,26 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                property.location,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
+              Row(
+                children: [
+                  // Country Flag
+                  CountryFlag(
+                    countryCode: CountryFlag.extractCountryCodeFromLocation(
+                      property.location,
+                    ),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      property.location,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               Text(

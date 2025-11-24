@@ -126,6 +126,7 @@ class AuthService extends ChangeNotifier {
     required String phoneNumber,
     required String email,
     required String password,
+    String? timeZone,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -139,6 +140,7 @@ class AuthService extends ChangeNotifier {
           'phoneNumber': phoneNumber,
           'email': email,
           'password': password,
+          if (timeZone != null) 'timeZone': timeZone,
           // SECURITY: Removed 'type' field - backend always creates User accounts with non-guessable RoleId
         },
         (data) {

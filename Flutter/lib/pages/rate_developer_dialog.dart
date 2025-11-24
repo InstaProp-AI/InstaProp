@@ -6,7 +6,7 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 
 class RateDeveloperDialog extends StatefulWidget {
-  final int developerId;
+  final String developerId;
   final String developerName;
   final VoidCallback onRated;
 

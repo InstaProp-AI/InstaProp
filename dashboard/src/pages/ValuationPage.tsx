@@ -103,7 +103,7 @@ const ValuationPage: React.FC = () => {
     }
   };
 
-  const fetchProjects = async (developerId: number) => {
+  const fetchProjects = async (developerId: string) => {
     try {
       setLoadingProjects(true);
       setSelectedProjectId(null);
@@ -119,7 +119,7 @@ const ValuationPage: React.FC = () => {
     }
   };
 
-  const fetchPropertiesForProject = async (projectId: number) => {
+  const fetchPropertiesForProject = async (projectId: string) => {
     try {
       setLoadingProperties(true);
       setSelectedPropertyId(null);
@@ -146,7 +146,7 @@ const ValuationPage: React.FC = () => {
     }
   };
 
-  const fetchPropertyAnalysis = async (propertyId: number) => {
+  const fetchPropertyAnalysis = async (propertyId: string) => {
     try {
       setLoadingAnalysis(true);
       // Get property from local state or fetch it
@@ -219,7 +219,7 @@ const ValuationPage: React.FC = () => {
     }
   };
 
-  const handleCalculateValuation = async (propertyId: number) => {
+  const handleCalculateValuation = async (propertyId: string) => {
     await fetchPropertyAnalysis(propertyId);
   };
 

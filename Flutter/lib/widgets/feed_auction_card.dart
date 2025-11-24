@@ -4,6 +4,7 @@ import '../models/auction.dart';
 import '../theme/app_colors.dart';
 import 'image_carousel.dart';
 import 'countdown_timer.dart';
+import 'country_flag.dart';
 
 /// Premium Instagram-style auction card with hero images and rich interactions
 class FeedAuctionCard extends StatefulWidget {
@@ -310,6 +311,14 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                           Icons.location_on,
                           size: 14,
                           color: Colors.white70,
+                        ),
+                        const SizedBox(width: 4),
+                        // Country Flag
+                        CountryFlag(
+                          countryCode: CountryFlag.extractCountryCodeFromLocation(
+                            property.location,
+                          ),
+                          size: 16,
                         ),
                         const SizedBox(width: 4),
                         Flexible(

@@ -341,10 +341,12 @@ class _ChatPageState extends State<ChatPage> {
             ),
             child: Row(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.home, color: AppColors.primary),
-                  onPressed: _showPropertyPicker,
-                ),
+                // Only show property picker for Admin, Developer, and Sales
+                if (appState.isAdmin || appState.isDeveloper || appState.isSales)
+                  IconButton(
+                    icon: const Icon(Icons.home, color: AppColors.primary),
+                    onPressed: _showPropertyPicker,
+                  ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,

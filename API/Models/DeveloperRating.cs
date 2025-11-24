@@ -13,19 +13,19 @@ namespace InstapropAPI.Models
     public class DeveloperRating
     {
         [Key]
-        public long RatingId { get; set; }
+        public Guid RatingId { get; set; }
 
         [Required]
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
 
         [ForeignKey(nameof(DeveloperId))]
-        public Account Developer { get; set; } = null!;
+        public DeveloperAccount Developer { get; set; } = null!;
 
         [Required]
-        public long UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public Account User { get; set; } = null!;
+        public UserAccount User { get; set; } = null!;
 
         [Required]
         [Range(1, 5)]

@@ -1,6 +1,6 @@
 class PaymentReminder {
-  final int eventId;
-  final int? propertyId;
+  final String eventId;
+  final String? propertyId;
   final String? propertyName;
   final double? amount;
   final DateTime eventDate;
@@ -18,9 +18,24 @@ class PaymentReminder {
   });
 
   factory PaymentReminder.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return PaymentReminder(
-      eventId: json['eventId'] ?? 0,
-      propertyId: json['propertyId'],
+      eventId: parseId(json['eventId']),
+      propertyId: parseOptionalId(json['propertyId']),
       propertyName: json['propertyName'],
       amount: json['amount'] != null
           ? (json['amount'] as num).toDouble()

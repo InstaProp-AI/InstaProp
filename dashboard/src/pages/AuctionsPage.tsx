@@ -37,8 +37,8 @@ import {
 } from 'lucide-react';
 
 interface Auction {
-  auctionId: number;
-  propertyId: number;
+  auctionId: string;
+  propertyId: string;
   propertyName: string;
   propertyImage: string;
   location: string;
@@ -59,8 +59,8 @@ interface Auction {
 }
 
 interface Bid {
-  bidId: number;
-  auctionId: number;
+  bidId: string;
+  auctionId: string;
   bidderName: string;
   bidAmount: number;
   timestamp: string;
@@ -106,8 +106,8 @@ const AuctionsPage: React.FC = () => {
         const currentUser = await authApi.getCurrentAccount();
         setUser(currentUser);
         // Check roleName first (from backend), then roleId, then legacy type
-        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
-        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === '98237498-2374-4982-3749-823749823749' || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === '78236478-2364-7823-0000-000000000000' || currentUser.type === 'Developer';
         setUserRole(isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null));
       } catch (error) {
         console.error('Error loading user:', error);
@@ -357,7 +357,7 @@ const AuctionsPage: React.FC = () => {
     }, 1000);
   };
 
-  const handleStartAuction = async (e: React.MouseEvent, auctionId: number) => {
+  const handleStartAuction = async (e: React.MouseEvent, auctionId: string) => {
     e.preventDefault();
     e.stopPropagation();
     try {
@@ -370,7 +370,7 @@ const AuctionsPage: React.FC = () => {
     }
   };
 
-  const handleEndAuction = async (e: React.MouseEvent, auctionId: number) => {
+  const handleEndAuction = async (e: React.MouseEvent, auctionId: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (window.confirm('Are you sure you want to end this auction?')) {
@@ -416,7 +416,7 @@ const AuctionsPage: React.FC = () => {
     setShowRelistModal(true);
   };
 
-  const handleApproveAuction = async (e: React.MouseEvent, auctionId: number) => {
+  const handleApproveAuction = async (e: React.MouseEvent, auctionId: string) => {
     e.preventDefault();
     e.stopPropagation();
     try {
@@ -429,7 +429,7 @@ const AuctionsPage: React.FC = () => {
     }
   };
 
-  const handleRejectAuction = async (e: React.MouseEvent, auctionId: number) => {
+  const handleRejectAuction = async (e: React.MouseEvent, auctionId: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (window.confirm('Are you sure you want to reject this auction?')) {

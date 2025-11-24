@@ -7,10 +7,10 @@ namespace InstapropAPI.Models
     public class AIChatMessage
     {
         [Key]
-        public long MessageId { get; set; }
+        public Guid MessageId { get; set; }
 
         [Required]
-        public long AIChatId { get; set; }
+        public Guid AIChatId { get; set; }
 
         [ForeignKey(nameof(AIChatId))]
         public AIChat AIChat { get; set; } = null!;
@@ -27,9 +27,9 @@ namespace InstapropAPI.Models
         public string MessageType { get; set; } = "Text"; // Text, PropertyCard, DeveloperCard, ProjectCard, OptionsPrompt
 
         // Optional linked entities for card messages
-        public long? PropertyId { get; set; }
-        public long? ProjectId { get; set; }
-        public long? DeveloperId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? ProjectId { get; set; }
+        public Guid? DeveloperId { get; set; }
 
         // Store options for OptionsPrompt messages (JSON array)
         public string? Options { get; set; }

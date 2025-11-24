@@ -566,6 +566,95 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
+  /// Show login required dialog specifically for AI Broker
+  void _showAIBrokerLoginDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.login, color: AppColors.primary, size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Login Required',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You need to be logged in to use the AI Broker bot.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Please log in to continue.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pushNamed(context, '/auth');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.login, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Go to Login',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBenefitItem(IconData icon, String text) {
     return Row(
       children: [
@@ -731,6 +820,13 @@ class _ChatListPageState extends State<ChatListPage> {
   Widget _buildAIChatItem(AIBrokerChatSummary aiChat) {
     return InkWell(
       onTap: () {
+        // Check if user is authenticated
+        final appState = Provider.of<AppState>(context, listen: false);
+        if (appState.token == null || appState.token!.isEmpty) {
+          _showAIBrokerLoginDialog();
+          return;
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(

@@ -1,6 +1,6 @@
 class LiveStream {
-  final int streamId;
-  final int developerId;
+  final String streamId;
+  final String developerId;
   final String developerName;
   final String? developerProfileImageUrl;
   final String title;
@@ -30,9 +30,17 @@ class LiveStream {
   });
 
   factory LiveStream.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return LiveStream(
-      streamId: json['streamId'] ?? 0,
-      developerId: json['developerId'] ?? 0,
+      streamId: parseId(json['streamId']),
+      developerId: parseId(json['developerId']),
       developerName: json['developerName'] ?? '',
       developerProfileImageUrl: json['developerProfileImageUrl'],
       title: json['title'] ?? '',

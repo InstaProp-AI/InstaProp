@@ -26,7 +26,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return Unauthorized("User not authenticated");
             }
@@ -40,7 +40,7 @@ namespace InstapropAPI.Controllers
             // SECURITY: Allow both Developers and Admins to access projects - check RoleId instead of Type
             if (!account.IsDeveloperOrAdmin())
             {
-                return StatusCode(403, new { message = "Only developers and admins can access projects" });
+                return StatusCode(403, new { message = "Access denied" });
             }
 
             // Admins can see all projects, developers can only see their own
@@ -56,10 +56,10 @@ namespace InstapropAPI.Controllers
         // GET: api/project/{id}
         [HttpGet("{id}")]
         [Authorize]
-        public async Task<ActionResult<Project>> GetProject(long id)
+        public async Task<ActionResult<Project>> GetProject(Guid id)
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return Unauthorized("User not authenticated");
             }
@@ -91,7 +91,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<Project>> CreateProject([FromBody] CreateProjectDto projectDto)
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return Unauthorized("User not authenticated");
             }
@@ -105,7 +105,7 @@ namespace InstapropAPI.Controllers
             // SECURITY: Allow both Developers and Admins to create projects - check RoleId
             if (!account.IsDeveloperOrAdmin())
             {
-                return StatusCode(403, new { message = "Only developers and admins can create projects" });
+                return StatusCode(403, new { message = "Access denied" });
             }
 
             var project = new Project
@@ -114,6 +114,7 @@ namespace InstapropAPI.Controllers
                 Name = projectDto.Name,
                 Description = projectDto.Description,
                 Location = projectDto.Location,
+                Country = projectDto.Country?.ToUpper(), // Store country code in uppercase
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
@@ -127,10 +128,10 @@ namespace InstapropAPI.Controllers
         // PUT: api/project/{id}
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateProject(long id, [FromBody] UpdateProjectDto projectDto)
+        public async Task<IActionResult> UpdateProject(Guid id, [FromBody] UpdateProjectDto projectDto)
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return Unauthorized("User not authenticated");
             }
@@ -155,6 +156,7 @@ namespace InstapropAPI.Controllers
             project.Name = projectDto.Name;
             project.Description = projectDto.Description;
             project.Location = projectDto.Location;
+            project.Country = projectDto.Country?.ToUpper(); // Store country code in uppercase
             project.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -165,10 +167,10 @@ namespace InstapropAPI.Controllers
         // DELETE: api/project/{id}
         [HttpDelete("{id}")]
         [AdminAuthorize]
-        public async Task<IActionResult> DeleteProject(long id)
+        public async Task<IActionResult> DeleteProject(Guid id)
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return Unauthorized("User not authenticated");
             }
@@ -190,10 +192,10 @@ namespace InstapropAPI.Controllers
         // GET: api/project/{id}/properties
         [HttpGet("{id}/properties")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetProjectProperties(long id)
+        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetProjectProperties(Guid id)
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return Unauthorized("User not authenticated");
             }
@@ -255,6 +257,7 @@ namespace InstapropAPI.Controllers
                     Name = p.Name,
                     Description = p.Description,
                     Location = p.Location,
+                    Country = p.Country,
                     CreatedAt = p.CreatedAt,
                     PropertiesCount = propertiesCount,
                     FeaturedImageUrl = featuredProperty?.ImageUrl,
@@ -271,7 +274,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/project/public/{id} - Get project details (Public endpoint)
         [HttpGet("public/{id}")]
-        public async Task<ActionResult<PublicProjectDetailsDto>> GetPublicProjectDetails(long id)
+        public async Task<ActionResult<PublicProjectDetailsDto>> GetPublicProjectDetails(Guid id)
         {
             var project = await _context.Projects
                 .Include(p => p.Developer)
@@ -289,6 +292,7 @@ namespace InstapropAPI.Controllers
                 Name = project.Name,
                 Description = project.Description,
                 Location = project.Location,
+                Country = project.Country,
                 CreatedAt = project.CreatedAt,
                 DeveloperId = project.DeveloperId,
                 DeveloperName = profile?.CompanyName ?? "Unknown Developer",
@@ -318,7 +322,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/project/by-developer/{developerId} - Get projects by developer (Public endpoint)
         [HttpGet("by-developer/{developerId}")]
-        public async Task<ActionResult<IEnumerable<PublicProjectDto>>> GetProjectsByDeveloper(long developerId)
+        public async Task<ActionResult<IEnumerable<PublicProjectDto>>> GetProjectsByDeveloper(Guid developerId)
         {
             var projects = await _context.Projects
                 .Where(p => p.DeveloperId == developerId && p.IsActive)
@@ -345,6 +349,7 @@ namespace InstapropAPI.Controllers
                     Name = p.Name,
                     Description = p.Description,
                     Location = p.Location,
+                    Country = p.Country,
                     CreatedAt = p.CreatedAt,
                     PropertiesCount = propertiesCount,
                     FeaturedImageUrl = featuredProperty?.ImageUrl,
@@ -365,6 +370,7 @@ namespace InstapropAPI.Controllers
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Location { get; set; }
+        public string? Country { get; set; } // ISO 3166-1 alpha-2 country code
     }
 
     public class UpdateProjectDto
@@ -372,18 +378,20 @@ namespace InstapropAPI.Controllers
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Location { get; set; }
+        public string? Country { get; set; } // ISO 3166-1 alpha-2 country code
     }
 
     public class PublicProjectDto
     {
-        public long ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Location { get; set; }
+        public string? Country { get; set; } // ISO 3166-1 alpha-2 country code
         public DateTime CreatedAt { get; set; }
         public int PropertiesCount { get; set; }
         public string? FeaturedImageUrl { get; set; }
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string DeveloperName { get; set; } = string.Empty;
         public string? DeveloperCompany { get; set; }
         public decimal DeveloperRating { get; set; }
@@ -392,12 +400,13 @@ namespace InstapropAPI.Controllers
 
     public class PublicProjectDetailsDto
     {
-        public long ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Location { get; set; }
+        public string? Country { get; set; } // ISO 3166-1 alpha-2 country code
         public DateTime CreatedAt { get; set; }
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string DeveloperName { get; set; } = string.Empty;
         public string? DeveloperCompany { get; set; }
         public decimal DeveloperRating { get; set; }
@@ -408,7 +417,7 @@ namespace InstapropAPI.Controllers
 
     public class PublicPropertyDto
     {
-        public long PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Location { get; set; }

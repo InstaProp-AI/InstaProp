@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AllowAnonymous]
     public class GoldPriceController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -171,7 +173,7 @@ namespace InstapropAPI.Controllers
         }
 
         [HttpGet("compare-property")]
-        public async Task<IActionResult> CompareGoldWithProperty([FromQuery] int parentPropertyId, [FromQuery] decimal? propertyPrice = null)
+        public async Task<IActionResult> CompareGoldWithProperty([FromQuery] Guid parentPropertyId, [FromQuery] decimal? propertyPrice = null)
         {
             var latestGoldPrice = await _context.GoldPrices
                 .OrderByDescending(gp => gp.Date)

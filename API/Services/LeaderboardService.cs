@@ -44,7 +44,7 @@ namespace InstapropAPI.Services
 
         public async Task<LeaderboardResponseDto> GetLeaderboardAsync(
             LeaderboardPeriod period,
-            long? requestingAccountId,
+            Guid? requestingAccountId,
             CancellationToken cancellationToken = default)
         {
             var (rangeStart, rangeEndExclusive) = GetDateRange(period, DateTime.UtcNow);
@@ -75,7 +75,7 @@ namespace InstapropAPI.Services
         }
 
         public async Task<LeaderboardHighlightsResponseDto> GetHighlightsAsync(
-            long? requestingAccountId,
+            Guid? requestingAccountId,
             CancellationToken cancellationToken = default)
         {
             var now = DateTime.UtcNow;
@@ -260,7 +260,7 @@ namespace InstapropAPI.Services
         private LeaderboardResponseDto BuildSnapshotResponse(
             WeeklyLeaderboardSnapshot snapshot,
             List<LeaderboardComputationRow> aggregates,
-            long? requestingAccountId,
+            Guid? requestingAccountId,
             LeaderboardPeriod period,
             DateTime rangeStart,
             DateTime rangeEndExclusive)
@@ -312,7 +312,7 @@ namespace InstapropAPI.Services
             LeaderboardPeriod period,
             DateTime rangeStart,
             DateTime rangeEndExclusive,
-            long? requestingAccountId,
+            Guid? requestingAccountId,
             CancellationToken cancellationToken,
             bool applyPotentialCashback = false)
         {
@@ -392,7 +392,7 @@ namespace InstapropAPI.Services
                 return;
             }
 
-            var streaks = new Dictionary<long, int>();
+            var streaks = new Dictionary<Guid, int>();
             var rank = 1;
 
             foreach (var aggregate in aggregates)
@@ -438,7 +438,7 @@ namespace InstapropAPI.Services
             LeaderboardComputationRow row,
             int rank,
             LeaderboardPeriod period,
-            long? requestingAccountId,
+            Guid? requestingAccountId,
             DateTime rangeStart,
             DateTime rangeEndExclusive,
             int streakWeeks)
@@ -467,7 +467,7 @@ namespace InstapropAPI.Services
             DateTime rangeStart,
             DateTime rangeEndExclusive,
             CancellationToken cancellationToken,
-            List<long>? focusAccounts = null)
+            List<Guid>? focusAccounts = null)
         {
             var rewardsQuery = _context.UserRewards
                 .AsNoTracking()
@@ -569,13 +569,13 @@ namespace InstapropAPI.Services
             }
         }
 
-        private async Task<Dictionary<long, int>> GetStreakWeeksAsync(
-            List<long> accountIds,
+        private async Task<Dictionary<Guid, int>> GetStreakWeeksAsync(
+            List<Guid> accountIds,
             CancellationToken cancellationToken)
         {
             if (accountIds.Count == 0)
             {
-                return new Dictionary<long, int>();
+                return new Dictionary<Guid, int>();
             }
 
             var standings = await _context.LeaderboardStandings
@@ -590,7 +590,7 @@ namespace InstapropAPI.Services
                 .OrderByDescending(ls => ls.WeekStart)
                 .ToListAsync(cancellationToken);
 
-            var streaks = new Dictionary<long, int>();
+            var streaks = new Dictionary<Guid, int>();
 
             foreach (var accountId in accountIds)
             {
@@ -807,7 +807,7 @@ namespace InstapropAPI.Services
 
         private sealed record LeaderboardHead
         {
-            public long AccountId { get; init; }
+            public Guid AccountId { get; init; }
             public int Points { get; init; }
             public int RewardCount { get; init; }
             public DateTime? LastRewardAt { get; init; }
@@ -815,14 +815,14 @@ namespace InstapropAPI.Services
 
         private sealed record RewardSlice
         {
-            public long AccountId { get; init; }
+            public Guid AccountId { get; init; }
             public string RewardType { get; init; } = string.Empty;
             public int Points { get; init; }
             public DateTime EarnedAt { get; init; }
         }
 
         private sealed record LeaderboardComputationRow(
-            long AccountId,
+            Guid AccountId,
             string DisplayName,
             string AvatarInitials,
             int Points,

@@ -7,19 +7,19 @@ namespace InstapropAPI.Models
     public class StreamChatMessage
     {
         [Key]
-        public long MessageId { get; set; }
+        public Guid MessageId { get; set; }
 
         [Required]
-        public long StreamId { get; set; }
+        public Guid StreamId { get; set; }
 
         [ForeignKey(nameof(StreamId))]
         public LiveStream Stream { get; set; } = null!;
 
         [Required]
-        public long UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public Account User { get; set; } = null!;
+        public AccountBase User { get; set; } = null!;
 
         [Required]
         [MaxLength(500)]

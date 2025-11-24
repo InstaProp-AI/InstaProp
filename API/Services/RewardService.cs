@@ -13,7 +13,7 @@ namespace InstapropAPI.Services
             _context = context;
         }
 
-        public async Task AwardPointsAsync(long accountId, string rewardType, int points, string? description = null, long? relatedPropertyId = null)
+        public async Task AwardPointsAsync(Guid accountId, string rewardType, int points, string? description = null, Guid? relatedPropertyId = null)
         {
             var reward = new UserReward
             {
@@ -41,19 +41,19 @@ namespace InstapropAPI.Services
             await CheckAndAwardBadgesAsync(accountId);
         }
 
-        public async Task<int> GetTotalPointsAsync(long accountId)
+        public async Task<int> GetTotalPointsAsync(Guid accountId)
         {
             var account = await _context.Accounts.FindAsync(accountId);
             return account?.TotalEarnedPoints ?? 0;
         }
 
-        public async Task<int> GetCurrentPointsAsync(long accountId)
+        public async Task<int> GetCurrentPointsAsync(Guid accountId)
         {
             var account = await _context.Accounts.FindAsync(accountId);
             return account?.CurrentPoints ?? 0;
         }
 
-        public async Task<bool> SpendPointsAsync(long accountId, int points)
+        public async Task<bool> SpendPointsAsync(Guid accountId, int points)
         {
             var account = await _context.Accounts.FindAsync(accountId);
             if (account == null || account.CurrentPoints < points)
@@ -72,7 +72,7 @@ namespace InstapropAPI.Services
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-        private async Task CheckAndAwardBadgesAsync(long accountId)
+        private async Task CheckAndAwardBadgesAsync(Guid accountId)
         {
             var totalPoints = await GetTotalPointsAsync(accountId);
             var existingBadges = await _context.UserBadges
@@ -120,7 +120,7 @@ namespace InstapropAPI.Services
                 await _context.SaveChangesAsync();
         }
 
-        public async Task<List<UserBadge>> GetUserBadgesAsync(long accountId)
+        public async Task<List<UserBadge>> GetUserBadgesAsync(Guid accountId)
         {
             return await _context.UserBadges
                 .Where(b => b.AccountId == accountId)

@@ -7,13 +7,13 @@ namespace InstapropAPI.Models
     public class UserDoc
     {
     [Key]
-    public long DocId { get; set; }
+    public Guid DocId { get; set; }
 
     [Required]
-    public long UserId { get; set; }
+    public Guid UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public Account User { get; set; } = null!;
+        public AccountBase User { get; set; } = null!;
 
         [Required]
         public string DocType { get; set; } // Enum: ID_Front, ID_Back, Passport_Front, Passport_Back, ProofOfAddress, etc.

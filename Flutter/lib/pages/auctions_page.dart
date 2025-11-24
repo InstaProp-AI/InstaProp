@@ -23,10 +23,10 @@ class _AuctionsPageState extends State<AuctionsPage>
   Map<String, dynamic> _activeFilters = {};
 
   // Track recently updated auctions for highlighting
-  final Map<int, DateTime> _recentlyUpdatedAuctions = {};
-  final Set<int> _highlightedAuctions = {};
-  final Map<int, double> _previousPrices = {}; // Track previous prices
-  final Map<int, int> _previousBidCounts = {}; // Track previous bid counts
+  final Map<String, DateTime> _recentlyUpdatedAuctions = {};
+  final Set<String> _highlightedAuctions = {};
+  final Map<String, double> _previousPrices = {}; // Track previous prices
+  final Map<String, int> _previousBidCounts = {}; // Track previous bid counts
 
   // Track when we last applied filters to avoid redundant calls
   int _lastAuctionsHash = 0;
@@ -247,7 +247,7 @@ class _AuctionsPageState extends State<AuctionsPage>
   }
 
   /// Mark an auction as updated (called when we detect price/bid changes)
-  void _markAuctionUpdated(int auctionId) {
+  void _markAuctionUpdated(String auctionId) {
     setState(() {
       _recentlyUpdatedAuctions[auctionId] = DateTime.now();
       _highlightedAuctions.add(auctionId);
@@ -274,7 +274,7 @@ class _AuctionsPageState extends State<AuctionsPage>
   }
 
   /// Check if auction should be highlighted
-  bool _isAuctionHighlighted(int auctionId) {
+  bool _isAuctionHighlighted(String auctionId) {
     return _highlightedAuctions.contains(auctionId);
   }
 

@@ -298,7 +298,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Generates a unique, safe filename for uploaded files
         /// </summary>
-        public string GenerateUniqueFileName(string originalFileName, long userId, string docType)
+        public string GenerateUniqueFileName(string originalFileName, Guid userId, string docType)
         {
             var extension = Path.GetExtension(originalFileName)?.ToLowerInvariant();
             var safeFileName = GetSafeFileName(Path.GetFileNameWithoutExtension(originalFileName));

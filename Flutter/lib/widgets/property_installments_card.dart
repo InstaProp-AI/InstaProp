@@ -6,7 +6,7 @@ import '../models/installment_summary.dart';
 import '../core/router/app_router.dart';
 
 class PropertyInstallmentsCard extends StatefulWidget {
-  final int propertyId;
+  final String propertyId;
   final InstallmentSummary? summary;
   final VoidCallback? onPaymentMade;
 

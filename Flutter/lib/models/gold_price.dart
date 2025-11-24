@@ -1,5 +1,5 @@
 class GoldPrice {
-  final int goldPriceId;
+  final String goldPriceId;
   final double pricePerGram;
   final int month;
   final int year;
@@ -18,8 +18,16 @@ class GoldPrice {
   });
 
   factory GoldPrice.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return GoldPrice(
-      goldPriceId: json['goldPriceId'] ?? 0,
+      goldPriceId: parseId(json['goldPriceId']),
       pricePerGram: (json['pricePerGram'] ?? 0).toDouble(),
       month: json['month'] ?? 0,
       year: json['year'] ?? 0,

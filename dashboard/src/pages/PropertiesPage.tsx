@@ -34,6 +34,7 @@ import { exportPropertiesToCSV } from '../utils/export';
 import { useToast } from '../contexts/ToastContext';
 import Pagination from '../components/Pagination';
 import PropertyDocumentsManager from '../components/PropertyDocumentsManager';
+import CountryFlag, { extractCountryCodeFromLocation } from '../components/CountryFlag';
 
 const PropertiesPage: React.FC = () => {
   const toast = useToast();
@@ -51,6 +52,7 @@ const PropertiesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterProject, setFilterProject] = useState('all');
+  const [filterCountry, setFilterCountry] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,8 +86,8 @@ const PropertiesPage: React.FC = () => {
         );
         setUser(currentUser);
         // Check roleName first (from backend), then roleId, then legacy type
-        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
-        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === '98237498-2374-4982-3749-823749823749' || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === '78236478-2364-7823-0000-000000000000' || currentUser.type === 'Developer';
         const role = isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null);
         setUserRole(role);
         setUserLoadError(null);
@@ -179,7 +181,7 @@ const PropertiesPage: React.FC = () => {
     }
   };
 
-  const handleApproveProperty = async (propertyId: number) => {
+  const handleApproveProperty = async (propertyId: string) => {
     if (!userRole) return;
     try {
       await propertiesApi.approveProperty(propertyId, userRole);
@@ -191,7 +193,7 @@ const PropertiesPage: React.FC = () => {
     }
   };
 
-  const handleRejectProperty = async (propertyId: number) => {
+  const handleRejectProperty = async (propertyId: string) => {
     if (!userRole) return;
     if (window.confirm('Are you sure you want to reject this property?')) {
       try {
@@ -205,7 +207,7 @@ const PropertiesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteProperty = async (propertyId: number) => {
+  const handleDeleteProperty = async (propertyId: string) => {
     if (window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
       try {
         await propertiesApi.deleteProperty(propertyId);
@@ -218,7 +220,7 @@ const PropertiesPage: React.FC = () => {
     }
   };
 
-  const handleViewDetails = async (propertyId: number) => {
+  const handleViewDetails = async (propertyId: string) => {
     try {
       setLoadingDetails(true);
       setShowDetailsModal(true);
@@ -278,11 +280,12 @@ const PropertiesPage: React.FC = () => {
   const handleCreateProperty = (e: React.FormEvent) => {
     e.preventDefault();
     const property: Property = {
-      propertyId: properties.length + 1,
+      propertyId: crypto.randomUUID(),
       ...newProperty,
+      projectId: newProperty.projectId ? String(newProperty.projectId) : undefined,
       type: 'Resale' as 'Resale' | 'Primary',
       status: 'Pending',
-      ownerId: 1,
+      ownerId: '',
       isApproved: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -314,7 +317,14 @@ const PropertiesPage: React.FC = () => {
     const matchesProject = filterProject === 'all' || 
                           property.projectId?.toString() === filterProject;
     
-    return matchesSearch && matchesStatus && matchesProject;
+    // Country filter: check project country or extract from location
+    const matchesCountry = filterCountry === 'all' || (() => {
+      const propertyCountry = property.project?.country || 
+                              extractCountryCodeFromLocation(property.location);
+      return propertyCountry?.toUpperCase() === filterCountry.toUpperCase();
+    })();
+    
+    return matchesSearch && matchesStatus && matchesProject && matchesCountry;
   });
 
   const sortedProperties = [...filteredProperties].sort((a, b) => {
@@ -650,6 +660,34 @@ const PropertiesPage: React.FC = () => {
                 ))}
               </select>
             </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem' }}>
+                Country
+              </label>
+              <select
+                value={filterCountry}
+                onChange={(e) => setFilterCountry(e.target.value)}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  backgroundColor: 'white'
+                }}
+              >
+                <option value="all">All Countries</option>
+                {Array.from(new Set(
+                  properties
+                    .map(p => p.project?.country || extractCountryCodeFromLocation(p.location))
+                    .filter((c): c is string => c !== null && c !== undefined)
+                )).sort().map(countryCode => (
+                  <option key={countryCode} value={countryCode}>
+                    {countryCode}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
       </div>
@@ -787,9 +825,14 @@ const PropertiesPage: React.FC = () => {
                     alignItems: 'center',
                     fontSize: '0.875rem',
                     color: '#6b7280',
-                    marginBottom: '0.5rem'
+                    marginBottom: '0.5rem',
+                    gap: '0.25rem'
                   }}>
-                    <MapPin style={{ height: '1rem', width: '1rem', marginRight: '0.25rem' }} />
+                    <MapPin style={{ height: '1rem', width: '1rem' }} />
+                    <CountryFlag 
+                      countryCode={property.project?.country || extractCountryCodeFromLocation(property.location)}
+                      size={16}
+                    />
                     {property.location}
                   </div>
                 )}
@@ -1116,9 +1159,14 @@ const PropertiesPage: React.FC = () => {
                       alignItems: 'center',
                       fontSize: '0.875rem',
                       color: '#6b7280',
-                      marginBottom: '1rem'
+                      marginBottom: '1rem',
+                      gap: '0.5rem'
                     }}>
-                      <MapPin style={{ height: '1rem', width: '1rem', marginRight: '0.5rem' }} />
+                      <MapPin style={{ height: '1rem', width: '1rem' }} />
+                      <CountryFlag 
+                        countryCode={property.project?.country || extractCountryCodeFromLocation(property.location)}
+                        size={16}
+                      />
                       {property.location}
                     </div>
                   )}
@@ -2103,16 +2151,16 @@ const PropertiesPage: React.FC = () => {
                         value={selectedProperty.projectId || ''}
                         onChange={async (e) => {
                           // Backend expects: 0 or negative to detach, positive number to assign
-                          const newProjectId = e.target.value ? Number(e.target.value) : 0;
+                          const newProjectId = e.target.value || undefined;
                           try {
                             await propertiesApi.updateProperty(selectedProperty.propertyId, {
                               projectId: newProjectId
                             });
                             setSelectedProperty({
                               ...selectedProperty,
-                              projectId: newProjectId === 0 ? undefined : newProjectId
+                              projectId: newProjectId || undefined
                             });
-                            if (newProjectId === 0) {
+                            if (!newProjectId) {
                               toast.success('Property removed from project successfully!');
                             } else {
                               toast.success('Property assigned to project successfully!');

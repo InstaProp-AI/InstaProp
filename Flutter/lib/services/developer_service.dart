@@ -14,7 +14,7 @@ class DeveloperService {
   };
 
   // Get developer profile by ID
-  Future<DeveloperProfile> getDeveloperProfile(int developerId) async {
+  Future<DeveloperProfile> getDeveloperProfile(String developerId) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/developer/profile/$developerId'),
@@ -58,7 +58,7 @@ class DeveloperService {
 
   // Rate a developer
   Future<void> rateDeveloper({
-    required int developerId,
+    required String developerId,
     required int rating,
     String? comment,
     required String ratingType, // "Chat" or "Purchase"

@@ -34,8 +34,8 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setUser(currentUser);
       
       // Admins have all permissions - check roleName first, then roleId, then legacy type
-      const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
-      const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+      const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === '98237498-2374-4982-3749-823749823749' || currentUser.type === 'Admin';
+      const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === '78236478-2364-7823-0000-000000000000' || currentUser.type === 'Developer';
       
       if (isAdmin) {
         // Admin has all features enabled
@@ -43,7 +43,7 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           Projects: true,
           Properties: true,
           Analytics: true,
-          Communities: true,
+          // Communities removed
           News: true,
           Auctions: true,
           Leaderboard: true,
@@ -94,7 +94,7 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const hasPermission = useCallback((featureName: string): boolean => {
     // Admins always have permission - check roleName first, then roleId, then legacy type
     if (user) {
-      const isAdmin = user.roleName === 'Admin' || user.roleId === 9823749823749823 || user.type === 'Admin';
+      const isAdmin = user.roleName === 'Admin' || user.roleId === '98237498-2374-4982-3749-823749823749' || user.type === 'Admin';
       if (isAdmin) return true;
     }
     

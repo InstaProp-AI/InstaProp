@@ -11,19 +11,19 @@ namespace InstapropAPI.Models
     public class ChatLabel
     {
         [Key]
-        public int ChatLabelId { get; set; }
+        public Guid ChatLabelId { get; set; }
 
         [Required]
         [ForeignKey("Chat")]
-        public long ChatId { get; set; }
+        public Guid ChatId { get; set; }
 
         [Required]
         [ForeignKey("Developer")]
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
 
         [Required]
         [ForeignKey("User")]
-        public long UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [Required]
         [MaxLength(50)]
@@ -37,8 +37,8 @@ namespace InstapropAPI.Models
 
         // Navigation properties
         public virtual Chat? Chat { get; set; }
-        public virtual Account? Developer { get; set; }
-        public virtual Account? User { get; set; }
+        public virtual DeveloperAccount? Developer { get; set; }
+        public virtual UserAccount? User { get; set; }
     }
 
     /// <summary>

@@ -150,7 +150,7 @@ namespace InstapropAPI.Controllers
             
             try
             {
-                if (string.IsNullOrEmpty(accountIdClaim) || !long.TryParse(accountIdClaim, out var accountId))
+                if (string.IsNullOrEmpty(accountIdClaim) || !Guid.TryParse(accountIdClaim, out var accountId))
                     return Unauthorized("Invalid or missing token");
 
                 if (string.IsNullOrEmpty(docType))
@@ -247,7 +247,7 @@ namespace InstapropAPI.Controllers
             try
             {
                 var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(accountIdClaim) || !long.TryParse(accountIdClaim, out var accountId))
+                if (string.IsNullOrEmpty(accountIdClaim) || !Guid.TryParse(accountIdClaim, out var accountId))
                     return Unauthorized("Invalid or missing token");
 
                 var documents = await _context.UserDocs
@@ -277,7 +277,7 @@ namespace InstapropAPI.Controllers
         /// </summary>
         [HttpGet("user/{userId}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetUserDocuments(long userId)
+        public async Task<IActionResult> GetUserDocuments(Guid userId)
         {
             try
             {
@@ -307,12 +307,12 @@ namespace InstapropAPI.Controllers
         /// Delete a user document
         /// </summary>
         [HttpDelete("user/{docId}")]
-        public async Task<IActionResult> DeleteUserDocument(long docId)
+        public async Task<IActionResult> DeleteUserDocument(Guid docId)
         {
             try
             {
                 var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(accountIdClaim) || !long.TryParse(accountIdClaim, out var accountId))
+                if (string.IsNullOrEmpty(accountIdClaim) || !Guid.TryParse(accountIdClaim, out var accountId))
                     return Unauthorized("Invalid or missing token");
 
                 var document = await _context.UserDocs.FindAsync(docId);
@@ -345,12 +345,12 @@ namespace InstapropAPI.Controllers
         /// Upload a property document
         /// </summary>
         [HttpPost("property/{propertyId}/upload")]
-        public async Task<IActionResult> UploadPropertyDocument(long propertyId, IFormFile file, [FromForm] string docType)
+        public async Task<IActionResult> UploadPropertyDocument(Guid propertyId, IFormFile file, [FromForm] string docType)
         {
             try
             {
                 var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(accountIdClaim) || !long.TryParse(accountIdClaim, out var accountId))
+                if (string.IsNullOrEmpty(accountIdClaim) || !Guid.TryParse(accountIdClaim, out var accountId))
                     return Unauthorized("Invalid or missing token");
 
                 // Check property ownership
@@ -398,7 +398,7 @@ namespace InstapropAPI.Controllers
                     // Create new document
                     var propertyDoc = new PropertyDoc
                     {
-                        PropertyId = (int)propertyId,
+                        PropertyId = propertyId,
                         DocType = docType,
                         ImgUrl = uploadResult.DisplayUrl,
                         DeleteUrl = uploadResult.DeleteUrl,
@@ -433,7 +433,7 @@ namespace InstapropAPI.Controllers
         /// Get all documents for a property
         /// </summary>
         [HttpGet("property/{propertyId}")]
-        public async Task<IActionResult> GetPropertyDocuments(long propertyId)
+        public async Task<IActionResult> GetPropertyDocuments(Guid propertyId)
         {
             try
             {
@@ -462,12 +462,12 @@ namespace InstapropAPI.Controllers
         /// Delete a property document
         /// </summary>
         [HttpDelete("property/document/{docId}")]
-        public async Task<IActionResult> DeletePropertyDocument(long docId)
+        public async Task<IActionResult> DeletePropertyDocument(Guid docId)
         {
             try
             {
                 var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(accountIdClaim) || !long.TryParse(accountIdClaim, out var accountId))
+                if (string.IsNullOrEmpty(accountIdClaim) || !Guid.TryParse(accountIdClaim, out var accountId))
                     return Unauthorized("Invalid or missing token");
 
                 var document = await _context.PropertyDocs
@@ -501,7 +501,7 @@ namespace InstapropAPI.Controllers
         /// </summary>
         [HttpPost("property/{propertyId}/upload-image")]
         public async Task<IActionResult> UploadPropertyImage(
-            long propertyId,
+            Guid propertyId,
             IFormFile file,
             [FromForm] string imageType,
             [FromForm] bool isMainImage = false,
@@ -510,7 +510,7 @@ namespace InstapropAPI.Controllers
             try
             {
                 var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(accountIdClaim) || !long.TryParse(accountIdClaim, out var accountId))
+                if (string.IsNullOrEmpty(accountIdClaim) || !Guid.TryParse(accountIdClaim, out var accountId))
                     return Unauthorized("Invalid or missing token");
 
                 // Check property ownership
@@ -557,7 +557,7 @@ namespace InstapropAPI.Controllers
                 // Create new image record
                 var propertyImage = new PropertyImage
                 {
-                    PropertyId = (int)propertyId,
+                    PropertyId = propertyId,
                     ImageUrl = uploadResult.DisplayUrl,
                     ImageType = imageType,
                     IsMainImage = isMainImage,
@@ -594,7 +594,7 @@ namespace InstapropAPI.Controllers
         /// Get all images for a property
         /// </summary>
         [HttpGet("property/{propertyId}/images")]
-        public async Task<IActionResult> GetPropertyImages(long propertyId)
+        public async Task<IActionResult> GetPropertyImages(Guid propertyId)
         {
             try
             {
@@ -627,12 +627,12 @@ namespace InstapropAPI.Controllers
         /// Delete a property image
         /// </summary>
         [HttpDelete("property/image/{imageId}")]
-        public async Task<IActionResult> DeletePropertyImage(long imageId)
+        public async Task<IActionResult> DeletePropertyImage(Guid imageId)
         {
             try
             {
                 var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(accountIdClaim) || !long.TryParse(accountIdClaim, out var accountId))
+                if (string.IsNullOrEmpty(accountIdClaim) || !Guid.TryParse(accountIdClaim, out var accountId))
                     return Unauthorized("Invalid or missing token");
 
                 var image = await _context.PropertyImages

@@ -5,7 +5,8 @@ namespace InstapropAPI.Models
 {
     public class Faq
     {
-        public int FaqId { get; set; }
+        [Key]
+        public Guid FaqId { get; set; }
 
         [Required]
         [MaxLength(250)]

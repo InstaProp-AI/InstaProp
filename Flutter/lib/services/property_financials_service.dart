@@ -2,7 +2,7 @@ import 'api_client.dart';
 
 class PropertyFinancialsService {
   static Future<ApiResponse<PropertyFinancials>> getFinancials(
-    int propertyId, {
+    String propertyId, {
     double? marketValue,
   }) async {
     final query = marketValue != null ? '?marketValue=${marketValue}' : '';
@@ -14,7 +14,7 @@ class PropertyFinancialsService {
 
   // Get all properties' financials for portfolio aggregation
   static Future<List<PropertyFinancials>> getAllPropertiesFinancials(
-    List<int> propertyIds,
+    List<String> propertyIds,
   ) async {
     final financials = <PropertyFinancials>[];
 

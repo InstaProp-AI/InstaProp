@@ -8,7 +8,7 @@ class EventService {
   }
 
   // Get a specific event by ID
-  static Future<ApiResponse<Event>> getEvent(int eventId) async {
+  static Future<ApiResponse<Event>> getEvent(String eventId) async {
     return await ApiClient.get('/api/event/$eventId', Event.fromJson);
   }
 
@@ -35,7 +35,7 @@ class EventService {
 
   // Get events linked to a specific property (current user only)
   static Future<ApiResponse<List<Event>>> getEventsByProperty(
-    int propertyId,
+    String propertyId,
   ) async {
     return await ApiClient.getList(
       '/api/event/by-property/$propertyId',
@@ -65,7 +65,7 @@ class EventService {
   }
 
   // Mark an event as completed
-  static Future<ApiResponse<void>> completeEvent(int eventId) async {
+  static Future<ApiResponse<void>> completeEvent(String eventId) async {
     return await ApiClient.put(
       '/api/event/$eventId/complete',
       {},
@@ -74,7 +74,7 @@ class EventService {
   }
 
   // Delete an event
-  static Future<ApiResponse<void>> deleteEvent(int eventId) async {
+  static Future<ApiResponse<void>> deleteEvent(String eventId) async {
     return await ApiClient.delete('/api/event/$eventId');
   }
 
@@ -164,7 +164,7 @@ class EventService {
   static Future<ApiResponse<PaymentScheduleScanResult>> scanPaymentSchedule(
     List<int> imageBytes,
     String fileName,
-    int propertyId, {
+    String propertyId, {
     int? reminderMinutes,
     double? buyingPrice,
   }) async {

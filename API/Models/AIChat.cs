@@ -7,13 +7,13 @@ namespace InstapropAPI.Models
     public class AIChat
     {
         [Key]
-        public long AIChatId { get; set; }
+        public Guid AIChatId { get; set; }
 
         [Required]
-        public long UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public Account User { get; set; } = null!;
+        public UserAccount User { get; set; } = null!;
 
         public DateTime StartedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

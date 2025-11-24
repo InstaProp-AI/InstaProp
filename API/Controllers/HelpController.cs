@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AllowAnonymous]
     public class HelpController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -64,7 +66,7 @@ namespace InstapropAPI.Controllers
 
     public class FaqDto
     {
-        public int FaqId { get; set; }
+        public Guid FaqId { get; set; }
         public string Question { get; set; } = string.Empty;
         public string Answer { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }

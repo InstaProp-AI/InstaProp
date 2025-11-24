@@ -14,7 +14,7 @@ namespace InstapropAPI.Services
         }
 
         // Check if a user matches the recipient criteria
-        public async Task<bool> UserMatchesRecipients(long? userId, string recipients)
+        public async Task<bool> UserMatchesRecipients(Guid? userId, string recipients)
         {
             if (string.IsNullOrEmpty(recipients))
                 return false;
@@ -45,7 +45,7 @@ namespace InstapropAPI.Services
                         .Select(a => a.PropertyId)
                         .ToListAsync();
                     return await _context.ChildProperties
-                        .AnyAsync(p => auctionPropertyIds.Contains((int)p.PropertyId) && p.OwnerId == userId.Value);
+                        .AnyAsync(p => auctionPropertyIds.Contains(p.PropertyId) && p.OwnerId == userId.Value);
 
                 case "bidders":
                     if (!userId.HasValue) return false;
@@ -69,8 +69,8 @@ namespace InstapropAPI.Services
                         if (!userId.HasValue) return false;
                         var userIds = recipientType.Substring(9)
                             .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                            .Select(id => long.TryParse(id, out var parsedId) ? parsedId : 0)
-                            .Where(id => id > 0)
+                            .Select(id => Guid.TryParse(id, out var parsedId) ? parsedId : Guid.Empty)
+                            .Where(id => id != Guid.Empty)
                             .ToList();
                         return userIds.Contains(userId.Value);
                     }
@@ -104,7 +104,7 @@ namespace InstapropAPI.Services
                         .Select(a => a.PropertyId)
                         .ToListAsync();
                     return await _context.ChildProperties
-                        .Where(p => auctionPropertyIds.Contains((int)p.PropertyId))
+                        .Where(p => auctionPropertyIds.Contains(p.PropertyId))
                         .Select(p => p.OwnerId)
                         .Distinct()
                         .CountAsync();
@@ -125,10 +125,10 @@ namespace InstapropAPI.Services
                     {
                         var userIds = recipientType.Substring(9)
                             .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                            .Select(id => long.TryParse(id, out var parsedId) ? parsedId : 0)
-                            .Where(id => id > 0)
+                            .Select(id => Guid.TryParse(id, out var parsedId) ? parsedId : Guid.Empty)
+                            .Where(id => id != Guid.Empty)
                             .ToList();
-                        return userIds.Count;
+                        return userIds.Count();
                     }
                     return 0;
             }

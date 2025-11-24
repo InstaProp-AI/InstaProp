@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using InstapropAPI.Data;
 using InstapropAPI.Models;
 using System.Security.Claims;
+using InstapropAPI.Attributes;
 
 namespace InstapropAPI.Controllers
 {
@@ -145,7 +147,7 @@ namespace InstapropAPI.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetParentProperty(int id)
+        public async Task<IActionResult> GetParentProperty(Guid id)
         {
             var parentProperty = await _context.ParentProperties
                 .Include(p => p.Project)
@@ -231,7 +233,7 @@ namespace InstapropAPI.Controllers
         }
 
         [HttpGet("{id}/children")]
-        public async Task<IActionResult> GetParentChildren(int id)
+        public async Task<IActionResult> GetParentChildren(Guid id)
         {
             var children = await _context.ChildProperties
                 .Where(c => c.ParentPropertyId == id)
@@ -315,6 +317,8 @@ namespace InstapropAPI.Controllers
             return Ok(result);
         }
 
+        [Authorize]
+        [DeveloperOrAdminAuthorize]
         [HttpPost("find-or-create")]
         public async Task<IActionResult> FindOrCreateParentProperty([FromBody] FindOrCreateParentPropertyRequest request)
         {

@@ -1,8 +1,8 @@
 class ChatLabel {
-  final int chatLabelId;
-  final int chatId;
-  final int developerId;
-  final int userId;
+  final String chatLabelId;
+  final String chatId;
+  final String developerId;
+  final String userId;
   final String label; // "Bought", "HotBuyer", "NormalBuyer", "JustAsker"
   final String? notes;
   final DateTime labeledAt;
@@ -20,11 +20,19 @@ class ChatLabel {
   });
 
   factory ChatLabel.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ChatLabel(
-      chatLabelId: json['chatLabelId'] ?? 0,
-      chatId: json['chatId'] ?? 0,
-      developerId: json['developerId'] ?? 0,
-      userId: json['userId'] ?? 0,
+      chatLabelId: parseId(json['chatLabelId']),
+      chatId: parseId(json['chatId']),
+      developerId: parseId(json['developerId']),
+      userId: parseId(json['userId']),
       label: json['label'] ?? '',
       notes: json['notes'],
       labeledAt: DateTime.parse(
@@ -50,10 +58,10 @@ class ChatLabel {
   }
 
   ChatLabel copyWith({
-    int? chatLabelId,
-    int? chatId,
-    int? developerId,
-    int? userId,
+    String? chatLabelId,
+    String? chatId,
+    String? developerId,
+    String? userId,
     String? label,
     String? notes,
     DateTime? labeledAt,

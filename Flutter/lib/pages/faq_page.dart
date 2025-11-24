@@ -14,7 +14,7 @@ class FaqPage extends StatefulWidget {
 class _FaqPageState extends State<FaqPage> {
   bool _loading = true;
   List<Faq> _faqs = [];
-  final Set<int> _expanded = <int>{};
+  final Set<String> _expanded = <String>{};
 
   @override
   void initState() {
@@ -41,7 +41,7 @@ class _FaqPageState extends State<FaqPage> {
     }
   }
 
-  void _toggle(int id) {
+  void _toggle(String id) {
     setState(() {
       if (_expanded.contains(id)) {
         _expanded.remove(id);

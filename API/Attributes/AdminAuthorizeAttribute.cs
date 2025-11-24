@@ -22,9 +22,9 @@ namespace InstapropAPI.Attributes
                 return;
             }
 
-            // SECURITY: Check RoleId instead of type string - non-guessable 64-bit ID
+            // SECURITY: Check RoleId instead of type string - non-guessable GUID
             var roleIdClaim = context.HttpContext.User.FindFirst("roleId");
-            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId) || roleId != Models.Role.ADMIN_ROLE_ID)
+            if (roleIdClaim == null || !Guid.TryParse(roleIdClaim.Value, out Guid roleId) || roleId != Models.Role.ADMIN_ROLE_ID)
             {
                 context.Result = new ForbidResult();
                 return;
@@ -43,9 +43,9 @@ namespace InstapropAPI.Attributes
                 return;
             }
 
-            // SECURITY: Check RoleId instead of type string - non-guessable 64-bit IDs
+            // SECURITY: Check RoleId instead of type string - non-guessable GUIDs
             var roleIdClaim = context.HttpContext.User.FindFirst("roleId");
-            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId))
+            if (roleIdClaim == null || !Guid.TryParse(roleIdClaim.Value, out Guid roleId))
             {
                 context.Result = new ForbidResult();
                 return;
@@ -85,7 +85,7 @@ namespace InstapropAPI.Attributes
 
             // Get account ID from claims
             var accountIdClaim = context.HttpContext.User.FindFirst("uid");
-            if (accountIdClaim == null || !long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out Guid accountId))
             {
                 context.Result = new UnauthorizedObjectResult(new { message = "Invalid user ID" });
                 return;
@@ -93,7 +93,7 @@ namespace InstapropAPI.Attributes
 
             // Get role ID from claims
             var roleIdClaim = context.HttpContext.User.FindFirst("roleId");
-            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId))
+            if (roleIdClaim == null || !Guid.TryParse(roleIdClaim.Value, out Guid roleId))
             {
                 context.Result = new ForbidResult();
                 return;

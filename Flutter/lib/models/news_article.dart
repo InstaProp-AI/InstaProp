@@ -1,5 +1,5 @@
 class NewsArticle {
-  final int newsArticleId;
+  final String newsArticleId;
   final String title;
   final String content;
   final String? author;
@@ -24,8 +24,16 @@ class NewsArticle {
   });
 
   factory NewsArticle.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return NewsArticle(
-      newsArticleId: json['newsArticleId'] ?? json['NewsArticleId'] ?? 0,
+      newsArticleId: parseId(json['newsArticleId'] ?? json['NewsArticleId']),
       title: json['title'] ?? json['Title'] ?? '',
       content: json['content'] ?? json['Content'] ?? '',
       author: json['author'] ?? json['Author'],

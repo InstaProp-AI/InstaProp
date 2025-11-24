@@ -28,6 +28,7 @@ import { Project, Property } from '../types';
 import { projectsApi, propertiesApi, authApi } from '../services/api';
 import { withTimeout } from '../utils/apiTimeout';
 import { useToast } from '../contexts/ToastContext';
+import CountryFlag, { extractCountryCodeFromLocation } from '../components/CountryFlag';
 
 const ProjectsPage: React.FC = () => {
   const toast = useToast();
@@ -53,12 +54,14 @@ const ProjectsPage: React.FC = () => {
     name: '',
     description: '',
     location: '',
+    country: '',
   });
 
   const [editProject, setEditProject] = useState({
     name: '',
     description: '',
     location: '',
+    country: '',
   });
 
   useEffect(() => {
@@ -75,8 +78,8 @@ const ProjectsPage: React.FC = () => {
         );
         
         // Check roleName first (from backend), then roleId, then legacy type
-        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
-        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === '98237498-2374-4982-3749-823749823749' || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === '78236478-2364-4782-3647-823647823647' || currentUser.type === 'Developer';
         const role = isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null);
         
         setUserRole(role);
@@ -184,7 +187,7 @@ const ProjectsPage: React.FC = () => {
     try {
       await projectsApi.createProject(newProject);
       toast.success('Project created successfully!');
-      setNewProject({ name: '', description: '', location: '' });
+      setNewProject({ name: '', description: '', location: '', country: '' });
       setShowCreateModal(false);
       fetchData();
     } catch (error: any) {
@@ -242,6 +245,7 @@ const ProjectsPage: React.FC = () => {
       name: project.name,
       description: project.description || '',
       location: project.location || '',
+      country: project.country || '',
     });
     setShowEditModal(true);
   };
@@ -255,7 +259,7 @@ const ProjectsPage: React.FC = () => {
     setPropertyBedroomsFilter('all');
   };
 
-  const getProjectProperties = (projectId: number): Property[] => {
+  const getProjectProperties = (projectId: string): Property[] => {
     return properties.filter(p => p.projectId === projectId);
   };
 
@@ -281,7 +285,7 @@ const ProjectsPage: React.FC = () => {
     });
   };
 
-  const getProjectStats = (projectId: number) => {
+  const getProjectStats = (projectId: string) => {
     const projectProps = getProjectProperties(projectId);
     const approved = projectProps.filter(p => p.status === 'Approved').length;
     const pending = projectProps.filter(p => p.status === 'Pending').length;
@@ -295,7 +299,7 @@ const ProjectsPage: React.FC = () => {
     };
   };
 
-  const handleAttachProperty = async (propertyId: number, projectId: number) => {
+  const handleAttachProperty = async (propertyId: string, projectId: string) => {
     try {
       console.log(`📎 Attaching property ${propertyId} to project ${projectId}`);
       // Update property to assign it to the project
@@ -309,7 +313,7 @@ const ProjectsPage: React.FC = () => {
     }
   };
 
-  const handleDetachProperty = async (propertyId: number) => {
+  const handleDetachProperty = async (propertyId: string) => {
     if (!window.confirm('Are you sure you want to remove this property from the project?')) {
       return;
     }
@@ -747,11 +751,15 @@ const ProjectsPage: React.FC = () => {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                          gap: '0.25rem',
+                    gap: '0.25rem',
                     fontSize: '0.875rem',
-                          opacity: 0.9
+                    opacity: 0.9
                   }}>
-                          <MapPin style={{ height: '0.875rem', width: '0.875rem' }} />
+                    <MapPin style={{ height: '0.875rem', width: '0.875rem' }} />
+                    <CountryFlag 
+                      countryCode={project.country || extractCountryCodeFromLocation(project.location)}
+                      size={14}
+                    />
                     {project.location}
                   </div>
                 )}
@@ -1210,6 +1218,70 @@ const ProjectsPage: React.FC = () => {
                       />
                     </div>
                   </div>
+
+                  {/* Country field */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ 
+                        display: 'block', 
+                        marginBottom: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#374151'
+                    }}>
+                      Country (Optional)
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <div style={{
+                          position: 'absolute',
+                          left: '0.75rem',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: '#9ca3af',
+                        fontSize: '1.25rem'
+                      }}>
+                        🌍
+                      </div>
+                      <select
+                        style={{
+                          width: '100%',
+                            paddingLeft: '2.5rem',
+                            paddingRight: '1rem',
+                            paddingTop: '0.75rem',
+                            paddingBottom: '0.75rem',
+                          border: '1px solid #d1d5db',
+                            borderRadius: '0.75rem',
+                          fontSize: '0.875rem',
+                          outline: 'none',
+                            transition: 'all 0.2s',
+                          backgroundColor: 'white'
+                        }}
+                        value={newProject.country}
+                        onChange={(e) => setNewProject({ ...newProject, country: e.target.value })}
+                          onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
+                      >
+                        <option value="">Select country...</option>
+                        <option value="EG">🇪🇬 Egypt</option>
+                        <option value="AE">🇦🇪 United Arab Emirates</option>
+                        <option value="SA">🇸🇦 Saudi Arabia</option>
+                        <option value="KW">🇰🇼 Kuwait</option>
+                        <option value="QA">🇶🇦 Qatar</option>
+                        <option value="BH">🇧🇭 Bahrain</option>
+                        <option value="OM">🇴🇲 Oman</option>
+                        <option value="JO">🇯🇴 Jordan</option>
+                        <option value="LB">🇱🇧 Lebanon</option>
+                        <option value="US">🇺🇸 United States</option>
+                        <option value="GB">🇬🇧 United Kingdom</option>
+                        <option value="CA">🇨🇦 Canada</option>
+                        <option value="AU">🇦🇺 Australia</option>
+                        <option value="DE">🇩🇪 Germany</option>
+                        <option value="FR">🇫🇷 France</option>
+                        <option value="ES">🇪🇸 Spain</option>
+                        <option value="IT">🇮🇹 Italy</option>
+                        <option value="TR">🇹🇷 Turkey</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
                 </div>
 
@@ -1225,7 +1297,7 @@ const ProjectsPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setShowCreateModal(false);
-                      setNewProject({ name: '', description: '', location: '' });
+                      setNewProject({ name: '', description: '', location: '', country: '' });
                     }}
                     style={{
                       padding: '0.75rem 1.5rem',
@@ -1419,6 +1491,70 @@ const ProjectsPage: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    {/* Country field */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#374151'
+                      }}>
+                        Country (Optional)
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <div style={{
+                          position: 'absolute',
+                          left: '0.75rem',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: '#9ca3af',
+                          fontSize: '1.25rem'
+                        }}>
+                          🌍
+                        </div>
+                        <select
+                          style={{
+                            width: '100%',
+                            paddingLeft: '2.5rem',
+                            paddingRight: '1rem',
+                            paddingTop: '0.75rem',
+                            paddingBottom: '0.75rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '0.75rem',
+                            fontSize: '0.875rem',
+                            outline: 'none',
+                            transition: 'all 0.2s',
+                            backgroundColor: 'white'
+                          }}
+                          value={editProject.country}
+                          onChange={(e) => setEditProject({ ...editProject, country: e.target.value })}
+                          onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
+                        >
+                          <option value="">Select country...</option>
+                          <option value="EG">🇪🇬 Egypt</option>
+                          <option value="AE">🇦🇪 United Arab Emirates</option>
+                          <option value="SA">🇸🇦 Saudi Arabia</option>
+                          <option value="KW">🇰🇼 Kuwait</option>
+                          <option value="QA">🇶🇦 Qatar</option>
+                          <option value="BH">🇧🇭 Bahrain</option>
+                          <option value="OM">🇴🇲 Oman</option>
+                          <option value="JO">🇯🇴 Jordan</option>
+                          <option value="LB">🇱🇧 Lebanon</option>
+                          <option value="US">🇺🇸 United States</option>
+                          <option value="GB">🇬🇧 United Kingdom</option>
+                          <option value="CA">🇨🇦 Canada</option>
+                          <option value="AU">🇦🇺 Australia</option>
+                          <option value="DE">🇩🇪 Germany</option>
+                          <option value="FR">🇫🇷 France</option>
+                          <option value="ES">🇪🇸 Spain</option>
+                          <option value="IT">🇮🇹 Italy</option>
+                          <option value="TR">🇹🇷 Turkey</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1524,6 +1660,10 @@ const ProjectsPage: React.FC = () => {
                     {selectedProject.location && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', opacity: 0.9 }}>
                         <MapPin style={{ height: '1rem', width: '1rem' }} />
+                        <CountryFlag 
+                          countryCode={selectedProject.country || extractCountryCodeFromLocation(selectedProject.location)}
+                          size={16}
+                        />
                         {selectedProject.location}
                       </div>
                     )}

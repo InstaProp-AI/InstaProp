@@ -1,9 +1,9 @@
 class ChatMessage {
-  final int messageId;
-  final int senderId;
+  final String messageId;
+  final String senderId;
   final String? senderName;
   final String content;
-  final int? propertyId;
+  final String? propertyId;
   final String? propertyName;
   final String? propertyLocation;
   final String? propertyImageUrl;
@@ -23,15 +23,30 @@ class ChatMessage {
     required this.isRead,
   });
 
-  bool get hasProperty => propertyId != null && propertyId! > 0;
+  bool get hasProperty => propertyId != null && propertyId!.isNotEmpty;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ChatMessage(
-      messageId: json['messageId'] ?? 0,
-      senderId: json['senderId'] ?? 0,
+      messageId: parseId(json['messageId']),
+      senderId: parseId(json['senderId']),
       senderName: json['senderName'],
       content: json['content'] ?? '',
-      propertyId: json['propertyId'],
+      propertyId: parseOptionalId(json['propertyId']),
       propertyName: json['propertyName'],
       propertyLocation: json['propertyLocation'],
       propertyImageUrl: json['propertyImageUrl'],
@@ -44,12 +59,30 @@ class ChatMessage {
 
   // For Firestore real-time messages
   factory ChatMessage.fromFirestore(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) {
+        if (id == 0) return null; // Legacy: 0 means null
+        return id.toString();
+      }
+      return id.toString();
+    }
+
     return ChatMessage(
-      messageId: json['messageId'] ?? 0,
-      senderId: json['senderId'] ?? 0,
+      messageId: parseId(json['messageId']),
+      senderId: parseId(json['senderId']),
       senderName: null,
       content: json['content'] ?? '',
-      propertyId: json['propertyId'] == 0 ? null : json['propertyId'],
+      propertyId: parseOptionalId(json['propertyId']),
       propertyName: null,
       propertyLocation: null,
       propertyImageUrl: null,

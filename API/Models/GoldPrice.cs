@@ -11,7 +11,7 @@ namespace InstapropAPI.Models
     public class GoldPrice
     {
         [Key]
-        public int GoldPriceId { get; set; }
+        public Guid GoldPriceId { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]

@@ -7,13 +7,13 @@ namespace InstapropAPI.Models
     public class LiveStream
     {
         [Key]
-        public long StreamId { get; set; }
+        public Guid StreamId { get; set; }
 
         [Required]
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
 
         [ForeignKey(nameof(DeveloperId))]
-        public Account Developer { get; set; } = null!;
+        public DeveloperAccount Developer { get; set; } = null!;
 
         [Required]
         [MaxLength(200)]
@@ -48,19 +48,19 @@ namespace InstapropAPI.Models
     public class StreamViewer
     {
         [Key]
-        public long ViewerId { get; set; }
+        public Guid ViewerId { get; set; }
 
         [Required]
-        public long StreamId { get; set; }
+        public Guid StreamId { get; set; }
 
         [ForeignKey(nameof(StreamId))]
         public LiveStream Stream { get; set; } = null!;
 
         [Required]
-        public long UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public Account User { get; set; } = null!;
+        public AccountBase User { get; set; } = null!;
 
         [Required]
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;

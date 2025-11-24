@@ -8,21 +8,21 @@ namespace InstapropAPI.Models
     public class Chat
     {
         [Key]
-        public long ChatId { get; set; }
+        public Guid ChatId { get; set; }
 
         [Required]
-        public long UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public Account User { get; set; } = null!;
+        public AccountBase User { get; set; } = null!;
 
         [Required]
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
 
         [ForeignKey(nameof(DeveloperId))]
-        public Account Developer { get; set; } = null!;
+        public DeveloperAccount Developer { get; set; } = null!;
 
-        public long? ProjectId { get; set; }
+        public Guid? ProjectId { get; set; }
 
         [ForeignKey(nameof(ProjectId))]
         public Project? Project { get; set; }
@@ -35,10 +35,10 @@ namespace InstapropAPI.Models
 
         public bool IsSupportChat { get; set; } = false;
 
-        public long? SalesMemberId { get; set; }
+        public Guid? SalesMemberId { get; set; }
 
         [ForeignKey(nameof(SalesMemberId))]
-        public Account? SalesMember { get; set; }
+        public SalesAccount? SalesMember { get; set; }
 
         // 🔗 Relations
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();

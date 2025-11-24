@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { dashboardApi, authApi } from '../services/api';
+import { dashboardApi, authApi, usersApi } from '../services/api';
 import { withTimeout } from '../utils/apiTimeout';
 import RevenueChart from '../components/RevenueChart';
 import UserGrowthChart from '../components/UserGrowthChart';
@@ -75,8 +75,8 @@ const DashboardPage: React.FC = () => {
         );
         setUser(currentUser);
         // Check roleName first (from backend), then roleId, then legacy type
-        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
-        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === '98237498-2374-4982-3749-823749823749' || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === '78236478-2364-4782-3647-823647823647' || currentUser.type === 'Developer';
         const role = isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null);
         setUserRole(role);
         setUserLoadError(null);
@@ -122,6 +122,20 @@ const DashboardPage: React.FC = () => {
       );
       console.log('📊 Stats received:', data);
       
+      // Fetch real total user count using the dedicated function
+      let realTotalUsers = 0;
+      if (userRole === 'Admin') {
+        try {
+          const userStats = await usersApi.getUserStatistics();
+          realTotalUsers = userStats.total;
+          console.log('👥 Real total users from getUserStatistics:', realTotalUsers);
+        } catch (userStatsError: any) {
+          console.warn('⚠️ Failed to fetch user statistics, falling back to dashboard stats:', userStatsError);
+          // Fallback to dashboard stats if getUserStatistics fails
+          realTotalUsers = data.users?.total || 0;
+        }
+      }
+      
       // Map backend data to frontend format - handle both Admin and Developer responses
       if (userRole === 'Developer') {
         // Developer analytics structure
@@ -138,12 +152,12 @@ const DashboardPage: React.FC = () => {
           conversionRate: data.chatConversionRate || 0
         });
       } else {
-        // Admin stats structure
+        // Admin stats structure - use real total users from getUserStatistics
       setStats({
         totalProperties: data.properties?.total || 0,
         activeAuctions: data.auctions?.active || 0,
         totalBids: data.bids?.total || 0,
-        totalUsers: data.users?.total || 0,
+        totalUsers: realTotalUsers, // Use real total from getUserStatistics
         monthlyRevenue: data.revenue?.monthly || 0,
         // Use backend-calculated average bid value
         averageBidAmount: Math.round((data.bids as any)?.averageValue || 0),

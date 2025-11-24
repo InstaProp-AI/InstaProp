@@ -2,8 +2,8 @@ import 'property.dart';
 import 'bid.dart';
 
 class Auction {
-  final int auctionId;
-  final int propertyId;
+  final String auctionId;
+  final String propertyId;
   final Property? property;
   final double startPrice;
   final double currentPrice;
@@ -50,9 +50,17 @@ class Auction {
       return null;
     }
 
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return Auction(
-      auctionId: json['auctionId'] ?? json['AuctionId'] ?? 0,
-      propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
+      auctionId: parseId(json['auctionId'] ?? json['AuctionId']),
+      propertyId: parseId(json['propertyId'] ?? json['PropertyId']),
       property: parseProperty(),
       startPrice: (json['startPrice'] ?? json['StartPrice'] ?? 0).toDouble(),
       currentPrice: (json['currentPrice'] ?? json['CurrentPrice'] ?? 0)
@@ -146,8 +154,8 @@ class Auction {
   }
 
   Auction copyWith({
-    int? auctionId,
-    int? propertyId,
+    String? auctionId,
+    String? propertyId,
     Property? property,
     double? startPrice,
     double? currentPrice,

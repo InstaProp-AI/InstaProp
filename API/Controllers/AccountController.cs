@@ -22,6 +22,7 @@ namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class AccountController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -50,7 +51,18 @@ namespace InstapropAPI.Controllers
             _rewardService = rewardService;
         }
 
+
+        // Get timezone options
+        [AllowAnonymous]
+        [HttpGet("timezones")]
+        public IActionResult GetTimeZones()
+        {
+            var timezones = Helpers.TimeZoneHelper.GetTimeZoneOptions();
+            return Ok(timezones);
+        }
+
         // Check if email exists
+        [AllowAnonymous]
         [HttpGet("check-email")]
         public async Task<IActionResult> CheckEmail([FromQuery] string email)
         {
@@ -59,6 +71,7 @@ namespace InstapropAPI.Controllers
         }
 
         // Check if phone exists
+        [AllowAnonymous]
         [HttpGet("check-phone")]
         public async Task<IActionResult> CheckPhone([FromQuery] string phone)
         {
@@ -67,6 +80,7 @@ namespace InstapropAPI.Controllers
         }
 
         // User Signup - Create regular user account
+        [AllowAnonymous]
         [HttpPost("signup")]
         public async Task<IActionResult> Signup([FromBody] SignupRequest signupRequest)
         {
@@ -159,20 +173,21 @@ namespace InstapropAPI.Controllers
                 });
             }
 
-            // SECURITY FIX: Always create User accounts with hardcoded non-guessable RoleId
-            var account = new Account
+            // SECURITY FIX: Always create User accounts with UUID RoleId
+            var account = new UserAccount
             {
                 FirstName = signupRequest.FirstName?.Trim() ?? string.Empty,
                 LastName = signupRequest.LastName?.Trim() ?? string.Empty,
                 Email = normalizedEmail,
                 PhoneNumber = normalizedPhone,
-                RoleId = Role.USER_ROLE_ID, // Always User role - non-guessable 64-bit ID
+                RoleId = Role.USER_ROLE_ID, // Always User role - UUID
                 HashedPassword = BCrypt.Net.BCrypt.HashPassword(signupRequest.Password),
                 Status = VerificationStatus.NotVerified, // Will be verified by admin after KYC review
+                TimeZone = signupRequest.TimeZone?.Trim(), // User's preferred timezone
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Accounts.Add(account);
+            _context.UserAccounts.Add(account);
             
             try
             {
@@ -371,7 +386,7 @@ namespace InstapropAPI.Controllers
             }
 
             // Create Developer account
-            var account = new Account
+            var account = new DeveloperAccount
             {
                 FirstName = signupRequest.FirstName?.Trim() ?? string.Empty,
                 LastName = signupRequest.LastName?.Trim() ?? string.Empty,
@@ -383,7 +398,7 @@ namespace InstapropAPI.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Accounts.Add(account);
+            _context.DeveloperAccounts.Add(account);
             
             try
             {
@@ -500,7 +515,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized("Current account not found");
 
             // Determine developer assignment
-            long? assignedDeveloperId = null;
+            Guid? assignedDeveloperId = null;
             
             // If current user is admin, require developerId in request
             if (currentAccount.RoleId == Role.ADMIN_ROLE_ID)
@@ -509,8 +524,8 @@ namespace InstapropAPI.Controllers
                     return BadRequest("Developer ID is required when creating sales account as admin.");
 
                 // Verify developer exists and is actually a developer
-                var developer = await _context.Accounts
-                    .FirstOrDefaultAsync(a => a.AccountId == signupRequest.DeveloperId.Value && a.RoleId == Role.DEVELOPER_ROLE_ID);
+                var developer = await _context.DeveloperAccounts
+                    .FirstOrDefaultAsync(a => a.AccountId == signupRequest.DeveloperId.Value);
                 
                 if (developer == null)
                     return BadRequest("Invalid developer ID. Developer not found.");
@@ -524,7 +539,7 @@ namespace InstapropAPI.Controllers
             }
             else
             {
-                return Forbid("Only admins and developers can create sales accounts.");
+                return Forbid();
             }
 
             // Normalize email and phone for comparison
@@ -590,7 +605,7 @@ namespace InstapropAPI.Controllers
             }
 
             // If SalesTeamId is provided, verify it belongs to the assigned developer
-            long? salesTeamId = signupRequest.SalesTeamId;
+            Guid? salesTeamId = signupRequest.SalesTeamId;
             if (salesTeamId.HasValue)
             {
                 var team = await _context.SalesTeams
@@ -614,7 +629,7 @@ namespace InstapropAPI.Controllers
             }
 
             // Create Sales account (skip email/phone verification requirements)
-            var account = new Account
+            var account = new SalesAccount
             {
                 FirstName = signupRequest.FirstName?.Trim() ?? string.Empty,
                 LastName = signupRequest.LastName?.Trim() ?? string.Empty,
@@ -630,7 +645,7 @@ namespace InstapropAPI.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Accounts.Add(account);
+            _context.SalesAccounts.Add(account);
             
             try
             {
@@ -721,11 +736,12 @@ namespace InstapropAPI.Controllers
         }
 
         // Google OAuth Sign-In/Sign-Up
+        [AllowAnonymous]
         [HttpPost("google-auth")]
         public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthRequest request)
         {
-            // Check if account exists with this Google ID
-            var existingAccount = await _context.Accounts
+            // Check if account exists with this Google ID (only UserAccount has GoogleId)
+            var existingAccount = await _context.UserAccounts
                 .FirstOrDefaultAsync(a => a.GoogleId == request.GoogleId || a.Email == request.Email);
             
             // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
@@ -804,7 +820,7 @@ namespace InstapropAPI.Controllers
             }
 
             // Create new account - minimal info from Google
-            var newAccount = new Account
+            var newAccount = new UserAccount
             {
                 FirstName = request.FirstName,
                 LastName = request.LastName,
@@ -818,7 +834,7 @@ namespace InstapropAPI.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Accounts.Add(newAccount);
+            _context.UserAccounts.Add(newAccount);
             await _context.SaveChangesAsync();
 
             // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
@@ -922,7 +938,7 @@ namespace InstapropAPI.Controllers
             if (userId == null)
                 return Unauthorized();
 
-            var account = await _context.Accounts.FindAsync((long)userId);
+            var account = await _context.Accounts.FindAsync(userId);
             
             if (account == null)
                 return NotFound("Account not found.");
@@ -953,7 +969,7 @@ namespace InstapropAPI.Controllers
             }
 
             // Remove existing KYC documents for this user
-            var existingDocs = await _context.UserDocs.Where(d => d.UserId == (long)userId).ToListAsync();
+            var existingDocs = await _context.UserDocs.Where(d => d.UserId == userId).ToListAsync();
             _context.UserDocs.RemoveRange(existingDocs);
 
             // Add new KYC documents
@@ -961,7 +977,7 @@ namespace InstapropAPI.Controllers
             {
                 var userDoc = new UserDoc
                 {
-                    UserId = (long)userId,
+                    UserId = userId.Value,
                     DocType = kycDoc.DocType,
                     ImgUrl = kycDoc.ImageUrl,
                     UploadedAt = DateTime.UtcNow
@@ -985,6 +1001,7 @@ namespace InstapropAPI.Controllers
         }
 
         // Login
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
@@ -1126,6 +1143,7 @@ namespace InstapropAPI.Controllers
         }
 
         // Forgot Password - Generate temporary password and send via email
+        [AllowAnonymous]
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
         {
@@ -1234,7 +1252,7 @@ namespace InstapropAPI.Controllers
             return new string(password.OrderBy(x => random.Next()).ToArray());
         }
 
-        private string GenerateJwtToken(Account account)
+        private string GenerateJwtToken(AccountBase account)
         {
             // Load role from database to get role name
             var role = _context.Roles.FirstOrDefault(r => r.RoleId == account.RoleId);
@@ -1289,8 +1307,9 @@ namespace InstapropAPI.Controllers
             });
         }
 
-        // GET: api/Account/current
+        // GET: api/Account/current or api/Account/me
         [HttpGet("current")]
+        [HttpGet("me")]
         [Authorize]
         public async Task<ActionResult> GetCurrentAccount()
         {
@@ -1302,7 +1321,8 @@ namespace InstapropAPI.Controllers
             if (account == null)
                 return NotFound();
 
-            // Return account without sensitive PIN data
+            // SECURITY: Return minimal information - no role names, account types, or internal status details
+            // Only return RoleId (non-guessable GUID) to avoid revealing system architecture
             var totalEarnedPoints = account.TotalEarnedPoints;
             var currentPoints = account.CurrentPoints;
             var topBadge = await _context.UserBadges.Where(b => b.AccountId == account.AccountId).OrderByDescending(b => b.AwardedAt).FirstOrDefaultAsync();
@@ -1314,16 +1334,9 @@ namespace InstapropAPI.Controllers
                 account.LastName,
                 account.PhoneNumber,
                 account.Email,
-                RoleId = account.RoleId,
-                RoleName = account.Role != null ? account.Role.RoleName : "Unknown",
-                account.Status,
+                RoleId = account.RoleId, // Only role ID - no role name to prevent architecture disclosure
                 account.EmailVerified,
                 account.PhoneVerified,
-                account.IsSuspended,
-                account.SuspendedUntil,
-                account.SuspensionReason,
-                account.FailedLoginAttempts,
-                account.LockedUntil,
                 account.CreatedAt,
                 account.UpdatedAt,
                 TotalEarnedPoints = totalEarnedPoints,
@@ -1364,13 +1377,6 @@ namespace InstapropAPI.Controllers
             return Ok(badges);
         }
 
-        // GET: api/Account/me (alias for current)
-        [HttpGet("me")]
-        [Authorize]
-        public async Task<ActionResult> GetMe()
-        {
-            return await GetCurrentAccount();
-        }
 
         // PUT: api/Account/current
         [HttpPut("current")]
@@ -1587,7 +1593,7 @@ namespace InstapropAPI.Controllers
         [HttpGet("kyc/{userId}")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<ActionResult<IEnumerable<UserDoc>>> GetUserKycDocuments(long userId)
+        public async Task<ActionResult<IEnumerable<UserDoc>>> GetUserKycDocuments(Guid userId)
         {
             var documents = await _context.UserDocs
                 .Include(d => d.User)
@@ -1601,7 +1607,7 @@ namespace InstapropAPI.Controllers
         [HttpPut("kyc/{userId}/verify")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<ActionResult> VerifyUserKyc(long userId)
+        public async Task<ActionResult> VerifyUserKyc(Guid userId)
         {
             var account = await _context.Accounts.FindAsync(userId);
             if (account == null)
@@ -1932,7 +1938,11 @@ namespace InstapropAPI.Controllers
             account.HashedPassword = null;
             account.FirstName = "Deleted";
             account.LastName = "User";
-            account.GoogleId = null;
+            // Clear GoogleId if it's a UserAccount
+            if (account is UserAccount userAccount)
+            {
+                userAccount.GoogleId = null;
+            }
             account.IsSuspended = true;
             account.SuspensionReason = "Account deleted by user request";
             account.UpdatedAt = DateTime.UtcNow;
@@ -1966,10 +1976,10 @@ namespace InstapropAPI.Controllers
             });
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var uidClaim = User.FindFirst("uid");
-            return uidClaim != null ? long.Parse(uidClaim.Value) : null;
+            return uidClaim != null && Guid.TryParse(uidClaim.Value, out var guid) ? guid : null;
         }
 
         /// <summary>
@@ -2005,6 +2015,7 @@ namespace InstapropAPI.Controllers
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public string? TimeZone { get; set; } // User's preferred timezone (IANA timezone ID)
         // SECURITY: Type removed - all signups create User accounts only. Only admins can promote to Developer/Admin.
     }
 
@@ -2048,7 +2059,7 @@ namespace InstapropAPI.Controllers
     public class AuthResponse
     {
         public string Token { get; set; } = string.Empty;
-        public Account? Account { get; set; }
+        public AccountBase? Account { get; set; }
         public bool RequiresProfileCompletion { get; set; } = false;
     }
 
@@ -2090,8 +2101,8 @@ namespace InstapropAPI.Controllers
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public long? DeveloperId { get; set; } // Required if admin, ignored if developer (auto-assigned)
-        public long? SalesTeamId { get; set; } // Optional: assign to specific team
+        public Guid? DeveloperId { get; set; } // Required if admin, ignored if developer (auto-assigned)
+        public Guid? SalesTeamId { get; set; } // Optional: assign to specific team
     }
 }
 

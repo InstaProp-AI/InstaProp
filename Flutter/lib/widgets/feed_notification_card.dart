@@ -257,17 +257,14 @@ class _FeedNotificationCardState extends State<FeedNotificationCard>
           icon: Icons.military_tech,
           color: Colors.amber,
         );
-      case FeedNotificationType.communityInvite:
-        return _NotificationConfig(icon: Icons.group_add, color: Colors.teal);
+      // Community notification types removed
       case FeedNotificationType.newFollower:
         return _NotificationConfig(
           icon: Icons.person_add,
           color: Colors.indigo,
         );
-      case FeedNotificationType.postLiked:
-        return _NotificationConfig(icon: Icons.favorite, color: Colors.pink);
-      case FeedNotificationType.commentReply:
-        return _NotificationConfig(icon: Icons.comment, color: Colors.cyan);
+      // Post notification types removed
+      // Comment notification types removed
       case FeedNotificationType.auctionStarted:
         return _NotificationConfig(
           icon: Icons.new_releases,
@@ -278,11 +275,7 @@ class _FeedNotificationCardState extends State<FeedNotificationCard>
           icon: Icons.trending_down,
           color: AppColors.success,
         );
-      case FeedNotificationType.trendingPost:
-        return _NotificationConfig(
-          icon: Icons.local_fire_department,
-          color: Colors.deepOrange,
-        );
+      // Trending post notification types removed
       case FeedNotificationType.milestone:
         return _NotificationConfig(icon: Icons.stars, color: Colors.amber);
       case FeedNotificationType.aiSuggestion:

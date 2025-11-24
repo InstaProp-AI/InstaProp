@@ -40,7 +40,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
-  const isAdmin = user.roleId === 9823749823749823 || user.roleName === 'Admin' || user.type === 'Admin';
+  const isAdmin = user.roleId === '98237498-2374-4982-3749-823749823749' || user.roleName === 'Admin' || user.type === 'Admin';
 
   // Base navigation items with permission requirements
   const allNavigationItems = [
@@ -52,7 +52,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
     { name: 'Projects', href: '/projects', icon: FolderOpen, color: 'bg-teal-500', permission: null, adminOnly: false },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, color: 'bg-indigo-500', permission: null, adminOnly: false },
     { name: 'Auctions', href: '/auctions', icon: Hammer, color: 'bg-orange-500', permission: 'Auctions', adminOnly: false },
-    { name: 'Communities', href: '/communities', icon: Users, color: 'bg-green-600', permission: 'Communities', adminOnly: false },
+    // Communities removed
     { name: 'News', href: '/news', icon: Newspaper, color: 'bg-blue-600', permission: 'News', adminOnly: false },
     { name: 'Chats', href: '/chats', icon: MessageSquare, color: 'bg-purple-600', permission: 'Chats', adminOnly: false },
     { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, color: 'bg-yellow-500', permission: 'Leaderboard', adminOnly: false },

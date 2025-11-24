@@ -11,7 +11,7 @@ namespace InstapropAPI.Models
     public class ParentProperty
     {
         [Key]
-        public int ParentPropertyId { get; set; }
+        public Guid ParentPropertyId { get; set; }
 
         [MaxLength(200)]
         public string? ProjectName { get; set; }
@@ -46,7 +46,7 @@ namespace InstapropAPI.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Project relationship
-        public long? ProjectId { get; set; }
+        public Guid? ProjectId { get; set; }
         public virtual Project? Project { get; set; }
 
         // Navigation properties

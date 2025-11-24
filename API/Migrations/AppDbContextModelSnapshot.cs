@@ -24,11 +24,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.AIChat", b =>
                 {
-                    b.Property<long>("AIChatId")
+                    b.Property<Guid>("AIChatId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("AIChatId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("StartedAt")
                         .HasColumnType("timestamp with time zone");
@@ -41,8 +39,8 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("UserPreferences")
                         .HasColumnType("text");
@@ -56,14 +54,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.AIChatMessage", b =>
                 {
-                    b.Property<long>("MessageId")
+                    b.Property<Guid>("MessageId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("MessageId"));
-
-                    b.Property<long>("AIChatId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AIChatId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -72,8 +68,8 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long?>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("MessageType")
                         .IsRequired()
@@ -83,11 +79,11 @@ namespace InstapropAPI.Migrations
                     b.Property<string>("Options")
                         .HasColumnType("text");
 
-                    b.Property<long?>("ProjectId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("PropertyId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("QuestionType")
                         .HasColumnType("text");
@@ -104,23 +100,16 @@ namespace InstapropAPI.Migrations
                     b.ToTable("AIChatMessages");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.Account", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AccountBase", b =>
                 {
-                    b.Property<long>("AccountId")
+                    b.Property<Guid>("AccountId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("AccountId"));
-
-                    b.Property<long?>("AssignedDeveloperId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("AuthProvider")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("CommentCount")
-                        .HasColumnType("integer");
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -151,10 +140,6 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("GoogleId")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
                     b.Property<string>("HashedPassword")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -162,16 +147,10 @@ namespace InstapropAPI.Migrations
                     b.Property<bool>("IsSuspended")
                         .HasColumnType("boolean");
 
-                    b.Property<DateTime?>("LastActiveAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<int>("LikesReceived")
-                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("timestamp with time zone");
@@ -197,9 +176,6 @@ namespace InstapropAPI.Migrations
                     b.Property<bool>("PhoneVerified")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("PostCount")
-                        .HasColumnType("integer");
-
                     b.Property<string>("PreviousEmail")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -207,20 +183,14 @@ namespace InstapropAPI.Migrations
                     b.Property<string>("PreviousPhoneNumber")
                         .HasColumnType("text");
 
-                    b.Property<int>("ReputationPoints")
-                        .HasColumnType("integer");
-
                     b.Property<bool>("RequiresPasswordChange")
                         .HasColumnType("boolean");
 
-                    b.Property<long>("RoleId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("SalesTeamId")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("ShowInDirectory")
-                        .HasColumnType("boolean");
+                    b.Property<Guid?>("RoleId1")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -231,6 +201,10 @@ namespace InstapropAPI.Migrations
                     b.Property<string>("SuspensionReason")
                         .HasColumnType("text");
 
+                    b.Property<string>("TimeZone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<int>("TotalEarnedPoints")
                         .HasColumnType("integer");
 
@@ -239,22 +213,22 @@ namespace InstapropAPI.Migrations
 
                     b.HasKey("AccountId");
 
-                    b.HasIndex("AssignedDeveloperId");
-
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("SalesTeamId");
+                    b.HasIndex("RoleId1");
 
                     b.ToTable("Accounts");
+
+                    b.HasDiscriminator<string>("AccountType").HasValue("AccountBase");
+
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("InstapropAPI.Models.Auction", b =>
                 {
-                    b.Property<long>("AuctionId")
+                    b.Property<Guid>("AuctionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("AuctionId"));
+                        .HasColumnType("uuid");
 
                     b.Property<int>("BidCount")
                         .HasColumnType("integer");
@@ -268,8 +242,8 @@ namespace InstapropAPI.Migrations
                     b.Property<int>("Duration")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("StartAt")
                         .HasColumnType("timestamp with time zone");
@@ -291,20 +265,18 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Bid", b =>
                 {
-                    b.Property<long>("BidId")
+                    b.Property<Guid>("BidId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("BidId"));
-
-                    b.Property<long>("AuctionId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AuctionId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("BidAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<long>("BidderId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("BidderId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -320,17 +292,15 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Chat", b =>
                 {
-                    b.Property<long>("ChatId")
+                    b.Property<Guid>("ChatId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ChatId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -343,14 +313,14 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("LastMessageAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long?>("ProjectId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("SalesMemberId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("SalesMemberId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("ChatId");
 
@@ -367,14 +337,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.ChatMessage", b =>
                 {
-                    b.Property<long>("MessageId")
+                    b.Property<Guid>("MessageId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("MessageId"));
-
-                    b.Property<long>("ChatId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -389,11 +357,11 @@ namespace InstapropAPI.Migrations
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
 
-                    b.Property<int?>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long>("SenderId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("MessageId");
 
@@ -408,11 +376,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.ChildProperty", b =>
                 {
-                    b.Property<int>("PropertyId")
+                    b.Property<Guid>("PropertyId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PropertyId"));
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Bathrooms")
                         .HasColumnType("integer");
@@ -527,11 +493,11 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<long?>("OwnerId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
 
-                    b.Property<int?>("ParentPropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid?>("ParentPropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("ParkingSlots")
                         .HasColumnType("integer");
@@ -540,8 +506,8 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<long?>("ProjectId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool?>("PyramidView")
                         .HasColumnType("boolean");
@@ -594,221 +560,17 @@ namespace InstapropAPI.Migrations
                     b.ToTable("ChildProperties");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.CommentLike", b =>
-                {
-                    b.Property<long>("LikeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LikeId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("CommentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("LikeId");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("CommentId", "AccountId")
-                        .IsUnique();
-
-                    b.ToTable("CommentLikes");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.CommentReaction", b =>
-                {
-                    b.Property<long>("ReactionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ReactionId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("CommentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ReactionType")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ReactionId");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("CommentId", "AccountId", "ReactionType")
-                        .IsUnique();
-
-                    b.ToTable("CommentReactions");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.Community", b =>
-                {
-                    b.Property<long>("CommunityId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("CommunityId"));
-
-                    b.Property<int>("AccessType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("CoverPhotoUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("CreatedById")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("DeveloperIds")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("MemberCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("PostCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ProjectIds")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ScopeType")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("CommunityId");
-
-                    b.HasIndex("CreatedById");
-
-                    b.ToTable("Communities");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.CommunityMember", b =>
-                {
-                    b.Property<long>("MemberId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("MemberId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("CommunityId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
-
-                    b.HasKey("MemberId");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("CommunityId", "AccountId")
-                        .IsUnique();
-
-                    b.ToTable("CommunityMembers");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.CommunityPost", b =>
-                {
-                    b.Property<long>("PostId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PostId"));
-
-                    b.Property<long>("AuthorId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("CommentCount")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("CommunityId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsPinned")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("LastActivityAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("LikeCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("PostType")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("TrendingScore")
-                        .HasColumnType("double precision");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ViewCount")
-                        .HasColumnType("integer");
-
-                    b.HasKey("PostId");
-
-                    b.HasIndex("AuthorId");
-
-                    b.HasIndex("CommunityId");
-
-                    b.ToTable("CommunityPosts");
-                });
-
             modelBuilder.Entity("InstapropAPI.Models.DeveloperPermission", b =>
                 {
-                    b.Property<long>("DeveloperPermissionId")
+                    b.Property<Guid>("DeveloperPermissionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DeveloperPermissionId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("FeatureName")
                         .IsRequired()
@@ -831,14 +593,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.DeveloperProfile", b =>
                 {
-                    b.Property<long>("ProfileId")
+                    b.Property<Guid>("ProfileId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ProfileId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Bio")
                         .HasColumnType("text");
@@ -874,11 +634,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.DeveloperRating", b =>
                 {
-                    b.Property<long>("RatingId")
+                    b.Property<Guid>("RatingId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("RatingId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Comment")
                         .HasColumnType("text");
@@ -886,8 +644,8 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
@@ -895,8 +653,8 @@ namespace InstapropAPI.Migrations
                     b.Property<int>("RatingType")
                         .HasColumnType("integer");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("RatingId");
 
@@ -909,20 +667,18 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Event", b =>
                 {
-                    b.Property<long>("EventId")
+                    b.Property<Guid>("EventId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("EventId"));
+                        .HasColumnType("uuid");
 
                     b.Property<decimal?>("Amount")
                         .HasColumnType("numeric");
 
-                    b.Property<long?>("AuctionId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("AuctionId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("BidId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("BidId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -955,11 +711,11 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<long?>("ParentEventId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("ParentEventId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("PropertyId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("RecurrenceCount")
                         .HasColumnType("integer");
@@ -999,8 +755,8 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("EventId");
 
@@ -1011,11 +767,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Faq", b =>
                 {
-                    b.Property<int>("FaqId")
+                    b.Property<Guid>("FaqId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("FaqId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Answer")
                         .IsRequired()
@@ -1045,7 +799,7 @@ namespace InstapropAPI.Migrations
                     b.HasData(
                         new
                         {
-                            FaqId = 1,
+                            FaqId = new Guid("11111111-1111-1111-1111-111111111111"),
                             Answer = "Go to the Add Property screen, fill out the mandatory fields, upload images, and submit for review.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 1,
@@ -1053,7 +807,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 2,
+                            FaqId = new Guid("22222222-2222-2222-2222-222222222222"),
                             Answer = "Yes, open the property from your dashboard and tap Edit. Changes trigger a short review cycle.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 1, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 2,
@@ -1061,7 +815,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 3,
+                            FaqId = new Guid("33333333-3333-3333-3333-333333333333"),
                             Answer = "At minimum you need proof of ownership and unit floor plans. Optional docs speed up verification.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 2, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 3,
@@ -1069,7 +823,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 4,
+                            FaqId = new Guid("44444444-4444-4444-4444-444444444444"),
                             Answer = "Approved sellers can request an auction. Once approved, buyers place bids until the auction end date.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 3, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 4,
@@ -1077,7 +831,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 5,
+                            FaqId = new Guid("55555555-5555-5555-5555-555555555555"),
                             Answer = "Pricing leverages market comps, developer data, and our AI valuation engine.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 4, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 5,
@@ -1085,7 +839,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 6,
+                            FaqId = new Guid("66666666-6666-6666-6666-666666666666"),
                             Answer = "Yes, tap the bookmark icon on any property to store it in your Saved list.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 5, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 6,
@@ -1093,7 +847,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 7,
+                            FaqId = new Guid("77777777-7777-7777-7777-777777777777"),
                             Answer = "Use the Contact Developer button on the project or property page to open a chat.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 6, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 7,
@@ -1101,7 +855,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 8,
+                            FaqId = new Guid("88888888-8888-8888-8888-888888888888"),
                             Answer = "Our AI Broker suggests opportunities and answers investment questions in real time.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 7, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 8,
@@ -1109,7 +863,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 9,
+                            FaqId = new Guid("99999999-9999-9999-9999-999999999999"),
                             Answer = "Follow projects to receive push notifications and see updates in your feed.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 8, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 9,
@@ -1117,7 +871,7 @@ namespace InstapropAPI.Migrations
                         },
                         new
                         {
-                            FaqId = 10,
+                            FaqId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
                             Answer = "Tap Forgot Password on the login screen and follow the emailed instructions.",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 9, 0, 0, DateTimeKind.Utc),
                             DisplayOrder = 10,
@@ -1127,11 +881,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.GoldPrice", b =>
                 {
-                    b.Property<int>("GoldPriceId")
+                    b.Property<Guid>("GoldPriceId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("GoldPriceId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1163,11 +915,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.InstallmentSummary", b =>
                 {
-                    b.Property<int>("SummaryId")
+                    b.Property<Guid>("SummaryId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("SummaryId"));
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("ContractedPrice")
                         .HasColumnType("decimal(18,2)");
@@ -1188,8 +938,8 @@ namespace InstapropAPI.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("RemainingBalance")
                         .HasColumnType("decimal(18,2)");
@@ -1215,14 +965,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.LeaderboardStanding", b =>
                 {
-                    b.Property<long>("StandingId")
+                    b.Property<Guid>("StandingId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("StandingId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("CashbackAwarded")
                         .HasColumnType("decimal(18,2)");
@@ -1246,8 +994,8 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("character varying(250)");
 
-                    b.Property<long?>("SnapshotId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("SnapshotId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("StreakWeeks")
                         .HasColumnType("integer");
@@ -1265,11 +1013,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.LiveStream", b =>
                 {
-                    b.Property<long>("StreamId")
+                    b.Property<Guid>("StreamId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("StreamId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1277,8 +1023,8 @@ namespace InstapropAPI.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<long>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("timestamp with time zone");
@@ -1317,11 +1063,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.NewsArticle", b =>
                 {
-                    b.Property<long>("NewsArticleId")
+                    b.Property<Guid>("NewsArticleId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("NewsArticleId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Category")
                         .HasMaxLength(50)
@@ -1334,8 +1078,8 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long?>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
@@ -1360,11 +1104,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.NewsImage", b =>
                 {
-                    b.Property<long>("NewsImageId")
+                    b.Property<Guid>("NewsImageId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("NewsImageId"));
+                        .HasColumnType("uuid");
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
@@ -1374,8 +1116,8 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<long>("NewsArticleId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("NewsArticleId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("NewsImageId");
 
@@ -1386,23 +1128,21 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Notification", b =>
                 {
-                    b.Property<long>("NotificationId")
+                    b.Property<Guid>("NotificationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("NotificationId"));
+                    b.Property<Guid?>("AuctionId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("AuctionId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BidId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("BidId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long?>("EventId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
@@ -1412,8 +1152,8 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<long?>("PropertyId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
@@ -1434,8 +1174,8 @@ namespace InstapropAPI.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
-                    b.Property<long?>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("NotificationId");
 
@@ -1446,11 +1186,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.ParentProperty", b =>
                 {
-                    b.Property<int>("ParentPropertyId")
+                    b.Property<Guid>("ParentPropertyId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ParentPropertyId"));
+                        .HasColumnType("uuid");
 
                     b.Property<int>("AreaSqm")
                         .HasColumnType("integer");
@@ -1490,8 +1228,8 @@ namespace InstapropAPI.Migrations
                     b.Property<bool>("HasSecurity")
                         .HasColumnType("boolean");
 
-                    b.Property<long?>("ProjectId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ProjectName")
                         .HasMaxLength(200)
@@ -1512,237 +1250,18 @@ namespace InstapropAPI.Migrations
                     b.ToTable("ParentProperties");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.Poll", b =>
-                {
-                    b.Property<long>("PollId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PollId"));
-
-                    b.Property<bool>("AllowChangeVote")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("EndsAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsMultipleChoice")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Options")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("PostId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Question")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("ShowResultsBeforeVote")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("TotalVotes")
-                        .HasColumnType("integer");
-
-                    b.HasKey("PollId");
-
-                    b.HasIndex("PostId")
-                        .IsUnique();
-
-                    b.ToTable("Polls");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PollVote", b =>
-                {
-                    b.Property<long>("VoteId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("VoteId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("OptionIndex")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("PollId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("VoteId");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("PollId", "AccountId", "OptionIndex")
-                        .IsUnique();
-
-                    b.ToTable("PollVotes");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostBookmark", b =>
-                {
-                    b.Property<long>("BookmarkId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("BookmarkId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("PostId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("BookmarkId");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("PostId", "AccountId")
-                        .IsUnique();
-
-                    b.ToTable("PostBookmarks");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostCategory", b =>
-                {
-                    b.Property<long>("CategoryId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("CategoryId"));
-
-                    b.Property<string>("CategoryName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<long>("PostId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("CategoryId");
-
-                    b.HasIndex("PostId");
-
-                    b.ToTable("PostCategories");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostComment", b =>
-                {
-                    b.Property<long>("CommentId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("CommentId"));
-
-                    b.Property<long>("AuthorId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("LikeCount")
-                        .HasColumnType("integer");
-
-                    b.Property<long?>("ParentCommentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("PostId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("CommentId");
-
-                    b.HasIndex("AuthorId");
-
-                    b.HasIndex("ParentCommentId");
-
-                    b.HasIndex("PostId");
-
-                    b.ToTable("PostComments");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostLike", b =>
-                {
-                    b.Property<long>("LikeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("LikeId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("PostId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("LikeId");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("PostId", "AccountId")
-                        .IsUnique();
-
-                    b.ToTable("PostLikes");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostReaction", b =>
-                {
-                    b.Property<long>("ReactionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ReactionId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("PostId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("ReactionType")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ReactionId");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("PostId", "AccountId", "ReactionType")
-                        .IsUnique();
-
-                    b.ToTable("PostReactions");
-                });
-
             modelBuilder.Entity("InstapropAPI.Models.Project", b =>
                 {
-                    b.Property<long>("ProjectId")
+                    b.Property<Guid>("ProjectId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ProjectId"));
+                    b.Property<Guid?>("AdminAccountAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1750,8 +1269,8 @@ namespace InstapropAPI.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<long>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -1765,23 +1284,33 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("SalesAccountAccountId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("UserAccountAccountId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("ProjectId");
 
+                    b.HasIndex("AdminAccountAccountId");
+
                     b.HasIndex("DeveloperId");
+
+                    b.HasIndex("SalesAccountAccountId");
+
+                    b.HasIndex("UserAccountAccountId");
 
                     b.ToTable("Projects");
                 });
 
             modelBuilder.Entity("InstapropAPI.Models.ProjectMilestone", b =>
                 {
-                    b.Property<long>("MilestoneId")
+                    b.Property<Guid>("MilestoneId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("MilestoneId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CompletedDate")
                         .HasColumnType("timestamp with time zone");
@@ -1795,8 +1324,8 @@ namespace InstapropAPI.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<long>("ProjectId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -1821,11 +1350,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.ProjectUpdate", b =>
                 {
-                    b.Property<long>("UpdateId")
+                    b.Property<Guid>("UpdateId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("UpdateId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -1837,8 +1364,8 @@ namespace InstapropAPI.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
 
-                    b.Property<long>("ProjectId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -1854,11 +1381,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.PropertyDoc", b =>
                 {
-                    b.Property<long>("DocId")
+                    b.Property<Guid>("DocId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DocId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("DeleteUrl")
                         .HasColumnType("text");
@@ -1873,8 +1398,8 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1888,11 +1413,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.PropertyImage", b =>
                 {
-                    b.Property<long>("PropertyImageId")
+                    b.Property<Guid>("PropertyImageId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PropertyImageId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1916,8 +1439,8 @@ namespace InstapropAPI.Migrations
                     b.Property<bool>("IsMainImage")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("PropertyImageId");
 
@@ -1928,17 +1451,15 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.PropertyPriceHistory", b =>
                 {
-                    b.Property<int>("PriceHistoryId")
+                    b.Property<Guid>("PriceHistoryId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PriceHistoryId"));
+                    b.Property<Guid?>("AuctionId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("AuctionId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int?>("ChildPropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid?>("ChildPropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1947,8 +1468,8 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<int>("ParentPropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("ParentPropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
@@ -1974,11 +1495,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.PropertyValuation", b =>
                 {
-                    b.Property<int>("ValuationId")
+                    b.Property<Guid>("ValuationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ValuationId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("AIReasoning")
                         .HasMaxLength(2000)
@@ -2006,8 +1525,8 @@ namespace InstapropAPI.Migrations
                     b.Property<decimal?>("PriceRangeLow")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ValuationSource")
                         .IsRequired()
@@ -2023,11 +1542,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.PropertyView", b =>
                 {
-                    b.Property<long>("ViewId")
+                    b.Property<Guid>("ViewId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ViewId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("DeviceType")
                         .HasColumnType("text");
@@ -2035,11 +1552,11 @@ namespace InstapropAPI.Migrations
                     b.Property<int>("DurationSeconds")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long?>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("UserLocation")
                         .HasColumnType("text");
@@ -2058,14 +1575,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Redemption", b =>
                 {
-                    b.Property<long>("RedemptionId")
+                    b.Property<Guid>("RedemptionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("RedemptionId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsUsed")
                         .HasColumnType("boolean");
@@ -2098,11 +1613,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Referral", b =>
                 {
-                    b.Property<long>("ReferralId")
+                    b.Property<Guid>("ReferralId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ReferralId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ConvertedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2118,11 +1631,11 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<long?>("ReferredUserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("ReferredUserId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long>("ReferrerId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("ReferrerId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("ReferralId");
 
@@ -2138,8 +1651,8 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Role", b =>
                 {
-                    b.Property<long>("RoleId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2163,17 +1676,15 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.SalesTeam", b =>
                 {
-                    b.Property<long>("TeamId")
+                    b.Property<Guid>("TeamId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("TeamId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("DeveloperId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("DeveloperId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TeamName")
                         .IsRequired()
@@ -2192,11 +1703,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.StreamChatMessage", b =>
                 {
-                    b.Property<long>("MessageId")
+                    b.Property<Guid>("MessageId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("MessageId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2206,11 +1715,11 @@ namespace InstapropAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<long>("StreamId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("StreamId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("MessageId");
 
@@ -2225,11 +1734,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.StreamViewer", b =>
                 {
-                    b.Property<long>("ViewerId")
+                    b.Property<Guid>("ViewerId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ViewerId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2237,11 +1744,11 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime?>("LeftAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("StreamId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("StreamId")
+                        .HasColumnType("uuid");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("ViewerId");
 
@@ -2255,14 +1762,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserAchievement", b =>
                 {
-                    b.Property<long>("AchievementId")
+                    b.Property<Guid>("AchievementId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("AchievementId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("AchievementType")
                         .HasColumnType("integer");
@@ -2291,14 +1796,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserBadge", b =>
                 {
-                    b.Property<long>("BadgeId")
+                    b.Property<Guid>("BadgeId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("BadgeId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("AwardedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2325,11 +1828,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserDoc", b =>
                 {
-                    b.Property<long>("DocId")
+                    b.Property<Guid>("DocId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("DocId"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("DeleteUrl")
                         .HasColumnType("text");
@@ -2347,8 +1848,8 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("DocId");
 
@@ -2359,14 +1860,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserReward", b =>
                 {
-                    b.Property<long>("RewardId")
+                    b.Property<Guid>("RewardId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("RewardId"));
-
-                    b.Property<long>("AccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
@@ -2377,8 +1876,8 @@ namespace InstapropAPI.Migrations
                     b.Property<int>("Points")
                         .HasColumnType("integer");
 
-                    b.Property<long?>("RelatedPropertyId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("RelatedPropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("RewardType")
                         .IsRequired()
@@ -2394,11 +1893,9 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.WeeklyLeaderboardSnapshot", b =>
                 {
-                    b.Property<long>("SnapshotId")
+                    b.Property<Guid>("SnapshotId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("SnapshotId"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2414,14 +1911,14 @@ namespace InstapropAPI.Migrations
                     b.Property<bool>("PayoutProcessed")
                         .HasColumnType("boolean");
 
-                    b.Property<long?>("SecondPlaceAccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("SecondPlaceAccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("SecondPlacePoints")
                         .HasColumnType("integer");
 
-                    b.Property<long?>("ThirdPlaceAccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("ThirdPlaceAccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("ThirdPlacePoints")
                         .HasColumnType("integer");
@@ -2432,8 +1929,8 @@ namespace InstapropAPI.Migrations
                     b.Property<DateTime>("WeekStart")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long?>("WinnerAccountId")
-                        .HasColumnType("bigint");
+                    b.Property<Guid?>("WinnerAccountId")
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("WinnerPoints")
                         .HasColumnType("integer");
@@ -2454,9 +1951,55 @@ namespace InstapropAPI.Migrations
                     b.ToTable("WeeklyLeaderboardSnapshots");
                 });
 
+            modelBuilder.Entity("InstapropAPI.Models.AdminAccount", b =>
+                {
+                    b.HasBaseType("InstapropAPI.Models.AccountBase");
+
+                    b.HasDiscriminator().HasValue("Admin");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperAccount", b =>
+                {
+                    b.HasBaseType("InstapropAPI.Models.AccountBase");
+
+                    b.HasDiscriminator().HasValue("Developer");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.SalesAccount", b =>
+                {
+                    b.HasBaseType("InstapropAPI.Models.AccountBase");
+
+                    b.Property<Guid?>("AssignedDeveloperId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SalesTeamId")
+                        .HasColumnType("uuid");
+
+                    b.HasIndex("AssignedDeveloperId");
+
+                    b.HasIndex("SalesTeamId");
+
+                    b.HasDiscriminator().HasValue("Sales");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.UserAccount", b =>
+                {
+                    b.HasBaseType("InstapropAPI.Models.AccountBase");
+
+                    b.Property<string>("AuthProvider")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("GoogleId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasDiscriminator().HasValue("User");
+                });
+
             modelBuilder.Entity("InstapropAPI.Models.AIChat", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.UserAccount", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2476,29 +2019,19 @@ namespace InstapropAPI.Migrations
                     b.Navigation("AIChat");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.Account", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AccountBase", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "AssignedDeveloper")
-                        .WithMany()
-                        .HasForeignKey("AssignedDeveloperId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("InstapropAPI.Models.Role", "Role")
-                        .WithMany("Accounts")
+                        .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("InstapropAPI.Models.SalesTeam", "SalesTeam")
-                        .WithMany("SalesMembers")
-                        .HasForeignKey("SalesTeamId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("AssignedDeveloper");
+                    b.HasOne("InstapropAPI.Models.Role", null)
+                        .WithMany("Accounts")
+                        .HasForeignKey("RoleId1");
 
                     b.Navigation("Role");
-
-                    b.Navigation("SalesTeam");
                 });
 
             modelBuilder.Entity("InstapropAPI.Models.Auction", b =>
@@ -2520,7 +2053,7 @@ namespace InstapropAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("InstapropAPI.Models.Account", "Bidder")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Bidder")
                         .WithMany("Bids")
                         .HasForeignKey("BidderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2533,7 +2066,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Chat", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -2544,11 +2077,11 @@ namespace InstapropAPI.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("InstapropAPI.Models.Account", "SalesMember")
+                    b.HasOne("InstapropAPI.Models.SalesAccount", "SalesMember")
                         .WithMany()
                         .HasForeignKey("SalesMemberId");
 
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -2576,7 +2109,7 @@ namespace InstapropAPI.Migrations
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("InstapropAPI.Models.Account", "Sender")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Sender")
                         .WithMany()
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -2591,7 +2124,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.ChildProperty", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Owner")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -2613,96 +2146,9 @@ namespace InstapropAPI.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.CommentLike", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.PostComment", "Comment")
-                        .WithMany("Likes")
-                        .HasForeignKey("CommentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Comment");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.CommentReaction", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.PostComment", "Comment")
-                        .WithMany()
-                        .HasForeignKey("CommentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Comment");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.Community", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CreatedBy");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.CommunityMember", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.Community", "Community")
-                        .WithMany("Members")
-                        .HasForeignKey("CommunityId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Community");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.CommunityPost", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Author")
-                        .WithMany()
-                        .HasForeignKey("AuthorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.Community", "Community")
-                        .WithMany("Posts")
-                        .HasForeignKey("CommunityId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Author");
-
-                    b.Navigation("Community");
-                });
-
             modelBuilder.Entity("InstapropAPI.Models.DeveloperPermission", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2713,7 +2159,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.DeveloperProfile", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2724,13 +2170,13 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.DeveloperRating", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.UserAccount", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -2743,7 +2189,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Event", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2765,7 +2211,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.LeaderboardStanding", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2783,7 +2229,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.LiveStream", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2794,7 +2240,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.NewsArticle", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -2815,7 +2261,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Notification", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -2833,137 +2279,25 @@ namespace InstapropAPI.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.Poll", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.CommunityPost", "Post")
-                        .WithOne("Poll")
-                        .HasForeignKey("InstapropAPI.Models.Poll", "PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Post");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PollVote", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.Poll", "Poll")
-                        .WithMany("Votes")
-                        .HasForeignKey("PollId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Poll");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostBookmark", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
-                        .WithMany("BookmarkedPosts")
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.CommunityPost", "Post")
-                        .WithMany("Bookmarks")
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Post");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostCategory", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.CommunityPost", "Post")
-                        .WithMany("Categories")
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Post");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostComment", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Author")
-                        .WithMany()
-                        .HasForeignKey("AuthorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.PostComment", "ParentComment")
-                        .WithMany("Replies")
-                        .HasForeignKey("ParentCommentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("InstapropAPI.Models.CommunityPost", "Post")
-                        .WithMany("Comments")
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Author");
-
-                    b.Navigation("ParentComment");
-
-                    b.Navigation("Post");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostLike", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.CommunityPost", "Post")
-                        .WithMany("Likes")
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Post");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostReaction", b =>
-                {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("InstapropAPI.Models.CommunityPost", "Post")
-                        .WithMany()
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-
-                    b.Navigation("Post");
-                });
-
             modelBuilder.Entity("InstapropAPI.Models.Project", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.AdminAccount", null)
+                        .WithMany("Projects")
+                        .HasForeignKey("AdminAccountAccountId");
+
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Developer")
                         .WithMany("Projects")
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("InstapropAPI.Models.SalesAccount", null)
+                        .WithMany("Projects")
+                        .HasForeignKey("SalesAccountAccountId");
+
+                    b.HasOne("InstapropAPI.Models.UserAccount", null)
+                        .WithMany("Projects")
+                        .HasForeignKey("UserAccountAccountId");
 
                     b.Navigation("Developer");
                 });
@@ -3056,7 +2390,7 @@ namespace InstapropAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -3068,7 +2402,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Redemption", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3079,12 +2413,12 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.Referral", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "ReferredUser")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "ReferredUser")
                         .WithMany()
                         .HasForeignKey("ReferredUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("InstapropAPI.Models.Account", "Referrer")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Referrer")
                         .WithMany()
                         .HasForeignKey("ReferrerId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -3097,7 +2431,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.SalesTeam", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Developer")
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "Developer")
                         .WithMany()
                         .HasForeignKey("DeveloperId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3114,7 +2448,7 @@ namespace InstapropAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -3133,7 +2467,7 @@ namespace InstapropAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3146,7 +2480,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserAchievement", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3157,7 +2491,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserBadge", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3168,7 +2502,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserDoc", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "User")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "User")
                         .WithMany("UserDocs")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3179,7 +2513,7 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.UserReward", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "Account")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -3190,17 +2524,17 @@ namespace InstapropAPI.Migrations
 
             modelBuilder.Entity("InstapropAPI.Models.WeeklyLeaderboardSnapshot", b =>
                 {
-                    b.HasOne("InstapropAPI.Models.Account", "SecondPlaceAccount")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "SecondPlaceAccount")
                         .WithMany()
                         .HasForeignKey("SecondPlaceAccountId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("InstapropAPI.Models.Account", "ThirdPlaceAccount")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "ThirdPlaceAccount")
                         .WithMany()
                         .HasForeignKey("ThirdPlaceAccountId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("InstapropAPI.Models.Account", "WinnerAccount")
+                    b.HasOne("InstapropAPI.Models.AccountBase", "WinnerAccount")
                         .WithMany()
                         .HasForeignKey("WinnerAccountId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -3212,18 +2546,31 @@ namespace InstapropAPI.Migrations
                     b.Navigation("WinnerAccount");
                 });
 
+            modelBuilder.Entity("InstapropAPI.Models.SalesAccount", b =>
+                {
+                    b.HasOne("InstapropAPI.Models.DeveloperAccount", "AssignedDeveloper")
+                        .WithMany()
+                        .HasForeignKey("AssignedDeveloperId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("InstapropAPI.Models.SalesTeam", "SalesTeam")
+                        .WithMany("SalesMembers")
+                        .HasForeignKey("SalesTeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AssignedDeveloper");
+
+                    b.Navigation("SalesTeam");
+                });
+
             modelBuilder.Entity("InstapropAPI.Models.AIChat", b =>
                 {
                     b.Navigation("Messages");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.Account", b =>
+            modelBuilder.Entity("InstapropAPI.Models.AccountBase", b =>
                 {
                     b.Navigation("Bids");
-
-                    b.Navigation("BookmarkedPosts");
-
-                    b.Navigation("Projects");
 
                     b.Navigation("UserDocs");
                 });
@@ -3249,26 +2596,6 @@ namespace InstapropAPI.Migrations
                     b.Navigation("PropertyImages");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.Community", b =>
-                {
-                    b.Navigation("Members");
-
-                    b.Navigation("Posts");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.CommunityPost", b =>
-                {
-                    b.Navigation("Bookmarks");
-
-                    b.Navigation("Categories");
-
-                    b.Navigation("Comments");
-
-                    b.Navigation("Likes");
-
-                    b.Navigation("Poll");
-                });
-
             modelBuilder.Entity("InstapropAPI.Models.LiveStream", b =>
                 {
                     b.Navigation("Viewers");
@@ -3286,18 +2613,6 @@ namespace InstapropAPI.Migrations
                     b.Navigation("PriceHistories");
                 });
 
-            modelBuilder.Entity("InstapropAPI.Models.Poll", b =>
-                {
-                    b.Navigation("Votes");
-                });
-
-            modelBuilder.Entity("InstapropAPI.Models.PostComment", b =>
-                {
-                    b.Navigation("Likes");
-
-                    b.Navigation("Replies");
-                });
-
             modelBuilder.Entity("InstapropAPI.Models.Role", b =>
                 {
                     b.Navigation("Accounts");
@@ -3311,6 +2626,26 @@ namespace InstapropAPI.Migrations
             modelBuilder.Entity("InstapropAPI.Models.WeeklyLeaderboardSnapshot", b =>
                 {
                     b.Navigation("Standings");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.AdminAccount", b =>
+                {
+                    b.Navigation("Projects");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.DeveloperAccount", b =>
+                {
+                    b.Navigation("Projects");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.SalesAccount", b =>
+                {
+                    b.Navigation("Projects");
+                });
+
+            modelBuilder.Entity("InstapropAPI.Models.UserAccount", b =>
+                {
+                    b.Navigation("Projects");
                 });
 #pragma warning restore 612, 618
         }

@@ -51,8 +51,7 @@ namespace InstapropAPI.Services
                 // Fix NewsImage records
                 await FixNewsImagesAsync(result);
 
-                // Fix CommunityPost images
-                await FixCommunityPostsAsync(result);
+                // CommunityPost images removed (community feature)
 
                 // Fix DeveloperProfile images
                 await FixDeveloperProfilesAsync(result);
@@ -186,24 +185,7 @@ namespace InstapropAPI.Services
             }
         }
 
-        private async Task FixCommunityPostsAsync(ImageFixResult result)
-        {
-            var posts = await _context.CommunityPosts
-                .Where(p => !string.IsNullOrEmpty(p.ImageUrl))
-                .ToListAsync();
-
-            foreach (var post in posts)
-            {
-                result.TotalChecked++;
-                if (!await IsImageAccessibleAsync(post.ImageUrl))
-                {
-                    result.TotalBroken++;
-                    post.ImageUrl = PlaceholderCommunityImage;
-                    result.FixedCommunityPosts++;
-                    _logger.LogWarning($"Fixed broken CommunityPost {post.PostId}");
-                }
-            }
-        }
+        // FixCommunityPostsAsync removed (community feature)
 
         private async Task FixDeveloperProfilesAsync(ImageFixResult result)
         {
@@ -276,7 +258,7 @@ namespace InstapropAPI.Services
         public int FixedUserDocs { get; set; }
         public int FixedProjectUpdates { get; set; }
         public int FixedNewsImages { get; set; }
-        public int FixedCommunityPosts { get; set; }
+        // FixedCommunityPosts removed (community feature)
         public int FixedDeveloperProfiles { get; set; }
         public int FixedEventImages { get; set; }
         public string? ErrorMessage { get; set; }

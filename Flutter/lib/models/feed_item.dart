@@ -1,7 +1,5 @@
 enum FeedItemType {
-  post,
   notification,
-  community,
   news,
   auction,
   project,

@@ -1,14 +1,14 @@
 class AppNotification {
-  final int notificationId;
-  final int userId;
+  final String notificationId;
+  final String userId;
   final String title;
   final String message;
   final NotificationType type;
   final bool isRead;
-  final int? auctionId;
-  final int? bidId;
-  final int? propertyId;
-  final int? eventId;
+  final String? auctionId;
+  final String? bidId;
+  final String? propertyId;
+  final String? eventId;
   final DateTime createdAt;
   final DateTime? readAt;
 
@@ -46,17 +46,32 @@ class AppNotification {
       return NotificationType.general;
     }
 
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return AppNotification(
-      notificationId: json['notificationId'] ?? json['NotificationId'] ?? 0,
-      userId: json['userId'] ?? json['UserId'] ?? 0,
+      notificationId: parseId(json['notificationId'] ?? json['NotificationId']),
+      userId: parseId(json['userId'] ?? json['UserId']),
       title: json['title'] ?? json['Title'] ?? '',
       message: json['message'] ?? json['Message'] ?? '',
       type: parseType(),
       isRead: json['isRead'] ?? json['IsRead'] ?? false,
-      auctionId: json['auctionId'] ?? json['AuctionId'],
-      bidId: json['bidId'] ?? json['BidId'],
-      propertyId: json['propertyId'] ?? json['PropertyId'],
-      eventId: json['eventId'] ?? json['EventId'],
+      auctionId: parseOptionalId(json['auctionId'] ?? json['AuctionId']),
+      bidId: parseOptionalId(json['bidId'] ?? json['BidId']),
+      propertyId: parseOptionalId(json['propertyId'] ?? json['PropertyId']),
+      eventId: parseOptionalId(json['eventId'] ?? json['EventId']),
       createdAt: DateTime.parse(
         json['createdAt'] ??
             json['CreatedAt'] ??

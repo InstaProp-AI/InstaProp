@@ -1,12 +1,12 @@
 import 'chat_message.dart';
 
 class Chat {
-  final int chatId;
-  final int userId;
+  final String chatId;
+  final String userId;
   final String? userName;
-  final int developerId;
+  final String developerId;
   final String? developerName;
-  final int? projectId;
+  final String? projectId;
   final String? projectName;
   final DateTime createdAt;
   final DateTime lastMessageAt;
@@ -14,7 +14,7 @@ class Chat {
   final String? lastMessage;
   final int unreadCount;
   final bool isSupportChat;
-  final int? salesMemberId;
+  final String? salesMemberId;
   final String? salesMemberName;
   final bool isAvailable; // For sales: indicates if chat is available to take
 
@@ -38,13 +38,28 @@ class Chat {
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return Chat(
-      chatId: json['chatId'] ?? 0,
-      userId: json['userId'] ?? 0,
+      chatId: parseId(json['chatId']),
+      userId: parseId(json['userId']),
       userName: json['userName'],
-      developerId: json['developerId'] ?? 0,
+      developerId: parseId(json['developerId']),
       developerName: json['developerName'],
-      projectId: json['projectId'],
+      projectId: parseOptionalId(json['projectId']),
       projectName: json['projectName'],
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),
@@ -56,7 +71,7 @@ class Chat {
       lastMessage: json['lastMessage'],
       unreadCount: json['unreadCount'] ?? 0,
       isSupportChat: json['isSupportChat'] ?? false,
-      salesMemberId: json['salesMemberId'],
+      salesMemberId: parseOptionalId(json['salesMemberId']),
       salesMemberName: json['salesMemberName'],
       isAvailable: json['isAvailable'] ?? false,
     );
@@ -85,12 +100,12 @@ class Chat {
 }
 
 class ChatDetails {
-  final int chatId;
-  final int userId;
+  final String chatId;
+  final String userId;
   final String? userName;
-  final int developerId;
+  final String developerId;
   final String? developerName;
-  final int? projectId;
+  final String? projectId;
   final String? projectName;
   final DateTime createdAt;
   final DateTime lastMessageAt;
@@ -114,13 +129,28 @@ class ChatDetails {
   });
 
   factory ChatDetails.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ChatDetails(
-      chatId: json['chatId'] ?? 0,
-      userId: json['userId'] ?? 0,
+      chatId: parseId(json['chatId']),
+      userId: parseId(json['userId']),
       userName: json['userName'],
-      developerId: json['developerId'] ?? 0,
+      developerId: parseId(json['developerId']),
       developerName: json['developerName'],
-      projectId: json['projectId'],
+      projectId: parseOptionalId(json['projectId']),
       projectName: json['projectName'],
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),

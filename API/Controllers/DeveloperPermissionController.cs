@@ -17,6 +17,7 @@ namespace InstapropAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [DeveloperOrAdminAuthorize]
     public class DeveloperPermissionController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -30,10 +31,10 @@ namespace InstapropAPI.Controllers
             _permissionService = permissionService;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim != null && Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return accountId;
             }
@@ -57,7 +58,7 @@ namespace InstapropAPI.Controllers
 
             // Check if user is a developer
             if (!account.IsDeveloperOrAdmin())
-                return Forbid("Only developers can check their permissions");
+                return Forbid();
 
             // Admins have all permissions
             if (account.IsAdmin())
@@ -81,7 +82,7 @@ namespace InstapropAPI.Controllers
         /// </summary>
         [HttpGet("~/api/admin/developers/{id}/permissions")]
         [AdminAuthorize]
-        public async Task<ActionResult<Dictionary<string, bool>>> GetDeveloperPermissions(long id)
+        public async Task<ActionResult<Dictionary<string, bool>>> GetDeveloperPermissions(Guid id)
         {
             var account = await _context.Accounts.FindAsync(id);
             if (account == null)
@@ -103,7 +104,7 @@ namespace InstapropAPI.Controllers
         /// </summary>
         [HttpPut("~/api/admin/developers/{id}/permissions")]
         [AdminAuthorize]
-        public async Task<IActionResult> UpdateDeveloperPermissions(long id, [FromBody] UpdatePermissionsDto dto)
+        public async Task<IActionResult> UpdateDeveloperPermissions(Guid id, [FromBody] UpdatePermissionsDto dto)
         {
             var account = await _context.Accounts.FindAsync(id);
             if (account == null)
@@ -152,7 +153,7 @@ namespace InstapropAPI.Controllers
         /// </summary>
         [HttpPost("~/api/admin/developers/{id}/permissions/initialize")]
         [AdminAuthorize]
-        public async Task<IActionResult> InitializeDeveloperPermissions(long id)
+        public async Task<IActionResult> InitializeDeveloperPermissions(Guid id)
         {
             var account = await _context.Accounts.FindAsync(id);
             if (account == null)
@@ -192,7 +193,7 @@ namespace InstapropAPI.Controllers
                     .Select(a => a.AccountId)
                     .ToListAsync();
 
-                var result = new Dictionary<long, Dictionary<string, bool>>();
+                var result = new Dictionary<Guid, Dictionary<string, bool>>();
 
                 foreach (var developerId in developers)
                 {

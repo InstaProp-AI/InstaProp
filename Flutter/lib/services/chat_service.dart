@@ -40,7 +40,7 @@ class ChatService {
   }
 
   // Get specific chat with messages
-  Future<ChatDetails> getChatDetails(int chatId) async {
+  Future<ChatDetails> getChatDetails(String chatId) async {
     if (token == null) {
       throw Exception('Authentication required');
     }
@@ -63,7 +63,7 @@ class ChatService {
   }
 
   // Create new chat with developer
-  Future<Chat> createChat({required int developerId, int? projectId}) async {
+  Future<Chat> createChat({required String developerId, String? projectId}) async {
     if (token == null) {
       throw Exception('Authentication required');
     }
@@ -78,19 +78,42 @@ class ChatService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Chat.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Failed to create chat: ${response.statusCode}');
+        // Try to extract error message from response body
+        String errorMessage = 'Failed to create chat';
+        try {
+          final errorBody = json.decode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'].toString();
+          } else if (errorBody is Map && errorBody.containsKey('error')) {
+            errorMessage = errorBody['error'].toString();
+          } else if (errorBody is String) {
+            errorMessage = errorBody;
+          } else {
+            errorMessage = 'Failed to create chat: ${response.statusCode}';
+          }
+        } catch (_) {
+          // If parsing fails, use status code
+          errorMessage = 'Failed to create chat: ${response.statusCode}';
+        }
+        print('Error creating chat: $errorMessage (Status: ${response.statusCode})');
+        print('Response body: ${response.body}');
+        throw Exception(errorMessage);
       }
     } catch (e) {
       print('Error creating chat: $e');
-      throw Exception('Failed to create chat');
+      // Re-throw if it's already an Exception with a message, otherwise wrap it
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Failed to create chat: $e');
     }
   }
 
   // Send message in chat
   Future<ChatMessage> sendMessage({
-    required int chatId,
+    required String chatId,
     required String content,
-    int? propertyId,
+    String? propertyId,
   }) async {
     if (token == null) {
       throw Exception('Authentication required');
@@ -115,7 +138,7 @@ class ChatService {
   }
 
   // Take chat (for sales team members)
-  Future<void> takeChat(int chatId) async {
+  Future<void> takeChat(String chatId) async {
     if (token == null) {
       throw Exception('Authentication required');
     }
@@ -139,7 +162,7 @@ class ChatService {
   }
 
   // Mark chat messages as read
-  Future<void> markAsRead(int chatId) async {
+  Future<void> markAsRead(String chatId) async {
     if (token == null) {
       throw Exception('Authentication required');
     }
@@ -175,7 +198,7 @@ class ChatService {
   }
 
   Stream<List<ChatMessage>> streamChatMessagesViaApi({
-    required int chatId,
+    required String chatId,
     Duration pollInterval = const Duration(seconds: 6),
   }) {
     if (pollInterval <= Duration.zero) {

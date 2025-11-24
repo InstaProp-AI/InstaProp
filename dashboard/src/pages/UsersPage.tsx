@@ -161,7 +161,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleVerifyUser = async (accountId: number) => {
+  const handleVerifyUser = async (accountId: string) => {
     try {
       await usersApi.verifyUser(accountId);
       toast.success('User verified successfully!');
@@ -173,7 +173,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleRejectUser = async (accountId: number) => {
+  const handleRejectUser = async (accountId: string) => {
     if (window.confirm('Are you sure you want to reject this user?')) {
       try {
         await usersApi.rejectUser(accountId);
@@ -187,7 +187,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleBanUser = async (accountId: number) => {
+  const handleBanUser = async (accountId: string) => {
     if (window.confirm('Are you sure you want to ban/delete this user? This action cannot be undone.')) {
       try {
         await usersApi.banUser(accountId);
@@ -227,7 +227,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleUnsuspendUser = async (accountId: number) => {
+  const handleUnsuspendUser = async (accountId: string) => {
     if (window.confirm('Are you sure you want to unsuspend this user?')) {
       try {
         await usersApi.unsuspendUser(accountId);
@@ -259,7 +259,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleVerifyEmailManually = async (accountId: number) => {
+  const handleVerifyEmailManually = async (accountId: string) => {
     try {
       console.log('📧 Attempting to verify email for user:', accountId);
       await usersApi.verifyEmail(accountId);
@@ -285,7 +285,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleVerifyPhoneManually = async (accountId: number) => {
+  const handleVerifyPhoneManually = async (accountId: string) => {
     try {
       console.log('📱 Attempting to verify phone for user:', accountId);
       await usersApi.verifyPhone(accountId);
@@ -311,7 +311,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleResetPassword = async (accountId: number) => {
+  const handleResetPassword = async (accountId: string) => {
     if (window.confirm('Force this user to change their password on next login?')) {
       try {
         await usersApi.resetPassword(accountId);
@@ -324,7 +324,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleApproveProperty = async (propertyId: number) => {
+  const handleApproveProperty = async (propertyId: string) => {
     try {
       await propertiesApi.approveProperty(propertyId);
       toast.success('Property approved successfully!');
@@ -337,7 +337,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleRejectProperty = async (propertyId: number) => {
+  const handleRejectProperty = async (propertyId: string) => {
     if (window.confirm('Are you sure you want to reject this property?')) {
       try {
         await propertiesApi.rejectProperty(propertyId);
@@ -352,7 +352,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleApproveAuction = async (auctionId: number) => {
+  const handleApproveAuction = async (auctionId: string) => {
     try {
       await auctionsApi.approveAuction(auctionId);
       toast.success('Auction approved successfully!');
@@ -365,7 +365,7 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleRejectAuction = async (auctionId: number) => {
+  const handleRejectAuction = async (auctionId: string) => {
     if (window.confirm('Are you sure you want to reject this auction?')) {
       try {
         await auctionsApi.rejectAuction(auctionId);
@@ -1246,7 +1246,7 @@ const UsersPage: React.FC = () => {
                     </div>
                   </button>
                   {/* Permissions Tab - Only for Developers */}
-                  {(selectedUser?.roleName === 'Developer' || selectedUser?.type === 'Developer' || selectedUser?.roleId === 7823647823647823) && (
+                  {(selectedUser?.roleName === 'Developer' || selectedUser?.type === 'Developer' || selectedUser?.roleId === '78236478-2364-7823-0000-000000000000') && (
                     <button
                       onClick={() => {
                         setDetailsTab('permissions');
@@ -2183,7 +2183,7 @@ const UsersPage: React.FC = () => {
                             </div>
 
                             <div style={{ display: 'grid', gap: '1rem' }}>
-                              {['Communities', 'News', 'Auctions', 'Leaderboard', 'Notifications', 'PriceHistory', 'FullAnalytics', 'Rewards', 'Valuation', 'Chats'].map((feature) => (
+                              {['News', 'Auctions', 'Leaderboard', 'Notifications', 'PriceHistory', 'FullAnalytics', 'Rewards', 'Valuation', 'Chats'].map((feature) => (
                                 <label
                                   key={feature}
                                   style={{

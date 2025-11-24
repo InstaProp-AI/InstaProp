@@ -256,7 +256,7 @@ namespace InstapropAPI.Services
         /// Sends notification for new chat messages
         /// </summary>
         public async Task SendChatNotificationAsync(
-            long recipientId,
+            Guid recipientId,
             string title,
             string message)
         {

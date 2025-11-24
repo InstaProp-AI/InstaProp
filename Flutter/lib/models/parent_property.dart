@@ -2,7 +2,7 @@ import 'property_price_history.dart';
 import 'property_type.dart';
 
 class ParentProperty {
-  final int parentPropertyId;
+  final String parentPropertyId;
   final String? projectName;
   final int bedrooms;
   final int bathrooms;
@@ -54,8 +54,16 @@ class ParentProperty {
   });
 
   factory ParentProperty.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return ParentProperty(
-      parentPropertyId: json['parentPropertyId'] ?? 0,
+      parentPropertyId: parseId(json['parentPropertyId']),
       projectName: json['projectName'] ??
           (json['project'] is Map ? json['project']['name'] : json['project']) ??
           null,

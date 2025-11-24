@@ -1,0 +1,587 @@
+[
+  {
+    "country": "United States",
+    "countryCode": "US",
+    "timezones": [
+      "America/New_York",
+      "America/Chicago",
+      "America/Denver",
+      "America/Phoenix",
+      "America/Los_Angeles",
+      "America/Anchorage",
+      "Pacific/Honolulu"
+    ]
+  },
+  {
+    "country": "Egypt",
+    "countryCode": "EG",
+    "timezones": ["Africa/Cairo"]
+  },
+  {
+    "country": "United Kingdom",
+    "countryCode": "GB",
+    "timezones": ["Europe/London"]
+  },
+  {
+    "country": "Germany",
+    "countryCode": "DE",
+    "timezones": ["Europe/Berlin"]
+  },
+  {
+    "country": "France",
+    "countryCode": "FR",
+    "timezones": ["Europe/Paris"]
+  },
+  {
+    "country": "Spain",
+    "countryCode": "ES",
+    "timezones": ["Europe/Madrid"]
+  },
+  {
+    "country": "Italy",
+    "countryCode": "IT",
+    "timezones": ["Europe/Rome"]
+  },
+  {
+    "country": "Canada",
+    "countryCode": "CA",
+    "timezones": [
+      "America/St_Johns",
+      "America/Halifax",
+      "America/Toronto",
+      "America/Winnipeg",
+      "America/Edmonton",
+      "America/Vancouver"
+    ]
+  },
+  {
+    "country": "Australia",
+    "countryCode": "AU",
+    "timezones": [
+      "Australia/Sydney",
+      "Australia/Melbourne",
+      "Australia/Brisbane",
+      "Australia/Adelaide",
+      "Australia/Perth"
+    ]
+  },
+  {
+    "country": "Japan",
+    "countryCode": "JP",
+    "timezones": ["Asia/Tokyo"]
+  },
+  {
+    "country": "China",
+    "countryCode": "CN",
+    "timezones": ["Asia/Shanghai"]
+  },
+  {
+    "country": "India",
+    "countryCode": "IN",
+    "timezones": ["Asia/Kolkata"]
+  },
+  {
+    "country": "United Arab Emirates",
+    "countryCode": "AE",
+    "timezones": ["Asia/Dubai"]
+  },
+  {
+    "country": "Saudi Arabia",
+    "countryCode": "SA",
+    "timezones": ["Asia/Riyadh"]
+  },
+  {
+    "country": "Brazil",
+    "countryCode": "BR",
+    "timezones": [
+      "America/Noronha",
+      "America/Belem",
+      "America/Fortaleza",
+      "America/Recife",
+      "America/Sao_Paulo",
+      "America/Manaus"
+    ]
+  },
+  {
+    "country": "Mexico",
+    "countryCode": "MX",
+    "timezones": [
+      "America/Mexico_City",
+      "America/Cancun",
+      "America/Tijuana"
+    ]
+  },
+  {
+    "country": "Russia",
+    "countryCode": "RU",
+    "timezones": [
+      "Europe/Kaliningrad",
+      "Europe/Moscow",
+      "Europe/Samara",
+      "Asia/Yekaterinburg",
+      "Asia/Omsk",
+      "Asia/Krasnoyarsk",
+      "Asia/Irkutsk",
+      "Asia/Yakutsk",
+      "Asia/Vladivostok",
+      "Asia/Magadan",
+      "Asia/Kamchatka"
+    ]
+  },
+  {
+    "country": "South Africa",
+    "countryCode": "ZA",
+    "timezones": ["Africa/Johannesburg"]
+  },
+  {
+    "country": "Nigeria",
+    "countryCode": "NG",
+    "timezones": ["Africa/Lagos"]
+  },
+  {
+    "country": "Kenya",
+    "countryCode": "KE",
+    "timezones": ["Africa/Nairobi"]
+  },
+  {
+    "country": "Argentina",
+    "countryCode": "AR",
+    "timezones": ["America/Argentina/Buenos_Aires"]
+  },
+  {
+    "country": "Chile",
+    "countryCode": "CL",
+    "timezones": ["America/Santiago"]
+  },
+  {
+    "country": "New Zealand",
+    "countryCode": "NZ",
+    "timezones": ["Pacific/Auckland"]
+  },
+  {
+    "country": "Singapore",
+    "countryCode": "SG",
+    "timezones": ["Asia/Singapore"]
+  },
+  {
+    "country": "South Korea",
+    "countryCode": "KR",
+    "timezones": ["Asia/Seoul"]
+  },
+  {
+    "country": "Thailand",
+    "countryCode": "TH",
+    "timezones": ["Asia/Bangkok"]
+  },
+  {
+    "country": "Malaysia",
+    "countryCode": "MY",
+    "timezones": ["Asia/Kuala_Lumpur"]
+  },
+  {
+    "country": "Philippines",
+    "countryCode": "PH",
+    "timezones": ["Asia/Manila"]
+  },
+  {
+    "country": "Indonesia",
+    "countryCode": "ID",
+    "timezones": [
+      "Asia/Jakarta",
+      "Asia/Makassar",
+      "Asia/Jayapura"
+    ]
+  },
+  {
+    "country": "Turkey",
+    "countryCode": "TR",
+    "timezones": ["Europe/Istanbul"]
+  },
+  {
+    "country": "Israel",
+    "countryCode": "IL",
+    "timezones": ["Asia/Jerusalem"]
+  },
+  {
+    "country": "Pakistan",
+    "countryCode": "PK",
+    "timezones": ["Asia/Karachi"]
+  },
+  {
+    "country": "Bangladesh",
+    "countryCode": "BD",
+    "timezones": ["Asia/Dhaka"]
+  },
+  {
+    "country": "Vietnam",
+    "countryCode": "VN",
+    "timezones": ["Asia/Ho_Chi_Minh"]
+  },
+  {
+    "country": "Poland",
+    "countryCode": "PL",
+    "timezones": ["Europe/Warsaw"]
+  },
+  {
+    "country": "Netherlands",
+    "countryCode": "NL",
+    "timezones": ["Europe/Amsterdam"]
+  },
+  {
+    "country": "Belgium",
+    "countryCode": "BE",
+    "timezones": ["Europe/Brussels"]
+  },
+  {
+    "country": "Switzerland",
+    "countryCode": "CH",
+    "timezones": ["Europe/Zurich"]
+  },
+  {
+    "country": "Sweden",
+    "countryCode": "SE",
+    "timezones": ["Europe/Stockholm"]
+  },
+  {
+    "country": "Norway",
+    "countryCode": "NO",
+    "timezones": ["Europe/Oslo"]
+  },
+  {
+    "country": "Denmark",
+    "countryCode": "DK",
+    "timezones": ["Europe/Copenhagen"]
+  },
+  {
+    "country": "Finland",
+    "countryCode": "FI",
+    "timezones": ["Europe/Helsinki"]
+  },
+  {
+    "country": "Greece",
+    "countryCode": "GR",
+    "timezones": ["Europe/Athens"]
+  },
+  {
+    "country": "Portugal",
+    "countryCode": "PT",
+    "timezones": ["Europe/Lisbon", "Atlantic/Azores"]
+  },
+  {
+    "country": "Ireland",
+    "countryCode": "IE",
+    "timezones": ["Europe/Dublin"]
+  },
+  {
+    "country": "Austria",
+    "countryCode": "AT",
+    "timezones": ["Europe/Vienna"]
+  },
+  {
+    "country": "Czech Republic",
+    "countryCode": "CZ",
+    "timezones": ["Europe/Prague"]
+  },
+  {
+    "country": "Hungary",
+    "countryCode": "HU",
+    "timezones": ["Europe/Budapest"]
+  },
+  {
+    "country": "Romania",
+    "countryCode": "RO",
+    "timezones": ["Europe/Bucharest"]
+  },
+  {
+    "country": "Ukraine",
+    "countryCode": "UA",
+    "timezones": ["Europe/Kiev"]
+  },
+  {
+    "country": "Morocco",
+    "countryCode": "MA",
+    "timezones": ["Africa/Casablanca"]
+  },
+  {
+    "country": "Algeria",
+    "countryCode": "DZ",
+    "timezones": ["Africa/Algiers"]
+  },
+  {
+    "country": "Tunisia",
+    "countryCode": "TN",
+    "timezones": ["Africa/Tunis"]
+  },
+  {
+    "country": "Libya",
+    "countryCode": "LY",
+    "timezones": ["Africa/Tripoli"]
+  },
+  {
+    "country": "Sudan",
+    "countryCode": "SD",
+    "timezones": ["Africa/Khartoum"]
+  },
+  {
+    "country": "Ethiopia",
+    "countryCode": "ET",
+    "timezones": ["Africa/Addis_Ababa"]
+  },
+  {
+    "country": "Ghana",
+    "countryCode": "GH",
+    "timezones": ["Africa/Accra"]
+  },
+  {
+    "country": "Ivory Coast",
+    "countryCode": "CI",
+    "timezones": ["Africa/Abidjan"]
+  },
+  {
+    "country": "Senegal",
+    "countryCode": "SN",
+    "timezones": ["Africa/Dakar"]
+  },
+  {
+    "country": "Tanzania",
+    "countryCode": "TZ",
+    "timezones": ["Africa/Dar_es_Salaam"]
+  },
+  {
+    "country": "Uganda",
+    "countryCode": "UG",
+    "timezones": ["Africa/Kampala"]
+  },
+  {
+    "country": "Zimbabwe",
+    "countryCode": "ZW",
+    "timezones": ["Africa/Harare"]
+  },
+  {
+    "country": "Zambia",
+    "countryCode": "ZM",
+    "timezones": ["Africa/Lusaka"]
+  },
+  {
+    "country": "Mozambique",
+    "countryCode": "MZ",
+    "timezones": ["Africa/Maputo"]
+  },
+  {
+    "country": "Colombia",
+    "countryCode": "CO",
+    "timezones": ["America/Bogota"]
+  },
+  {
+    "country": "Venezuela",
+    "countryCode": "VE",
+    "timezones": ["America/Caracas"]
+  },
+  {
+    "country": "Peru",
+    "countryCode": "PE",
+    "timezones": ["America/Lima"]
+  },
+  {
+    "country": "Ecuador",
+    "countryCode": "EC",
+    "timezones": ["America/Guayaquil"]
+  },
+  {
+    "country": "Bolivia",
+    "countryCode": "BO",
+    "timezones": ["America/La_Paz"]
+  },
+  {
+    "country": "Paraguay",
+    "countryCode": "PY",
+    "timezones": ["America/Asuncion"]
+  },
+  {
+    "country": "Uruguay",
+    "countryCode": "UY",
+    "timezones": ["America/Montevideo"]
+  },
+  {
+    "country": "Costa Rica",
+    "countryCode": "CR",
+    "timezones": ["America/Costa_Rica"]
+  },
+  {
+    "country": "Panama",
+    "countryCode": "PA",
+    "timezones": ["America/Panama"]
+  },
+  {
+    "country": "Guatemala",
+    "countryCode": "GT",
+    "timezones": ["America/Guatemala"]
+  },
+  {
+    "country": "Cuba",
+    "countryCode": "CU",
+    "timezones": ["America/Havana"]
+  },
+  {
+    "country": "Dominican Republic",
+    "countryCode": "DO",
+    "timezones": ["America/Santo_Domingo"]
+  },
+  {
+    "country": "Puerto Rico",
+    "countryCode": "PR",
+    "timezones": ["America/Puerto_Rico"]
+  },
+  {
+    "country": "Jamaica",
+    "countryCode": "JM",
+    "timezones": ["America/Jamaica"]
+  },
+  {
+    "country": "Trinidad and Tobago",
+    "countryCode": "TT",
+    "timezones": ["America/Port_of_Spain"]
+  },
+  {
+    "country": "Bahamas",
+    "countryCode": "BS",
+    "timezones": ["America/Nassau"]
+  },
+  {
+    "country": "Barbados",
+    "countryCode": "BB",
+    "timezones": ["America/Barbados"]
+  },
+  {
+    "country": "Iceland",
+    "countryCode": "IS",
+    "timezones": ["Atlantic/Reykjavik"]
+  },
+  {
+    "country": "Greenland",
+    "countryCode": "GL",
+    "timezones": ["America/Godthab"]
+  },
+  {
+    "country": "Jordan",
+    "countryCode": "JO",
+    "timezones": ["Asia/Amman"]
+  },
+  {
+    "country": "Lebanon",
+    "countryCode": "LB",
+    "timezones": ["Asia/Beirut"]
+  },
+  {
+    "country": "Kuwait",
+    "countryCode": "KW",
+    "timezones": ["Asia/Kuwait"]
+  },
+  {
+    "country": "Qatar",
+    "countryCode": "QA",
+    "timezones": ["Asia/Qatar"]
+  },
+  {
+    "country": "Bahrain",
+    "countryCode": "BH",
+    "timezones": ["Asia/Bahrain"]
+  },
+  {
+    "country": "Oman",
+    "countryCode": "OM",
+    "timezones": ["Asia/Muscat"]
+  },
+  {
+    "country": "Yemen",
+    "countryCode": "YE",
+    "timezones": ["Asia/Aden"]
+  },
+  {
+    "country": "Iraq",
+    "countryCode": "IQ",
+    "timezones": ["Asia/Baghdad"]
+  },
+  {
+    "country": "Iran",
+    "countryCode": "IR",
+    "timezones": ["Asia/Tehran"]
+  },
+  {
+    "country": "Afghanistan",
+    "countryCode": "AF",
+    "timezones": ["Asia/Kabul"]
+  },
+  {
+    "country": "Kazakhstan",
+    "countryCode": "KZ",
+    "timezones": ["Asia/Almaty"]
+  },
+  {
+    "country": "Uzbekistan",
+    "countryCode": "UZ",
+    "timezones": ["Asia/Tashkent"]
+  },
+  {
+    "country": "Nepal",
+    "countryCode": "NP",
+    "timezones": ["Asia/Kathmandu"]
+  },
+  {
+    "country": "Sri Lanka",
+    "countryCode": "LK",
+    "timezones": ["Asia/Colombo"]
+  },
+  {
+    "country": "Myanmar",
+    "countryCode": "MM",
+    "timezones": ["Asia/Yangon"]
+  },
+  {
+    "country": "Cambodia",
+    "countryCode": "KH",
+    "timezones": ["Asia/Phnom_Penh"]
+  },
+  {
+    "country": "Laos",
+    "countryCode": "LA",
+    "timezones": ["Asia/Vientiane"]
+  },
+  {
+    "country": "Mongolia",
+    "countryCode": "MN",
+    "timezones": ["Asia/Ulaanbaatar"]
+  },
+  {
+    "country": "Hong Kong",
+    "countryCode": "HK",
+    "timezones": ["Asia/Hong_Kong"]
+  },
+  {
+    "country": "Taiwan",
+    "countryCode": "TW",
+    "timezones": ["Asia/Taipei"]
+  },
+  {
+    "country": "Fiji",
+    "countryCode": "FJ",
+    "timezones": ["Pacific/Fiji"]
+  },
+  {
+    "country": "Papua New Guinea",
+    "countryCode": "PG",
+    "timezones": ["Pacific/Port_Moresby"]
+  },
+  {
+    "country": "Samoa",
+    "countryCode": "WS",
+    "timezones": ["Pacific/Apia"]
+  },
+  {
+    "country": "Tonga",
+    "countryCode": "TO",
+    "timezones": ["Pacific/Tongatapu"]
+  }
+]
+
+

@@ -8,13 +8,13 @@ namespace InstapropAPI.Models
     public class Project
     {
         [Key]
-        public long ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
 
         [Required]
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
 
         [ForeignKey(nameof(DeveloperId))]
-        public Account Developer { get; set; } = null!;
+        public DeveloperAccount Developer { get; set; } = null!;
 
         [Required]
         [MaxLength(200)]
@@ -24,6 +24,9 @@ namespace InstapropAPI.Models
 
         [MaxLength(200)]
         public string? Location { get; set; }
+
+        [MaxLength(2)]
+        public string? Country { get; set; } // ISO 3166-1 alpha-2 country code
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

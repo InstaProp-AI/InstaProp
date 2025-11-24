@@ -4,31 +4,41 @@ enum AccountType {
   admin,
 } // DEPRECATED: Use roleId and roleName instead
 
-// SECURITY: Role ID constants matching backend (non-guessable 64-bit IDs)
+// SECURITY: Role ID constants matching backend (GUIDs)
 class RoleIds {
-  static const int user = 8923748923748923;
-  static const int developer = 7823647823647823;
-  static const int admin = 9823749823749823;
-  static const int sales = 6723546723546723;
+  static const String user = '89237489-2374-4923-8923-892374892374';
+  static const String developer = '78236478-2364-4782-3647-823647823647';
+  static const String admin = '98237498-2374-4982-3749-823749823749';
+  static const String sales = '67235467-2354-4672-3546-723546723546';
 
-  // Helper to get role name from role ID
-  static String getRoleName(int roleId) {
-    switch (roleId) {
-      case admin:
-        return 'Admin';
-      case developer:
-        return 'Developer';
-      case user:
-        return 'User';
-      case sales:
-        return 'Sales';
-      default:
-        return 'User';
+  // Helper to get role name from role ID (handles both GUID and legacy numeric formats)
+  static String getRoleName(String roleId) {
+    // Handle GUID format - CORRECT IDs from backend
+    if (roleId.contains('-')) {
+      // Correct IDs (matching backend)
+      if (roleId == admin) return 'Admin';
+      if (roleId == developer) return 'Developer';
+      if (roleId == user) return 'User';
+      if (roleId == sales) return 'Sales';
+      // Legacy wrong IDs (backward compatibility)
+      if (roleId == '98237498-2374-9823-0000-000000000000') return 'Admin';
+      if (roleId == '78236478-2364-7823-0000-000000000000') return 'Developer';
+      if (roleId == '89237489-2374-8923-0000-000000000000') return 'User';
+      if (roleId == '67235467-2354-6723-0000-000000000000') return 'Sales';
     }
+    // Handle legacy numeric format (backward compatibility)
+    final numId = int.tryParse(roleId);
+    if (numId != null) {
+      if (numId == 9823749823749823) return 'Admin';
+      if (numId == 7823647823647823) return 'Developer';
+      if (numId == 8923748923748923) return 'User';
+      if (numId == 6723546723546723) return 'Sales';
+    }
+    return 'User';
   }
 
   // Helper to get role ID from role name
-  static int getRoleId(String roleName) {
+  static String getRoleId(String roleName) {
     switch (roleName.toLowerCase()) {
       case 'admin':
         return admin;
@@ -79,13 +89,13 @@ class KycDocument {
 }
 
 class Account {
-  final int accountId;
+  final String accountId;
   final String firstName;
   final String lastName;
   final String phoneNumber;
   final String email;
-  // SECURITY: Use roleId (non-guessable 64-bit ID) instead of type enum
-  final int roleId; // e.g., 9823749823749823 for Admin
+  // SECURITY: Use roleId (GUID) instead of type enum
+  final String roleId; // GUID for Admin, Developer, User, Sales
   final String roleName; // 'User', 'Developer', or 'Admin'
   @Deprecated('Use roleId and roleName instead')
   final AccountType type; // DEPRECATED: Kept for backward compatibility
@@ -98,6 +108,7 @@ class Account {
   final String? suspensionReason;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? timeZone; // User's preferred timezone (IANA timezone ID)
   final List<KycDocument> kycDocuments;
   final int? totalEarnedPoints; // For badges/progress
   final int? currentPoints; // For redemption
@@ -122,6 +133,7 @@ class Account {
     this.suspensionReason,
     required this.createdAt,
     this.updatedAt,
+    this.timeZone,
     this.kycDocuments = const [],
     this.totalEarnedPoints,
     this.currentPoints,
@@ -135,15 +147,13 @@ class Account {
     final roleName = json['roleName'] ?? json['RoleName'];
 
     // Determine roleId and roleName (handle both new and old formats)
-    int finalRoleId;
+    String finalRoleId;
     String finalRoleName;
     AccountType finalType;
 
     if (roleId != null && roleName != null) {
       // New format: Use roleId and roleName directly
-      finalRoleId = roleId is int
-          ? roleId
-          : int.tryParse(roleId.toString()) ?? RoleIds.user;
+      finalRoleId = roleId.toString();
       finalRoleName = roleName.toString();
       finalType = AccountType.values.firstWhere(
         (e) =>
@@ -164,8 +174,17 @@ class Account {
       finalRoleName = RoleIds.getRoleName(finalRoleId);
     }
 
+    // Parse accountId - handle both string (GUID) and int (legacy) formats
+    String parseAccountId() {
+      final id = json['accountId'] ?? json['AccountId'];
+      if (id == null) return '';
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return Account(
-      accountId: json['accountId'] ?? json['AccountId'] ?? 0,
+      accountId: parseAccountId(),
       firstName: json['firstName'] ?? json['FirstName'] ?? '',
       lastName: json['lastName'] ?? json['LastName'] ?? '',
       phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'] ?? '',
@@ -194,6 +213,7 @@ class Account {
       updatedAt: json['updatedAt'] != null || json['UpdatedAt'] != null
           ? DateTime.parse(json['updatedAt'] ?? json['UpdatedAt'])
           : null,
+      timeZone: json['timeZone'] ?? json['TimeZone'],
       kycDocuments: json['userDocs'] != null || json['UserDocs'] != null
           ? (json['userDocs'] ?? json['UserDocs'] ?? [])
                 .map<KycDocument>((doc) => KycDocument.fromJson(doc))
@@ -257,6 +277,7 @@ class Account {
       'phoneVerified': phoneVerified,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
+      'timeZone': timeZone,
       'kycDocuments': kycDocuments.map((doc) => doc.toJson()).toList(),
     };
   }

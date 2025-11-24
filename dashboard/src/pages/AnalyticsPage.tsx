@@ -37,8 +37,8 @@ const AnalyticsPage: React.FC = () => {
         const currentUser = await authApi.getCurrentAccount();
         setUser(currentUser);
         // Check roleName first (from backend), then roleId, then legacy type
-        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === 9823749823749823 || currentUser.type === 'Admin';
-        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === 7823647823647823 || currentUser.type === 'Developer';
+        const isAdmin = currentUser.roleName === 'Admin' || currentUser.roleId === '98237498-2374-4982-3749-823749823749' || currentUser.type === 'Admin';
+        const isDeveloper = currentUser.roleName === 'Developer' || currentUser.roleId === '78236478-2364-7823-0000-000000000000' || currentUser.type === 'Developer';
         setUserRole(isAdmin ? 'Admin' : (isDeveloper ? 'Developer' : null));
       } catch (error) {
         console.error('Error loading user:', error);

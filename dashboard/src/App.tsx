@@ -15,7 +15,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import NotificationDashboardPage from './pages/NotificationDashboardPage';
 import DocumentsPage from './pages/DocumentsPage';
-import CommunitiesPage from './pages/CommunitiesPage';
+// CommunitiesPage removed (community feature)
 import NewsPage from './pages/NewsPage';
 import ChatsPage from './pages/ChatsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
@@ -127,7 +127,7 @@ function App() {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/properties" element={<PropertiesPage />} />
               {/* Optional features - protected by permissions */}
-              <Route path="/communities" element={<PermissionRoute featureName="Communities"><CommunitiesPage /></PermissionRoute>} />
+              {/* Communities route removed */}
               <Route path="/news" element={<PermissionRoute featureName="News"><NewsPage /></PermissionRoute>} />
               <Route path="/auctions" element={<PermissionRoute featureName="Auctions"><AuctionsPage /></PermissionRoute>} />
               <Route path="/chats" element={<PermissionRoute featureName="Chats"><ChatsPage /></PermissionRoute>} />

@@ -11,10 +11,10 @@ enum ListingType { resale, primary }
 enum PropertyStatus { notApproved, pending, approved }
 
 class Property {
-  final int propertyId;
-  final int ownerId;
+  final String propertyId;
+  final String ownerId;
   final Account? owner;
-  final int? projectId;
+  final String? projectId;
   final String? project;
   final String name;
   final String description;
@@ -132,15 +132,30 @@ class Property {
       return PropertyStatus.notApproved;
     }
 
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return Property(
-      propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
-      ownerId: json['ownerId'] ?? json['OwnerId'] ?? 0,
+      propertyId: parseId(json['propertyId'] ?? json['PropertyId']),
+      ownerId: parseId(json['ownerId'] ?? json['OwnerId']),
       owner: json['owner'] != null || json['Owner'] != null
           ? Account.fromJson({
               'accountId':
                   (json['owner'] ?? json['Owner'])['accountId'] ??
                   (json['owner'] ?? json['Owner'])['AccountId'] ??
-                  0,
+                  '',
               'firstName':
                   (json['owner'] ?? json['Owner'])['firstName'] ??
                   (json['owner'] ?? json['Owner'])['FirstName'] ??
@@ -174,7 +189,7 @@ class Property {
                   (json['owner'] ?? json['Owner'])['UpdatedAt'],
             })
           : null,
-      projectId: json['projectId'] ?? json['ProjectId'],
+      projectId: parseOptionalId(json['projectId'] ?? json['ProjectId']),
       project: () {
         final projectValue = json['project'] ?? json['Project'];
         if (projectValue is Map) {
@@ -256,7 +271,7 @@ class Property {
   factory Property.fromChildProperty(ChildProperty childProperty) {
     return Property(
       propertyId: childProperty.propertyId,
-      ownerId: childProperty.ownerId ?? 0,
+      ownerId: childProperty.ownerId ?? '',
       owner: null, // Will be populated if needed
       projectId: null, // ChildProperty doesn't have projectId directly
       project: childProperty.project,
@@ -283,7 +298,7 @@ class Property {
   factory Property.fromParentProperty(ParentProperty parentProperty) {
     return Property(
       propertyId: parentProperty.parentPropertyId,
-      ownerId: 0, // ParentProperty doesn't have owner
+      ownerId: '', // ParentProperty doesn't have owner
       owner: null,
       projectId: null, // ParentProperty doesn't have projectId directly
       project: parentProperty.displayProjectName,

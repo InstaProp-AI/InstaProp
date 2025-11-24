@@ -12,10 +12,10 @@ namespace InstapropAPI.Models
     public class InstallmentSummary
     {
         [Key]
-        public int SummaryId { get; set; }
+        public Guid SummaryId { get; set; }
 
         [ForeignKey(nameof(Property))]
-        public int PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
 
         /// <summary>
         /// Total contract value agreed upon with the developer/seller.

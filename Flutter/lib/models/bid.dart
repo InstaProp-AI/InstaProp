@@ -2,9 +2,9 @@ import 'user.dart';
 import 'auction.dart';
 
 class Bid {
-  final int bidId;
-  final int auctionId;
-  final int bidderId;
+  final String bidId;
+  final String auctionId;
+  final String bidderId;
   final Account? bidder;
   final double bidAmount;
   final DateTime createdAt;
@@ -33,10 +33,18 @@ class Bid {
       return null;
     }
 
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return Bid(
-      bidId: json['bidId'] ?? json['BidId'] ?? 0,
-      auctionId: json['auctionId'] ?? json['AuctionId'] ?? 0,
-      bidderId: json['bidderId'] ?? json['BidderId'] ?? 0,
+      bidId: parseId(json['bidId'] ?? json['BidId']),
+      auctionId: parseId(json['auctionId'] ?? json['AuctionId']),
+      bidderId: parseId(json['bidderId'] ?? json['BidderId']),
       bidder: json['bidder'] != null || json['Bidder'] != null
           ? Account.fromJson(json['bidder'] ?? json['Bidder'])
           : null,

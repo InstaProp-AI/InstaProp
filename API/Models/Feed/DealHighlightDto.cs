@@ -4,8 +4,8 @@ namespace InstapropAPI.Models.Feed
 {
     public class DealHighlightDto
     {
-        public long AuctionId { get; set; }
-        public int PropertyId { get; set; }
+        public Guid AuctionId { get; set; }
+        public Guid PropertyId { get; set; }
         public string PropertyName { get; set; } = string.Empty;
         public string? Location { get; set; }
         public string? ImageUrl { get; set; }

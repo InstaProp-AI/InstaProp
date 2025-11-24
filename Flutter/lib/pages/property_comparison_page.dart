@@ -21,7 +21,7 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
   List<Property> selectedProperties = [];
   List<Property> allProperties = [];
   List<Property> filteredProperties = [];
-  Map<int, Auction?> propertyAuctions =
+  Map<String, Auction?> propertyAuctions =
       {}; // Store active auctions by propertyId
   bool isLoading = true;
 

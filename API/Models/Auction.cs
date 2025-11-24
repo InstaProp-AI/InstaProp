@@ -8,10 +8,10 @@ namespace InstapropAPI.Models
     public class Auction
     {
     [Key]
-    public long AuctionId { get; set; }
+    public Guid AuctionId { get; set; }
 
     [Required]
-    public int PropertyId { get; set; }
+    public Guid PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         public ChildProperty Property { get; set; }

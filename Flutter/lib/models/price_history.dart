@@ -1,11 +1,11 @@
 class PropertyPriceHistory {
-  final int priceHistoryId;
-  final int parentPropertyId;
+  final String priceHistoryId;
+  final String parentPropertyId;
   final double price;
   final DateTime priceDate;
   final String source; // "AuctionWin", "Listing", "DirectSale"
-  final int? auctionId;
-  final int? childPropertyId;
+  final String? auctionId;
+  final String? childPropertyId;
   final DateTime createdAt;
 
   PropertyPriceHistory({
@@ -20,16 +20,31 @@ class PropertyPriceHistory {
   });
 
   factory PropertyPriceHistory.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return PropertyPriceHistory(
-      priceHistoryId: json['priceHistoryId'] ?? 0,
-      parentPropertyId: json['parentPropertyId'] ?? 0,
+      priceHistoryId: parseId(json['priceHistoryId']),
+      parentPropertyId: parseId(json['parentPropertyId']),
       price: (json['price'] ?? 0).toDouble(),
       priceDate: DateTime.parse(
         json['priceDate'] ?? DateTime.now().toIso8601String(),
       ),
       source: json['source'] ?? '',
-      auctionId: json['auctionId'],
-      childPropertyId: json['childPropertyId'],
+      auctionId: parseOptionalId(json['auctionId']),
+      childPropertyId: parseOptionalId(json['childPropertyId']),
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),
       ),
@@ -50,13 +65,13 @@ class PropertyPriceHistory {
   }
 
   PropertyPriceHistory copyWith({
-    int? priceHistoryId,
-    int? parentPropertyId,
+    String? priceHistoryId,
+    String? parentPropertyId,
     double? price,
     DateTime? priceDate,
     String? source,
-    int? auctionId,
-    int? childPropertyId,
+    String? auctionId,
+    String? childPropertyId,
     DateTime? createdAt,
   }) {
     return PropertyPriceHistory(

@@ -51,7 +51,7 @@ class ParentPropertyService {
   }
 
   /// Get a specific parent property by ID
-  static Future<ParentProperty?> getParentProperty(int id) async {
+  static Future<ParentProperty?> getParentProperty(String id) async {
     final response = await ApiClient.get(
       '/api/parentproperty/$id',
       (json) => ParentProperty.fromJson(json),
@@ -194,7 +194,7 @@ class FindOrCreateRequest {
 }
 
 class FindOrCreateResponse {
-  final int parentPropertyId;
+  final String parentPropertyId;
   final bool isNew;
   final String message;
 
@@ -206,7 +206,7 @@ class FindOrCreateResponse {
 
   factory FindOrCreateResponse.fromJson(Map<String, dynamic> json) {
     return FindOrCreateResponse(
-      parentPropertyId: json['parentPropertyId'] ?? 0,
+      parentPropertyId: json['parentPropertyId']?.toString() ?? '',
       isNew: json['isNew'] ?? false,
       message: json['message'] ?? '',
     );

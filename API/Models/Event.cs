@@ -7,14 +7,14 @@ namespace InstapropAPI.Models
     public class Event
     {
         [Key]
-        public long EventId { get; set; }
+        public Guid EventId { get; set; }
 
         [Required]
-        public long UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
         [JsonIgnore]
-        public Account? User { get; set; }
+        public AccountBase? User { get; set; }
 
         [Required]
         [MaxLength(200)]
@@ -51,15 +51,15 @@ namespace InstapropAPI.Models
         public int? RecurrenceInterval { get; set; } // How often it repeats (e.g., every 2 days, every 3 weeks)
         public DateTime? RecurrenceEndDate { get; set; }
         public int? RecurrenceCount { get; set; } // How many occurrences (alternative to EndDate)
-        public long? ParentEventId { get; set; } // For recurring event instances, reference to the parent
+        public Guid? ParentEventId { get; set; } // For recurring event instances, reference to the parent
 
         // Amount field for payment-related events
         public decimal? Amount { get; set; }
 
         // Related entity IDs (optional)
-        public long? PropertyId { get; set; }
-        public long? AuctionId { get; set; }
-        public long? BidId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? BidId { get; set; }
 
         // Payment schedule metadata
         public string? ScheduleImageUrl { get; set; }

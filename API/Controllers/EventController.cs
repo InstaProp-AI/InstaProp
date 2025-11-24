@@ -36,12 +36,12 @@ namespace InstapropAPI.Controllers
         }
 
         // Helper method to get current user ID
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim != null && long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var guid))
             {
-                return userId;
+                return guid;
             }
             return null;
         }
@@ -67,7 +67,7 @@ namespace InstapropAPI.Controllers
         // GET: api/Event/5
         [HttpGet("{id}")]
         [Authorize]
-        public async Task<ActionResult<EventDto>> GetEvent(long id)
+        public async Task<ActionResult<EventDto>> GetEvent(Guid id)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -217,7 +217,7 @@ namespace InstapropAPI.Controllers
 
             if (eventDto.Type == EventType.Installment && eventDto.PropertyId.HasValue)
             {
-                await SyncInstallmentSummaryAsync(eventDto.PropertyId.Value);
+                await SyncInstallmentSummaryAsync(eventDto.PropertyId!.Value);
             }
 
             return CreatedAtAction("GetEvent", new { id = eventEntity.EventId }, EventDto.FromEvent(eventEntity));
@@ -226,7 +226,7 @@ namespace InstapropAPI.Controllers
         // PUT: api/Event/5
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> PutEvent(long id, EventUpdateDto eventDto)
+        public async Task<IActionResult> PutEvent(Guid id, EventUpdateDto eventDto)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -267,7 +267,7 @@ namespace InstapropAPI.Controllers
             if (eventEntity.PropertyId.HasValue &&
                 (wasInstallment || eventDto.Type == EventType.Installment))
             {
-                await SyncInstallmentSummaryAsync(eventEntity.PropertyId.Value);
+                await SyncInstallmentSummaryAsync(eventEntity.PropertyId!.Value);
             }
 
             return NoContent();
@@ -276,7 +276,7 @@ namespace InstapropAPI.Controllers
         // PUT: api/Event/5/complete
         [HttpPut("{id}/complete")]
         [Authorize]
-        public async Task<IActionResult> CompleteEvent(long id)
+        public async Task<IActionResult> CompleteEvent(Guid id)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -295,7 +295,7 @@ namespace InstapropAPI.Controllers
 
             if (eventEntity.PropertyId.HasValue && eventEntity.Type == EventType.Installment)
             {
-                await SyncInstallmentSummaryAsync(eventEntity.PropertyId.Value);
+                await SyncInstallmentSummaryAsync(eventEntity.PropertyId!.Value);
             }
 
             return NoContent();
@@ -304,7 +304,7 @@ namespace InstapropAPI.Controllers
         // DELETE: api/Event/5
         [HttpDelete("{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteEvent(long id)
+        public async Task<IActionResult> DeleteEvent(Guid id)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -333,7 +333,7 @@ namespace InstapropAPI.Controllers
         // GET: api/Event/by-property/{propertyId}
         [HttpGet("by-property/{propertyId}")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<EventDto>>> GetEventsByProperty(long propertyId)
+        public async Task<ActionResult<IEnumerable<EventDto>>> GetEventsByProperty(Guid propertyId)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -498,7 +498,7 @@ namespace InstapropAPI.Controllers
         // POST: api/Event/scan-payment-schedule
         [HttpPost("scan-payment-schedule")]
         [Authorize]
-        public async Task<ActionResult<PaymentScheduleScanResult>> ScanPaymentSchedule(IFormFile image, [FromForm] long propertyId, [FromForm] int? reminderMinutes, [FromForm] decimal? buyingPrice)
+        public async Task<ActionResult<PaymentScheduleScanResult>> ScanPaymentSchedule(IFormFile image, [FromForm] Guid propertyId, [FromForm] int? reminderMinutes, [FromForm] decimal? buyingPrice)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -677,24 +677,24 @@ namespace InstapropAPI.Controllers
             }
         }
 
-        private bool EventExists(long id)
+        private bool EventExists(Guid id)
         {
             return _context.Events.Any(e => e.EventId == id);
         }
 
-        private async Task SyncInstallmentSummaryAsync(long propertyIdLong)
+        private async Task SyncInstallmentSummaryAsync(Guid propertyId)
         {
-            if (propertyIdLong <= 0) return;
+            if (propertyId == Guid.Empty) return;
 
             var property = await _context.ChildProperties
                 .Include(p => p.InstallmentSummary)
-                .FirstOrDefaultAsync(p => p.PropertyId == propertyIdLong);
+                .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
             if (property == null)
                 return;
 
             var installmentEvents = await _context.Events
-                .Where(e => e.PropertyId == propertyIdLong && e.Type == EventType.Installment)
+                .Where(e => e.PropertyId == propertyId && e.Type == EventType.Installment)
                 .ToListAsync();
 
             if (property.InstallmentSummary == null && installmentEvents.Count == 0)
@@ -748,7 +748,7 @@ namespace InstapropAPI.Controllers
             }
 
             await _installmentSummaryService.UpsertSummaryAsync(
-                (int)propertyIdLong,
+                propertyId,
                 contractedPrice,
                 totalPaid,
                 downPaymentPercent,
@@ -757,7 +757,7 @@ namespace InstapropAPI.Controllers
                 existingSummary?.IsFullyPaid);
         }
 
-        private List<Event> GenerateRecurringEvents(Event parentEvent, EventCreateDto dto, long userId)
+        private List<Event> GenerateRecurringEvents(Event parentEvent, EventCreateDto dto, Guid userId)
         {
             var events = new List<Event>();
             
@@ -848,7 +848,7 @@ namespace InstapropAPI.Controllers
     // DTOs
     public class EventDto
     {
-        public long EventId { get; set; }
+        public Guid EventId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public DateTime EventDate { get; set; }
@@ -866,11 +866,11 @@ namespace InstapropAPI.Controllers
         public int? RecurrenceInterval { get; set; }
         public DateTime? RecurrenceEndDate { get; set; }
         public int? RecurrenceCount { get; set; }
-        public long? ParentEventId { get; set; }
+        public Guid? ParentEventId { get; set; }
         public decimal? Amount { get; set; }
-        public long? PropertyId { get; set; }
-        public long? AuctionId { get; set; }
-        public long? BidId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? BidId { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? ScheduleImageUrl { get; set; }
         public string? ScheduleGroupId { get; set; }
@@ -929,9 +929,9 @@ namespace InstapropAPI.Controllers
         public DateTime? RecurrenceEndDate { get; set; }
         public int? RecurrenceCount { get; set; }
         public decimal? Amount { get; set; }
-        public long? PropertyId { get; set; }
-        public long? AuctionId { get; set; }
-        public long? BidId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? BidId { get; set; }
         public string? ScheduleImageUrl { get; set; }
         public string? ScheduleGroupId { get; set; }
         public decimal? ScheduleBuyingPrice { get; set; }

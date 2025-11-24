@@ -11,7 +11,7 @@ import '../widgets/loading_button.dart';
 import 'properties_management_page.dart';
 
 class PropertyDocsUploadPage extends StatefulWidget {
-  final int propertyId;
+  final String propertyId;
   final String propertyName;
 
   const PropertyDocsUploadPage({

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/feed_item.dart';
 import '../models/feed_notification.dart';
-import '../models/community_post.dart';
-import '../models/community.dart';
+// Community models removed
 import '../models/news_article.dart';
 import '../models/auction.dart';
 import '../models/project_model.dart';
@@ -11,9 +10,9 @@ import '../models/deal_highlight.dart';
 import '../models/project_story.dart';
 import '../models/investor_milestone.dart';
 import '../services/feed_service.dart';
-import '../services/community_post_service.dart';
+// CommunityPostService removed
 import '../widgets/feed_notification_card.dart';
-import '../widgets/feed_community_card.dart';
+// FeedCommunityCard removed
 import '../widgets/feed_news_card.dart';
 import '../widgets/feed_auction_card.dart';
 import '../widgets/feed_project_card.dart';
@@ -22,17 +21,16 @@ import '../widgets/feed_member_card.dart';
 import '../widgets/deal_highlight_card.dart';
 import '../widgets/project_story_card.dart';
 import '../widgets/investor_milestone_card.dart';
-import '../widgets/post_card.dart';
+// PostCard removed (community feature)
 import '../widgets/feed_live_stream_card.dart';
 import '../widgets/feed_valuation_prompt_card.dart';
 import '../widgets/feed_payment_reminder_card.dart';
-import '../widgets/feed_post_composer.dart';
+// FeedPostComposer removed (community feature)
 import '../theme/app_colors.dart';
 import '../core/router/app_router.dart';
-import 'post_details_page.dart';
+// PostDetailsPage removed (community feature)
 import 'auction_details_page.dart';
-import 'community_details_page.dart';
-import 'community_list_page.dart';
+// Community pages removed
 import 'property_details_page.dart';
 import 'chat_list_page.dart';
 import 'project_details_page.dart';
@@ -263,7 +261,7 @@ class _ExplorePageState extends State<ExplorePage> {
       SliverToBoxAdapter(
         child: _buildSectionHeader(
           'Investor Spotlight',
-          subtitle: 'Celebrating portfolio wins across the community',
+          subtitle: 'Celebrating portfolio wins',
         ),
       ),
       SliverPadding(
@@ -626,18 +624,6 @@ class _ExplorePageState extends State<ExplorePage> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.groups_2_outlined),
-            tooltip: 'Community',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CommunityListPage(),
-                ),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Chats',
             onPressed: () {
@@ -693,14 +679,8 @@ class _ExplorePageState extends State<ExplorePage> {
 
     slivers.add(
       SliverToBoxAdapter(
-        child: FeedPostComposer(
-          onPostCreated: () {
-            _feedItems.clear();
-            _loadedIds.clear();
-            _currentPage = 1;
-            _loadInitialFeed();
-          },
-        ),
+        // FeedPostComposer removed (community feature)
+        child: const SizedBox.shrink(),
       ),
     );
 
@@ -805,10 +785,6 @@ class _ExplorePageState extends State<ExplorePage> {
     try {
       late Widget card;
       switch (item.type) {
-        case FeedItemType.post:
-          card = _buildPostItem(item.data as CommunityPost);
-          break;
-
         case FeedItemType.notification:
           final notif = item.data as FeedNotification;
           card = FeedNotificationCard(
@@ -817,21 +793,7 @@ class _ExplorePageState extends State<ExplorePage> {
           );
           break;
 
-        case FeedItemType.community:
-          final community = item.data as Community;
-          card = FeedCommunityCard(
-            community: community,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      CommunityDetailsPage(communityId: community.communityId),
-                ),
-              );
-            },
-          );
-          break;
+        // Community items removed
 
         case FeedItemType.news:
           final article = item.data as NewsArticle;
@@ -998,47 +960,7 @@ class _ExplorePageState extends State<ExplorePage> {
     }
   }
 
-  Widget _buildPostItem(CommunityPost post) {
-    return PostCard(
-      post: post,
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PostDetailsPage(postId: post.postId),
-          ),
-        );
-      },
-      onLike: () => _toggleLike(post.postId),
-      onComment: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PostDetailsPage(postId: post.postId),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _toggleLike(int postId) async {
-    final response = await CommunityPostService.toggleLike(postId);
-    if (response.success && mounted) {
-      setState(() {
-        for (var item in _feedItems) {
-          if (item.type == FeedItemType.post) {
-            final post = item.data as CommunityPost;
-            if (post.postId == postId) {
-              final wasLiked = post.isLiked;
-              post.isLiked = !wasLiked;
-              post.likeCount += post.isLiked ? 1 : -1;
-              break;
-            }
-          }
-        }
-      });
-    }
-  }
+  // Post-related methods removed (community feature)
 
   void _handleNotificationAction(FeedNotification notification) {
     final metadata = notification.metadata;
@@ -1051,8 +973,8 @@ class _ExplorePageState extends State<ExplorePage> {
         MaterialPageRoute(
           builder: (context) => AuctionDetailsPage(
             auction: Auction(
-              auctionId: metadata!['auctionId'] as int,
-              propertyId: 0,
+              auctionId: metadata!['auctionId'].toString(),
+              propertyId: metadata!['propertyId']?.toString() ?? '',
               startPrice: 0,
               currentPrice: 0,
               startAt: DateTime.now(),

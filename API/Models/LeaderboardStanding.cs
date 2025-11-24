@@ -14,18 +14,18 @@ namespace InstapropAPI.Models
     public class LeaderboardStanding
     {
         [Key]
-        public long StandingId { get; set; }
+        public Guid StandingId { get; set; }
 
-        public long? SnapshotId { get; set; }
+        public Guid? SnapshotId { get; set; }
 
         [ForeignKey(nameof(SnapshotId))]
         public WeeklyLeaderboardSnapshot? Snapshot { get; set; }
 
         [Required]
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
 
         [ForeignKey(nameof(AccountId))]
-        public Account Account { get; set; } = null!;
+        public AccountBase Account { get; set; } = null!;
 
         [Required]
         public LeaderboardPeriod Period { get; set; } = LeaderboardPeriod.ThisWeek;

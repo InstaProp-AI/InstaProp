@@ -16,7 +16,7 @@ namespace InstapropAPI.Services
         }
 
         // Create notification when someone places a bid on your auction
-        public async Task NotifyAuctionOwnerOfBid(long auctionId, long bidderId, decimal bidAmount)
+        public async Task NotifyAuctionOwnerOfBid(Guid auctionId, Guid bidderId, decimal bidAmount)
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
@@ -27,9 +27,11 @@ namespace InstapropAPI.Services
             var bidder = await _context.Accounts.FindAsync(bidderId);
             if (bidder == null) return;
 
+            if (auction.Property.OwnerId == null) return;
+            
             var notification = new Notification
             {
-                UserId = auction.Property.OwnerId,
+                UserId = auction.Property.OwnerId.Value,
                 Title = "New Bid Placed",
                 Message = $"{bidder.FirstName} {bidder.LastName} placed a bid of ${bidAmount:N2} on your property '{auction.Property.Name}'.",
                 Type = NotificationType.BidPlaced,
@@ -41,11 +43,12 @@ namespace InstapropAPI.Services
             await _context.SaveChangesAsync();
 
             // Update Firestore for real-time sync
-            await _firestoreService.UpdateUserNotificationAsync((long)auction.Property.OwnerId, notification);
+            if (auction.Property.OwnerId.HasValue)
+                await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId.Value, notification);
         }
 
         // Create notification when someone places a higher bid (outbid)
-        public async Task NotifyOutbidBidders(long auctionId, long newBidderId, decimal newBidAmount)
+        public async Task NotifyOutbidBidders(Guid auctionId, Guid newBidderId, decimal newBidAmount)
         {
             // Get all unique bidders for this auction except the new bidder
             var previousBidders = await _context.Bids
@@ -60,7 +63,7 @@ namespace InstapropAPI.Services
 
             if (auction?.Property == null) return;
 
-            var notificationsToSync = new List<(long userId, Notification notification)>();
+            var notificationsToSync = new List<(Guid userId, Notification notification)>();
 
             // Load all bids for this auction
             var allAuctionBids = await _context.Bids
@@ -105,7 +108,7 @@ namespace InstapropAPI.Services
         }
 
         // Create notification when a new auction starts
-        public async Task NotifyNewAuction(long auctionId)
+        public async Task NotifyNewAuction(Guid auctionId)
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
@@ -115,10 +118,10 @@ namespace InstapropAPI.Services
 
             // Get all users except the auction owner
             var users = await _context.Accounts
-                .Where(a => a.AccountId != auction.Property.OwnerId && a.RoleId == Role.USER_ROLE_ID)
+                .Where(a => auction.Property.OwnerId == null || a.AccountId != auction.Property.OwnerId.Value && a.RoleId == Role.USER_ROLE_ID)
                 .ToListAsync();
 
-            var notificationsToSync = new List<(long userId, Notification notification)>();
+            var notificationsToSync = new List<(Guid userId, Notification notification)>();
 
             foreach (var user in users)
             {
@@ -148,7 +151,7 @@ namespace InstapropAPI.Services
         }
 
         // Create notification when auction is approved
-        public async Task NotifyAuctionApproved(long auctionId)
+        public async Task NotifyAuctionApproved(Guid auctionId)
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
@@ -158,7 +161,7 @@ namespace InstapropAPI.Services
 
             var notification = new Notification
             {
-                UserId = auction.Property.OwnerId,
+                UserId = auction.Property.OwnerId ?? Guid.Empty,
                 Title = "Auction Approved",
                 Message = $"Your auction request for '{auction.Property.Name}' has been approved and is now active!",
                 Type = NotificationType.AuctionApproved,
@@ -171,11 +174,12 @@ namespace InstapropAPI.Services
             await _context.SaveChangesAsync();
 
             // Update Firestore for real-time sync
-            await _firestoreService.UpdateUserNotificationAsync((long)auction.Property.OwnerId, notification);
+            if (auction.Property.OwnerId.HasValue)
+                await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId.Value, notification);
         }
 
         // Create notification when auction is rejected
-        public async Task NotifyAuctionRejected(long auctionId)
+        public async Task NotifyAuctionRejected(Guid auctionId)
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
@@ -185,7 +189,7 @@ namespace InstapropAPI.Services
 
             var notification = new Notification
             {
-                UserId = auction.Property.OwnerId,
+                UserId = auction.Property.OwnerId ?? Guid.Empty,
                 Title = "Auction Rejected",
                 Message = $"Your auction request for '{auction.Property.Name}' has been rejected. Please contact support for more information.",
                 Type = NotificationType.AuctionRejected,
@@ -198,11 +202,12 @@ namespace InstapropAPI.Services
             await _context.SaveChangesAsync();
 
             // Update Firestore for real-time sync
-            await _firestoreService.UpdateUserNotificationAsync((long)auction.Property.OwnerId, notification);
+            if (auction.Property.OwnerId.HasValue)
+                await _firestoreService.UpdateUserNotificationAsync(auction.Property.OwnerId.Value, notification);
         }
 
         // Create notification for upcoming events (reminder)
-        public async Task NotifyEventReminder(long eventId)
+        public async Task NotifyEventReminder(Guid eventId)
         {
             var eventItem = await _context.Events.FindAsync(eventId);
             if (eventItem == null) return;
@@ -225,7 +230,7 @@ namespace InstapropAPI.Services
         }
 
         // Create notification for new public events
-        public async Task NotifyNewPublicEvent(long eventId)
+        public async Task NotifyNewPublicEvent(Guid eventId)
         {
             var eventItem = await _context.Events.FindAsync(eventId);
             if (eventItem == null || !eventItem.IsPublic) return;
@@ -235,7 +240,7 @@ namespace InstapropAPI.Services
                 .Where(a => a.AccountId != eventItem.UserId && a.RoleId == Role.USER_ROLE_ID)
                 .ToListAsync();
 
-            var notificationsToSync = new List<(long userId, Notification notification)>();
+            var notificationsToSync = new List<(Guid userId, Notification notification)>();
 
             foreach (var user in users)
             {
@@ -264,7 +269,7 @@ namespace InstapropAPI.Services
         }
 
         // Get all notifications for a user
-        public async Task<List<Notification>> GetUserNotifications(long userId, bool unreadOnly = false)
+        public async Task<List<Notification>> GetUserNotifications(Guid userId, bool unreadOnly = false)
         {
             var query = _context.Notifications.Where(n => n.UserId == userId);
 
@@ -279,7 +284,7 @@ namespace InstapropAPI.Services
         }
 
         // Mark notification as read
-        public async Task<bool> MarkAsRead(long notificationId, long userId)
+        public async Task<bool> MarkAsRead(Guid notificationId, Guid userId)
         {
             var notification = await _context.Notifications
                 .FirstOrDefaultAsync(n => n.NotificationId == notificationId && n.UserId == userId);
@@ -294,7 +299,7 @@ namespace InstapropAPI.Services
         }
 
         // Mark all notifications as read for a user
-        public async Task MarkAllAsRead(long userId)
+        public async Task MarkAllAsRead(Guid userId)
         {
             var notifications = await _context.Notifications
                 .Where(n => n.UserId == userId && !n.IsRead)
@@ -310,7 +315,7 @@ namespace InstapropAPI.Services
         }
 
         // Delete notification
-        public async Task<bool> DeleteNotification(long notificationId, long userId)
+        public async Task<bool> DeleteNotification(Guid notificationId, Guid userId)
         {
             var notification = await _context.Notifications
                 .FirstOrDefaultAsync(n => n.NotificationId == notificationId && n.UserId == userId);
@@ -324,7 +329,7 @@ namespace InstapropAPI.Services
         }
 
         // Get unread count
-        public async Task<int> GetUnreadCount(long userId)
+        public async Task<int> GetUnreadCount(Guid userId)
         {
             return await _context.Notifications
                 .CountAsync(n => n.UserId == userId && !n.IsRead);

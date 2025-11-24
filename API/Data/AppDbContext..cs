@@ -17,7 +17,11 @@ namespace InstapropAPI.Data
         }
 
         public DbSet<Role> Roles { get; set; }
-        public DbSet<Account> Accounts { get; set; }
+        public DbSet<AccountBase> Accounts { get; set; } // Query all account types through base class
+        public DbSet<UserAccount> UserAccounts { get; set; }
+        public DbSet<DeveloperAccount> DeveloperAccounts { get; set; }
+        public DbSet<AdminAccount> AdminAccounts { get; set; }
+        public DbSet<SalesAccount> SalesAccounts { get; set; }
         public DbSet<SalesTeam> SalesTeams { get; set; }
         // Removed: public DbSet<Property> Properties { get; set; } - Now using ChildProperty
         public DbSet<PropertyDoc> PropertyDocs { get; set; }
@@ -64,22 +68,7 @@ namespace InstapropAPI.Data
 
         public DbSet<Faq> Faqs { get; set; }
 
-        // Community System
-        public DbSet<Community> Communities { get; set; }
-        public DbSet<CommunityMember> CommunityMembers { get; set; }
-        public DbSet<CommunityPost> CommunityPosts { get; set; }
-        public DbSet<PostComment> PostComments { get; set; }
-        public DbSet<PostLike> PostLikes { get; set; }
-        public DbSet<CommentLike> CommentLikes { get; set; }
-        public DbSet<PostCategory> PostCategories { get; set; }
         public DbSet<InstallmentSummary> InstallmentSummaries { get; set; }
-        public DbSet<Poll> Polls { get; set; }
-        public DbSet<PollVote> PollVotes { get; set; }
-        
-        // Enhanced Community Features
-        public DbSet<PostReaction> PostReactions { get; set; }
-        public DbSet<CommentReaction> CommentReactions { get; set; }
-        public DbSet<PostBookmark> PostBookmarks { get; set; }
         public DbSet<UserAchievement> UserAchievements { get; set; }
         
         // Live Streaming
@@ -95,30 +84,16 @@ namespace InstapropAPI.Data
             modelBuilder.Entity<Role>(entity =>
             {
                 entity.HasKey(e => e.RoleId);
-                entity.Property(e => e.RoleId).ValueGeneratedNever(); // IDs are manually set (hardcoded constants)
+                entity.Property(e => e.RoleId).ValueGeneratedNever(); // IDs are manually set (UUID constants)
                 entity.Property(e => e.RoleName).HasMaxLength(50).IsRequired();
                 entity.Property(e => e.Description).HasMaxLength(500);
                 entity.HasIndex(e => e.RoleName).IsUnique();
             });
 
-            // Configure SalesTeam
-            modelBuilder.Entity<SalesTeam>(entity =>
-            {
-                entity.HasKey(e => e.TeamId);
-                entity.Property(e => e.TeamId).ValueGeneratedOnAdd();
-                entity.Property(e => e.TeamName).HasMaxLength(200).IsRequired();
-                entity.HasOne(e => e.Developer)
-                    .WithMany()
-                    .HasForeignKey(e => e.DeveloperId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasMany(e => e.SalesMembers)
-                    .WithOne(a => a.SalesTeam)
-                    .HasForeignKey(a => a.SalesTeamId)
-                    .OnDelete(DeleteBehavior.SetNull);
-            });
-
-            // Configure Account
-            modelBuilder.Entity<Account>(entity =>
+            // Configure Account Types using Table-Per-Hierarchy (TPH)
+            // All account types share the same table with a discriminator column
+            // AccountBase is the abstract base class that implements IAccount
+            modelBuilder.Entity<AccountBase>(entity =>
             {
                 entity.HasKey(e => e.AccountId);
                 entity.Property(e => e.AccountId).ValueGeneratedOnAdd();
@@ -127,24 +102,47 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.PhoneNumber).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
                 entity.Property(e => e.RoleId).IsRequired();
-                entity.Property(e => e.HashedPassword).HasMaxLength(255); // Nullable for OAuth users
+                entity.Property(e => e.HashedPassword).HasMaxLength(255);
                 
-                // CRITICAL: Explicitly ignore Type property if it exists in model (shouldn't, but safety check)
-                // This prevents EF Core from trying to map a Type column that doesn't exist
-                entity.Ignore("Type");
+                entity.HasDiscriminator<string>("AccountType")
+                    .HasValue<UserAccount>("User")
+                    .HasValue<DeveloperAccount>("Developer")
+                    .HasValue<AdminAccount>("Admin")
+                    .HasValue<SalesAccount>("Sales");
                 
-                // Configure Role relationship
                 entity.HasOne(e => e.Role)
-                    .WithMany(r => r.Accounts)
+                    .WithMany()
                     .HasForeignKey(e => e.RoleId)
-                    .OnDelete(DeleteBehavior.Restrict); // Prevent deletion of roles that are in use
-                
-                // Configure Sales Assignment relationship (self-referencing)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure UserAccount (has GoogleId, AuthProvider)
+            modelBuilder.Entity<UserAccount>(entity =>
+            {
+                entity.Property(e => e.GoogleId).HasMaxLength(255);
+                entity.Property(e => e.AuthProvider).HasMaxLength(50);
+            });
+
+            // Configure DeveloperAccount (no additional properties)
+            // Uses base class properties only
+
+            // Configure AdminAccount (no additional properties)
+            // Uses base class properties only
+
+            // Configure SalesAccount (has SalesTeamId, AssignedDeveloperId)
+            modelBuilder.Entity<SalesAccount>(entity =>
+            {
                 entity.HasOne(e => e.AssignedDeveloper)
                     .WithMany()
                     .HasForeignKey(e => e.AssignedDeveloperId)
-                    .OnDelete(DeleteBehavior.Restrict); // Prevent deletion of developer if sales are assigned
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.SalesTeam)
+                    .WithMany(t => t.SalesMembers)
+                    .HasForeignKey(e => e.SalesTeamId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
+
 
             var propertyTypeConverter = new ValueConverter<PropertyType, string>(
                 type => PropertyTypeHelper.ToDisplayName(type),
@@ -614,207 +612,19 @@ namespace InstapropAPI.Data
 
                 entity.HasIndex(e => e.DisplayOrder);
 
+                // FAQ seed data with UUIDs
                 entity.HasData(
-                    new Faq { FaqId = 1, Question = "How do I list a new property?", Answer = "Go to the Add Property screen, fill out the mandatory fields, upload images, and submit for review.", DisplayOrder = 1, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 2, Question = "Can I edit my property after submission?", Answer = "Yes, open the property from your dashboard and tap Edit. Changes trigger a short review cycle.", DisplayOrder = 2, CreatedAt = new DateTime(2025, 1, 1, 0, 1, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 3, Question = "What documents are required?", Answer = "At minimum you need proof of ownership and unit floor plans. Optional docs speed up verification.", DisplayOrder = 3, CreatedAt = new DateTime(2025, 1, 1, 0, 2, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 4, Question = "How do auctions work?", Answer = "Approved sellers can request an auction. Once approved, buyers place bids until the auction end date.", DisplayOrder = 4, CreatedAt = new DateTime(2025, 1, 1, 0, 3, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 5, Question = "How is property pricing estimated?", Answer = "Pricing leverages market comps, developer data, and our AI valuation engine.", DisplayOrder = 5, CreatedAt = new DateTime(2025, 1, 1, 0, 4, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 6, Question = "Can I save favourite properties?", Answer = "Yes, tap the bookmark icon on any property to store it in your Saved list.", DisplayOrder = 6, CreatedAt = new DateTime(2025, 1, 1, 0, 5, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 7, Question = "How do I contact a developer?", Answer = "Use the Contact Developer button on the project or property page to open a chat.", DisplayOrder = 7, CreatedAt = new DateTime(2025, 1, 1, 0, 6, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 8, Question = "What is the AI Broker?", Answer = "Our AI Broker suggests opportunities and answers investment questions in real time.", DisplayOrder = 8, CreatedAt = new DateTime(2025, 1, 1, 0, 7, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 9, Question = "How do I track project updates?", Answer = "Follow projects to receive push notifications and see updates in your feed.", DisplayOrder = 9, CreatedAt = new DateTime(2025, 1, 1, 0, 8, 0, DateTimeKind.Utc) },
-                    new Faq { FaqId = 10, Question = "How can I reset my password?", Answer = "Tap Forgot Password on the login screen and follow the emailed instructions.", DisplayOrder = 10, CreatedAt = new DateTime(2025, 1, 1, 0, 9, 0, DateTimeKind.Utc) }
+                    new Faq { FaqId = Guid.Parse("11111111-1111-1111-1111-111111111111"), Question = "How do I list a new property?", Answer = "Go to the Add Property screen, fill out the mandatory fields, upload images, and submit for review.", DisplayOrder = 1, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("22222222-2222-2222-2222-222222222222"), Question = "Can I edit my property after submission?", Answer = "Yes, open the property from your dashboard and tap Edit. Changes trigger a short review cycle.", DisplayOrder = 2, CreatedAt = new DateTime(2025, 1, 1, 0, 1, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("33333333-3333-3333-3333-333333333333"), Question = "What documents are required?", Answer = "At minimum you need proof of ownership and unit floor plans. Optional docs speed up verification.", DisplayOrder = 3, CreatedAt = new DateTime(2025, 1, 1, 0, 2, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("44444444-4444-4444-4444-444444444444"), Question = "How do auctions work?", Answer = "Approved sellers can request an auction. Once approved, buyers place bids until the auction end date.", DisplayOrder = 4, CreatedAt = new DateTime(2025, 1, 1, 0, 3, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("55555555-5555-5555-5555-555555555555"), Question = "How is property pricing estimated?", Answer = "Pricing leverages market comps, developer data, and our AI valuation engine.", DisplayOrder = 5, CreatedAt = new DateTime(2025, 1, 1, 0, 4, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("66666666-6666-6666-6666-666666666666"), Question = "Can I save favourite properties?", Answer = "Yes, tap the bookmark icon on any property to store it in your Saved list.", DisplayOrder = 6, CreatedAt = new DateTime(2025, 1, 1, 0, 5, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("77777777-7777-7777-7777-777777777777"), Question = "How do I contact a developer?", Answer = "Use the Contact Developer button on the project or property page to open a chat.", DisplayOrder = 7, CreatedAt = new DateTime(2025, 1, 1, 0, 6, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("88888888-8888-8888-8888-888888888888"), Question = "What is the AI Broker?", Answer = "Our AI Broker suggests opportunities and answers investment questions in real time.", DisplayOrder = 8, CreatedAt = new DateTime(2025, 1, 1, 0, 7, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("99999999-9999-9999-9999-999999999999"), Question = "How do I track project updates?", Answer = "Follow projects to receive push notifications and see updates in your feed.", DisplayOrder = 9, CreatedAt = new DateTime(2025, 1, 1, 0, 8, 0, DateTimeKind.Utc) },
+                    new Faq { FaqId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), Question = "How can I reset my password?", Answer = "Tap Forgot Password on the login screen and follow the emailed instructions.", DisplayOrder = 10, CreatedAt = new DateTime(2025, 1, 1, 0, 9, 0, DateTimeKind.Utc) }
                 );
-            });
-
-            // Configure Community
-            modelBuilder.Entity<Community>(entity =>
-            {
-                entity.HasKey(e => e.CommunityId);
-                entity.Property(e => e.CommunityId).ValueGeneratedOnAdd();
-                entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-                entity.Property(e => e.ScopeType).HasConversion<int>();
-                entity.Property(e => e.AccessType).HasConversion<int>();
-                entity.HasOne(e => e.CreatedBy)
-                    .WithMany()
-                    .HasForeignKey(e => e.CreatedById)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            // Configure CommunityMember
-            modelBuilder.Entity<CommunityMember>(entity =>
-            {
-                entity.HasKey(e => e.MemberId);
-                entity.Property(e => e.MemberId).ValueGeneratedOnAdd();
-                entity.Property(e => e.Role).HasConversion<int>();
-                entity.HasOne(e => e.Community)
-                    .WithMany(c => c.Members)
-                    .HasForeignKey(e => e.CommunityId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Account)
-                    .WithMany()
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.CommunityId, e.AccountId }).IsUnique();
-            });
-
-            // Configure CommunityPost
-            modelBuilder.Entity<CommunityPost>(entity =>
-            {
-                entity.HasKey(e => e.PostId);
-                entity.Property(e => e.PostId).ValueGeneratedOnAdd();
-                entity.Property(e => e.ImageUrl).HasMaxLength(500);
-                entity.Property(e => e.PostType).HasConversion<int>();
-                entity.HasOne(e => e.Community)
-                    .WithMany(c => c.Posts)
-                    .HasForeignKey(e => e.CommunityId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Author)
-                    .WithMany()
-                    .HasForeignKey(e => e.AuthorId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            // Configure PostComment
-            modelBuilder.Entity<PostComment>(entity =>
-            {
-                entity.HasKey(e => e.CommentId);
-                entity.Property(e => e.CommentId).ValueGeneratedOnAdd();
-                entity.HasOne(e => e.Post)
-                    .WithMany(p => p.Comments)
-                    .HasForeignKey(e => e.PostId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Author)
-                    .WithMany()
-                    .HasForeignKey(e => e.AuthorId)
-                    .OnDelete(DeleteBehavior.Restrict);
-                entity.HasOne(e => e.ParentComment)
-                    .WithMany(p => p.Replies)
-                    .HasForeignKey(e => e.ParentCommentId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            // Configure PostLike
-            modelBuilder.Entity<PostLike>(entity =>
-            {
-                entity.HasKey(e => e.LikeId);
-                entity.Property(e => e.LikeId).ValueGeneratedOnAdd();
-                entity.HasOne(e => e.Post)
-                    .WithMany(p => p.Likes)
-                    .HasForeignKey(e => e.PostId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Account)
-                    .WithMany()
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.PostId, e.AccountId }).IsUnique();
-            });
-
-            // Configure CommentLike
-            modelBuilder.Entity<CommentLike>(entity =>
-            {
-                entity.HasKey(e => e.LikeId);
-                entity.Property(e => e.LikeId).ValueGeneratedOnAdd();
-                entity.HasOne(e => e.Comment)
-                    .WithMany(c => c.Likes)
-                    .HasForeignKey(e => e.CommentId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Account)
-                    .WithMany()
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.CommentId, e.AccountId }).IsUnique();
-            });
-
-            // Configure PostCategory
-            modelBuilder.Entity<PostCategory>(entity =>
-            {
-                entity.HasKey(e => e.CategoryId);
-                entity.Property(e => e.CategoryId).ValueGeneratedOnAdd();
-                entity.Property(e => e.CategoryName).HasMaxLength(50).IsRequired();
-                entity.HasOne(e => e.Post)
-                    .WithMany(p => p.Categories)
-                    .HasForeignKey(e => e.PostId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // Configure Poll
-            modelBuilder.Entity<Poll>(entity =>
-            {
-                entity.HasKey(e => e.PollId);
-                entity.Property(e => e.PollId).ValueGeneratedOnAdd();
-                entity.HasOne(e => e.Post)
-                    .WithOne(p => p.Poll)
-                    .HasForeignKey<Poll>(e => e.PostId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // Configure PollVote
-            modelBuilder.Entity<PollVote>(entity =>
-            {
-                entity.HasKey(e => e.VoteId);
-                entity.Property(e => e.VoteId).ValueGeneratedOnAdd();
-                entity.HasOne(e => e.Poll)
-                    .WithMany(p => p.Votes)
-                    .HasForeignKey(e => e.PollId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Account)
-                    .WithMany()
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                // Allow multiple selections by same user across options
-                entity.HasIndex(e => new { e.PollId, e.AccountId, e.OptionIndex }).IsUnique();
-            });
-
-            // Configure PostReaction
-            modelBuilder.Entity<PostReaction>(entity =>
-            {
-                entity.HasKey(e => e.ReactionId);
-                entity.Property(e => e.ReactionId).ValueGeneratedOnAdd();
-                entity.Property(e => e.ReactionType).HasConversion<int>();
-                entity.HasOne(e => e.Post)
-                    .WithMany()
-                    .HasForeignKey(e => e.PostId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Account)
-                    .WithMany()
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.PostId, e.AccountId, e.ReactionType }).IsUnique();
-            });
-
-            // Configure CommentReaction
-            modelBuilder.Entity<CommentReaction>(entity =>
-            {
-                entity.HasKey(e => e.ReactionId);
-                entity.Property(e => e.ReactionId).ValueGeneratedOnAdd();
-                entity.Property(e => e.ReactionType).HasConversion<int>();
-                entity.HasOne(e => e.Comment)
-                    .WithMany()
-                    .HasForeignKey(e => e.CommentId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Account)
-                    .WithMany()
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.CommentId, e.AccountId, e.ReactionType }).IsUnique();
-            });
-
-            // Configure PostBookmark
-            modelBuilder.Entity<PostBookmark>(entity =>
-            {
-                entity.HasKey(e => e.BookmarkId);
-                entity.Property(e => e.BookmarkId).ValueGeneratedOnAdd();
-                entity.HasOne(e => e.Post)
-                    .WithMany(p => p.Bookmarks)
-                    .HasForeignKey(e => e.PostId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Account)
-                    .WithMany(a => a.BookmarkedPosts)
-                    .HasForeignKey(e => e.AccountId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasIndex(e => new { e.PostId, e.AccountId }).IsUnique();
             });
 
             // Configure UserAchievement

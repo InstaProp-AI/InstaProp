@@ -12,7 +12,7 @@ namespace InstapropAPI.Models
 
     public class LeaderboardEntryDto
     {
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
         public string DisplayName { get; set; } = string.Empty;
         public string? AvatarInitials { get; set; }
         public int Rank { get; set; }

@@ -29,23 +29,30 @@ namespace InstapropAPI.Services
             {
                 new Role
                 {
-                    RoleId = Role.USER_ROLE_ID, // 8923748923748923
+                    RoleId = Role.USER_ROLE_ID,
                     RoleName = "User",
                     Description = "Regular user account",
                     CreatedAt = DateTime.UtcNow
                 },
                 new Role
                 {
-                    RoleId = Role.DEVELOPER_ROLE_ID, // 7823647823647823
+                    RoleId = Role.DEVELOPER_ROLE_ID,
                     RoleName = "Developer",
                     Description = "Developer account with project management permissions",
                     CreatedAt = DateTime.UtcNow
                 },
                 new Role
                 {
-                    RoleId = Role.ADMIN_ROLE_ID, // 9823749823749823
+                    RoleId = Role.ADMIN_ROLE_ID,
                     RoleName = "Admin",
                     Description = "Administrator account with full system access",
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Role
+                {
+                    RoleId = Role.SALES_ROLE_ID,
+                    RoleName = "Sales",
+                    Description = "Sales team account with chat and customer management permissions",
                     CreatedAt = DateTime.UtcNow
                 }
             };

@@ -14,7 +14,7 @@ class ProjectService {
   };
 
   // Get projects by developer ID
-  Future<List<ProjectModel>> getProjectsByDeveloper(int developerId) async {
+  Future<List<ProjectModel>> getProjectsByDeveloper(String developerId) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/project/by-developer/$developerId'),
@@ -81,7 +81,7 @@ class ProjectService {
   }
 
   // Get project details
-  Future<ProjectDetailsModel> getProjectDetails(int projectId) async {
+  Future<ProjectDetailsModel> getProjectDetails(String projectId) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/project/public/$projectId'),

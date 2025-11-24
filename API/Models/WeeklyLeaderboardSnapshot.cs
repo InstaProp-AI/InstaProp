@@ -11,7 +11,7 @@ namespace InstapropAPI.Models
     public class WeeklyLeaderboardSnapshot
     {
         [Key]
-        public long SnapshotId { get; set; }
+        public Guid SnapshotId { get; set; }
 
         [Required]
         public DateTime WeekStart { get; set; }
@@ -26,24 +26,24 @@ namespace InstapropAPI.Models
         /// </summary>
         public bool PayoutProcessed { get; set; } = false;
 
-        public long? WinnerAccountId { get; set; }
+        public Guid? WinnerAccountId { get; set; }
 
         [ForeignKey(nameof(WinnerAccountId))]
-        public Account? WinnerAccount { get; set; }
+        public AccountBase? WinnerAccount { get; set; }
 
         public int? WinnerPoints { get; set; }
 
-        public long? SecondPlaceAccountId { get; set; }
+        public Guid? SecondPlaceAccountId { get; set; }
 
         [ForeignKey(nameof(SecondPlaceAccountId))]
-        public Account? SecondPlaceAccount { get; set; }
+        public AccountBase? SecondPlaceAccount { get; set; }
 
         public int? SecondPlacePoints { get; set; }
 
-        public long? ThirdPlaceAccountId { get; set; }
+        public Guid? ThirdPlaceAccountId { get; set; }
 
         [ForeignKey(nameof(ThirdPlaceAccountId))]
-        public Account? ThirdPlaceAccount { get; set; }
+        public AccountBase? ThirdPlaceAccount { get; set; }
 
         public int? ThirdPlacePoints { get; set; }
 

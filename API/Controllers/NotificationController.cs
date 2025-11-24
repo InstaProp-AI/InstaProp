@@ -48,7 +48,7 @@ namespace InstapropAPI.Controllers
             return Ok(notifications);
         }
 
-        private async Task<List<NotificationDto>> GetUserNotificationsWithBulk(long? userId, bool unreadOnly)
+        private async Task<List<NotificationDto>> GetUserNotificationsWithBulk(Guid? userId, bool unreadOnly)
         {
             // Get all notifications (both individual and bulk)
             var allNotifications = await _context.Notifications
@@ -63,7 +63,7 @@ namespace InstapropAPI.Controllers
                 // Check if user should see this notification
                 bool shouldShow = false;
 
-                if (notification.UserId.HasValue && notification.UserId.Value == (userId ?? 0))
+                if (notification.UserId.HasValue && notification.UserId.Value == userId)
                 {
                     // Individual notification for this user
                     shouldShow = true;
@@ -76,7 +76,7 @@ namespace InstapropAPI.Controllers
 
                 if (shouldShow)
                 {
-                    var isRead = notification.IsReadByUser(userId ?? 0);
+                    var isRead = userId.HasValue ? notification.IsReadByUser(userId.Value) : false;
                     
                     if (unreadOnly && isRead)
                         continue;
@@ -114,7 +114,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/notification/{id}/read
         [HttpPut("{id}/read")]
-        public async Task<IActionResult> MarkAsRead(long id)
+        public async Task<IActionResult> MarkAsRead(Guid id)
         {
             var userId = GetCurrentUserId();
             if (userId == null)
@@ -164,7 +164,7 @@ namespace InstapropAPI.Controllers
 
         // DELETE: api/notification/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteNotification(long id)
+        public async Task<IActionResult> DeleteNotification(Guid id)
         {
             var userId = GetCurrentUserId();
             if (userId == null)
@@ -177,14 +177,14 @@ namespace InstapropAPI.Controllers
             return Ok(new { message = "Notification deleted" });
         }
 
-        private long? GetCurrentUserId()
+        private Guid? GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var guid))
             {
                 return null;
             }
-            return userId;
+            return guid;
         }
 
         // ========== ADMIN ENDPOINTS ==========
@@ -196,7 +196,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                IQueryable<Account> query = _context.Accounts.Where(a => a.RoleId == Role.USER_ROLE_ID);
+                IQueryable<AccountBase> query = _context.Accounts.Where(a => a.RoleId == Role.USER_ROLE_ID);
 
                 // Apply filters
                 if (!string.IsNullOrEmpty(filter))
@@ -220,7 +220,7 @@ namespace InstapropAPI.Controllers
                                 .Distinct()
                                 .ToListAsync();
                             var auctionOwnerIds = await _context.ChildProperties
-                                .Where(p => auctionPropertyIds.Contains((int)p.PropertyId))
+                                .Where(p => auctionPropertyIds.Contains(p.PropertyId))
                                 .Select(p => p.OwnerId)
                                 .Distinct()
                                 .ToListAsync();
@@ -459,14 +459,14 @@ namespace InstapropAPI.Controllers
         public string TargetType { get; set; } = string.Empty; 
         // "all_users_including_guests", "guests_only", "logged_in_users", 
         // "property_owners", "auction_owners", "bidders", "verified_users", "unverified_users", "specific"
-        public List<long>? UserIds { get; set; } // For specific users
+        public List<Guid>? UserIds { get; set; } // For specific users
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
     }
 
     public class UserSummaryDto
     {
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
@@ -477,15 +477,15 @@ namespace InstapropAPI.Controllers
 
     public class NotificationDto
     {
-        public long NotificationId { get; set; }
+        public Guid NotificationId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public int Type { get; set; }
         public bool IsRead { get; set; }
-        public long? AuctionId { get; set; }
-        public long? BidId { get; set; }
-        public long? PropertyId { get; set; }
-        public long? EventId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? BidId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? EventId { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

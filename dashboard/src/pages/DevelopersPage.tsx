@@ -155,7 +155,7 @@ const DevelopersPage: React.FC = () => {
   });
 
   const optionalFeatures: FeatureName[] = [
-    'Communities', 'News', 'Auctions', 'Leaderboard', 'Notifications', 
+    'News', 'Auctions', 'Leaderboard', 'Notifications', 
     'PriceHistory', 'FullAnalytics', 'Rewards', 'Valuation', 'Chats'
   ];
 

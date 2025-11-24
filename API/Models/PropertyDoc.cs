@@ -7,10 +7,10 @@ namespace InstapropAPI.Models
     public class PropertyDoc
     {
     [Key]
-    public long DocId { get; set; }
+    public Guid DocId { get; set; }
 
     [Required]
-    public int PropertyId { get; set; }
+    public Guid PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         public ChildProperty Property { get; set; }

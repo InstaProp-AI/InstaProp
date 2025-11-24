@@ -1,6 +1,6 @@
 class DealHighlight {
-  final int auctionId;
-  final int propertyId;
+  final String auctionId;
+  final String propertyId;
   final String propertyName;
   final String? location;
   final String? imageUrl;
@@ -26,9 +26,17 @@ class DealHighlight {
   });
 
   factory DealHighlight.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return DealHighlight(
-      auctionId: (json['auctionId'] ?? 0) as int,
-      propertyId: (json['propertyId'] ?? 0) as int,
+      auctionId: parseId(json['auctionId']),
+      propertyId: parseId(json['propertyId']),
       propertyName: (json['propertyName'] ?? '') as String,
       location: json['location'] as String?,
       imageUrl: json['imageUrl'] as String?,

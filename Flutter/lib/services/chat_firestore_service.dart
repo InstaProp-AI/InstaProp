@@ -18,7 +18,7 @@ class ChatFirestoreService {
   }
 
   // Stream messages for a specific chat (real-time)
-  Stream<List<ChatMessage>> streamChatMessages(int chatId) {
+  Stream<List<ChatMessage>> streamChatMessages(String chatId) {
     final firestore = _firestoreOrNull();
     if (firestore == null) {
       return Stream<List<ChatMessage>>.value([]);
@@ -55,7 +55,7 @@ class ChatFirestoreService {
   }
 
   // Get unread count for a specific chat
-  Stream<int> streamUnreadCount(int chatId, int currentUserId) {
+  Stream<int> streamUnreadCount(String chatId, String currentUserId) {
     final firestore = _firestoreOrNull();
     if (firestore == null) {
       return Stream<int>.value(0);
@@ -77,7 +77,7 @@ class ChatFirestoreService {
   }
 
   // Listen to chat updates (for chat list)
-  Stream<Map<String, dynamic>?> streamChatUpdates(int chatId) {
+  Stream<Map<String, dynamic>?> streamChatUpdates(String chatId) {
     final firestore = _firestoreOrNull();
     if (firestore == null) {
       return Stream<Map<String, dynamic>?>.value(null);

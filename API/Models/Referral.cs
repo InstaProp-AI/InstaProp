@@ -7,18 +7,18 @@ namespace InstapropAPI.Models
     public class Referral
     {
         [Key]
-        public long ReferralId { get; set; }
+        public Guid ReferralId { get; set; }
 
         [Required]
-        public long ReferrerId { get; set; }
+        public Guid ReferrerId { get; set; }
 
         [ForeignKey(nameof(ReferrerId))]
-        public Account Referrer { get; set; } = null!;
+        public AccountBase Referrer { get; set; } = null!;
 
-        public long? ReferredUserId { get; set; } // Null until referred user signs up
+        public Guid? ReferredUserId { get; set; } // Null until referred user signs up
 
         [ForeignKey(nameof(ReferredUserId))]
-        public Account? ReferredUser { get; set; }
+        public AccountBase? ReferredUser { get; set; }
 
         [Required]
         [MaxLength(20)]

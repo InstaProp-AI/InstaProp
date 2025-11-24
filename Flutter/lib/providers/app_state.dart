@@ -33,6 +33,7 @@ class AppState extends ChangeNotifier {
   bool get isAdmin => user?.isAdmin ?? false;
   bool get isDeveloper => user?.isDeveloper ?? false;
   bool get isUser => user?.isUser ?? false;
+  bool get isSales => user?.isSales ?? false;
   bool get canAccessAdminFeatures => user?.canAccessAdminFeatures ?? false;
 
   // Data caches
@@ -397,7 +398,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<ApiResponse<void>> deleteProperty(int propertyId) async {
+  Future<ApiResponse<void>> deleteProperty(String propertyId) async {
     try {
       final response = await PropertyService.deleteProperty(propertyId);
       if (response.success) {
@@ -431,6 +432,7 @@ class AppState extends ChangeNotifier {
     required String phoneNumber,
     required String email,
     required String password,
+    String? timeZone,
   }) async {
     final response = await _authService.signup(
       firstName: firstName,
@@ -438,6 +440,7 @@ class AppState extends ChangeNotifier {
       phoneNumber: phoneNumber,
       email: email,
       password: password,
+      timeZone: timeZone,
     );
     return response.success;
   }

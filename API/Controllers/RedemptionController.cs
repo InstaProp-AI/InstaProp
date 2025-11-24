@@ -100,10 +100,10 @@ namespace InstapropAPI.Controllers
             return Ok(redemptions);
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var uidClaim = User.FindFirst("uid");
-            return uidClaim != null ? long.Parse(uidClaim.Value) : null;
+            return uidClaim != null && Guid.TryParse(uidClaim.Value, out Guid accountId) ? accountId : null;
         }
     }
 
@@ -115,7 +115,7 @@ namespace InstapropAPI.Controllers
 
     public class RedemptionResponse
     {
-        public long RedemptionId { get; set; }
+        public Guid RedemptionId { get; set; }
         public string PromoCode { get; set; } = string.Empty;
         public string RewardType { get; set; } = string.Empty;
         public int PointsSpent { get; set; }

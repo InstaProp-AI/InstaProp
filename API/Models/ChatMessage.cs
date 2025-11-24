@@ -7,24 +7,24 @@ namespace InstapropAPI.Models
     public class ChatMessage
     {
         [Key]
-        public long MessageId { get; set; }
+        public Guid MessageId { get; set; }
 
         [Required]
-        public long ChatId { get; set; }
+        public Guid ChatId { get; set; }
 
         [ForeignKey(nameof(ChatId))]
         public Chat Chat { get; set; } = null!;
 
         [Required]
-        public long SenderId { get; set; }
+        public Guid SenderId { get; set; }
 
         [ForeignKey(nameof(SenderId))]
-        public Account Sender { get; set; } = null!;
+        public AccountBase Sender { get; set; } = null!;
 
         [Required]
         public string Content { get; set; } = string.Empty;
 
-        public int? PropertyId { get; set; }
+        public Guid? PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         public ChildProperty? Property { get; set; }

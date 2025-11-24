@@ -272,35 +272,9 @@ api.interceptors.response.use(
       data: error.response?.data
     });
     
-    // Handle 403 Forbidden - Role-based access denied
+    // Handle 403 Forbidden - Access denied
     if (status === 403) {
-      // Get current user info to provide specific guidance
-      try {
-        const accountStr = localStorage.getItem('currentAccount');
-        if (accountStr) {
-          const account = JSON.parse(accountStr);
-          console.error('🔍 Current User Role Info:', {
-            roleId: account.roleId,
-            roleName: account.roleName,
-            type: account.type,
-            email: account.email
-          });
-          
-          // Check if user has User role (not Admin/Developer)
-          if (account.roleId === 8923748923748923 || account.roleName === 'User' || account.type === 'User') {
-            console.error('⚠️ ACCESS DENIED: Your account has User role. Dashboard requires Admin or Developer role.');
-            console.error('💡 Solution: Update your account RoleId in the database:');
-            console.error('   - Admin: UPDATE "Accounts" SET "RoleId" = 9823749823749823 WHERE "Email" = \'' + account.email + '\';');
-            console.error('   - Developer: UPDATE "Accounts" SET "RoleId" = 7823647823647823 WHERE "Email" = \'' + account.email + '\';');
-            console.error('   - See: API/SCRIPTS/fix-user-role.sql for detailed instructions');
-          }
-        }
-      } catch (e) {
-        // Ignore parsing errors
-      }
-      
       console.error('🚫 403 Forbidden: You do not have permission to access this resource.');
-      console.error('   Required role: Admin or Developer');
       console.error('   Current endpoint:', url);
     }
     
@@ -378,58 +352,58 @@ export const usersApi = {
     return response.data;
   },
   
-  getUser: async (id: number): Promise<Account> => {
+  getUser: async (id: string): Promise<Account> => {
     const response = await api.get(`/admin/users/${id}`);
     return response.data;
   },
   
-  verifyUser: async (id: number): Promise<void> => {
+  verifyUser: async (id: string): Promise<void> => {
     await api.put(`/admin/users/${id}/verify`);
   },
   
-  rejectUser: async (id: number): Promise<void> => {
+  rejectUser: async (id: string): Promise<void> => {
     await api.put(`/admin/users/${id}/reject`);
   },
   
-  banUser: async (id: number): Promise<void> => {
+  banUser: async (id: string): Promise<void> => {
     await api.delete(`/admin/users/${id}`);
   },
 
-  suspendUser: async (id: number, suspendedUntil: string | null, reason: string): Promise<void> => {
+  suspendUser: async (id: string, suspendedUntil: string | null, reason: string): Promise<void> => {
     await api.put(`/admin/users/${id}/suspend`, {
       suspendedUntil,
       reason
     });
   },
 
-  unsuspendUser: async (id: number): Promise<void> => {
+  unsuspendUser: async (id: string): Promise<void> => {
     await api.put(`/admin/users/${id}/unsuspend`);
   },
 
-  updateUser: async (id: number, data: { firstName?: string; lastName?: string; email?: string; phoneNumber?: string }): Promise<void> => {
+  updateUser: async (id: string, data: { firstName?: string; lastName?: string; email?: string; phoneNumber?: string }): Promise<void> => {
     await api.put(`/admin/users/${id}/update`, data);
   },
 
-  verifyEmail: async (id: number): Promise<void> => {
+  verifyEmail: async (id: string): Promise<void> => {
     console.log(`📧 API: Sending PUT request to /admin/users/${id}/verify-email`);
     const response = await api.put(`/admin/users/${id}/verify-email`);
     console.log('📧 API: Email verification response:', response.data);
     return response.data;
   },
 
-  verifyPhone: async (id: number): Promise<void> => {
+  verifyPhone: async (id: string): Promise<void> => {
     console.log(`📱 API: Sending PUT request to /admin/users/${id}/verify-phone`);
     const response = await api.put(`/admin/users/${id}/verify-phone`);
     console.log('📱 API: Phone verification response:', response.data);
     return response.data;
   },
 
-  changeUserType: async (id: number, type: 'User' | 'Developer' | 'Admin'): Promise<void> => {
+  changeUserType: async (id: string, type: 'User' | 'Developer' | 'Admin'): Promise<void> => {
     const typeValue = type === 'Admin' ? 2 : type === 'Developer' ? 1 : 0;
     await api.put(`/admin/users/${id}/change-type`, { type: typeValue });
   },
 
-  resetPassword: async (id: number): Promise<void> => {
+  resetPassword: async (id: string): Promise<void> => {
     await api.put(`/admin/users/${id}/reset-password`);
   },
 };
@@ -439,7 +413,7 @@ export const salesApi = {
   // Get all sales team members
   getSalesTeamMembers: async (): Promise<Account[]> => {
     const response = await api.get('/admin/users', {
-      params: { roleId: 6723546723546723, pageSize: 1000 } // Sales role ID, large page size to get all
+      params: { roleId: '67235467-2354-6723-0000-000000000000', pageSize: 1000 } // Sales role ID, large page size to get all
     });
     // Handle paginated response structure
     const users = response.data?.data || response.data?.items || response.data || [];
@@ -449,7 +423,7 @@ export const salesApi = {
   // Get developers list (for admin dropdown)
   getDevelopers: async (): Promise<Account[]> => {
     const response = await api.get('/admin/users', {
-      params: { roleId: 7823647823647823, pageSize: 1000 } // Developer role ID, large page size to get all
+      params: { roleId: '78236478-2364-7823-0000-000000000000', pageSize: 1000 } // Developer role ID, large page size to get all
     });
     // Handle paginated response structure
     const users = response.data?.data || response.data?.items || response.data || [];
@@ -464,8 +438,8 @@ export const salesApi = {
     phoneNumber?: string;
     phone?: string; // Accept both phone and phoneNumber for compatibility
     password: string;
-    developerId?: number; // Required for admin, auto-assigned for developer
-    teamId?: number; // Optional sales team ID
+    developerId?: string; // Required for admin, auto-assigned for developer
+    teamId?: string; // Optional sales team ID
   }): Promise<Account> => {
     // Use phoneNumber if provided, otherwise fall back to phone
     const phoneNumber = data.phoneNumber || data.phone;
@@ -495,12 +469,12 @@ export const salesApi = {
   },
 
   // Update sales account
-  updateSalesAccount: async (id: number, data: {
+  updateSalesAccount: async (id: string, data: {
     firstName?: string;
     lastName?: string;
     email?: string;
     phoneNumber?: string;
-    developerId?: number;
+    developerId?: string;
   }): Promise<void> => {
     const updateData: any = {
       firstName: data.firstName,
@@ -516,7 +490,7 @@ export const salesApi = {
   },
 
   // Delete sales account
-  deleteSalesAccount: async (id: number): Promise<void> => {
+  deleteSalesAccount: async (id: string): Promise<void> => {
     await api.delete(`/admin/users/${id}`);
   },
 
@@ -526,37 +500,37 @@ export const salesApi = {
     return response.data || [];
   },
 
-  getSalesTeam: async (id: number): Promise<any> => {
+  getSalesTeam: async (id: string): Promise<any> => {
     const response = await api.get(`/SalesTeam/${id}`);
     return response.data;
   },
 
-  getTeamMembers: async (teamId: number): Promise<Account[]> => {
+  getTeamMembers: async (teamId: string): Promise<Account[]> => {
     const response = await api.get(`/SalesTeam/${teamId}/members`);
     return response.data || [];
   },
 
-  getTeamStats: async (teamId: number): Promise<any> => {
+  getTeamStats: async (teamId: string): Promise<any> => {
     const response = await api.get(`/SalesTeam/${teamId}/stats`);
     return response.data;
   },
 
-  getDeveloperTeams: async (developerId: number): Promise<any[]> => {
+  getDeveloperTeams: async (developerId: string): Promise<any[]> => {
     const response = await api.get(`/SalesTeam/developers/${developerId}/teams`);
     return response.data || [];
   },
 
-  createSalesTeam: async (data: { teamName?: string; developerId: number }): Promise<any> => {
+  createSalesTeam: async (data: { teamName?: string; developerId: string }): Promise<any> => {
     const response = await api.post('/SalesTeam', data);
     return response.data;
   },
 
-  updateSalesTeam: async (id: number, data: { teamName?: string; developerId?: number }): Promise<any> => {
+  updateSalesTeam: async (id: string, data: { teamName?: string; developerId?: string }): Promise<any> => {
     const response = await api.put(`/SalesTeam/${id}`, data);
     return response.data;
   },
 
-  deleteSalesTeam: async (id: number): Promise<void> => {
+  deleteSalesTeam: async (id: string): Promise<void> => {
     await api.delete(`/SalesTeam/${id}`);
   },
 };
@@ -570,12 +544,12 @@ export const projectsApi = {
     return response.data;
   },
   
-  getProjectsByDeveloper: async (developerId: number): Promise<Project[]> => {
+  getProjectsByDeveloper: async (developerId: string): Promise<Project[]> => {
     const response = await api.get(`/project/by-developer/${developerId}`);
     return response.data;
   },
   
-  getProject: async (id: number): Promise<Project> => {
+  getProject: async (id: string): Promise<Project> => {
     const response = await api.get(`/project/${id}`);
     return response.data;
   },
@@ -585,15 +559,15 @@ export const projectsApi = {
     return response.data;
   },
   
-  updateProject: async (id: number, data: UpdateProjectDto): Promise<void> => {
+  updateProject: async (id: string, data: UpdateProjectDto): Promise<void> => {
     await api.put(`/project/${id}`, data);
   },
   
-  deleteProject: async (id: number): Promise<void> => {
+  deleteProject: async (id: string): Promise<void> => {
     await api.delete(`/project/${id}`);
   },
   
-  getProjectProperties: async (id: number): Promise<Property[]> => {
+  getProjectProperties: async (id: string): Promise<Property[]> => {
     const response = await api.get(`/project/${id}/properties`);
     return response.data;
   },
@@ -616,7 +590,7 @@ export const propertiesApi = {
     }
   },
   
-  getProperty: async (id: number): Promise<Property> => {
+  getProperty: async (id: string): Promise<Property> => {
     const response = await api.get(`/property/${id}`);
     return response.data;
   },
@@ -626,7 +600,7 @@ export const propertiesApi = {
     return response.data;
   },
   
-  updateProperty: async (id: number, data: Partial<CreatePropertyDto & { projectId?: number | null }>, userRole?: 'Admin' | 'Developer'): Promise<void> => {
+  updateProperty: async (id: string, data: Partial<CreatePropertyDto & { projectId?: string | null }>, userRole?: 'Admin' | 'Developer'): Promise<void> => {
     const role = userRole || getCurrentUserRole();
     if (role === 'Admin') {
       // Admin can use admin endpoint
@@ -637,12 +611,12 @@ export const propertiesApi = {
     }
   },
   
-  deleteProperty: async (id: number): Promise<void> => {
+  deleteProperty: async (id: string): Promise<void> => {
     await api.delete(`/property/${id}`);
   },
   
   // Admin-only functions
-  approveProperty: async (id: number, userRole?: 'Admin' | 'Developer'): Promise<void> => {
+  approveProperty: async (id: string, userRole?: 'Admin' | 'Developer'): Promise<void> => {
     const role = userRole || getCurrentUserRole();
     if (role !== 'Admin') {
       throw new Error('Only admins can approve properties');
@@ -650,7 +624,7 @@ export const propertiesApi = {
     await api.put(`/admin/properties/${id}/approve`);
   },
   
-  rejectProperty: async (id: number, userRole?: 'Admin' | 'Developer'): Promise<void> => {
+  rejectProperty: async (id: string, userRole?: 'Admin' | 'Developer'): Promise<void> => {
     const role = userRole || getCurrentUserRole();
     if (role !== 'Admin') {
       throw new Error('Only admins can reject properties');
@@ -722,32 +696,32 @@ export const auctionsApi = {
     }
   },
   
-  getAuction: async (id: number) => {
+  getAuction: async (id: string) => {
     const response = await api.get(`/auction/${id}`);
     return response.data;
   },
   
-  startAuction: async (id: number) => {
+  startAuction: async (id: string) => {
     await api.put(`/admin/auctions/${id}/start`);
   },
   
-  endAuction: async (id: number) => {
+  endAuction: async (id: string) => {
     await api.put(`/admin/auctions/${id}/end`);
   },
   
-  cancelAuction: async (id: number) => {
+  cancelAuction: async (id: string) => {
     await api.delete(`/auction/${id}`);
   },
   
-  approveAuction: async (id: number) => {
+  approveAuction: async (id: string) => {
     await api.put(`/auction/${id}/status`, { status: 'Approved' });
   },
   
-  rejectAuction: async (id: number) => {
+  rejectAuction: async (id: string) => {
     await api.put(`/auction/${id}/status`, { status: 'Rejected' });
   },
 
-  relistAuction: async (id: number, data: {
+  relistAuction: async (id: string, data: {
     startAt?: string;
     duration: number;
     resetPrice: boolean;
@@ -765,12 +739,12 @@ export const bidsApi = {
     return response.data;
   },
   
-  getBidsForAuction: async (auctionId: number) => {
+  getBidsForAuction: async (auctionId: string) => {
     const response = await api.get(`/bids/by-auction/${auctionId}`);
     return response.data;
   },
   
-  getBiddersForAuction: async (auctionId: number) => {
+  getBiddersForAuction: async (auctionId: string) => {
     const response = await api.get(`/bids/bidders/${auctionId}`);
     return response.data;
   },
@@ -836,7 +810,7 @@ export const notificationsApi = {
 // Documents API
 export const documentsApi = {
   // User Documents (KYC)
-  uploadUserDocument: async (file: File, docType: string): Promise<{ message: string; docId: number; url: string }> => {
+  uploadUserDocument: async (file: File, docType: string): Promise<{ message: string; docId: string; url: string }> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('docType', docType);
@@ -852,7 +826,7 @@ export const documentsApi = {
     return response.data;
   },
   
-  getUserDocuments: async (userId: number): Promise<UserDocument[]> => {
+  getUserDocuments: async (userId: string): Promise<UserDocument[]> => {
     console.log(`🔵 documentsApi.getUserDocuments called with userId: ${userId}`);
     const response = await api.get(`/document/user/${userId}`);
     console.log(`🔵 documentsApi.getUserDocuments response:`, response.data);
@@ -861,12 +835,12 @@ export const documentsApi = {
     return response.data;
   },
   
-  deleteUserDocument: async (docId: number): Promise<void> => {
+  deleteUserDocument: async (docId: string): Promise<void> => {
     await api.delete(`/document/user/${docId}`);
   },
   
   // Property Documents
-  uploadPropertyDocument: async (propertyId: number, file: File, docType: string): Promise<{ message: string; docId: number; url: string }> => {
+  uploadPropertyDocument: async (propertyId: string, file: File, docType: string): Promise<{ message: string; docId: string; url: string }> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('docType', docType);
@@ -877,23 +851,23 @@ export const documentsApi = {
     return response.data;
   },
   
-  getPropertyDocuments: async (propertyId: number): Promise<PropertyDocument[]> => {
+  getPropertyDocuments: async (propertyId: string): Promise<PropertyDocument[]> => {
     const response = await api.get(`/document/property/${propertyId}`);
     return response.data;
   },
   
-  deletePropertyDocument: async (docId: number): Promise<void> => {
+  deletePropertyDocument: async (docId: string): Promise<void> => {
     await api.delete(`/document/property/document/${docId}`);
   },
   
   // Property Images
   uploadPropertyImage: async (
-    propertyId: number, 
+    propertyId: string, 
     file: File, 
     imageType: string,
     isMainImage: boolean = false,
     displayOrder: number = 0
-  ): Promise<{ message: string; imageId: number; url: string }> => {
+  ): Promise<{ message: string; imageId: string; url: string }> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('imageType', imageType);
@@ -906,12 +880,12 @@ export const documentsApi = {
     return response.data;
   },
   
-  getPropertyImages: async (propertyId: number): Promise<PropertyImage[]> => {
+  getPropertyImages: async (propertyId: string): Promise<PropertyImage[]> => {
     const response = await api.get(`/document/property/${propertyId}/images`);
     return response.data;
   },
   
-  deletePropertyImage: async (imageId: number): Promise<void> => {
+  deletePropertyImage: async (imageId: string): Promise<void> => {
     await api.delete(`/document/property/image/${imageId}`);
   },
   
@@ -931,13 +905,13 @@ export const permissionsApi = {
   },
   
   // Admin: Get developer permissions
-  getDeveloperPermissions: async (developerId: number): Promise<DeveloperPermissions> => {
+  getDeveloperPermissions: async (developerId: string): Promise<DeveloperPermissions> => {
     const response = await api.get(`/admin/developers/${developerId}/permissions`);
     return response.data;
   },
   
   // Admin: Update developer permissions
-  updateDeveloperPermissions: async (developerId: number, permissions: DeveloperPermissions): Promise<DeveloperPermissions> => {
+  updateDeveloperPermissions: async (developerId: string, permissions: DeveloperPermissions): Promise<DeveloperPermissions> => {
     const response = await api.put(`/admin/developers/${developerId}/permissions`, {
       Permissions: permissions
     });
@@ -945,49 +919,18 @@ export const permissionsApi = {
   },
   
   // Admin: Initialize developer permissions (create default records)
-  initializeDeveloperPermissions: async (developerId: number): Promise<DeveloperPermissions> => {
+  initializeDeveloperPermissions: async (developerId: string): Promise<DeveloperPermissions> => {
     const response = await api.post(`/admin/developers/${developerId}/permissions/initialize`);
     return response.data.permissions || response.data;
   },
   
   // Admin: Get all developer permissions
-  getAllDeveloperPermissions: async (): Promise<Record<number, DeveloperPermissions>> => {
+  getAllDeveloperPermissions: async (): Promise<Record<string, DeveloperPermissions>> => {
     const response = await api.get('/admin/developers/permissions/all');
     return response.data;
   },
 };
 
-// Communities API
-export const communitiesApi = {
-  getCommunities: async () => {
-    const response = await api.get('/community');
-    return response.data;
-  },
-  
-  getMyCommunities: async () => {
-    const response = await api.get('/community/my');
-    return response.data;
-  },
-  
-  getRecommendedCommunities: async () => {
-    const response = await api.get('/community/recommended');
-    return response.data;
-  },
-  
-  getCommunity: async (id: number) => {
-    const response = await api.get(`/community/${id}`);
-    return response.data;
-  },
-  
-  createCommunity: async (data: any) => {
-    const response = await api.post('/community', data);
-    return response.data;
-  },
-  
-  joinCommunity: async (id: number) => {
-    await api.post(`/community/${id}/join`);
-  },
-};
 
 // Admin Seeding API
 export const adminSeedingApi = {
@@ -1003,7 +946,7 @@ export const adminSeedingApi = {
 
 // News API
 export const newsApi = {
-  getNews: async (page: number = 1, pageSize: number = 10, developerId?: number) => {
+  getNews: async (page: number = 1, pageSize: number = 10, developerId?: string) => {
     const params = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
@@ -1020,7 +963,7 @@ export const newsApi = {
     return response.data;
   },
   
-  getNewsById: async (id: number) => {
+  getNewsById: async (id: string) => {
     const response = await api.get(`/news/${id}`);
     return response.data;
   },
@@ -1040,11 +983,11 @@ export const newsApi = {
     return response.data;
   },
   
-  updateNews: async (id: number, data: any) => {
+  updateNews: async (id: string, data: any) => {
     await api.put(`/news/${id}`, data);
   },
   
-  deleteNews: async (id: number) => {
+  deleteNews: async (id: string) => {
     await api.delete(`/news/${id}`);
   },
 };
@@ -1052,7 +995,7 @@ export const newsApi = {
 
 // Chats API
 export const chatsApi = {
-  getChats: async (developerId?: number) => {
+  getChats: async (developerId?: string) => {
     const params = new URLSearchParams();
     if (developerId !== undefined) {
       params.append('developerId', developerId.toString());
@@ -1062,7 +1005,7 @@ export const chatsApi = {
     return response.data;
   },
   
-  getChat: async (chatId: number) => {
+  getChat: async (chatId: string) => {
     const response = await api.get(`/chat/${chatId}`);
     return response.data;
   },
@@ -1072,16 +1015,16 @@ export const chatsApi = {
     return response.data;
   },
   
-  sendMessage: async (chatId: number, data: any) => {
+  sendMessage: async (chatId: string, data: any) => {
     const response = await api.post(`/chat/${chatId}/message`, data);
     return response.data;
   },
   
-  markAsRead: async (chatId: number) => {
+  markAsRead: async (chatId: string) => {
     await api.put(`/chat/${chatId}/read`);
   },
   
-  assignSalesMember: async (chatId: number, salesMemberId: number | null) => {
+  assignSalesMember: async (chatId: string, salesMemberId: string | null) => {
     const response = await api.put(`/chat/${chatId}/assign`, { salesMemberId });
     return response.data;
   },
@@ -1091,13 +1034,13 @@ export const chatsApi = {
     return response.data;
   },
   
-  getChatStats: async (developerId?: number) => {
+  getChatStats: async (developerId?: string) => {
     const params = developerId !== undefined ? `?developerId=${developerId}` : '';
     const response = await api.get(`/chat/stats${params}`);
     return response.data;
   },
   
-  getSalesMembersForDeveloper: async (developerId: number) => {
+  getSalesMembersForDeveloper: async (developerId: string) => {
     const response = await api.get(`/chat/${developerId}/sales-members`);
     return response.data;
   },
@@ -1118,22 +1061,22 @@ export const leaderboardApi = {
 
 // Price History API
 export const priceHistoryApi = {
-  getPriceHistoryForParentProperty: async (parentPropertyId: number) => {
+  getPriceHistoryForParentProperty: async (parentPropertyId: string) => {
     const response = await api.get(`/pricehistory/${parentPropertyId}`);
     return response.data;
   },
   
-  getParentPriceHistoryBundle: async (parentPropertyId: number) => {
+  getParentPriceHistoryBundle: async (parentPropertyId: string) => {
     const response = await api.get(`/pricehistory/parent/${parentPropertyId}`);
     return response.data;
   },
   
-  getParentPriceStatistics: async (parentPropertyId: number) => {
+  getParentPriceStatistics: async (parentPropertyId: string) => {
     const response = await api.get(`/pricehistory/parent/${parentPropertyId}/stats`);
     return response.data;
   },
   
-  getPriceHistoryForChildProperty: async (childPropertyId: number) => {
+  getPriceHistoryForChildProperty: async (childPropertyId: string) => {
     const response = await api.get(`/pricehistory/child/${childPropertyId}`);
     return response.data;
   },
@@ -1143,7 +1086,7 @@ export const priceHistoryApi = {
     return response.data;
   },
   
-  updatePriceHistory: async (priceHistoryId: number, data: any) => {
+  updatePriceHistory: async (priceHistoryId: string, data: any) => {
     await api.put(`/pricehistory/${priceHistoryId}`, data);
   },
 };
@@ -1181,7 +1124,7 @@ export const valuationApi = {
 
 // Property Financials API
 export const propertyFinancialsApi = {
-  getPropertyFinancials: async (propertyId: number, marketValue?: number) => {
+  getPropertyFinancials: async (propertyId: string, marketValue?: number) => {
     const params = marketValue ? `?marketValue=${marketValue}` : '';
     const response = await api.get(`/property/${propertyId}/financials${params}`);
     return response.data;
@@ -1190,12 +1133,12 @@ export const propertyFinancialsApi = {
 
 // Parent Property API
 export const parentPropertyApi = {
-  getParentProperty: async (parentPropertyId: number) => {
+  getParentProperty: async (parentPropertyId: string) => {
     const response = await api.get(`/parentproperty/${parentPropertyId}`);
     return response.data;
   },
   
-  getParentChildren: async (parentPropertyId: number) => {
+  getParentChildren: async (parentPropertyId: string) => {
     const response = await api.get(`/parentproperty/${parentPropertyId}/children`);
     return response.data;
   },
@@ -1203,7 +1146,7 @@ export const parentPropertyApi = {
 
 // Gold Comparison API
 export const goldApi = {
-  compareWithProperty: async (parentPropertyId: number, propertyPrice?: number) => {
+  compareWithProperty: async (parentPropertyId: string, propertyPrice?: number) => {
     let url = `/goldprice/compare-property?parentPropertyId=${parentPropertyId}`;
     if (propertyPrice) {
       url += `&propertyPrice=${propertyPrice}`;

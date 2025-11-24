@@ -21,7 +21,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Get all permissions for a developer (including default always-enabled features)
         /// </summary>
-        public async Task<Dictionary<string, bool>> GetDeveloperPermissions(long developerId)
+        public async Task<Dictionary<string, bool>> GetDeveloperPermissions(Guid developerId)
         {
             var permissions = new Dictionary<string, bool>();
 
@@ -70,7 +70,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Update a single permission for a developer
         /// </summary>
-        public async Task UpdatePermission(long developerId, string featureName, bool isEnabled)
+        public async Task UpdatePermission(Guid developerId, string featureName, bool isEnabled)
         {
             // Cannot update default features
             if (!FeaturePermission.IsOptionalFeature(featureName))
@@ -104,7 +104,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Bulk update permissions for a developer
         /// </summary>
-        public async Task BulkUpdatePermissions(long developerId, Dictionary<string, bool> permissions)
+        public async Task BulkUpdatePermissions(Guid developerId, Dictionary<string, bool> permissions)
         {
             foreach (var kvp in permissions)
             {
@@ -121,7 +121,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Check if a developer has permission for a specific feature
         /// </summary>
-        public async Task<bool> HasPermission(long developerId, string featureName)
+        public async Task<bool> HasPermission(Guid developerId, string featureName)
         {
             // Default features are always enabled for developers
             if (!FeaturePermission.IsOptionalFeature(featureName))
@@ -140,7 +140,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Initialize permissions for a new developer (seed default permissions)
         /// </summary>
-        public async Task InitializeDeveloperPermissions(long developerId)
+        public async Task InitializeDeveloperPermissions(Guid developerId)
         {
             // Get current permissions
             var existingPermissions = await _context.DeveloperPermissions
@@ -170,7 +170,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Check if account is a developer
         /// </summary>
-        public async Task<bool> IsDeveloper(long accountId)
+        public async Task<bool> IsDeveloper(Guid accountId)
         {
             var account = await _context.Accounts.FindAsync(accountId);
             return account != null && account.IsDeveloperOrAdmin() && !account.IsAdmin();

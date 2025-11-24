@@ -18,18 +18,16 @@ namespace InstapropAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ImageFixService _imageFixService;
-        private readonly RealisticEgyptianSeedingService _seedingService;
 
-        public AdminController(AppDbContext context, ImageFixService imageFixService, RealisticEgyptianSeedingService seedingService)
+        public AdminController(AppDbContext context, ImageFixService imageFixService)
         {
             _context = context;
             _imageFixService = imageFixService;
-            _seedingService = seedingService;
         }
 
         // GET: api/Admin/users - Get paginated users for admin dashboard
         [HttpGet("users")]
-        public async Task<ActionResult<object>> GetAllUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] long? roleId = null)
+        public async Task<ActionResult<object>> GetAllUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] Guid? roleId = null)
         {
             try
             {
@@ -51,11 +49,16 @@ namespace InstapropAPI.Controllers
                 // Get paginated users with AssignedDeveloper info
                 var users = await query
                     .Include(a => a.Role)
-                    .Include(a => a.AssignedDeveloper)
                     .OrderByDescending(a => a.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .Select(a => new
+                    .ToListAsync();
+
+                var userDtos = users.Select(a =>
+                {
+                    var salesAccount = a as SalesAccount;
+                    var assignedDeveloper = salesAccount?.AssignedDeveloper;
+                    return new
                     {
                         a.AccountId,
                         a.FirstName,
@@ -72,18 +75,18 @@ namespace InstapropAPI.Controllers
                         a.SuspensionReason,
                         a.CreatedAt,
                         a.UpdatedAt,
-                        AssignedDeveloperId = a.AssignedDeveloperId,
-                        AssignedDeveloperName = a.AssignedDeveloper != null 
-                            ? $"{a.AssignedDeveloper.FirstName} {a.AssignedDeveloper.LastName}" 
+                        AssignedDeveloperId = salesAccount?.AssignedDeveloperId,
+                        AssignedDeveloperName = assignedDeveloper != null 
+                            ? $"{assignedDeveloper.FirstName} {assignedDeveloper.LastName}" 
                             : null
-                    })
-                    .ToListAsync();
+                    };
+                }).ToList();
 
                 // Return paginated response (also include items for backward compatibility)
                 return Ok(new
                 {
-                    data = users,
-                    items = users, // For backward compatibility
+                    data = userDtos,
+                    items = userDtos, // For backward compatibility
                     pagination = new
                     {
                         page = page,
@@ -167,7 +170,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/Admin/users/{id} - Get specific user details
         [HttpGet("users/{id}")]
-        public async Task<ActionResult<object>> GetUser(long id)
+        public async Task<ActionResult<object>> GetUser(Guid id)
         {
             try
             {
@@ -257,7 +260,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/verify - Verify a user
         [HttpPut("users/{id}/verify")]
-        public async Task<IActionResult> VerifyUser(long id)
+        public async Task<IActionResult> VerifyUser(Guid id)
         {
             try
             {
@@ -282,7 +285,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/reject - Reject a user
         [HttpPut("users/{id}/reject")]
-        public async Task<IActionResult> RejectUser(long id)
+        public async Task<IActionResult> RejectUser(Guid id)
         {
             try
             {
@@ -305,7 +308,7 @@ namespace InstapropAPI.Controllers
 
         // DELETE: api/Admin/users/{id} - Delete a user (ban)
         [HttpDelete("users/{id}")]
-        public async Task<IActionResult> DeleteUser(long id)
+        public async Task<IActionResult> DeleteUser(Guid id)
         {
             try
             {
@@ -326,7 +329,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/suspend - Suspend a user
         [HttpPut("users/{id}/suspend")]
-        public async Task<IActionResult> SuspendUser(long id, [FromBody] SuspendUserDto dto)
+        public async Task<IActionResult> SuspendUser(Guid id, [FromBody] SuspendUserDto dto)
         {
             try
             {
@@ -355,7 +358,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/unsuspend - Unsuspend a user
         [HttpPut("users/{id}/unsuspend")]
-        public async Task<IActionResult> UnsuspendUser(long id)
+        public async Task<IActionResult> UnsuspendUser(Guid id)
         {
             try
             {
@@ -380,7 +383,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/update - Update user details
         [HttpPut("users/{id}/update")]
-        public async Task<IActionResult> UpdateUser(long id, [FromBody] UpdateUserDto dto)
+        public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto dto)
         {
             try
             {
@@ -406,17 +409,24 @@ namespace InstapropAPI.Controllers
                 {
                     // Validate developer exists
                     var developer = await _context.Accounts
-                        .FirstOrDefaultAsync(a => a.AccountId == dto.AssignedDeveloperId.Value && a.RoleId == Role.DEVELOPER_ROLE_ID);
+                        .OfType<DeveloperAccount>()
+                        .FirstOrDefaultAsync(a => a.AccountId == dto.AssignedDeveloperId.Value);
                     
                     if (developer == null)
                         return BadRequest(new { error = "Developer not found" });
                     
-                    user.AssignedDeveloperId = dto.AssignedDeveloperId.Value;
+                    if (user is SalesAccount salesAccount)
+                    {
+                        salesAccount.AssignedDeveloperId = dto.AssignedDeveloperId.Value;
+                    }
                 }
                 else if (dto.AssignedDeveloperId == null && user.RoleId == Role.SALES_ROLE_ID)
                 {
                     // Allow clearing assignment by passing null explicitly
-                    user.AssignedDeveloperId = null;
+                    if (user is SalesAccount salesAccount)
+                    {
+                        salesAccount.AssignedDeveloperId = null;
+                    }
                 }
                 
                 user.UpdatedAt = DateTime.UtcNow;
@@ -432,7 +442,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/verify-email - Manually verify email
         [HttpPut("users/{id}/verify-email")]
-        public async Task<IActionResult> VerifyEmail(long id)
+        public async Task<IActionResult> VerifyEmail(Guid id)
         {
             try
             {
@@ -454,7 +464,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/verify-phone - Manually verify phone
         [HttpPut("users/{id}/verify-phone")]
-        public async Task<IActionResult> VerifyPhone(long id)
+        public async Task<IActionResult> VerifyPhone(Guid id)
         {
             try
             {
@@ -476,7 +486,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/change-type - Change user role (SECURITY: Only admins can change roles)
         [HttpPut("users/{id}/change-type")]
-        public async Task<IActionResult> ChangeUserType(long id, [FromBody] ChangeTypeDto dto)
+        public async Task<IActionResult> ChangeUserType(Guid id, [FromBody] ChangeTypeDto dto)
         {
             try
             {
@@ -489,7 +499,7 @@ namespace InstapropAPI.Controllers
                 if (!roleExists)
                     return BadRequest(new { error = "Invalid role ID. Role does not exist." });
 
-                // SECURITY: Update RoleId instead of Type - uses non-guessable 64-bit ID
+                // SECURITY: Update RoleId instead of Type - uses non-guessable GUID
                 user.RoleId = dto.RoleId;
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -504,7 +514,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/users/{id}/reset-password - Force password reset
         [HttpPut("users/{id}/reset-password")]
-        public async Task<IActionResult> AdminResetPassword(long id)
+        public async Task<IActionResult> AdminResetPassword(Guid id)
         {
             try
             {
@@ -540,12 +550,12 @@ namespace InstapropAPI.Controllers
             public string? LastName { get; set; }
             public string? Email { get; set; }
             public string? PhoneNumber { get; set; }
-            public long? AssignedDeveloperId { get; set; } // For Sales accounts
+            public Guid? AssignedDeveloperId { get; set; } // For Sales accounts
         }
 
         public class ChangeTypeDto
         {
-            public long RoleId { get; set; } // SECURITY: Use non-guessable 64-bit RoleId instead of Type enum
+            public Guid RoleId { get; set; } // SECURITY: Use non-guessable GUID RoleId instead of Type enum
         }
     
 
@@ -642,7 +652,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/properties/{id}/approve - Approve a property
         [HttpPut("properties/{id}/approve")]
-        public async Task<IActionResult> ApproveProperty(long id)
+        public async Task<IActionResult> ApproveProperty(Guid id)
         {
             try
             {
@@ -665,7 +675,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/properties/{id}/reject - Reject a property
         [HttpPut("properties/{id}/reject")]
-        public async Task<IActionResult> RejectProperty(long id)
+        public async Task<IActionResult> RejectProperty(Guid id)
         {
             try
             {
@@ -688,7 +698,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/properties/{id}/update - Update property details (including projectId)
         [HttpPut("properties/{id}/update")]
-        public async Task<IActionResult> UpdateProperty(long id, [FromBody] UpdatePropertyDto dto)
+        public async Task<IActionResult> UpdateProperty(Guid id, [FromBody] UpdatePropertyDto dto)
         {
             try
             {
@@ -710,7 +720,7 @@ namespace InstapropAPI.Controllers
                 if (dto.ProjectId.HasValue)
                 {
                     // Validate project exists if assigning to a project
-                    if (dto.ProjectId.Value > 0)
+                    if (dto.ProjectId.HasValue && dto.ProjectId.Value != Guid.Empty)
                     {
                         var projectExists = await _context.Projects.AnyAsync(p => p.ProjectId == dto.ProjectId.Value);
                         if (!projectExists)
@@ -741,7 +751,7 @@ namespace InstapropAPI.Controllers
             public string? Name { get; set; }
             public string? Description { get; set; }
             public string? Location { get; set; }
-            public long? ProjectId { get; set; } // Use long? to allow setting to null (detach) or -1 to explicitly detach
+            public Guid? ProjectId { get; set; } // Use Guid? to allow setting to null (detach)
         }
 
         // GET: api/Admin/auctions - Get all auctions
@@ -803,7 +813,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/auctions/{id}/start - Start an auction
         [HttpPut("auctions/{id}/start")]
-        public async Task<IActionResult> StartAuction(long id)
+        public async Task<IActionResult> StartAuction(Guid id)
         {
             try
             {
@@ -826,7 +836,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/Admin/auctions/{id}/end - End an auction
         [HttpPut("auctions/{id}/end")]
-        public async Task<IActionResult> EndAuction(long id)
+        public async Task<IActionResult> EndAuction(Guid id)
         {
             try
             {
@@ -1213,7 +1223,7 @@ namespace InstapropAPI.Controllers
                         fixedUserDocs = result.FixedUserDocs,
                         fixedProjectUpdates = result.FixedProjectUpdates,
                         fixedNewsImages = result.FixedNewsImages,
-                        fixedCommunityPosts = result.FixedCommunityPosts,
+                        // fixedCommunityPosts removed (community feature)
                         fixedDeveloperProfiles = result.FixedDeveloperProfiles,
                         fixedEventImages = result.FixedEventImages
                     },
@@ -1226,85 +1236,6 @@ namespace InstapropAPI.Controllers
             }
         }
 
-        // POST: api/Admin/seed-chats - Seed chats and messages for testing
-        [HttpPost("seed-chats")]
-        public async Task<IActionResult> SeedChats()
-        {
-            try
-            {
-                var developerChatMap = await _seedingService.SeedChatsWithMessagesAsync();
-                var totalChats = developerChatMap.Values.Sum(list => list.Count);
-                var totalMessages = await _context.ChatMessages.CountAsync();
-                
-                return Ok(new { 
-                    message = "Chats and messages seeded successfully", 
-                    developerCount = developerChatMap.Count,
-                    totalChats = totalChats,
-                    totalMessages = totalMessages,
-                    developers = developerChatMap.Select(kvp => new {
-                        developerId = kvp.Key,
-                        chatCount = kvp.Value.Count
-                    })
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
-            }
-        }
-
-        // POST: api/Admin/seed-news - Seed news articles for testing
-        [HttpPost("seed-news")]
-        public async Task<IActionResult> SeedNews()
-        {
-            try
-            {
-                var articles = await _seedingService.SeedNewsOnlyAsync();
-                return Ok(new { 
-                    message = "News articles seeded successfully", 
-                    count = articles.Count,
-                    articles = articles.Select(a => new { 
-                        id = a.NewsArticleId, 
-                        title = a.Title, 
-                        category = a.Category 
-                    })
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
-            }
-        }
-
-        // POST: api/Admin/seed-developer-news - Seed 3-5 news articles for each developer
-        [HttpPost("seed-developer-news")]
-        public async Task<IActionResult> SeedDeveloperNews()
-        {
-            try
-            {
-                var developerNewsMap = await _seedingService.SeedDeveloperNewsAsync();
-                var totalArticles = developerNewsMap.Values.Sum(list => list.Count);
-                
-                return Ok(new { 
-                    message = "Developer news articles seeded successfully", 
-                    developerCount = developerNewsMap.Count,
-                    totalArticles = totalArticles,
-                    developers = developerNewsMap.Select(kvp => new {
-                        developerId = kvp.Key,
-                        articleCount = kvp.Value.Count,
-                        articles = kvp.Value.Select(a => new {
-                            id = a.NewsArticleId,
-                            title = a.Title,
-                            category = a.Category
-                        })
-                    })
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
-            }
-        }
 
     }
 }

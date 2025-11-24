@@ -29,7 +29,7 @@ class _MarketPageState extends State<MarketPage> {
   List<DeveloperRankingResponse>? _developerRankings;
   List<BestInvestmentResponse>? _bestInvestments;
   PortfolioAnalyticsResponse? _portfolioAnalytics;
-  final Map<int, String> _developerNameOverrides = {};
+  final Map<String, String> _developerNameOverrides = {};
 
   @override
   void initState() {
@@ -1011,7 +1011,7 @@ class _MarketPageState extends State<MarketPage> {
 
   Widget _buildDeveloperCard(DeveloperRankingResponse developer) {
     final displayName = _displayDeveloperName(developer);
-    final canNavigate = developer.developerId > 0;
+    final canNavigate = developer.developerId.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1091,7 +1091,7 @@ class _MarketPageState extends State<MarketPage> {
     return trimmed;
   }
 
-  void _openDeveloperProfile(int developerId) {
+  void _openDeveloperProfile(String developerId) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1109,11 +1109,11 @@ class _MarketPageState extends State<MarketPage> {
       token: appState.token,
     );
 
-    final Map<int, String> fetchedNames = {};
+    final Map<String, String> fetchedNames = {};
 
     for (final developer in rankings.take(8)) {
       final developerId = developer.developerId;
-      if (developerId <= 0 || _developerNameOverrides.containsKey(developerId)) {
+      if (developerId.isEmpty || _developerNameOverrides.containsKey(developerId)) {
         continue;
       }
 

@@ -16,13 +16,13 @@ class PropertyService {
     return await getPropertiesAsChildProperties();
   }
 
-  static Future<ApiResponse<Property>> getProperty(int propertyId) async {
+  static Future<ApiResponse<Property>> getProperty(String propertyId) async {
     // Use the new parent/child property system
     return await getPropertyAsChildProperty(propertyId);
   }
 
   static Future<ApiResponse<InstallmentSummary>> getPropertyInstallmentSummary(
-    int propertyId,
+    String propertyId,
   ) async {
     return await ApiClient.get(
       '/api/property/$propertyId/installment-summary',
@@ -32,7 +32,7 @@ class PropertyService {
 
   // GET: api/Property/{id}/financials
   static Future<ApiResponse<Map<String, dynamic>>> getPropertyFinancials(
-    int propertyId, {
+    String propertyId, {
     double? marketValue,
   }) async {
     final queryParams = marketValue != null
@@ -46,7 +46,7 @@ class PropertyService {
 
   static Future<ApiResponse<InstallmentSummary>>
       upsertPropertyInstallmentSummary(
-    int propertyId,
+    String propertyId,
     InstallmentSummaryPayload payload,
   ) async {
     return await ApiClient.put(
@@ -57,7 +57,6 @@ class PropertyService {
   }
 
   static Future<ApiResponse<Property>> createProperty({
-    required String name,
     required String description,
     required String location,
     required int bedrooms,
@@ -68,7 +67,7 @@ class PropertyService {
     String? imageUrl,
     // Additional parameters for parent/child system
     String? projectName,
-    int? projectId,
+    String? projectId,
     String? finishingType,
     bool hasPool = false,
     bool hasGym = false,
@@ -149,7 +148,6 @@ class PropertyService {
 
       final childResponse = await createChildProperty(
         parentPropertyId: parentPropertyId,
-        name: name,
         description: description,
         location: location,
         imageUrl: imageUrl ?? '',
@@ -245,7 +243,7 @@ class PropertyService {
   }
 
   static Future<ApiResponse<Property>> updateProperty({
-    required int propertyId,
+    required String propertyId,
     required String name,
     required String description,
     required String location,
@@ -282,7 +280,7 @@ class PropertyService {
     }
   }
 
-  static Future<ApiResponse<void>> deleteProperty(int propertyId) async {
+  static Future<ApiResponse<void>> deleteProperty(String propertyId) async {
     // Use the new parent/child property system
     return await deleteChildProperty(propertyId);
   }
@@ -297,7 +295,6 @@ class PropertyService {
   }
 
   static Future<ApiResponse<Property>> createPropertySkipDocuments({
-    required String name,
     required String description,
     required String location,
     required int bedrooms,
@@ -309,7 +306,6 @@ class PropertyService {
     InstallmentSummaryPayload? installmentSummary,
   }) async {
     final response = await ApiClient.post('/api/property/skip-documents', {
-      'name': name,
       'description': description,
       'location': location,
       'bedrooms': bedrooms,
@@ -384,7 +380,7 @@ class PropertyService {
 
   // Upload property images (PlatformFile - works on both web and mobile)
   static Future<ApiResponse<dynamic>> uploadPropertyImagesPlatform(
-    int propertyId,
+    String propertyId,
     List<PlatformFile> images, {
     String imageType = 'Gallery',
   }) async {
@@ -439,7 +435,7 @@ class PropertyService {
 
   // Get a specific parent property
   static Future<ApiResponse<ParentProperty>> getParentProperty(
-    int parentPropertyId,
+    String parentPropertyId,
   ) async {
     return await ApiClient.get(
       '/api/parentproperty/$parentPropertyId',
@@ -482,7 +478,7 @@ class PropertyService {
 
   // Get a specific child property
   static Future<ApiResponse<ChildProperty>> getChildProperty(
-    int childPropertyId,
+    String childPropertyId,
   ) async {
     return await ApiClient.get(
       '/api/Property/$childPropertyId',
@@ -491,7 +487,7 @@ class PropertyService {
   }
 
   static Future<ApiResponse<List<ChildProperty>>> getParentChildProperties(
-    int parentPropertyId,
+    String parentPropertyId,
   ) async {
     return await ApiClient.getList(
       '/api/parentproperty/$parentPropertyId/children',
@@ -501,8 +497,7 @@ class PropertyService {
 
   // Create a new child property
   static Future<ApiResponse<ChildProperty>> createChildProperty({
-    required int parentPropertyId,
-    required String name,
+    required String parentPropertyId,
     required String description,
     required String location,
     required String imageUrl,
@@ -513,7 +508,7 @@ class PropertyService {
     required int bathrooms,
     required PropertyType type,
     String status = 'NotApproved',
-    int? projectId,
+    String? projectId,
     String? phase,
     int? floorNumber,
     String? unitNumber,
@@ -553,7 +548,6 @@ class PropertyService {
   }) async {
     return await ApiClient.post('/api/property', {
       'parentPropertyId': parentPropertyId,
-      'name': name,
       'description': description,
       'location': location,
       'imageUrl': imageUrl,
@@ -604,7 +598,7 @@ class PropertyService {
 
   // Update a child property
   static Future<ApiResponse<ChildProperty>> updateChildProperty({
-    required int childPropertyId,
+    required String childPropertyId,
     required String name,
     required String description,
     required String location,
@@ -617,7 +611,7 @@ class PropertyService {
   }
 
   static Future<void> _attemptSyncInstallmentSummary(
-    int propertyId,
+    String propertyId,
     InstallmentSummaryPayload? payload,
   ) async {
     if (payload == null || !payload.hasRequiredData) {
@@ -629,14 +623,14 @@ class PropertyService {
 
   // Delete a child property
   static Future<ApiResponse<void>> deleteChildProperty(
-    int childPropertyId,
+    String childPropertyId,
   ) async {
     return await ApiClient.delete('/api/parentproperty/child/$childPropertyId');
   }
 
   // Upload images for child property
   static Future<ApiResponse<dynamic>> uploadChildPropertyImages(
-    int childPropertyId,
+    String childPropertyId,
     List<File> images, {
     String imageType = 'Gallery',
   }) async {
@@ -651,7 +645,7 @@ class PropertyService {
 
   // Upload images for child property (PlatformFile)
   static Future<ApiResponse<dynamic>> uploadChildPropertyImagesPlatform(
-    int childPropertyId,
+    String childPropertyId,
     List<PlatformFile> images, {
     String imageType = 'Gallery',
   }) async {
@@ -666,7 +660,7 @@ class PropertyService {
 
   // Get images for child property
   static Future<ApiResponse<List<PropertyImage>>> getChildPropertyImages(
-    int childPropertyId,
+    String childPropertyId,
   ) async {
     return await ApiClient.getList(
       '/api/parentproperty/child/$childPropertyId/images',
@@ -676,8 +670,8 @@ class PropertyService {
 
   // Delete child property image
   static Future<ApiResponse<void>> deleteChildPropertyImage(
-    int childPropertyId,
-    int imageId,
+    String childPropertyId,
+    String imageId,
   ) async {
     return await ApiClient.delete(
       '/api/parentproperty/child/$childPropertyId/images/$imageId',
@@ -685,7 +679,7 @@ class PropertyService {
   }
 
   static Future<ApiResponse<PropertyMarketBundle>> getPropertyMarketBundle(
-    int childPropertyId,
+    String childPropertyId,
   ) async {
     try {
       final childResponse = await getChildProperty(childPropertyId);
@@ -783,7 +777,7 @@ class PropertyService {
 
   // Get a specific property as ChildProperty and convert to Property
   static Future<ApiResponse<Property>> getPropertyAsChildProperty(
-    int propertyId,
+    String propertyId,
   ) async {
     final childPropertyResponse = await getChildProperty(propertyId);
     if (childPropertyResponse.success && childPropertyResponse.data != null) {
@@ -797,8 +791,8 @@ class PropertyService {
     return ApiResponse<Property>(
       success: false,
       data: Property(
-        propertyId: 0,
-        ownerId: 0,
+        propertyId: '',
+        ownerId: '',
         owner: null,
         projectId: null,
         project: null,

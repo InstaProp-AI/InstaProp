@@ -9,7 +9,7 @@ class NotificationService extends ChangeNotifier {
   bool _isLoading = false;
   int _unreadCount = 0;
   bool _isLoggedIn = false;
-  int? _currentUserId;
+  String? _currentUserId;
 
   // Firestore real-time listeners
   StreamSubscription<List<AppNotification>>? _notificationsSubscription;
@@ -96,7 +96,7 @@ class NotificationService extends ChangeNotifier {
   }
 
   // Mark notification as read
-  Future<ApiResponse<bool>> markAsRead(int notificationId) async {
+  Future<ApiResponse<bool>> markAsRead(String notificationId) async {
     try {
       final response = await ApiClient.put(
         '/api/notification/$notificationId/read',
@@ -206,7 +206,7 @@ class NotificationService extends ChangeNotifier {
   }
 
   /// Start Firestore real-time listeners for notifications
-  void startNotificationListeners(int userId) {
+  void startNotificationListeners(String userId) {
     _currentUserId = userId;
     _isLoggedIn = true;
 

@@ -43,7 +43,7 @@ class LiveStreamService {
     );
   }
 
-  static Future<ApiResponse<void>> joinStream(int streamId) async {
+  static Future<ApiResponse<void>> joinStream(String streamId) async {
     return ApiClient.post<void>(
       '/api/livestream/$streamId/join',
       {},
@@ -51,7 +51,7 @@ class LiveStreamService {
     );
   }
 
-  static Future<ApiResponse<void>> leaveStream(int streamId) async {
+  static Future<ApiResponse<void>> leaveStream(String streamId) async {
     return ApiClient.post<void>(
       '/api/livestream/$streamId/leave',
       {},
@@ -60,7 +60,7 @@ class LiveStreamService {
   }
 
   static Future<ApiResponse<StreamChatMessage>> sendChatMessage(
-    int streamId,
+    String streamId,
     String message,
   ) async {
     return ApiClient.post<StreamChatMessage>(
@@ -71,7 +71,7 @@ class LiveStreamService {
   }
 
   static Future<ApiResponse<List<StreamChatMessage>>> getChatMessages(
-    int streamId, {
+    String streamId, {
     int page = 1,
     int pageSize = 50,
   }) async {

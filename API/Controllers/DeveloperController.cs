@@ -5,6 +5,7 @@ using InstapropAPI.Data;
 using InstapropAPI.Models;
 using InstapropAPI.Extensions;
 using InstapropAPI.Services;
+using InstapropAPI.Attributes;
 using System.Linq;
 
 namespace InstapropAPI.Controllers
@@ -22,10 +23,10 @@ namespace InstapropAPI.Controllers
             _imgBBService = imgBBService;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim != null && Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return accountId;
             }
@@ -33,8 +34,9 @@ namespace InstapropAPI.Controllers
         }
 
         // GET: api/developer/profile/{developerId} - Get developer profile (Public)
+        [AllowAnonymous]
         [HttpGet("profile/{developerId}")]
-        public async Task<ActionResult<DeveloperProfileDto>> GetDeveloperProfile(long developerId)
+        public async Task<ActionResult<DeveloperProfileDto>> GetDeveloperProfile(Guid developerId)
         {
             try
             {
@@ -53,7 +55,7 @@ namespace InstapropAPI.Controllers
                 .ToListAsync();
 
             var projectIds = projects.Select(p => p.ProjectId).ToList();
-            var projectIdSet = new HashSet<long>(projectIds);
+            var projectIdSet = new HashSet<Guid>(projectIds);
 
             var propertyQueryable = _context.ChildProperties
                 .Include(cp => cp.ParentProperty) // Include parent property for parent-child relationship
@@ -196,6 +198,7 @@ namespace InstapropAPI.Controllers
         // PUT: api/developer/profile - Update own profile (Developers only)
         [HttpPut("profile")]
         [Authorize]
+        [DeveloperOrAdminAuthorize]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateDeveloperProfileDto dto)
         {
             var accountId = GetCurrentAccountId();
@@ -204,7 +207,7 @@ namespace InstapropAPI.Controllers
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
             if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                return Forbid("Only developers can update developer profiles");
+                return Forbid();
 
             var profile = await _context.DeveloperProfiles
                 .FirstOrDefaultAsync(p => p.AccountId == accountId.Value);
@@ -234,6 +237,7 @@ namespace InstapropAPI.Controllers
         // GET: api/developer/analytics - Get developer analytics (Own data)
         [HttpGet("analytics")]
         [Authorize]
+        [DeveloperOrAdminAuthorize]
         public async Task<ActionResult<DeveloperAnalyticsDto>> GetAnalytics()
         {
             try
@@ -244,7 +248,7 @@ namespace InstapropAPI.Controllers
 
                 var account = await _context.Accounts.FindAsync(accountId.Value);
                 if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                    return Forbid("Only developers can view analytics");
+                    return Forbid();
 
                 var projects = await _context.Projects
                     .Where(p => p.DeveloperId == accountId.Value)
@@ -316,6 +320,7 @@ namespace InstapropAPI.Controllers
         // GET: api/developer/projects - Get developer's projects with properties
         [HttpGet("projects")]
         [Authorize]
+        [DeveloperOrAdminAuthorize]
         public async Task<ActionResult<IEnumerable<ProjectWithPropertiesDto>>> GetProjects()
         {
             try
@@ -326,7 +331,7 @@ namespace InstapropAPI.Controllers
 
                 var account = await _context.Accounts.FindAsync(accountId.Value);
                 if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                    return Forbid("Only developers can view their projects");
+                    return Forbid();
 
                 // Return projects explicitly owned by developer OR any project that contains properties owned by the developer
                 var projects = await _context.Projects
@@ -392,6 +397,7 @@ namespace InstapropAPI.Controllers
         // GET: api/developer/properties - Get all properties owned by the developer (including standalone)
         [HttpGet("properties")]
         [Authorize]
+        [DeveloperOrAdminAuthorize]
         public async Task<ActionResult<IEnumerable<PropertySummaryDto>>> GetDeveloperProperties()
         {
             try
@@ -402,7 +408,7 @@ namespace InstapropAPI.Controllers
 
                 var account = await _context.Accounts.FindAsync(accountId.Value);
                 if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                    return Forbid("Only developers can view their properties");
+                    return Forbid();
 
                 var properties = await _context.ChildProperties
                     .Where(p => p.OwnerId == accountId.Value)
@@ -579,7 +585,7 @@ namespace InstapropAPI.Controllers
     // DTOs
     public class DeveloperProfileDto
     {
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
@@ -600,8 +606,8 @@ namespace InstapropAPI.Controllers
 
     public class DeveloperRatingDto
     {
-        public long RatingId { get; set; }
-        public long UserId { get; set; }
+        public Guid RatingId { get; set; }
+        public Guid UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
         public int Rating { get; set; }
         public string? Comment { get; set; }
@@ -632,7 +638,7 @@ namespace InstapropAPI.Controllers
 
     public class PropertyAnalyticsDto
     {
-        public long PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public string PropertyName { get; set; } = string.Empty;
         public string? PropertyLocation { get; set; }
         public int Views { get; set; }
@@ -644,7 +650,7 @@ namespace InstapropAPI.Controllers
 
     public class ProjectWithPropertiesDto
     {
-        public long ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Location { get; set; }
@@ -656,9 +662,9 @@ namespace InstapropAPI.Controllers
 
     public class PropertySummaryDto
     {
-        public long PropertyId { get; set; }
-        public long? ParentPropertyId { get; set; }
-        public long? ProjectId { get; set; }
+        public Guid PropertyId { get; set; }
+        public Guid? ParentPropertyId { get; set; }
+        public Guid? ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Location { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
@@ -672,7 +678,7 @@ namespace InstapropAPI.Controllers
 
     public class CreateRatingDto
     {
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public int Rating { get; set; }
         public string? Comment { get; set; }
         public RatingType RatingType { get; set; }
@@ -680,7 +686,7 @@ namespace InstapropAPI.Controllers
 
     public class FeaturedDeveloperDto
     {
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string? CompanyName { get; set; }
@@ -693,7 +699,7 @@ namespace InstapropAPI.Controllers
 
     public class ProjectSummaryDto
     {
-        public long ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Location { get; set; }
         public int PropertiesCount { get; set; }

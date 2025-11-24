@@ -4,7 +4,7 @@ import 'api_client.dart';
 class PriceHistoryService {
   /// Get price history for a parent property
   static Future<PropertyPriceHistoryResponse> getParentPropertyPriceHistory(
-    int parentPropertyId,
+    String parentPropertyId,
   ) async {
     final response = await ApiClient.get(
       '/api/pricehistory/parent/$parentPropertyId',
@@ -49,7 +49,7 @@ class PriceHistoryService {
 
   /// Get price statistics for a parent property
   static Future<PropertyPriceStats> getParentPropertyPriceStats(
-    int parentPropertyId,
+    String parentPropertyId,
   ) async {
     final response = await ApiClient.get(
       '/api/pricehistory/parent/$parentPropertyId/stats',

@@ -10,7 +10,7 @@ import 'payment_schedule_scanner_dialog.dart';
 import 'property_docs_upload_page.dart';
 
 class AddPropertyFinancialPage extends StatefulWidget {
-  final int? propertyId;
+  final String? propertyId;
   final String? propertyName;
 
   const AddPropertyFinancialPage({

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Event {
-  final int eventId;
+  final String eventId;
   final String title;
   final String? description;
   final DateTime eventDate;
@@ -19,11 +19,11 @@ class Event {
   final int? recurrenceInterval;
   final DateTime? recurrenceEndDate;
   final int? recurrenceCount;
-  final int? parentEventId;
+  final String? parentEventId;
   final double? amount;
-  final int? propertyId;
-  final int? auctionId;
-  final int? bidId;
+  final String? propertyId;
+  final String? auctionId;
+  final String? bidId;
   final DateTime createdAt;
   final String? scheduleImageUrl;
   final String? scheduleGroupId;
@@ -60,8 +60,23 @@ class Event {
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return Event(
-      eventId: json['eventId'] ?? json['EventId'] ?? 0,
+      eventId: parseId(json['eventId'] ?? json['EventId']),
       title: json['title'] ?? json['Title'] ?? '',
       description: json['description'] ?? json['Description'],
       eventDate: DateTime.parse(json['eventDate'] ?? json['EventDate']),
@@ -139,7 +154,7 @@ class Event {
   }
 
   Event copyWith({
-    int? eventId,
+    String? eventId,
     String? title,
     String? description,
     DateTime? eventDate,
@@ -151,9 +166,9 @@ class Event {
     bool? isCompleted,
     bool? isReminderSet,
     int? reminderMinutes,
-    int? propertyId,
-    int? auctionId,
-    int? bidId,
+    String? propertyId,
+    String? auctionId,
+    String? bidId,
     DateTime? createdAt,
     String? scheduleImageUrl,
     String? scheduleGroupId,
@@ -357,9 +372,9 @@ class EventCreateDto {
   final DateTime? recurrenceEndDate;
   final int? recurrenceCount;
   final double? amount;
-  final int? propertyId;
-  final int? auctionId;
-  final int? bidId;
+  final String? propertyId;
+  final String? auctionId;
+  final String? bidId;
 
   EventCreateDto({
     required this.title,

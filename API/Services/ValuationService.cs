@@ -19,7 +19,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Gets or calculates property valuation with 2-week caching
         /// </summary>
-        public async Task<decimal?> GetOrCalculatePropertyValuation(int propertyId)
+        public async Task<decimal?> GetOrCalculatePropertyValuation(Guid propertyId)
         {
             // Check for recent valuation (less than 14 days old)
             var recentValuation = await _context.PropertyValuations

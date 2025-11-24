@@ -8,7 +8,7 @@ namespace InstapropAPI.Models
     public class NewsArticle
     {
         [Key]
-        public long NewsArticleId { get; set; }
+        public Guid NewsArticleId { get; set; }
 
         [Required]
         [MaxLength(200)]
@@ -29,10 +29,10 @@ namespace InstapropAPI.Models
         public bool IsPublished { get; set; } = true;
 
         // Developer assignment (nullable - null means admin post)
-        public long? DeveloperId { get; set; }
+        public Guid? DeveloperId { get; set; }
 
         [ForeignKey(nameof(DeveloperId))]
-        public virtual Account? Developer { get; set; }
+        public virtual DeveloperAccount? Developer { get; set; }
 
         // Navigation property for images
         public virtual ICollection<NewsImage> Images { get; set; } = new List<NewsImage>();

@@ -26,7 +26,7 @@ class FirestoreService {
 
   /// Listen to a specific auction in real-time
   /// Returns a stream that emits auction updates
-  static Stream<Auction?> listenToAuction(int auctionId) {
+  static Stream<Auction?> listenToAuction(String auctionId) {
     final firestore = _firestoreOrNull();
     if (firestore == null) {
       return Stream<Auction?>.value(null);
@@ -115,7 +115,7 @@ class FirestoreService {
 
   /// Listen to bids for a specific auction
   /// Returns a stream that emits list of bids
-  static Stream<List<Bid>> listenToAuctionBids(int auctionId) {
+  static Stream<List<Bid>> listenToAuctionBids(String auctionId) {
     final firestore = _firestoreOrNull();
     if (firestore == null) {
       return Stream<List<Bid>>.value([]);
@@ -148,7 +148,9 @@ class FirestoreService {
 
   /// Listen to notifications for a specific user
   /// Returns a stream that emits list of notifications
-  static Stream<List<AppNotification>> listenToUserNotifications(int userId) {
+  static Stream<List<AppNotification>> listenToUserNotifications(
+    String userId,
+  ) {
     final firestore = _firestoreOrNull();
     if (firestore == null) {
       return Stream<List<AppNotification>>.value([]);
@@ -238,7 +240,7 @@ class FirestoreService {
   // ============================================
 
   /// Get a single auction (one-time read, not real-time)
-  static Future<Auction?> getAuction(int auctionId) async {
+  static Future<Auction?> getAuction(String auctionId) async {
     final firestore = _firestoreOrNull();
     if (firestore == null) {
       return null;

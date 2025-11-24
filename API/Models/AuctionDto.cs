@@ -6,8 +6,8 @@ namespace InstapropAPI.Models
 {
     public class AuctionDto
     {
-        public long AuctionId { get; set; }
-        public long PropertyId { get; set; }
+        public Guid AuctionId { get; set; }
+        public Guid PropertyId { get; set; }
         public AuctionPropertyDto Property { get; set; }
         public decimal StartPrice { get; set; }
         public decimal CurrentPrice { get; set; }
@@ -143,7 +143,7 @@ namespace InstapropAPI.Models
 
     public class AuctionPropertyDto
     {
-        public long PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string Location { get; set; }
@@ -162,8 +162,8 @@ namespace InstapropAPI.Models
 
     public class PropertyImageDto
     {
-        public long PropertyImageId { get; set; }
-        public long PropertyId { get; set; }
+        public Guid PropertyImageId { get; set; }
+        public Guid PropertyId { get; set; }
         public string ImageUrl { get; set; }
         public string ImageType { get; set; }
         public bool IsMainImage { get; set; }
@@ -172,8 +172,8 @@ namespace InstapropAPI.Models
 
     public class PropertyDocumentDto
     {
-        public long DocId { get; set; }
-        public int PropertyId { get; set; }
+        public Guid DocId { get; set; }
+        public Guid PropertyId { get; set; }
         public string DocType { get; set; }
         public string ImgUrl { get; set; }
         public DateTime UploadedAt { get; set; }
@@ -181,7 +181,7 @@ namespace InstapropAPI.Models
 
     public class InstallmentSummaryDto
     {
-        public int SummaryId { get; set; }
+        public Guid SummaryId { get; set; }
         public decimal ContractedPrice { get; set; }
         public decimal TotalPaid { get; set; }
         public decimal DownPaymentPercent { get; set; }

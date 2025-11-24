@@ -23,7 +23,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
   List<Property> _allProperties = [];
   List<Property> _filteredProperties = [];
   List<Auction> _allAuctions = [];
-  Map<int, Auction> _propertyAuctionMap = {}; // Map propertyId to auction
+  Map<String, Auction> _propertyAuctionMap = {}; // Map propertyId to auction
   bool _isLoading = true;
 
   // Served/Suggested Searches

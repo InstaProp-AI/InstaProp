@@ -56,7 +56,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/Auction/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<AuctionDto>> GetAuction(int id)
+        public async Task<ActionResult<AuctionDto>> GetAuction(Guid id)
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
@@ -96,7 +96,7 @@ namespace InstapropAPI.Controllers
         [HttpPut("{id}")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<IActionResult> PutAuction(int id, Auction auction)
+        public async Task<IActionResult> PutAuction(Guid id, Auction auction)
         {
             if (id != auction.AuctionId)
             {
@@ -128,7 +128,7 @@ namespace InstapropAPI.Controllers
         [HttpDelete("{id}")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<IActionResult> DeleteAuction(long id)
+        public async Task<IActionResult> DeleteAuction(Guid id)
         {
             var auction = await _context.Auctions.FindAsync(id);
             if (auction == null)
@@ -208,7 +208,7 @@ namespace InstapropAPI.Controllers
             // Create auction directly as Active
             var auction = new Auction
             {
-                PropertyId = (int)auctionDto.PropertyId,
+                PropertyId = auctionDto.PropertyId,
                 StartPrice = auctionDto.StartPrice,
                 CurrentPrice = auctionDto.StartPrice,
                 StartAt = auctionDto.StartAt,
@@ -271,7 +271,7 @@ namespace InstapropAPI.Controllers
             // Create auction request
             var auction = new Auction
             {
-                PropertyId = (int)requestDto.PropertyId,
+                PropertyId = requestDto.PropertyId,
                 StartPrice = requestDto.StartPrice,
                 CurrentPrice = requestDto.StartPrice,
                 StartAt = requestDto.StartAt,
@@ -290,7 +290,7 @@ namespace InstapropAPI.Controllers
         [HttpPut("{id}/status")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<ActionResult> UpdateAuctionStatus(long id, [FromBody] AuctionStatusUpdateDto statusDto)
+        public async Task<ActionResult> UpdateAuctionStatus(Guid id, [FromBody] AuctionStatusUpdateDto statusDto)
         {
             var auction = await _context.Auctions.FindAsync(id);
             if (auction == null)
@@ -355,7 +355,7 @@ namespace InstapropAPI.Controllers
         [HttpPost("{id}/relist")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<ActionResult> RelistAuction(long id, [FromBody] RelistAuctionDto relistDto)
+        public async Task<ActionResult> RelistAuction(Guid id, [FromBody] RelistAuctionDto relistDto)
         {
             var auction = await _context.Auctions
                 .Include(a => a.Property)
@@ -400,21 +400,21 @@ namespace InstapropAPI.Controllers
 
 
 
-        private bool AuctionExists(int id)
+        private bool AuctionExists(Guid id)
         {
             return _context.Auctions.Any(e => e.AuctionId == id);
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var uidClaim = User.FindFirst("uid");
-            return uidClaim != null ? long.Parse(uidClaim.Value) : null;
+            return uidClaim != null && Guid.TryParse(uidClaim.Value, out var guid) ? guid : null;
         }
     }
 
     public class AuctionRequestDto
     {
-        public long PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public decimal StartPrice { get; set; }
         public DateTime StartAt { get; set; }
         public int Duration { get; set; } // hours
@@ -427,7 +427,7 @@ namespace InstapropAPI.Controllers
 
     public class CreateAuctionDto
     {
-        public long PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public decimal StartPrice { get; set; }
         public DateTime StartAt { get; set; }
         public int Duration { get; set; } // hours

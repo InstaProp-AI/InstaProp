@@ -15,7 +15,7 @@ import 'properties_management_page.dart';
 import 'project_details_page.dart';
 import 'developer_profile_page.dart';
 import 'market_page.dart';
-import 'community_feed_page.dart';
+// CommunityFeedPage removed
 import 'explore_page.dart';
 import 'sales_chats_page.dart';
 
@@ -795,73 +795,7 @@ class _HomePageState extends State<HomePage>
     return _AutoScrollingNewsCarousel(news: news);
   }
 
-  Widget _buildCommunityPreviewSection(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildMinimalSectionHeader(context, 'Community', () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const CommunityFeedPage(),
-              ),
-            );
-          }),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CommunityFeedPage(),
-                ),
-              );
-            },
-            child: Container(
-              height: 120,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0EA5E9).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.people_alt, size: 48, color: Colors.white),
-                    SizedBox(height: 12),
-                    Text(
-                      'Join the Community',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Connect with property owners',
-                      style: TextStyle(fontSize: 14, color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Community preview section removed
 }
 
 class _AutoScrollingNewsCarousel extends StatefulWidget {

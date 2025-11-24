@@ -41,7 +41,7 @@ namespace InstapropAPI.Services
                     auction.StartPrice,
                     auction.StartAt,
                     auction.Property.ImageUrl ?? "https://via.placeholder.com/600x200",
-                    (int)auction.AuctionId
+                    auction.AuctionId.ToString()
                 );
 
                 var result = await _smtpService.SendEmailAsync(userEmail, userName, subject, htmlBody);
@@ -114,7 +114,7 @@ namespace InstapropAPI.Services
                     auction.Property.Location,
                     winningBid,
                     auction.Property.ImageUrl ?? "https://via.placeholder.com/600x200",
-                    (int)auction.AuctionId
+                    auction.AuctionId.ToString()
                 );
 
                 var result = await _smtpService.SendEmailAsync(userEmail, userName, subject, htmlBody);

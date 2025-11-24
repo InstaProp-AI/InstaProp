@@ -7,10 +7,10 @@ namespace InstapropAPI.Models
     public class ProjectUpdate
     {
         [Key]
-        public long UpdateId { get; set; }
+        public Guid UpdateId { get; set; }
 
         [Required]
-        public long ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
 
         [ForeignKey(nameof(ProjectId))]
         public Project Project { get; set; } = null!;

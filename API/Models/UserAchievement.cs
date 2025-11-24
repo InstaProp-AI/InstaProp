@@ -21,13 +21,13 @@ namespace InstapropAPI.Models
     public class UserAchievement
     {
         [Key]
-        public long AchievementId { get; set; }
+        public Guid AchievementId { get; set; }
 
         [Required]
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
 
         [ForeignKey(nameof(AccountId))]
-        public Account Account { get; set; } = null!;
+        public AccountBase Account { get; set; } = null!;
 
         [Required]
         public AchievementType AchievementType { get; set; }

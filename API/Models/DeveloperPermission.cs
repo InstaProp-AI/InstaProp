@@ -7,10 +7,10 @@ namespace InstapropAPI.Models
     public class DeveloperPermission
     {
         [Key]
-        public long DeveloperPermissionId { get; set; }
+        public Guid DeveloperPermissionId { get; set; }
 
         [Required]
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
 
         [Required]
         [MaxLength(50)]
@@ -25,7 +25,7 @@ namespace InstapropAPI.Models
 
         // Navigation property
         [ForeignKey("DeveloperId")]
-        public Account? Developer { get; set; }
+        public DeveloperAccount? Developer { get; set; }
     }
 }
 

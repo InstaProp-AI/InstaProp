@@ -11,11 +11,11 @@ namespace InstapropAPI.Models
     public class PropertyPriceHistory
     {
         [Key]
-        public int PriceHistoryId { get; set; }
+        public Guid PriceHistoryId { get; set; }
 
         [Required]
         [ForeignKey("ParentProperty")]
-        public int ParentPropertyId { get; set; }
+        public Guid ParentPropertyId { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
@@ -34,11 +34,11 @@ namespace InstapropAPI.Models
 
         // Optional: Link to specific auction if source is AuctionWin
         [ForeignKey("Auction")]
-        public long? AuctionId { get; set; }
+        public Guid? AuctionId { get; set; }
 
         // Optional: Which specific child property this price is for
         [ForeignKey("ChildProperty")]
-        public int? ChildPropertyId { get; set; }
+        public Guid? ChildPropertyId { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

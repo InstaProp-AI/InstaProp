@@ -4,7 +4,7 @@ import '../services/live_stream_service.dart';
 import '../theme/app_colors.dart';
 
 class LiveStreamChatOverlay extends StatefulWidget {
-  final int streamId;
+  final String streamId;
   final bool isStreamLive;
 
   const LiveStreamChatOverlay({

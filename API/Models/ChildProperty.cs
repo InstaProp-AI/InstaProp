@@ -12,13 +12,13 @@ namespace InstapropAPI.Models
     public class ChildProperty
     {
         [Key]
-        public int PropertyId { get; set; } // Keep same name for compatibility
+        public Guid PropertyId { get; set; } // Keep same name for compatibility
 
         [ForeignKey("ParentProperty")]
-        public int? ParentPropertyId { get; set; }
+        public Guid? ParentPropertyId { get; set; }
 
         [ForeignKey("Owner")]
-        public long? OwnerId { get; set; }
+        public Guid? OwnerId { get; set; }
 
         // Phase information (moved from parent to child)
         [MaxLength(50)]
@@ -103,11 +103,11 @@ namespace InstapropAPI.Models
         public int Bathrooms { get; set; } // From parent
         public PropertyType Type { get; set; } = PropertyType.Apartment;
         public PropertyStatus Status { get; set; } = PropertyStatus.NotApproved; // Individual property status
-        public long? ProjectId { get; set; } // Optional direct link to project
+        public Guid? ProjectId { get; set; } // Optional direct link to project
 
         // Navigation properties
         public virtual ParentProperty? ParentProperty { get; set; }
-        public virtual Account? Owner { get; set; }
+        public virtual AccountBase? Owner { get; set; }
         public virtual ICollection<PropertyImage> PropertyImages { get; set; } = new List<PropertyImage>();
         public virtual ICollection<PropertyDoc> PropertyDocs { get; set; } = new List<PropertyDoc>();
         public virtual ICollection<Auction> Auctions { get; set; } = new List<Auction>();

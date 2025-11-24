@@ -5,10 +5,6 @@ namespace InstapropAPI.Models
 {
     public class PropertyDto
     {
-        [Required]
-        [MaxLength(200)]
-        public string Name { get; set; } = string.Empty;
-
         public string? Description { get; set; }
 
         public string? Location { get; set; }
@@ -26,10 +22,10 @@ namespace InstapropAPI.Models
 
         public string? ImageUrl { get; set; } = string.Empty;
 
-        public long? ProjectId { get; set; }
+        public Guid? ProjectId { get; set; }
         public string? ProjectName { get; set; }
 
-        public int? ParentPropertyId { get; set; }
+        public Guid? ParentPropertyId { get; set; }
 
         [MaxLength(50)]
         public string? UnitNumber { get; set; }

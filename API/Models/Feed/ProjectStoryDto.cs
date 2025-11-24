@@ -4,7 +4,7 @@ namespace InstapropAPI.Models.Feed
 {
     public class ProjectStoryDto
     {
-        public long ProjectId { get; set; }
+        public Guid ProjectId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Location { get; set; }
         public DateTime CreatedAt { get; set; }

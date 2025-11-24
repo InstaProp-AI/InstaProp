@@ -70,7 +70,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<IEnumerable<ChildProperty>>> GetMyProperties()
         {
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return BadRequest("Invalid user ID");
             }
@@ -86,7 +86,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/Property/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<object>> GetProperty(int id)
+        public async Task<ActionResult<object>> GetProperty(Guid id)
         {
             var property = await _context.ChildProperties
                 .Include(p => p.Owner)
@@ -222,7 +222,7 @@ namespace InstapropAPI.Controllers
         // GET: api/Property/{id}/financials
         [HttpGet("{id}/financials")]
         [Authorize]
-        public async Task<ActionResult<object>> GetPropertyFinancials(long id, [FromQuery] decimal? marketValue)
+        public async Task<ActionResult<object>> GetPropertyFinancials(Guid id, [FromQuery] decimal? marketValue)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -266,7 +266,7 @@ namespace InstapropAPI.Controllers
             {
                 // Try to get AI valuation
                 var valuationService = new ValuationService(_context, _openAIService);
-                var aiValuation = await valuationService.GetOrCalculatePropertyValuation((int)id);
+                var aiValuation = await valuationService.GetOrCalculatePropertyValuation(id);
                 
                 if (aiValuation.HasValue)
                 {
@@ -303,7 +303,7 @@ namespace InstapropAPI.Controllers
         // GET: api/Property/{id}/installment-summary
         [HttpGet("{id}/installment-summary")]
         [Authorize]
-        public async Task<ActionResult<object>> GetInstallmentSummary(int id)
+        public async Task<ActionResult<object>> GetInstallmentSummary(Guid id)
         {
             var property = await _context.ChildProperties
                 .Include(p => p.InstallmentSummary)
@@ -333,7 +333,7 @@ namespace InstapropAPI.Controllers
         // PUT: api/Property/{id}/installment-summary
         [HttpPut("{id}/installment-summary")]
         [Authorize]
-        public async Task<ActionResult<object>> UpsertInstallmentSummary(int id, [FromBody] InstallmentSummaryInputDto summaryDto)
+        public async Task<ActionResult<object>> UpsertInstallmentSummary(Guid id, [FromBody] InstallmentSummaryInputDto summaryDto)
         {
             var property = await _context.ChildProperties
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
@@ -380,7 +380,7 @@ namespace InstapropAPI.Controllers
         {
             // Get the current user ID from the JWT token
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return BadRequest("Invalid user ID");
             }
@@ -409,7 +409,6 @@ namespace InstapropAPI.Controllers
                 OwnerId = userId,
                 ProjectId = propertyDto.ProjectId ?? parentTemplate?.ProjectId, // Optional for developers
                 ParentPropertyId = propertyDto.ParentPropertyId,
-                Name = propertyDto.Name,
                 Description = propertyDto.Description ?? string.Empty,
                 Location = propertyDto.Location ?? string.Empty,
                 Type = propertyType,
@@ -440,6 +439,14 @@ namespace InstapropAPI.Controllers
                     ?? parentTemplate.ProjectName
                     ?? property.Location;
             }
+
+            // Auto-generate name from project + type + unit
+            var projectName = parentTemplate?.ProjectName ?? parentTemplate?.Project?.Name ?? "Property";
+            var propertyTypeName = PropertyTypeHelper.ToDisplayName(propertyType);
+            var unitInfo = !string.IsNullOrWhiteSpace(propertyDto.UnitNumber) 
+                ? $" - Unit {propertyDto.UnitNumber}" 
+                : "";
+            property.Name = $"{projectName} - {propertyTypeName}{unitInfo}";
 
             _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();
@@ -459,7 +466,7 @@ namespace InstapropAPI.Controllers
         {
             // Get the current user ID from the JWT token
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return BadRequest("Invalid user ID");
             }
@@ -488,7 +495,6 @@ namespace InstapropAPI.Controllers
                 OwnerId = userId,
                 ProjectId = propertyDto.ProjectId ?? parentTemplate?.ProjectId, // Optional for developers
                 ParentPropertyId = propertyDto.ParentPropertyId,
-                Name = propertyDto.Name,
                 Description = propertyDto.Description ?? string.Empty,
                 Location = propertyDto.Location ?? string.Empty,
                 Type = propertyType,
@@ -520,6 +526,14 @@ namespace InstapropAPI.Controllers
                     ?? property.Location;
             }
 
+            // Auto-generate name from project + type + unit
+            var projectName = parentTemplate?.ProjectName ?? parentTemplate?.Project?.Name ?? "Property";
+            var propertyTypeName = PropertyTypeHelper.ToDisplayName(propertyType);
+            var unitInfo = !string.IsNullOrWhiteSpace(propertyDto.UnitNumber) 
+                ? $" - Unit {propertyDto.UnitNumber}" 
+                : "";
+            property.Name = $"{projectName} - {propertyTypeName}{unitInfo}";
+
             _context.ChildProperties.Add(property);
             await _context.SaveChangesAsync();
 
@@ -531,7 +545,7 @@ namespace InstapropAPI.Controllers
         // PUT: api/Property/5
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> PutProperty(int id, [FromBody] PropertyUpdateDto updateDto)
+        public async Task<IActionResult> PutProperty(Guid id, [FromBody] PropertyUpdateDto updateDto)
         {
             // Check if property is editable (only before approval)
             var existingProperty = await _context.ChildProperties.FindAsync(id);
@@ -584,7 +598,7 @@ namespace InstapropAPI.Controllers
         // DELETE: api/Property/5
         [HttpDelete("{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteProperty(int id)
+        public async Task<IActionResult> DeleteProperty(Guid id)
         {
             var property = await _context.ChildProperties
                 .Include(p => p.Auctions)
@@ -629,7 +643,7 @@ namespace InstapropAPI.Controllers
         [HttpPut("{id}/approve")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<IActionResult> ApproveProperty(int id)
+        public async Task<IActionResult> ApproveProperty(Guid id)
         {
             var property = await _context.ChildProperties.FindAsync(id);
             if (property == null)
@@ -657,7 +671,7 @@ namespace InstapropAPI.Controllers
         // POST: api/Property/{id}/documents
         [HttpPost("{id}/documents")]
         [Authorize]
-        public async Task<ActionResult> UploadPropertyDocument(int id, IFormFile file, [FromForm] string docType)
+        public async Task<ActionResult> UploadPropertyDocument(Guid id, IFormFile file, [FromForm] string docType)
         {
             try
             {
@@ -716,7 +730,7 @@ namespace InstapropAPI.Controllers
                     // Create new document
                     var propertyDoc = new PropertyDoc
                     {
-                        PropertyId = (int)id,
+                        PropertyId = id,
                         DocType = docType,
                         ImgUrl = uploadResult.DisplayUrl,
                         DeleteUrl = uploadResult.DeleteUrl,
@@ -741,7 +755,7 @@ namespace InstapropAPI.Controllers
         // GET: api/Property/{id}/documents
         [HttpGet("{id}/documents")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<PropertyDoc>>> GetPropertyDocuments(int id)
+        public async Task<ActionResult<IEnumerable<PropertyDoc>>> GetPropertyDocuments(Guid id)
         {
             var property = await _context.ChildProperties.FindAsync(id);
             if (property == null)
@@ -757,12 +771,12 @@ namespace InstapropAPI.Controllers
         // POST: api/Property/{id}/images
         [HttpPost("{id}/images")]
         [Authorize]
-        public async Task<ActionResult> UploadPropertyImages(int id, List<IFormFile> images, [FromForm] string? imageType = "Gallery")
+        public async Task<ActionResult> UploadPropertyImages(Guid id, List<IFormFile> images, [FromForm] string? imageType = "Gallery")
         {
             try
             {
-                // ChildProperty primary key is int; cast route id accordingly
-                var property = await _context.ChildProperties.FindAsync((int)id);
+                // ChildProperty primary key is Guid
+                var property = await _context.ChildProperties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -812,7 +826,7 @@ namespace InstapropAPI.Controllers
                     // Create new property image
                     var propertyImage = new PropertyImage
                     {
-                        PropertyId = (int)id,
+                        PropertyId = id,
                         ImageUrl = uploadResult.DisplayUrl,
                         ImageType = imageType ?? "Gallery",
                         IsMainImage = isMainImage,
@@ -855,9 +869,9 @@ namespace InstapropAPI.Controllers
 
         // GET: api/Property/{id}/images
         [HttpGet("{id}/images")]
-        public async Task<ActionResult<IEnumerable<PropertyImage>>> GetPropertyImages(int id)
+        public async Task<ActionResult<IEnumerable<PropertyImage>>> GetPropertyImages(Guid id)
         {
-            var property = await _context.ChildProperties.FindAsync((int)id);
+            var property = await _context.ChildProperties.FindAsync(id);
             if (property == null)
                 return NotFound();
 
@@ -872,11 +886,11 @@ namespace InstapropAPI.Controllers
         // DELETE: api/Property/{propertyId}/images/{imageId}
         [HttpDelete("{propertyId}/images/{imageId}")]
         [Authorize]
-        public async Task<ActionResult> DeletePropertyImage(int propertyId, int imageId)
+        public async Task<ActionResult> DeletePropertyImage(Guid propertyId, Guid imageId)
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync((int)propertyId);
+                var property = await _context.ChildProperties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -936,11 +950,11 @@ namespace InstapropAPI.Controllers
         // PUT: api/Property/{propertyId}/images/{imageId}/set-main
         [HttpPut("{propertyId}/images/{imageId}/set-main")]
         [Authorize]
-        public async Task<ActionResult> SetMainImage(int propertyId, int imageId)
+        public async Task<ActionResult> SetMainImage(Guid propertyId, Guid imageId)
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync((int)propertyId);
+                var property = await _context.ChildProperties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -988,13 +1002,13 @@ namespace InstapropAPI.Controllers
         [HttpPut("{id}/verify")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<IActionResult> VerifyProperty(long id)
+        public async Task<IActionResult> VerifyProperty(Guid id)
         {
             // Redirect to ApproveProperty method
-            return await ApproveProperty((int)id);
+            return await ApproveProperty(id);
         }
 
-        private async Task HandleInstallmentSummaryAsync(int propertyId, InstallmentSummaryInputDto? summaryDto)
+        private async Task HandleInstallmentSummaryAsync(Guid propertyId, InstallmentSummaryInputDto? summaryDto)
         {
             if (summaryDto == null || !summaryDto.ContractedPrice.HasValue)
             {
@@ -1047,22 +1061,22 @@ namespace InstapropAPI.Controllers
             };
         }
 
-        private bool PropertyExists(int id)
+        private bool PropertyExists(Guid id)
         {
             return _context.ChildProperties.Any(e => e.PropertyId == id);
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var uidClaim = User.FindFirst("uid");
-            return uidClaim != null ? long.Parse(uidClaim.Value) : null;
+            return uidClaim != null && Guid.TryParse(uidClaim.Value, out var guid) ? guid : null;
         }
 
         // SECURITY: Check RoleId instead of Type - returns role name or null
         private string? GetCurrentAccountType()
         {
             var roleIdClaim = User.FindFirst("roleId");
-            if (roleIdClaim == null || !long.TryParse(roleIdClaim.Value, out long roleId))
+            if (roleIdClaim == null || !Guid.TryParse(roleIdClaim.Value, out var roleId))
                 return null;
             
             // Map role IDs to role names

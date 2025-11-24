@@ -6,11 +6,13 @@ using InstapropAPI.Models;
 using InstapropAPI.Services;
 using InstapropAPI.Models.Feed;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AllowAnonymous]
     public class FeedController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -24,10 +26,10 @@ namespace InstapropAPI.Controllers
             _logger = logger;
         }
 
-        protected long? GetCurrentAccountId()
+        protected Guid? GetCurrentAccountId()
         {
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim != null && long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return userId;
             }
@@ -39,7 +41,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<FeedResponseDto>> GetExploreFeed(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] long? userId = null)
+            [FromQuery] Guid? userId = null)
         {
             userId ??= GetCurrentAccountId();
 
@@ -54,7 +56,6 @@ namespace InstapropAPI.Controllers
                 }
 
                 // Fetch all available content
-                var allPosts = await GetAllPosts(userId);
                 var allAuctions = await GetAllAuctions();
                 var allLiveStreams = await GetActiveLiveStreams();
                 var allNews = await GetAllNews();
@@ -68,25 +69,10 @@ namespace InstapropAPI.Controllers
 
                 // Create weighted pool with time-based boosting
                 var contentPool = new List<FeedItemDto>();
-                var random = new Random(page * DateTime.Now.Millisecond + (int)(userId ?? 0));
+                var random = new Random(page * DateTime.Now.Millisecond + (userId?.GetHashCode() ?? 0));
                 
-                // Time-based boost multipliers (removed communityWeight)
-                var (postWeight, auctionWeight, livestreamWeight, newsWeight, projectWeight) = GetTimeBasedWeights();
-
-                // Add posts (40% weight = 8 copies per post, boosted by time)
-                foreach (var post in allPosts)
-                {
-                    var copies = (int)(8 * postWeight);
-                    for (int i = 0; i < copies; i++)
-                    {
-                        contentPool.Add(new FeedItemDto
-                        {
-                            Type = "post",
-                            Data = post,
-                            Id = $"post_{post.PostId}"
-                        });
-                    }
-                }
+                // Time-based boost multipliers
+                var (auctionWeight, livestreamWeight, newsWeight, projectWeight) = GetTimeBasedWeights();
 
                 // Add auctions (15% weight = 3 copies per auction, boosted by time)
                 foreach (var auction in allAuctions)
@@ -208,7 +194,7 @@ namespace InstapropAPI.Controllers
                     {
                         Type = "valuationPrompt",
                         Data = prompt,
-                        Id = $"valuationPrompt_{prompt.PropertyId ?? 0}_{userId ?? 0}"
+                        Id = $"valuationPrompt_{prompt.PropertyId ?? Guid.Empty}_{userId ?? Guid.Empty}"
                     });
                 }
 
@@ -244,13 +230,13 @@ namespace InstapropAPI.Controllers
                     })
                     .ToList();
 
-                // Apply boost rules (ending soon auctions, trending posts, etc.)
+                // Apply boost rules (ending soon auctions, etc.)
                 feedItems = ApplyBoostRules(feedItems, allAuctions, random);
 
                 // Add variable rewards - randomly vary distribution
                 if (random.Next(100) < 20) // 20% chance of burst
                 {
-                    feedItems = AddContentBurst(feedItems, allAuctions, allPosts, random);
+                    feedItems = AddContentBurst(feedItems, allAuctions, random);
                 }
 
                 // Inject urgency items (ending soon auctions, breaking news)
@@ -473,13 +459,7 @@ namespace InstapropAPI.Controllers
                 })
                 .ToListAsync();
 
-            var reputationLookup = await _context.Accounts
-                .AsNoTracking()
-                .Where(a => accountIds.Contains(a.AccountId))
-                .Select(a => new { a.AccountId, a.ReputationPoints })
-                .ToListAsync();
-
-            var reputationMap = reputationLookup.ToDictionary(r => r.AccountId, r => r.ReputationPoints);
+            // ReputationPoints removed (community feature)
 
             var milestones = new List<InvestorMilestoneDto>();
 
@@ -516,7 +496,7 @@ namespace InstapropAPI.Controllers
                     PointsAwarded = achievement.PointsAwarded,
                     PortfolioCount = portfolio?.PropertyCount ?? 0,
                     TotalBuyInValue = portfolio?.TotalBuyIn ?? 0,
-                    ReputationPoints = reputationMap.TryGetValue(achievement.AccountId, out var rep) ? rep : 0,
+                    // ReputationPoints removed (community feature)
                     Initials = initials
                 });
             }
@@ -528,38 +508,6 @@ namespace InstapropAPI.Controllers
                 .ToList();
         }
 
-        private async Task<List<CommunityPost>> GetAllPosts(long? userId)
-        {
-            var query = _context.CommunityPosts
-                .Include(p => p.Author)
-                .Include(p => p.Likes)
-                .Include(p => p.Categories)
-                .AsQueryable();
-
-            // Get recent posts (last 30 days)
-            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
-            query = query.Where(p => p.CreatedAt >= thirtyDaysAgo);
-
-            // Boost trending posts (created in last 6 hours with high engagement)
-            var sixHoursAgo = DateTime.UtcNow.AddHours(-6);
-            var trendingPosts = await query
-                .Where(p => p.CreatedAt >= sixHoursAgo)
-                .Where(p => p.LikeCount > 20 || p.CommentCount > 10)
-                .OrderByDescending(p => p.LikeCount + p.CommentCount * 2)
-                .Take(20)
-                .ToListAsync();
-
-            // Get regular high-engagement posts
-            var regularPosts = await query
-                .OrderByDescending(p => p.LikeCount + p.CommentCount * 2)
-                .Take(80)
-                .ToListAsync();
-
-            // Combine trending + regular, trending appears more often
-            var allPosts = trendingPosts.Concat(regularPosts).Distinct().ToList();
-            
-            return allPosts;
-        }
 
         private async Task<List<Auction>> GetAllAuctions()
         {
@@ -599,7 +547,7 @@ namespace InstapropAPI.Controllers
             }).ToList();
         }
 
-        private async Task<List<ValuationPromptDto>> GetValuationPrompts(long? userId)
+        private async Task<List<ValuationPromptDto>> GetValuationPrompts(Guid? userId)
         {
             if (!userId.HasValue)
             {
@@ -639,7 +587,7 @@ namespace InstapropAPI.Controllers
             }).ToList();
         }
 
-        private async Task<List<PaymentReminderDto>> GetPaymentReminders(long? userId)
+        private async Task<List<PaymentReminderDto>> GetPaymentReminders(Guid? userId)
         {
             if (!userId.HasValue)
                 return new List<PaymentReminderDto>();
@@ -664,7 +612,7 @@ namespace InstapropAPI.Controllers
                 if (e.PropertyId.HasValue)
                 {
                     var property = await _context.ChildProperties
-                        .Where(p => p.PropertyId == (int)e.PropertyId.Value)
+                        .Where(p => p.PropertyId == e.PropertyId.Value)
                         .Select(p => p.Name)
                         .FirstOrDefaultAsync();
                     propertyName = property;
@@ -673,7 +621,7 @@ namespace InstapropAPI.Controllers
                 reminderDtos.Add(new PaymentReminderDto
                 {
                     EventId = e.EventId,
-                    PropertyId = e.PropertyId.HasValue ? (int)e.PropertyId.Value : null,
+                    PropertyId = e.PropertyId,
                     PropertyName = propertyName,
                     Amount = e.Amount,
                     EventDate = e.EventDate,
@@ -743,7 +691,7 @@ namespace InstapropAPI.Controllers
             return items;
         }
 
-        private List<FeedItemDto> AddContentBurst(List<FeedItemDto> items, List<Auction> auctions, List<CommunityPost> posts, Random random)
+        private List<FeedItemDto> AddContentBurst(List<FeedItemDto> items, List<Auction> auctions, Random random)
         {
             // Occasionally add a burst of auctions (5 in a row)
             if (random.Next(100) < 20) // 20% chance
@@ -770,29 +718,29 @@ namespace InstapropAPI.Controllers
         }
 
         // Time-based boosting: Different content for different times of day
-        private (double post, double auction, double livestream, double news, double project) GetTimeBasedWeights()
+        private (double auction, double livestream, double news, double project) GetTimeBasedWeights()
         {
             var hour = DateTime.Now.Hour;
             
             // Morning (6am-12pm): Boost news and projects (productivity time)
             if (hour >= 6 && hour < 12)
             {
-                return (1.0, 0.8, 1.0, 1.5, 1.5);
+                return (0.8, 1.0, 1.5, 1.5);
             }
             // Afternoon (12pm-6pm): Boost auctions and livestreams (shopping/engagement time)
             else if (hour >= 12 && hour < 18)
             {
-                return (1.2, 1.8, 1.5, 1.0, 1.0);
+                return (1.8, 1.5, 1.0, 1.0);
             }
-            // Evening (6pm-12am): Boost posts and livestreams (engagement time)
+            // Evening (6pm-12am): Boost livestreams (engagement time)
             else if (hour >= 18 && hour < 24)
             {
-                return (1.5, 1.2, 1.8, 0.8, 0.8);
+                return (1.2, 1.8, 0.8, 0.8);
             }
             // Night (12am-6am): Boost everything slightly, varied content
             else
             {
-                return (1.2, 1.2, 1.3, 1.2, 1.2);
+                return (1.2, 1.3, 1.2, 1.2);
             }
         }
 
@@ -864,12 +812,12 @@ namespace InstapropAPI.Controllers
         }
 
         // Analytics tracking
-        private void TrackFeedAnalytics(long? userId, int page, int itemCount)
+        private void TrackFeedAnalytics(Guid? userId, int page, int itemCount)
         {
             // This would integrate with your analytics service
             _logger.LogInformation(
                 "Feed Analytics - User: {UserId}, Page: {Page}, Items: {Count}, Time: {Time}",
-                userId ?? 0, page, itemCount, DateTime.Now.Hour
+                userId?.ToString() ?? "0", page, itemCount, DateTime.Now.Hour
             );
         }
     }
@@ -890,7 +838,7 @@ namespace InstapropAPI.Controllers
 
     public class FeaturedDeveloper
     {
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string FirstName { get; set; } = "";
         public string LastName { get; set; } = "";
         public string CompanyName { get; set; } = "";
@@ -900,7 +848,7 @@ namespace InstapropAPI.Controllers
 
     public class ValuationPromptDto
     {
-        public int? PropertyId { get; set; }
+        public Guid? PropertyId { get; set; }
         public string? PropertyName { get; set; }
         public string? PropertyImageUrl { get; set; }
         public bool IsGeneric { get; set; }
@@ -908,8 +856,8 @@ namespace InstapropAPI.Controllers
 
     public class PaymentReminderDto
     {
-        public long EventId { get; set; }
-        public int? PropertyId { get; set; }
+        public Guid EventId { get; set; }
+        public Guid? PropertyId { get; set; }
         public string? PropertyName { get; set; }
         public decimal? Amount { get; set; }
         public DateTime EventDate { get; set; }

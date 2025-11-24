@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -6,26 +8,26 @@ namespace InstapropAPI.Models
     public class Role
     {
         [Key]
-        public long RoleId { get; set; } // 64-bit ID - Large non-sequential number for security
+        public Guid RoleId { get; set; }
 
         [Required]
         [MaxLength(50)]
-        public string RoleName { get; set; } = string.Empty; // "User", "Developer", "Admin"
+        public string RoleName { get; set; } = string.Empty; // "User", "Developer", "Admin", "Sales"
 
         [MaxLength(500)]
         public string? Description { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation property
-        public ICollection<Account> Accounts { get; set; } = new List<Account>();
+        // Navigation property - using AccountBase (abstract base class for all account types)
+        public ICollection<AccountBase> Accounts { get; set; } = new List<AccountBase>();
 
-        // Constant role IDs (hardcoded, non-guessable large numbers)
+        // Constant role IDs (UUIDs)
         // These are generated once and stored - attackers cannot guess them
-        public const long USER_ROLE_ID = 8923748923748923L;        // User role ID
-        public const long DEVELOPER_ROLE_ID = 7823647823647823L;  // Developer role ID  
-        public const long ADMIN_ROLE_ID = 9823749823749823L;      // Admin role ID
-        public const long SALES_ROLE_ID = 6723546723546723L;      // Sales role ID
+        public static readonly Guid USER_ROLE_ID = Guid.Parse("89237489-2374-4923-8923-892374892374");
+        public static readonly Guid DEVELOPER_ROLE_ID = Guid.Parse("78236478-2364-4782-3647-823647823647");
+        public static readonly Guid ADMIN_ROLE_ID = Guid.Parse("98237498-2374-4982-3749-823749823749");
+        public static readonly Guid SALES_ROLE_ID = Guid.Parse("67235467-2354-4672-3546-723546723546");
     }
 }
 

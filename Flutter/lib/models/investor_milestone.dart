@@ -1,6 +1,6 @@
 class InvestorMilestone {
-  final int achievementId;
-  final int accountId;
+  final String achievementId;
+  final String accountId;
   final String investorName;
   final String title;
   final String? description;
@@ -26,9 +26,17 @@ class InvestorMilestone {
   });
 
   factory InvestorMilestone.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return InvestorMilestone(
-      achievementId: (json['achievementId'] ?? 0) as int,
-      accountId: (json['accountId'] ?? 0) as int,
+      achievementId: parseId(json['achievementId']),
+      accountId: parseId(json['accountId']),
       investorName: (json['investorName'] ?? '') as String,
       title: (json['title'] ?? '') as String,
       description: json['description'] as String?,

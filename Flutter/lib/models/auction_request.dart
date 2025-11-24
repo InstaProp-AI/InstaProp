@@ -1,5 +1,5 @@
 class AuctionRequest {
-  final int propertyId;
+  final String propertyId;
   final double startPrice;
   final DateTime startAt;
   final int duration; // hours
@@ -21,8 +21,16 @@ class AuctionRequest {
   }
 
   factory AuctionRequest.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return AuctionRequest(
-      propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
+      propertyId: parseId(json['propertyId'] ?? json['PropertyId']),
       startPrice: (json['startPrice'] ?? json['StartPrice'] ?? 0).toDouble(),
       startAt: DateTime.parse(
         json['startAt'] ?? json['StartAt'] ?? DateTime.now().toIso8601String(),
@@ -35,7 +43,7 @@ class AuctionRequest {
 class AuctionRequestResponse {
   final bool success;
   final String message;
-  final int? auctionId;
+  final String? auctionId;
 
   AuctionRequestResponse({
     required this.success,
@@ -44,10 +52,18 @@ class AuctionRequestResponse {
   });
 
   factory AuctionRequestResponse.fromJson(Map<String, dynamic> json) {
+    // Helper to parse optional ID fields (handle both string GUID and int legacy formats)
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return AuctionRequestResponse(
       success: json['auctionId'] != null, // Success if auctionId is present
       message: json['message'] ?? '',
-      auctionId: json['auctionId'],
+      auctionId: parseOptionalId(json['auctionId']),
     );
   }
 }

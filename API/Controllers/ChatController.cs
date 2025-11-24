@@ -29,10 +29,10 @@ namespace InstapropAPI.Controllers
             _fcmService = fcmService;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim != null && Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return accountId;
             }
@@ -41,7 +41,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/chat - Get user's chat list
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ChatDto>>> GetChats([FromQuery] long? developerId = null)
+        public async Task<ActionResult<IEnumerable<ChatDto>>> GetChats([FromQuery] Guid? developerId = null)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -56,13 +56,14 @@ namespace InstapropAPI.Controllers
             // Sales accounts see: chats they're assigned to OR available chats for their developer
             if (account.RoleId == Role.SALES_ROLE_ID)
             {
-                if (!account.AssignedDeveloperId.HasValue)
+                var salesAccount = account as SalesAccount;
+                if (salesAccount == null || !salesAccount.AssignedDeveloperId.HasValue)
                     return Ok(new List<ChatDto>()); // Sales without developer assignment see nothing
 
                 chatQuery = _context.Chats
                     .Where(c => 
                         c.SalesMemberId == accountId || // Chats I've taken
-                        (c.DeveloperId == account.AssignedDeveloperId.Value && c.SalesMemberId == null) // Available chats for my developer
+                        (c.DeveloperId == salesAccount.AssignedDeveloperId.Value && c.SalesMemberId == null) // Available chats for my developer
                     );
             }
             else if (account.RoleId == Role.ADMIN_ROLE_ID)
@@ -98,9 +99,9 @@ namespace InstapropAPI.Controllers
             {
                 ChatId = c.ChatId,
                 UserId = c.UserId,
-                UserName = FormatAccountName(c.User),
+                UserName = FormatAccountName(c.User as AccountBase),
                 DeveloperId = c.DeveloperId,
-                DeveloperName = FormatAccountName(c.Developer),
+                DeveloperName = FormatAccountName(c.Developer as AccountBase),
                 ProjectId = c.ProjectId,
                 ProjectName = c.Project?.Name,
                 CreatedAt = c.CreatedAt,
@@ -110,7 +111,7 @@ namespace InstapropAPI.Controllers
                 UnreadCount = c.Messages.Count(m => !m.IsRead && m.SenderId != accountId),
                 IsSupportChat = c.IsSupportChat,
                 SalesMemberId = c.SalesMemberId,
-                SalesMemberName = c.SalesMember != null ? FormatAccountName(c.SalesMember) : null,
+                SalesMemberName = c.SalesMember != null ? FormatAccountName(c.SalesMember as AccountBase) : null,
                 IsAvailable = account.RoleId == Role.SALES_ROLE_ID && c.SalesMemberId == null // Available for sales to take
             }).ToList();
 
@@ -119,7 +120,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/chat/{chatId} - Get specific chat with messages
         [HttpGet("{chatId}")]
-        public async Task<ActionResult<ChatDetailsDto>> GetChat(long chatId)
+        public async Task<ActionResult<ChatDetailsDto>> GetChat(Guid chatId)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -154,9 +155,9 @@ namespace InstapropAPI.Controllers
             {
                 ChatId = chat.ChatId,
                 UserId = chat.UserId,
-                UserName = FormatAccountName(chat.User),
+                UserName = FormatAccountName(chat.User as AccountBase),
                 DeveloperId = chat.DeveloperId,
-                DeveloperName = FormatAccountName(chat.Developer),
+                DeveloperName = FormatAccountName(chat.Developer as AccountBase),
                 ProjectId = chat.ProjectId,
                 ProjectName = chat.Project?.Name,
                 CreatedAt = chat.CreatedAt,
@@ -164,7 +165,7 @@ namespace InstapropAPI.Controllers
                 IsActive = chat.IsActive,
                 IsSupportChat = chat.IsSupportChat,
                 SalesMemberId = chat.SalesMemberId,
-                SalesMemberName = chat.SalesMember != null ? FormatAccountName(chat.SalesMember) : null,
+                SalesMemberName = chat.SalesMember != null ? FormatAccountName(chat.SalesMember as AccountBase) : null,
                 Messages = chat.Messages.Select(m => new MessageDto
                 {
                     MessageId = m.MessageId,
@@ -215,7 +216,7 @@ namespace InstapropAPI.Controllers
                     ChatId = existingChat.ChatId,
                     UserId = existingChat.UserId,
                     DeveloperId = existingChat.DeveloperId,
-                    DeveloperName = FormatAccountName(existingChat.Developer),
+                    DeveloperName = FormatAccountName(existingChat.Developer as AccountBase),
                     ProjectId = existingChat.ProjectId,
                     ProjectName = existingChat.Project?.Name,
                     CreatedAt = existingChat.CreatedAt,
@@ -247,7 +248,7 @@ namespace InstapropAPI.Controllers
                 ChatId = chat.ChatId,
                 UserId = chat.UserId,
                 DeveloperId = chat.DeveloperId,
-                DeveloperName = FormatAccountName(developer),
+                DeveloperName = FormatAccountName(developer as AccountBase),
                 ProjectId = chat.ProjectId,
                 ProjectName = chat.Project?.Name,
                 CreatedAt = chat.CreatedAt,
@@ -259,7 +260,7 @@ namespace InstapropAPI.Controllers
 
         // POST: api/chat/{chatId}/message - Send message
         [HttpPost("{chatId}/message")]
-        public async Task<ActionResult<MessageDto>> SendMessage(long chatId, [FromBody] SendMessageDto dto)
+        public async Task<ActionResult<MessageDto>> SendMessage(Guid chatId, [FromBody] SendMessageDto dto)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -303,7 +304,7 @@ namespace InstapropAPI.Controllers
                 ChatId = chatId,
                 SenderId = accountId.Value,
                 Content = dto.Content,
-                PropertyId = (int?)dto.PropertyId,
+                PropertyId = dto.PropertyId,
                 CreatedAt = DateTime.UtcNow,
                 IsRead = false,
                 ExpiresAt = DateTime.UtcNow.AddDays(30)
@@ -340,7 +341,7 @@ namespace InstapropAPI.Controllers
             if (isFirstMessage && chat.UserId == accountId && chat.SalesMemberId == null)
             {
                 // Get all sales accounts assigned to this developer
-                var salesTeam = await _context.Accounts
+                var salesTeam = await _context.SalesAccounts
                     .Where(a => a.RoleId == Role.SALES_ROLE_ID && a.AssignedDeveloperId == chat.DeveloperId)
                     .ToListAsync();
 
@@ -416,7 +417,7 @@ namespace InstapropAPI.Controllers
 
         // POST: api/chat/{chatId}/take - Sales takes an available chat
         [HttpPost("{chatId}/take")]
-        public async Task<IActionResult> TakeChat(long chatId)
+        public async Task<IActionResult> TakeChat(Guid chatId)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -424,9 +425,10 @@ namespace InstapropAPI.Controllers
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
             if (account == null || account.RoleId != Role.SALES_ROLE_ID)
-                return Forbid("Only sales team members can take chats.");
+                return Forbid();
 
-            if (!account.AssignedDeveloperId.HasValue)
+            var salesAccount = account as SalesAccount;
+            if (salesAccount == null || !salesAccount.AssignedDeveloperId.HasValue)
                 return BadRequest("Sales account must be assigned to a developer.");
 
             var chat = await _context.Chats
@@ -437,7 +439,7 @@ namespace InstapropAPI.Controllers
                 return NotFound("Chat not found");
 
             // Verify chat is for the sales member's assigned developer
-            if (chat.DeveloperId != account.AssignedDeveloperId.Value)
+            if (chat.DeveloperId != salesAccount.AssignedDeveloperId.Value)
                 return Forbid("You can only take chats for your assigned developer.");
 
             // Check if chat is already taken
@@ -464,7 +466,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/chat/{chatId}/read - Mark messages as read
         [HttpPut("{chatId}/read")]
-        public async Task<IActionResult> MarkAsRead(long chatId)
+        public async Task<IActionResult> MarkAsRead(Guid chatId)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -508,7 +510,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/chat/{chatId}/assign - Assign or unassign sales member to chat (Admin or Developer)
         [HttpPut("{chatId}/assign")]
-        public async Task<IActionResult> AssignSalesMember(long chatId, [FromBody] AssignSalesMemberDto dto)
+        public async Task<IActionResult> AssignSalesMember(Guid chatId, [FromBody] AssignSalesMemberDto dto)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -528,7 +530,7 @@ namespace InstapropAPI.Controllers
 
             // Only admin or the developer who owns the chat can assign sales members
             if (account.RoleId != Role.ADMIN_ROLE_ID && chat.DeveloperId != accountId)
-                return Forbid("Only admins or the chat's developer can assign sales members");
+                return Forbid();
 
             // If salesMemberId is provided, verify it's a valid sales member assigned to this developer
             if (dto.SalesMemberId.HasValue)
@@ -537,8 +539,9 @@ namespace InstapropAPI.Controllers
                 if (salesMember == null || salesMember.RoleId != Role.SALES_ROLE_ID)
                     return BadRequest("Invalid sales member");
 
+                var salesMemberAccount = salesMember as SalesAccount;
                 // Verify sales member is assigned to this developer (unless admin)
-                if (account.RoleId != Role.ADMIN_ROLE_ID && salesMember.AssignedDeveloperId != chat.DeveloperId)
+                if (account.RoleId != Role.ADMIN_ROLE_ID && (salesMemberAccount == null || salesMemberAccount.AssignedDeveloperId != chat.DeveloperId))
                     return BadRequest("Sales member must be assigned to this developer");
             }
 
@@ -552,7 +555,7 @@ namespace InstapropAPI.Controllers
             {
                 chatId = chat.ChatId,
                 salesMemberId = chat.SalesMemberId,
-                salesMemberName = chat.SalesMember != null ? FormatAccountName(chat.SalesMember) : null
+                salesMemberName = chat.SalesMember != null ? FormatAccountName(chat.SalesMember as AccountBase) : null
             });
         }
 
@@ -570,7 +573,7 @@ namespace InstapropAPI.Controllers
 
             // Only admins can see all developers
             if (account.RoleId != Role.ADMIN_ROLE_ID)
-                return Forbid("Only admins can view all developers");
+                return Forbid();
 
             // Get developers and order by FirstName, then LastName (EF can translate this)
             var developers = await _context.Accounts
@@ -591,7 +594,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/chat/{developerId}/sales-members - Get sales members for a developer
         [HttpGet("{developerId}/sales-members")]
-        public async Task<ActionResult<List<SalesMemberDto>>> GetSalesMembersForDeveloper(long developerId)
+        public async Task<ActionResult<List<SalesMemberDto>>> GetSalesMembersForDeveloper(Guid developerId)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -610,7 +613,7 @@ namespace InstapropAPI.Controllers
             if (account.RoleId != Role.ADMIN_ROLE_ID && accountId != developerId)
                 return Forbid();
 
-            var salesMembers = await _context.Accounts
+            var salesMembers = await _context.SalesAccounts
                 .Where(a => a.RoleId == Role.SALES_ROLE_ID && a.AssignedDeveloperId == developerId)
                 .Select(a => new SalesMemberDto
                 {
@@ -627,7 +630,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/chat/stats - Get chat statistics
         [HttpGet("stats")]
-        public async Task<ActionResult<ChatStatsDto>> GetChatStats([FromQuery] long? developerId = null)
+        public async Task<ActionResult<ChatStatsDto>> GetChatStats([FromQuery] Guid? developerId = null)
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null)
@@ -689,8 +692,9 @@ namespace InstapropAPI.Controllers
             return Ok(new { DeletedCount = expiredMessages.Count });
         }
 
-        private string FormatAccountName(Account account)
+        private string FormatAccountName(AccountBase? account)
         {
+            if (account == null) return "Unknown";
             var first = account.FirstName?.Trim();
             var last = account.LastName?.Trim();
 
@@ -716,12 +720,12 @@ namespace InstapropAPI.Controllers
     // DTOs
     public class ChatDto
     {
-        public long ChatId { get; set; }
-        public long UserId { get; set; }
+        public Guid ChatId { get; set; }
+        public Guid UserId { get; set; }
         public string? UserName { get; set; }
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string? DeveloperName { get; set; }
-        public long? ProjectId { get; set; }
+        public Guid? ProjectId { get; set; }
         public string? ProjectName { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime LastMessageAt { get; set; }
@@ -729,36 +733,36 @@ namespace InstapropAPI.Controllers
         public string? LastMessage { get; set; }
         public int UnreadCount { get; set; }
         public bool IsSupportChat { get; set; }
-        public long? SalesMemberId { get; set; }
+        public Guid? SalesMemberId { get; set; }
         public string? SalesMemberName { get; set; }
         public bool IsAvailable { get; set; } // For sales: indicates if chat is available to take
     }
 
     public class ChatDetailsDto
     {
-        public long ChatId { get; set; }
-        public long UserId { get; set; }
+        public Guid ChatId { get; set; }
+        public Guid UserId { get; set; }
         public string? UserName { get; set; }
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string? DeveloperName { get; set; }
-        public long? ProjectId { get; set; }
+        public Guid? ProjectId { get; set; }
         public string? ProjectName { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime LastMessageAt { get; set; }
         public bool IsActive { get; set; }
         public bool IsSupportChat { get; set; }
-        public long? SalesMemberId { get; set; }
+        public Guid? SalesMemberId { get; set; }
         public string? SalesMemberName { get; set; }
         public List<MessageDto> Messages { get; set; } = new();
     }
 
     public class MessageDto
     {
-        public long MessageId { get; set; }
-        public long SenderId { get; set; }
+        public Guid MessageId { get; set; }
+        public Guid SenderId { get; set; }
         public string? SenderName { get; set; }
         public string Content { get; set; } = string.Empty;
-        public long? PropertyId { get; set; }
+        public Guid? PropertyId { get; set; }
         public string? PropertyName { get; set; }
         public string? PropertyLocation { get; set; }
         public string? PropertyImageUrl { get; set; }
@@ -768,24 +772,24 @@ namespace InstapropAPI.Controllers
 
     public class CreateChatDto
     {
-        public long DeveloperId { get; set; }
-        public long? ProjectId { get; set; }
+        public Guid DeveloperId { get; set; }
+        public Guid? ProjectId { get; set; }
     }
 
     public class SendMessageDto
     {
         public string Content { get; set; } = string.Empty;
-        public long? PropertyId { get; set; }
+        public Guid? PropertyId { get; set; }
     }
 
     public class AssignSalesMemberDto
     {
-        public long? SalesMemberId { get; set; } // null to unassign
+        public Guid? SalesMemberId { get; set; } // null to unassign
     }
 
     public class DeveloperChatCountDto
     {
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string DeveloperName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public int ChatCount { get; set; }
@@ -803,7 +807,7 @@ namespace InstapropAPI.Controllers
 
     public class SalesMemberDto
     {
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? Email { get; set; }

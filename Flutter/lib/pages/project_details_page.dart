@@ -10,7 +10,7 @@ import 'developer_profile_page.dart';
 import 'chat_page.dart';
 
 class ProjectDetailsPage extends StatefulWidget {
-  final int projectId;
+  final String projectId;
 
   const ProjectDetailsPage({super.key, required this.projectId});
 

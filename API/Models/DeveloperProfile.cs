@@ -7,13 +7,13 @@ namespace InstapropAPI.Models
     public class DeveloperProfile
     {
         [Key]
-        public long ProfileId { get; set; }
+        public Guid ProfileId { get; set; }
 
         [Required]
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
 
         [ForeignKey(nameof(AccountId))]
-        public Account Account { get; set; } = null!;
+        public DeveloperAccount Account { get; set; } = null!;
 
         public string? Bio { get; set; }
 

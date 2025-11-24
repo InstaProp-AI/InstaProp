@@ -20,17 +20,17 @@ namespace InstapropAPI.Controllers
             _context = context;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim != null && Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return accountId;
             }
             return null;
         }
 
-        private async Task<Account?> GetCurrentAccountAsync()
+        private async Task<AccountBase?> GetCurrentAccountAsync()
         {
             var accountId = GetCurrentAccountId();
             if (accountId == null) return null;
@@ -43,7 +43,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<PaginatedNewsResponse>> GetNews(
             [FromQuery] int page = 1, 
             [FromQuery] int pageSize = 10,
-            [FromQuery] long? developerId = null)
+            [FromQuery] string? developerId = null)
         {
             var account = await GetCurrentAccountAsync();
             if (account == null)
@@ -54,18 +54,23 @@ namespace InstapropAPI.Controllers
                 .AsQueryable();
 
             // Filter by developer if specified (for admin folder view)
-            // Use -1 as special value to indicate admin posts (DeveloperId = null)
-            if (developerId.HasValue)
+            // Handle special values: "-1" or empty GUID string means "show admin posts" (DeveloperId = null)
+            if (!string.IsNullOrEmpty(developerId))
             {
-                if (developerId.Value == -1)
+                // Special value: "-1" means show only admin posts (DeveloperId = null)
+                if (developerId == "-1" || developerId == "00000000-0000-0000-0000-000000000000")
                 {
-                    // Special value: Show only admin posts (DeveloperId = null)
                     query = query.Where(n => n.DeveloperId == null);
+                }
+                else if (Guid.TryParse(developerId, out var developerGuid))
+                {
+                    // Valid GUID: Admin viewing specific developer's folder
+                    query = query.Where(n => n.DeveloperId == developerGuid);
                 }
                 else
                 {
-                    // Admin viewing specific developer's folder
-                    query = query.Where(n => n.DeveloperId == developerId.Value);
+                    // Invalid GUID format - return bad request
+                    return BadRequest(new { error = "Invalid developerId format. Expected GUID or '-1' for admin posts." });
                 }
             }
             // If developer, only show their own news
@@ -126,7 +131,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/news/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<NewsArticleDto>> GetNewsById(long id)
+        public async Task<ActionResult<NewsArticleDto>> GetNewsById(Guid id)
         {
             var news = await _context.NewsArticles
                 .Where(n => n.NewsArticleId == id && n.IsPublished)
@@ -254,7 +259,7 @@ namespace InstapropAPI.Controllers
 
             // Only admins and developers can create news
             if (account.RoleId != Role.ADMIN_ROLE_ID && account.RoleId != Role.DEVELOPER_ROLE_ID)
-                return Forbid("Only admins and developers can create news");
+                return Forbid();
 
             var accountId = GetCurrentAccountId();
             var newsArticle = new NewsArticle
@@ -312,7 +317,7 @@ namespace InstapropAPI.Controllers
         // PUT: api/news/{id}
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateNews(long id, [FromBody] UpdateNewsDto updateNewsDto)
+        public async Task<IActionResult> UpdateNews(Guid id, [FromBody] UpdateNewsDto updateNewsDto)
         {
             var account = await GetCurrentAccountAsync();
             if (account == null)
@@ -331,7 +336,7 @@ namespace InstapropAPI.Controllers
                 return Forbid("You can only edit your own news articles");
 
             if (account.RoleId != Role.ADMIN_ROLE_ID && account.RoleId != Role.DEVELOPER_ROLE_ID)
-                return Forbid("Only admins and developers can update news");
+                return Forbid();
 
             // Update basic properties
             newsArticle.Title = updateNewsDto.Title;
@@ -363,7 +368,7 @@ namespace InstapropAPI.Controllers
         // DELETE: api/news/{id}
         [HttpDelete("{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteNews(long id)
+        public async Task<IActionResult> DeleteNews(Guid id)
         {
             var account = await GetCurrentAccountAsync();
             if (account == null)
@@ -382,7 +387,7 @@ namespace InstapropAPI.Controllers
                 return Forbid("You can only delete your own news articles");
 
             if (account.RoleId != Role.ADMIN_ROLE_ID && account.RoleId != Role.DEVELOPER_ROLE_ID)
-                return Forbid("Only admins and developers can delete news");
+                return Forbid();
 
             _context.NewsArticles.Remove(newsArticle); // Images will be deleted due to cascade
             await _context.SaveChangesAsync();
@@ -400,7 +405,7 @@ namespace InstapropAPI.Controllers
 
             // Only admins can see this
             if (account.RoleId != Role.ADMIN_ROLE_ID)
-                return Forbid("Only admins can view developer news counts");
+                return Forbid();
 
             // Get all developers with their news counts
             var allDevelopers = await _context.Accounts
@@ -450,7 +455,7 @@ namespace InstapropAPI.Controllers
 
     public class NewsArticleDto
     {
-        public long NewsArticleId { get; set; }
+        public Guid NewsArticleId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string? Category { get; set; }
@@ -458,13 +463,13 @@ namespace InstapropAPI.Controllers
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsPublished { get; set; }
-        public long? DeveloperId { get; set; }
+        public Guid? DeveloperId { get; set; }
         public List<string> Images { get; set; } = new();
     }
 
     public class DeveloperNewsCountDto
     {
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string DeveloperName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public int NewsCount { get; set; }

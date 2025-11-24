@@ -18,7 +18,7 @@ namespace InstapropAPI.Services
             _context = context;
         }
 
-        public Task<InstallmentSummary?> GetSummaryAsync(int propertyId)
+        public Task<InstallmentSummary?> GetSummaryAsync(Guid propertyId)
         {
             return _context.InstallmentSummaries
                 .AsNoTracking()
@@ -26,7 +26,7 @@ namespace InstapropAPI.Services
         }
 
         public async Task<InstallmentSummary> UpsertSummaryAsync(
-            int propertyId,
+            Guid propertyId,
             decimal contractedPrice,
             decimal totalPaid,
             decimal downPaymentPercent,
@@ -74,7 +74,7 @@ namespace InstapropAPI.Services
             return summary;
         }
 
-        public async Task<InstallmentSummary?> UpdatePaidAmountAsync(int propertyId, decimal totalPaid)
+        public async Task<InstallmentSummary?> UpdatePaidAmountAsync(Guid propertyId, decimal totalPaid)
         {
             var summary = await _context.InstallmentSummaries
                 .FirstOrDefaultAsync(s => s.PropertyId == propertyId);

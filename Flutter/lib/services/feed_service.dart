@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import '../models/feed_item.dart';
 import '../models/feed_notification.dart';
-import '../models/community_post.dart';
-import '../models/community.dart';
+// Community models removed
 import '../models/news_article.dart';
 import '../models/auction.dart';
 import '../models/project_model.dart';
@@ -15,8 +14,7 @@ import '../models/notification.dart';
 import '../models/live_stream.dart';
 import '../models/valuation_prompt.dart';
 import '../models/payment_reminder.dart';
-import 'community_post_service.dart';
-import 'community_service.dart';
+// Community services removed
 import 'news_service.dart';
 import 'project_service.dart';
 import 'developer_service.dart';
@@ -48,17 +46,9 @@ class FeedResponseDto {
           dynamic itemData;
 
           switch (type) {
-            case 'post':
-              itemType = FeedItemType.post;
-              itemData = CommunityPost.fromJson(data);
-              break;
             case 'auction':
               itemType = FeedItemType.auction;
               itemData = Auction.fromJson(data);
-              break;
-            case 'community':
-              itemType = FeedItemType.community;
-              itemData = Community.fromJson(data);
               break;
             case 'news':
               itemType = FeedItemType.news;
@@ -120,16 +110,12 @@ class FeedService {
   static int _virtualPage = 0; // Track virtual pages for infinite looping
 
   // Cache latest non-empty datasets to keep fallback balanced
-  static List<CommunityPost> _cachedPosts = [];
   static List<Auction> _cachedAuctions = [];
-  static List<Community> _cachedCommunities = [];
   static List<NewsArticle> _cachedNews = [];
   static List<ProjectModel> _cachedProjects = [];
   static List<FeaturedDeveloper> _cachedDevelopers = [];
 
-  static const int _fallbackPostTarget = 6;
   static const int _fallbackAuctionTarget = 4;
-  static const int _fallbackCommunityTarget = 4;
   static const int _fallbackNewsTarget = 1;
   static const int _fallbackProjectTarget = 1;
   static const int _fallbackDeveloperTarget = 1;
@@ -209,38 +195,22 @@ class FeedService {
       // Fetch real content as fallback
       // Use actual page for fetching, virtual page for randomization seed
       final results = await Future.wait([
-        _fetchPosts(page),
         _fetchAuctions(),
-        _fetchCommunities(),
         _fetchNews(),
         _fetchProjects(),
         _fetchDevelopers(),
       ]);
 
-      var posts = List<CommunityPost>.from(results[0] as List<CommunityPost>);
-      var auctions = List<Auction>.from(results[1] as List<Auction>);
-      var communities = List<Community>.from(results[2] as List<Community>);
-      var news = List<NewsArticle>.from(results[3] as List<NewsArticle>);
-      var projects = List<ProjectModel>.from(results[4] as List<ProjectModel>);
+      var auctions = List<Auction>.from(results[0] as List<Auction>);
+      var news = List<NewsArticle>.from(results[1] as List<NewsArticle>);
+      var projects = List<ProjectModel>.from(results[2] as List<ProjectModel>);
       var developers =
-          List<FeaturedDeveloper>.from(results[5] as List<FeaturedDeveloper>);
-
-      if (posts.isNotEmpty) {
-        _cachedPosts = posts;
-      } else if (_cachedPosts.isNotEmpty) {
-        posts = _cachedPosts;
-      }
+          List<FeaturedDeveloper>.from(results[3] as List<FeaturedDeveloper>);
 
       if (auctions.isNotEmpty) {
         _cachedAuctions = auctions;
       } else if (_cachedAuctions.isNotEmpty) {
         auctions = _cachedAuctions;
-      }
-
-      if (communities.isNotEmpty) {
-        _cachedCommunities = communities;
-      } else if (_cachedCommunities.isNotEmpty) {
-        communities = _cachedCommunities;
       }
 
       if (news.isNotEmpty) {
@@ -293,28 +263,12 @@ class FeedService {
         }
       }
 
-      appendContent<CommunityPost>(
-        source: posts,
-        desiredCount: _fallbackPostTarget,
-        type: FeedItemType.post,
-        idBuilder: (post, index) =>
-            'post_${post.postId}_vp${virtualPage}_$index',
-      );
-
       appendContent<Auction>(
         source: auctions,
         desiredCount: _fallbackAuctionTarget,
         type: FeedItemType.auction,
         idBuilder: (auction, index) =>
             'auction_${auction.auctionId}_vp${virtualPage}_$index',
-      );
-
-      appendContent<Community>(
-        source: communities,
-        desiredCount: _fallbackCommunityTarget,
-        type: FeedItemType.community,
-        idBuilder: (community, index) =>
-            'community_${community.communityId}_vp${virtualPage}_$index',
       );
 
       appendContent<NewsArticle>(
@@ -559,8 +513,6 @@ class FeedService {
     try {
       // Fetch all content types in parallel
       final results = await Future.wait([
-        _fetchPosts(page),
-        _fetchCommunities(),
         _fetchNews(),
         _fetchAuctions(),
         _fetchProjects(),
@@ -568,43 +520,17 @@ class FeedService {
         _fetchMembers(),
       ]);
 
-      final posts = results[0];
-      final communities = results[1];
-      final news = results[2];
-      final auctions = results[3];
-      final projects = results[4];
-      final developers = results[5];
-      final members = results[6];
+      final news = results[0];
+      final auctions = results[1];
+      final projects = results[2];
+      final developers = results[3];
+      final members = results[4];
 
       // Generate notifications (not used in new backend implementation)
       // final notifications = _generateNotifications(3);
 
       // Create feed items according to algorithm
       final feedItems = <FeedItem>[];
-
-      // 50% Posts (10 items)
-      final postsToAdd = posts.take(10).toList();
-      if (postsToAdd.isNotEmpty) {
-        feedItems.addAll(
-          _createFeedItems(
-            postsToAdd,
-            FeedItemType.post,
-            (post) => 'post_${post.postId}',
-          ),
-        );
-      }
-
-      // 10% Communities (2 items)
-      final communitiesToAdd = communities.take(2).toList();
-      if (communitiesToAdd.isNotEmpty) {
-        feedItems.addAll(
-          _createFeedItems(
-            communitiesToAdd,
-            FeedItemType.community,
-            (comm) => 'community_${comm.communityId}',
-          ),
-        );
-      }
 
       // 10% Auctions (2 items)
       final auctionsToAdd = auctions.take(2).toList();
@@ -675,47 +601,7 @@ class FeedService {
     }
   }
 
-  static Future<List<CommunityPost>> _fetchPosts(int page) async {
-    try {
-      final response = await CommunityPostService.getFeed(
-        sort: 'hot',
-        page: page,
-        pageSize: 15,
-      );
-      return response.data ?? [];
-    } catch (e) {
-      print('Error fetching posts: $e');
-      return [];
-    }
-  }
-
-  static Future<List<Community>> _fetchCommunities() async {
-    try {
-      final trending = await CommunityService.getTrendingCommunities();
-      final suggested = await CommunityService.getSuggestedCommunities();
-
-      final all = <Community>[];
-      if (trending.success && trending.data != null && trending.data is List) {
-        final dataList = trending.data as List<dynamic>;
-        for (var item in dataList) {
-          if (item is Community) all.add(item);
-        }
-      }
-      if (suggested.success &&
-          suggested.data != null &&
-          suggested.data is List) {
-        final dataList = suggested.data as List<dynamic>;
-        for (var item in dataList) {
-          if (item is Community) all.add(item);
-        }
-      }
-
-      return all;
-    } catch (e) {
-      print('Error fetching communities: $e');
-      return [];
-    }
-  }
+  // Community fetch methods removed
 
   static Future<List<NewsArticle>> _fetchNews() async {
     try {
@@ -760,8 +646,8 @@ class FeedService {
 
   static Future<List<dynamic>> _fetchMembers() async {
     try {
-      final response = await CommunityService.getPopularMembers();
-      return response.data ?? [];
+      // Popular members endpoint removed (was part of community features)
+      return [];
     } catch (e) {
       print('Error fetching members: $e');
       return [];

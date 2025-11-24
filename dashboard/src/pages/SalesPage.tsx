@@ -28,7 +28,7 @@ import { salesApi, authApi } from '../services/api';
 import { Account, SalesTeam, TeamStats } from '../types';
 
 interface SalesMember {
-  accountId: number;
+  accountId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -69,8 +69,8 @@ const SalesPage: React.FC = () => {
     email: string;
     phone: string;
     password: string;
-    developerId?: number;
-    teamId?: number;
+    developerId?: string;
+    teamId?: string;
   }>({
     firstName: '',
     lastName: '',
@@ -82,10 +82,10 @@ const SalesPage: React.FC = () => {
   });
   const [teamFormData, setTeamFormData] = useState<{
     teamName: string;
-    developerId: number;
+    developerId: string;
   }>({
     teamName: '',
-    developerId: 0
+    developerId: ''
   });
 
   // Helper function to extract error message from API error response
@@ -135,11 +135,14 @@ const SalesPage: React.FC = () => {
       setCurrentUser(user);
 
       // If admin, load developers. If developer, go directly to teams view
-      if (user.roleId === 9823749823749823) { // Admin
+      const isAdmin = user.roleId === '98237498-2374-4982-3749-823749823749' || user.roleName === 'Admin' || user.type === 'Admin';
+      const isDeveloper = user.roleId === '78236478-2364-4782-3647-823647823647' || user.roleId === '78236478-2364-7823-0000-000000000000' || user.roleName === 'Developer' || user.type === 'Developer';
+      
+      if (isAdmin) {
         const devs = await salesApi.getDevelopers();
         setDevelopers(devs);
         setCurrentView('developers');
-      } else if (user.roleId === 7823647823647823) { // Developer
+      } else if (isDeveloper) {
         setSelectedDeveloper(user);
         setCurrentView('teams');
         await loadTeams();
@@ -158,9 +161,10 @@ const SalesPage: React.FC = () => {
       
       const teamsData = await salesApi.getSalesTeams();
       // Filter teams for current developer if not admin
-      const filteredTeams = currentUser?.roleId === 9823749823749823 
-        ? teamsData.filter((t: SalesTeam) => t.developerId === selectedDeveloper.accountId)
-        : teamsData;
+      const isAdmin = currentUser?.roleId === '98237498-2374-4982-3749-823749823749' || currentUser?.roleName === 'Admin' || currentUser?.type === 'Admin';
+      const filteredTeams = isAdmin
+        ? teamsData.filter((t: SalesTeam) => !selectedDeveloper || t.developerId === selectedDeveloper.accountId)
+        : teamsData.filter((t: SalesTeam) => t.developerId === currentUser?.accountId);
       setTeams(filteredTeams);
     } catch (error: any) {
       console.error('Error loading teams:', error);
@@ -219,7 +223,7 @@ const SalesPage: React.FC = () => {
       setSelectedTeam(null);
       setTeamStats(null);
     } else if (currentView === 'teams') {
-      if (currentUser?.roleId === 9823749823749823) {
+      if (currentUser?.roleId === '98237498-2374-4982-3749-823749823749') {
         setCurrentView('developers');
         setSelectedDeveloper(null);
       }
@@ -227,20 +231,54 @@ const SalesPage: React.FC = () => {
   };
 
   const handleAddTeam = () => {
-    if (!selectedDeveloper) return;
+    const isAdmin = currentUser?.roleId === '98237498-2374-4982-3749-823749823749' || currentUser?.roleName === 'Admin' || currentUser?.type === 'Admin';
+    
+    // For developers, use current user. For admins, use selected developer or allow selection in modal
+    const developerId = isAdmin 
+      ? (selectedDeveloper?.accountId || '')
+      : (currentUser?.accountId || '');
+    
+    // For admins, if no developer is selected, allow selection in modal
+    if (isAdmin && !selectedDeveloper) {
+      setTeamFormData({
+        teamName: '',
+        developerId: ''
+      });
+      setShowTeamModal(true);
+      return;
+    }
+    
+    // For developers, they can always create teams (using their own ID)
+    if (!isAdmin && !currentUser?.accountId) {
+      toast.error('Unable to identify developer');
+      return;
+    }
+    
     setTeamFormData({
       teamName: '',
-      developerId: selectedDeveloper.accountId
+      developerId: developerId
     });
     setShowTeamModal(true);
   };
 
   const handleSaveTeam = async () => {
+    if (!teamFormData.developerId) {
+      toast.error('Please select a developer');
+      return;
+    }
+    
     try {
       await salesApi.createSalesTeam(teamFormData);
       await loadTeams();
       setShowTeamModal(false);
       toast.success('Team created successfully');
+      // Reset form
+      setTeamFormData({
+        teamName: '',
+        developerId: currentUser?.roleId === '98237498-2374-4982-3749-823749823749' 
+          ? (selectedDeveloper?.accountId || '')
+          : (currentUser?.accountId || '')
+      });
     } catch (error: any) {
       toast.error(getErrorMessage(error, 'Failed to create team'));
     }
@@ -408,7 +446,7 @@ const SalesPage: React.FC = () => {
       <div>
         {/* Breadcrumb */}
         <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
-          {currentUser?.roleId === 9823749823749823 && (
+          {currentUser?.roleId === '98237498-2374-4982-3749-823749823749' && (
             <>
               <button onClick={handleBack} className="hover:text-blue-600 flex items-center gap-1">
                 <ArrowLeft className="h-4 w-4" />
@@ -498,7 +536,7 @@ const SalesPage: React.FC = () => {
       <div>
         {/* Breadcrumb */}
         <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
-          {currentUser?.roleId === 9823749823749823 && (
+          {currentUser?.roleId === '98237498-2374-4982-3749-823749823749' && (
             <>
               <button onClick={() => { setCurrentView('developers'); setSelectedDeveloper(null); }} className="hover:text-blue-600">
                 Developers
@@ -776,6 +814,26 @@ const SalesPage: React.FC = () => {
               </button>
             </div>
             <div className="space-y-4">
+              {/* Developer Selection for Admin */}
+              {currentUser?.roleId === '98237498-2374-4982-3749-823749823749' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Developer *
+                  </label>
+                  <select
+                    value={teamFormData.developerId}
+                    onChange={(e) => setTeamFormData({ ...teamFormData, developerId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a developer</option>
+                    {developers.map(dev => (
+                      <option key={dev.accountId} value={dev.accountId}>
+                        {dev.firstName} {dev.lastName} ({dev.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Team Name

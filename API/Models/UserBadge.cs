@@ -7,13 +7,13 @@ namespace InstapropAPI.Models
     public class UserBadge
     {
         [Key]
-        public long BadgeId { get; set; }
+        public Guid BadgeId { get; set; }
 
         [Required]
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
 
         [ForeignKey(nameof(AccountId))]
-        public Account Account { get; set; } = null!;
+        public AccountBase Account { get; set; } = null!;
 
         [Required]
         [MaxLength(100)]

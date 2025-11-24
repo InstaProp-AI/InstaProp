@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useToast } from '../contexts/ToastContext';
 import { MessageSquare, User, Clock, Users, Send, Folder, Building, ArrowLeft, BarChart3, ChevronDown } from 'lucide-react';
 import { chatsApi, authApi } from '../services/api';
+import { ROLE_IDS } from '../types';
 
 interface ChatMessage {
   messageId: number;
@@ -17,14 +18,14 @@ interface ChatMessage {
 }
 
 interface Chat {
-  chatId: number;
-  userId: number;
-  developerId: number;
+  chatId: string;
+  userId: string;
+  developerId: string;
   userName: string;
   developerName: string;
   projectId?: number;
   projectName?: string;
-  salesMemberId?: number;
+  salesMemberId?: string;
   salesMemberName?: string;
   lastMessage?: string;
   lastMessageAt: string;
@@ -40,7 +41,7 @@ interface ChatDetails extends Chat {
 }
 
 interface DeveloperChatCount {
-  developerId: number;
+  developerId: string;
   developerName: string;
   email: string;
   chatCount: number;
@@ -56,16 +57,11 @@ interface ChatStats {
 }
 
 interface SalesMember {
-  accountId: number;
+  accountId: string;
   firstName: string;
   lastName: string;
   email: string;
 }
-
-const ROLE_IDS = {
-  ADMIN: 9823749823749823,
-  DEVELOPER: 7823647823647823,
-};
 
 const ChatsPage: React.FC = () => {
   const toast = useToast();
@@ -171,7 +167,7 @@ const ChatsPage: React.FC = () => {
     }
   };
 
-  const handleFolderClick = (developerId: number) => {
+  const handleFolderClick = (developerId: string) => {
     setSelectedDeveloperId(developerId);
     setCurrentView('chats');
     const developer = developers.find(dev => dev.developerId === developerId);
@@ -216,7 +212,7 @@ const ChatsPage: React.FC = () => {
     }
   };
 
-  const handleAssignSalesMember = async (chatId: number, salesMemberId: number | null) => {
+  const handleAssignSalesMember = async (chatId: string, salesMemberId: string | null) => {
     try {
       setAssigningSalesMember(true);
       const result = await chatsApi.assignSalesMember(chatId, salesMemberId);

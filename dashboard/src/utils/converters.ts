@@ -3,43 +3,59 @@
  * These handle both old (numeric) and new (string) formats
  */
 
-// SECURITY: Account Role Converter - Uses non-guessable 64-bit RoleIds
-// Role IDs: User=8923748923748923, Developer=7823647823647823, Admin=9823749823749823
-export const convertAccountRole = (roleId: number | null | undefined, roleName?: string | null): { roleId: number; roleName: string } => {
+// SECURITY: Account Role Converter - Uses GUID RoleIds
+// Role IDs matching backend: User='89237489-2374-4923-8923-892374892374', Developer='78236478-2364-4782-3647-823647823647', Admin='98237498-2374-4982-3749-823749823749', Sales='67235467-2354-4672-3546-723546723546'
+export const convertAccountRole = (roleId: string | number | null | undefined, roleName?: string | null): { roleId: string; roleName: string } => {
   // If roleName is provided, use it
   if (roleName) {
-    const roleIdValue = roleId || getRoleIdFromName(roleName);
+    const roleIdValue = roleId ? String(roleId) : getRoleIdFromName(roleName);
     return { roleId: roleIdValue, roleName };
   }
   
   // If roleId is provided, get role name from it
   if (roleId) {
-    const name = getRoleNameFromId(roleId);
-    return { roleId, roleName: name };
+    const name = getRoleNameFromId(String(roleId));
+    return { roleId: String(roleId), roleName: name };
   }
   
   // Default to User
-  return { roleId: 8923748923748923, roleName: 'User' };
+  return { roleId: '89237489-2374-4923-8923-892374892374', roleName: 'User' };
 };
 
 // Helper to get role ID from role name
-const getRoleIdFromName = (roleName: string): number => {
+const getRoleIdFromName = (roleName: string): string => {
   switch (roleName.toLowerCase()) {
-    case 'admin': return 9823749823749823;
-    case 'developer': return 7823647823647823;
-    case 'user': return 8923748923748923;
-    default: return 8923748923748923;
+    case 'admin': return '98237498-2374-4982-3749-823749823749';
+    case 'developer': return '78236478-2364-4782-3647-823647823647';
+    case 'user': return '89237489-2374-4923-8923-892374892374';
+    case 'sales': return '67235467-2354-4672-3546-723546723546';
+    default: return '89237489-2374-4923-8923-892374892374';
   }
 };
 
-// Helper to get role name from role ID
-const getRoleNameFromId = (roleId: number): string => {
-  switch (roleId) {
-    case 9823749823749823: return 'Admin';
-    case 7823647823647823: return 'Developer';
-    case 8923748923748923: return 'User';
-    default: return 'User';
+// Helper to get role name from role ID (handles both old numeric and new GUID formats)
+const getRoleNameFromId = (roleId: string | number): string => {
+  const roleIdStr = String(roleId);
+  // Handle GUID format - CORRECT IDs from backend
+  if (roleIdStr.includes('-')) {
+    if (roleIdStr === '98237498-2374-4982-3749-823749823749') return 'Admin';
+    if (roleIdStr === '78236478-2364-4782-3647-823647823647') return 'Developer';
+    if (roleIdStr === '89237489-2374-4923-8923-892374892374') return 'User';
+    if (roleIdStr === '67235467-2354-4672-3546-723546723546') return 'Sales';
+    // Legacy wrong IDs for backward compatibility
+    if (roleIdStr === '98237498-2374-9823-0000-000000000000') return 'Admin';
+    if (roleIdStr === '78236478-2364-7823-0000-000000000000') return 'Developer';
+    if (roleIdStr === '89237489-2374-8923-0000-000000000000') return 'User';
+    if (roleIdStr === '67235467-2354-6723-0000-000000000000') return 'Sales';
   }
+  // Handle legacy numeric format (backward compatibility)
+  const numId = typeof roleId === 'number' ? roleId : parseInt(roleIdStr, 10);
+  if (!isNaN(numId)) {
+    if (numId === 9823749823749823) return 'Admin';
+    if (numId === 7823647823647823) return 'Developer';
+    if (numId === 8923748923748923) return 'User';
+  }
+  return 'User';
 };
 
 // Legacy: Account Type Converter (for backward compatibility)

@@ -8,8 +8,15 @@ class AnalyticsService {
   // Market Overview
   static Future<MarketOverviewResponse?> getMarketOverview() async {
     try {
+      final token = await ApiClient.getToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+      
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/market-overview'),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -27,12 +34,18 @@ class AnalyticsService {
 
   // Price Trends
   static Future<List<PriceTrendResponse>?> getPriceTrends({
-    int? parentPropertyId,
+    String? parentPropertyId,
     String? propertyType,
     String? location,
     int months = 12,
   }) async {
     try {
+      final token = await ApiClient.getToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+      
       final queryParams = <String, String>{};
       if (parentPropertyId != null)
         queryParams['parentPropertyId'] = parentPropertyId.toString();
@@ -44,7 +57,7 @@ class AnalyticsService {
         '$_baseUrl/api/analytics/price-trends',
       ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -63,8 +76,15 @@ class AnalyticsService {
     int months = 12,
   }) async {
     try {
+      final token = await ApiClient.getToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+      
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/gold-comparison?months=$months'),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -83,8 +103,15 @@ class AnalyticsService {
   // Developer Rankings
   static Future<List<DeveloperRankingResponse>?> getDeveloperRankings() async {
     try {
+      final token = await ApiClient.getToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+      
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/developer-rankings'),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -108,8 +135,15 @@ class AnalyticsService {
     int limit = 10,
   }) async {
     try {
+      final token = await ApiClient.getToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+      
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/best-investments?limit=$limit'),
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -130,7 +164,7 @@ class AnalyticsService {
 
   // Portfolio Analytics
   static Future<PortfolioAnalyticsResponse?> getPortfolioAnalytics(
-    int userId,
+    String userId,
   ) async {
     try {
       final response = await ApiClient.get(
@@ -338,7 +372,7 @@ class GoldComparisonResponse {
 }
 
 class DeveloperRankingResponse {
-  final int developerId;
+  final String developerId;
   final String developerName;
   final int projectCount;
   final int totalProperties;
@@ -355,8 +389,16 @@ class DeveloperRankingResponse {
   });
 
   factory DeveloperRankingResponse.fromJson(Map<String, dynamic> json) {
+    // Parse developerId - handle both String GUID and int legacy formats
+    String parseDeveloperId(dynamic id) {
+      if (id == null) return '';
+      if (id is String) return id;
+      if (id is int) return id.toString();
+      return id.toString();
+    }
+    
     return DeveloperRankingResponse(
-      developerId: json['developerId'] ?? 0,
+      developerId: parseDeveloperId(json['developerId']),
       developerName: json['developerName'] ?? '',
       projectCount: json['projectCount'] ?? 0,
       totalProperties: json['totalProperties'] ?? 0,

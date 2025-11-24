@@ -7,19 +7,19 @@ namespace InstapropAPI.Models
     public class Bid
     {
     [Key]
-    public long BidId { get; set; }
+    public Guid BidId { get; set; }
 
     [Required]
-    public long AuctionId { get; set; }
+    public Guid AuctionId { get; set; }
 
     [ForeignKey(nameof(AuctionId))]
     public Auction Auction { get; set; }
 
     [Required]
-    public long BidderId { get; set; }
+    public Guid BidderId { get; set; }
 
         [ForeignKey(nameof(BidderId))]
-        public Account Bidder { get; set; } = null!;
+        public AccountBase Bidder { get; set; } = null!;
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal BidAmount { get; set; }

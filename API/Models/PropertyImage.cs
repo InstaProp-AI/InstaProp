@@ -7,10 +7,10 @@ namespace InstapropAPI.Models
     public class PropertyImage
     {
         [Key]
-        public long PropertyImageId { get; set; }
+        public Guid PropertyImageId { get; set; }
 
         [Required]
-        public int PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         [JsonIgnore]

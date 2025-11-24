@@ -20,12 +20,12 @@ namespace InstapropAPI.Controllers
             _context = context;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var accountIdClaim = User.FindFirst("uid") ?? User.FindFirst(ClaimTypes.NameIdentifier);
-            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim != null && Guid.TryParse(accountIdClaim.Value, out var guid))
             {
-                return accountId;
+                return guid;
             }
             return null;
         }
@@ -84,7 +84,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/SalesTeam/{id} - Get team details
         [HttpGet("{id}")]
-        public async Task<ActionResult<object>> GetTeam(long id)
+        public async Task<ActionResult<object>> GetTeam(Guid id)
         {
             try
             {
@@ -134,7 +134,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/SalesTeam/{id}/members - Get sales members in team
         [HttpGet("{id}/members")]
-        public async Task<ActionResult<object>> GetTeamMembers(long id)
+        public async Task<ActionResult<object>> GetTeamMembers(Guid id)
         {
             try
             {
@@ -162,7 +162,7 @@ namespace InstapropAPI.Controllers
                     return Forbid("You can only view members of your own teams");
                 }
 
-                var members = await _context.Accounts
+                var members = await _context.SalesAccounts
                     .Where(a => a.SalesTeamId == id && a.RoleId == Role.SALES_ROLE_ID)
                     .Include(a => a.Role)
                     .Select(a => new
@@ -195,7 +195,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/SalesTeam/{id}/stats - Get team statistics
         [HttpGet("{id}/stats")]
-        public async Task<ActionResult<object>> GetTeamStats(long id)
+        public async Task<ActionResult<object>> GetTeamStats(Guid id)
         {
             try
             {
@@ -224,7 +224,7 @@ namespace InstapropAPI.Controllers
                 }
 
                 // Get team members
-                var teamMemberIds = await _context.Accounts
+                var teamMemberIds = await _context.SalesAccounts
                     .Where(a => a.SalesTeamId == id && a.RoleId == Role.SALES_ROLE_ID)
                     .Select(a => a.AccountId)
                     .ToListAsync();
@@ -321,7 +321,7 @@ namespace InstapropAPI.Controllers
         // GET: api/SalesTeam/developers/{developerId}/teams - Get teams for a developer
         [HttpGet("developers/{developerId}/teams")]
         [AdminAuthorize]
-        public async Task<ActionResult<object>> GetDeveloperTeams(long developerId)
+        public async Task<ActionResult<object>> GetDeveloperTeams(Guid developerId)
         {
             try
             {
@@ -355,19 +355,44 @@ namespace InstapropAPI.Controllers
             }
         }
 
-        // POST: api/SalesTeam - Create new team
+        // POST: api/SalesTeam - Create new team (Admin or Developer)
         [HttpPost]
-        [AdminAuthorize]
         public async Task<ActionResult<object>> CreateTeam([FromBody] CreateTeamDto dto)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(dto.TeamName))
-                    return BadRequest(new { error = "Team name is required" });
+                var currentAccountId = GetCurrentAccountId();
+                if (!currentAccountId.HasValue)
+                    return Unauthorized();
+
+                var currentAccount = await _context.Accounts
+                    .Include(a => a.Role)
+                    .FirstOrDefaultAsync(a => a.AccountId == currentAccountId.Value);
+
+                if (currentAccount == null)
+                    return Unauthorized();
+
+                // Check authorization: Only Admin or Developer can create teams
+                if (currentAccount.RoleId != Role.ADMIN_ROLE_ID && currentAccount.RoleId != Role.DEVELOPER_ROLE_ID)
+                {
+                    return Forbid();
+                }
+
+                // If developer, they can only create teams for themselves
+                Guid targetDeveloperId;
+                if (currentAccount.RoleId == Role.DEVELOPER_ROLE_ID)
+                {
+                    targetDeveloperId = currentAccountId.Value;
+                }
+                else
+                {
+                    // Admin can create teams for any developer
+                    targetDeveloperId = dto.DeveloperId;
+                }
 
                 // Verify developer exists
                 var developer = await _context.Accounts
-                    .FirstOrDefaultAsync(a => a.AccountId == dto.DeveloperId && a.RoleId == Role.DEVELOPER_ROLE_ID);
+                    .FirstOrDefaultAsync(a => a.AccountId == targetDeveloperId && a.RoleId == Role.DEVELOPER_ROLE_ID);
 
                 if (developer == null)
                     return BadRequest(new { error = "Developer not found" });
@@ -377,7 +402,7 @@ namespace InstapropAPI.Controllers
                 if (string.IsNullOrWhiteSpace(teamName))
                 {
                     var teamCount = await _context.SalesTeams
-                        .Where(t => t.DeveloperId == dto.DeveloperId)
+                        .Where(t => t.DeveloperId == targetDeveloperId)
                         .CountAsync();
                     teamName = $"Sales Team {teamCount + 1}";
                 }
@@ -385,7 +410,7 @@ namespace InstapropAPI.Controllers
                 var team = new SalesTeam
                 {
                     TeamName = teamName,
-                    DeveloperId = dto.DeveloperId,
+                    DeveloperId = targetDeveloperId,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -409,7 +434,7 @@ namespace InstapropAPI.Controllers
 
         // PUT: api/SalesTeam/{id} - Update team
         [HttpPut("{id}")]
-        public async Task<ActionResult<object>> UpdateTeam(long id, [FromBody] UpdateTeamDto dto)
+        public async Task<ActionResult<object>> UpdateTeam(Guid id, [FromBody] UpdateTeamDto dto)
         {
             try
             {
@@ -447,7 +472,7 @@ namespace InstapropAPI.Controllers
                     // Only admin can change developer
                     if (currentAccount.RoleId != Role.ADMIN_ROLE_ID)
                     {
-                        return Forbid("Only admins can change team developer");
+                        return Forbid();
                     }
 
                     var developer = await _context.Accounts
@@ -480,7 +505,7 @@ namespace InstapropAPI.Controllers
         // DELETE: api/SalesTeam/{id} - Delete team
         [HttpDelete("{id}")]
         [AdminAuthorize]
-        public async Task<IActionResult> DeleteTeam(long id)
+        public async Task<IActionResult> DeleteTeam(Guid id)
         {
             try
             {
@@ -513,14 +538,16 @@ namespace InstapropAPI.Controllers
     public class CreateTeamDto
     {
         public string? TeamName { get; set; }
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
     }
 
     public class UpdateTeamDto
     {
         public string? TeamName { get; set; }
-        public long? DeveloperId { get; set; }
+        public Guid? DeveloperId { get; set; }
     }
 }
+
+
 
 

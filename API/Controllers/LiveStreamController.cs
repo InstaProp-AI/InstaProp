@@ -20,11 +20,11 @@ namespace InstapropAPI.Controllers
             _logger = logger;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
-                return accountId;
+            if (accountIdClaim != null && Guid.TryParse(accountIdClaim.Value, out var guid))
+                return guid;
             return null;
         }
 
@@ -39,7 +39,7 @@ namespace InstapropAPI.Controllers
 
             var account = await _context.Accounts.FindAsync(accountId.Value);
             if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
-                return Forbid("Only developers can start live streams");
+                return Forbid();
 
             var stream = new LiveStream
             {
@@ -65,7 +65,7 @@ namespace InstapropAPI.Controllers
         // POST: api/livestream/end/{id}
         [HttpPost("end/{id}")]
         [Authorize]
-        public async Task<ActionResult> EndStream(long id)
+        public async Task<ActionResult> EndStream(Guid id)
         {
             var accountId = GetCurrentAccountId();
             if (!accountId.HasValue)
@@ -93,7 +93,7 @@ namespace InstapropAPI.Controllers
         // POST: api/livestream/{id}/chat
         [HttpPost("{id}/chat")]
         [Authorize]
-        public async Task<ActionResult<StreamChatMessageDto>> SendChatMessage(long id, [FromBody] SendChatMessageRequest request)
+        public async Task<ActionResult<StreamChatMessageDto>> SendChatMessage(Guid id, [FromBody] SendChatMessageRequest request)
         {
             var accountId = GetCurrentAccountId();
             if (!accountId.HasValue)
@@ -146,7 +146,7 @@ namespace InstapropAPI.Controllers
         // GET: api/livestream/{id}/chat
         [HttpGet("{id}/chat")]
         public async Task<ActionResult<IEnumerable<StreamChatMessageDto>>> GetChatMessages(
-            long id,
+            Guid id,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50)
         {
@@ -196,7 +196,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/livestream/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<LiveStreamDto>> GetStream(long id)
+        public async Task<ActionResult<LiveStreamDto>> GetStream(Guid id)
         {
             var accountId = GetCurrentAccountId();
 
@@ -213,7 +213,7 @@ namespace InstapropAPI.Controllers
         // POST: api/livestream/{id}/join
         [HttpPost("{id}/join")]
         [Authorize]
-        public async Task<ActionResult> JoinStream(long id)
+        public async Task<ActionResult> JoinStream(Guid id)
         {
             var accountId = GetCurrentAccountId();
             if (!accountId.HasValue)
@@ -252,7 +252,7 @@ namespace InstapropAPI.Controllers
         // POST: api/livestream/{id}/leave
         [HttpPost("{id}/leave")]
         [Authorize]
-        public async Task<ActionResult> LeaveStream(long id)
+        public async Task<ActionResult> LeaveStream(Guid id)
         {
             var accountId = GetCurrentAccountId();
             if (!accountId.HasValue)
@@ -277,7 +277,7 @@ namespace InstapropAPI.Controllers
             return Ok(new { message = "Left stream successfully" });
         }
 
-        private LiveStreamDto MapToDto(LiveStream stream, long? accountId)
+        private LiveStreamDto MapToDto(LiveStream stream, Guid? accountId)
         {
             return new LiveStreamDto
             {
@@ -308,8 +308,8 @@ namespace InstapropAPI.Controllers
 
     public class LiveStreamDto
     {
-        public long StreamId { get; set; }
-        public long DeveloperId { get; set; }
+        public Guid StreamId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string DeveloperName { get; set; } = string.Empty;
         public string? DeveloperProfileImageUrl { get; set; }
         public string Title { get; set; } = string.Empty;
@@ -330,9 +330,9 @@ namespace InstapropAPI.Controllers
 
     public class StreamChatMessageDto
     {
-        public long MessageId { get; set; }
-        public long StreamId { get; set; }
-        public long UserId { get; set; }
+        public Guid MessageId { get; set; }
+        public Guid StreamId { get; set; }
+        public Guid UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
         public string? UserProfileImageUrl { get; set; }
         public string Message { get; set; } = string.Empty;

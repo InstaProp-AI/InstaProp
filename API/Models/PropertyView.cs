@@ -7,18 +7,18 @@ namespace InstapropAPI.Models
     public class PropertyView
     {
         [Key]
-        public long ViewId { get; set; }
+        public Guid ViewId { get; set; }
 
         [Required]
-        public int PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
         public ChildProperty Property { get; set; } = null!;
 
-        public long? UserId { get; set; } // Null for anonymous views
+        public Guid? UserId { get; set; } // Null for anonymous views
 
         [ForeignKey(nameof(UserId))]
-        public Account? User { get; set; }
+        public AccountBase? User { get; set; }
 
         public DateTime ViewedAt { get; set; } = DateTime.UtcNow;
 

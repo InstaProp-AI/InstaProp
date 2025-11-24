@@ -372,7 +372,7 @@ namespace InstapropAPI.Services
         /// Auction starting soon notification
         /// </summary>
         public string GetAuctionStartingSoonEmail(string firstName, string propertyName, string propertyLocation, 
-            decimal startPrice, DateTime startTime, string propertyImageUrl, int auctionId)
+            decimal startPrice, DateTime startTime, string propertyImageUrl, string auctionId)
         {
             var hoursUntilStart = Math.Ceiling((startTime - DateTime.UtcNow).TotalHours);
             
@@ -458,7 +458,7 @@ namespace InstapropAPI.Services
         /// Auction won notification
         /// </summary>
         public string GetAuctionWonEmail(string firstName, string propertyName, string propertyLocation, 
-            decimal winningBid, string propertyImageUrl, int auctionId)
+            decimal winningBid, string propertyImageUrl, string auctionId)
         {
             var content = $@"
                 <h2>Congratulations! You Won! 🎉🏆</h2>

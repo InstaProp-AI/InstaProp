@@ -55,7 +55,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Updates auction in Firestore
         /// </summary>
-        public async Task UpdateAuctionAsync(long auctionId, Auction auction)
+        public async Task UpdateAuctionAsync(Guid auctionId, Auction auction)
         {
             if (!_isEnabled || _db == null)
             {
@@ -141,7 +141,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Adds a new bid to Firestore
         /// </summary>
-        public async Task AddBidAsync(long auctionId, Bid bid)
+        public async Task AddBidAsync(Guid auctionId, Bid bid)
         {
             if (!_isEnabled || _db == null)
             {
@@ -188,7 +188,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Updates user notifications in Firestore
         /// </summary>
-        public async Task UpdateUserNotificationAsync(long userId, Notification notification)
+        public async Task UpdateUserNotificationAsync(Guid userId, Notification notification)
         {
             if (!_isEnabled || _db == null)
             {
@@ -211,10 +211,10 @@ namespace InstapropAPI.Services
                     ["message"] = notification.Message,
                     ["type"] = notification.Type.ToString(),
                     ["isRead"] = notification.IsRead,
-                    ["auctionId"] = notification.AuctionId ?? 0,
-                    ["propertyId"] = notification.PropertyId ?? 0,
-                    ["eventId"] = notification.EventId ?? 0,
-                    ["bidId"] = notification.BidId ?? 0,
+                    ["auctionId"] = notification.AuctionId?.ToString() ?? "",
+                    ["propertyId"] = notification.PropertyId?.ToString() ?? "",
+                    ["eventId"] = notification.EventId?.ToString() ?? "",
+                    ["bidId"] = notification.BidId?.ToString() ?? "",
                     ["createdAt"] = notification.CreatedAt.ToString("o"), // ISO 8601 format
                     ["readAt"] = notification.ReadAt?.ToString("o") // ISO 8601 format, nullable
                 };
@@ -231,7 +231,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Marks notification as read in Firestore
         /// </summary>
-        public async Task MarkNotificationAsReadAsync(long userId, long notificationId)
+        public async Task MarkNotificationAsReadAsync(Guid userId, Guid notificationId)
         {
             if (!_isEnabled || _db == null) return;
 
@@ -301,7 +301,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Syncs user account to Firestore (for dashboard real-time user list)
         /// </summary>
-        public async Task SyncUserAsync(long userId, Account account)
+        public async Task SyncUserAsync(Guid userId, AccountBase account)
         {
             if (!_isEnabled || _db == null)
             {
@@ -342,7 +342,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Deletes user from Firestore
         /// </summary>
-        public async Task DeleteUserAsync(long userId)
+        public async Task DeleteUserAsync(Guid userId)
         {
             if (!_isEnabled || _db == null) return;
 
@@ -413,7 +413,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Creates a chat room in Firestore
         /// </summary>
-        public async Task CreateChatAsync(long chatId, long userId, long developerId, long? projectId)
+        public async Task CreateChatAsync(Guid chatId, Guid userId, Guid developerId, Guid? projectId)
         {
             if (!_isEnabled || _db == null)
             {
@@ -430,7 +430,7 @@ namespace InstapropAPI.Services
                     ["chatId"] = chatId,
                     ["userId"] = userId,
                     ["developerId"] = developerId,
-                    ["projectId"] = projectId ?? 0,
+                    ["projectId"] = projectId?.ToString() ?? "",
                     ["createdAt"] = DateTime.UtcNow,
                     ["lastMessageAt"] = DateTime.UtcNow,
                     ["isActive"] = true
@@ -448,7 +448,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Sends a chat message to Firestore for real-time delivery
         /// </summary>
-        public async Task SendChatMessageAsync(long chatId, long messageId, long senderId, string content, long? propertyId, DateTime createdAt, DateTime expiresAt)
+        public async Task SendChatMessageAsync(Guid chatId, Guid messageId, Guid senderId, string content, Guid? propertyId, DateTime createdAt, DateTime expiresAt)
         {
             if (!_isEnabled || _db == null)
             {
@@ -465,11 +465,11 @@ namespace InstapropAPI.Services
 
                 var messageData = new Dictionary<string, object>
                 {
-                    ["messageId"] = messageId,
-                    ["chatId"] = chatId,
-                    ["senderId"] = senderId,
+                    ["messageId"] = messageId.ToString(),
+                    ["chatId"] = chatId.ToString(),
+                    ["senderId"] = senderId.ToString(),
                     ["content"] = content,
-                    ["propertyId"] = propertyId ?? 0,
+                    ["propertyId"] = propertyId?.ToString() ?? "",
                     ["createdAt"] = createdAt,
                     ["isRead"] = false,
                     ["expiresAt"] = expiresAt
@@ -495,7 +495,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Marks chat messages as read in Firestore
         /// </summary>
-        public async Task MarkChatMessagesAsReadAsync(long chatId, long userId)
+        public async Task MarkChatMessagesAsReadAsync(Guid chatId, Guid userId)
         {
             if (!_isEnabled || _db == null) return;
 

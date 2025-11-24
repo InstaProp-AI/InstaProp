@@ -22,7 +22,6 @@ class AddPropertyPage extends StatefulWidget {
 
 class _AddPropertyPageState extends State<AddPropertyPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _unitNumberController = TextEditingController();
   final _locationController = TextEditingController();
   final _areaController = TextEditingController();
@@ -33,7 +32,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
   bool _isBuilt = true;
   String? _selectedBuiltYear;
   String? _selectedDeliveryYear;
-  int? _selectedProjectId;
+  String? _selectedProjectId;
   String? _selectedProjectName;
 
   bool _hasGarden = false;
@@ -109,7 +108,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _unitNumberController.dispose();
     _locationController.dispose();
     _areaController.dispose();
@@ -206,7 +204,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
       }
 
       final response = await PropertyService.createProperty(
-        name: _nameController.text.trim(),
         description: '',
         location: _locationController.text.trim(),
         bedrooms: _selectedBedrooms,
@@ -233,7 +230,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
       if (response.success && response.data != null) {
         final propertyId = response.data!.propertyId;
-        final propertyName = _nameController.text.trim();
+        final propertyName = response.data!.name;
 
         if (_selectedImages.isNotEmpty) {
           final uploadResponse =
@@ -265,7 +262,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           );
         }
 
-        _nameController.clear();
         _unitNumberController.clear();
         _locationController.clear();
         _areaController.clear();
@@ -396,18 +392,6 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                                 style: TextStyle(color: AppColors.primary),
                               ),
                             ),
-
-                          // Property name
-                          CustomTextField(
-                            controller: _nameController,
-                            labelText: 'Property Name',
-                            hintText: 'e.g., Beautiful 3-bedroom home',
-                            validator: (value) => value?.trim().isEmpty == true
-                                ? 'Property name is required'
-                                : null,
-                          ),
-
-                          const SizedBox(height: 16),
 
                           // Unit number
                           CustomTextField(
@@ -837,20 +821,20 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         ],
       );
     } else {
-      final items = <DropdownMenuItem<int?>>[
+      final items = <DropdownMenuItem<String?>>[
         ..._projects.map(
-          (project) => DropdownMenuItem<int?>(
+          (project) => DropdownMenuItem<String?>(
             value: project.projectId,
             child: Text(project.name),
           ),
         ),
-        const DropdownMenuItem<int?>(
+        const DropdownMenuItem<String?>(
           value: null,
           child: Text('Other / Not Listed'),
         ),
       ];
 
-      content = DropdownButtonFormField<int?>(
+      content = DropdownButtonFormField<String?>(
         value: _selectedProjectId,
         decoration: InputDecoration(
           border: OutlineInputBorder(

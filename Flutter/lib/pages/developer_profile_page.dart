@@ -10,9 +10,10 @@ import 'chat_page.dart';
 import 'project_details_page.dart';
 import 'property_details_page.dart';
 import 'rate_developer_dialog.dart';
+import 'auth_page.dart';
 
 class DeveloperProfilePage extends StatefulWidget {
-  final int developerId;
+  final String developerId;
 
   const DeveloperProfilePage({super.key, required this.developerId});
 
@@ -64,6 +65,14 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
 
   Future<void> _startChat() async {
     final appState = Provider.of<AppState>(context, listen: false);
+    
+    // Check if user is authenticated
+    if (appState.token == null || appState.token!.isEmpty) {
+      if (!mounted) return;
+      _showLoginRequiredDialog();
+      return;
+    }
+
     final chatService = ChatService(ApiClient.baseUrl, token: appState.token);
 
     try {
@@ -73,6 +82,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
+      print('Creating chat with developer: ${widget.developerId}');
       final chat = await chatService.createChat(
         developerId: widget.developerId,
       );
@@ -86,11 +96,143 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
       );
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to start chat')));
+      Navigator.pop(context); // Close loading dialog
+      
+      // Extract error message
+      String errorMessage = 'Failed to start chat';
+      if (e is Exception) {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+      } else {
+        errorMessage = e.toString();
+      }
+      
+      print('Chat creation error: $errorMessage');
+      
+      // Show error dialog with details
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Error'),
+            ],
+          ),
+          content: Text(
+            errorMessage,
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.surface,
+              ),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
+  }
+
+  /// Show login required dialog with login button
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.login, color: AppColors.primary, size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Login Required',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You need to be logged in to start a chat with the developer.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Please log in to continue.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AuthPage(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.login, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Go to Login',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showRatingDialog() {

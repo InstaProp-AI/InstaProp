@@ -69,7 +69,7 @@ namespace InstapropAPI.Controllers
                 {
                     MessageId = m.MessageId,
                     SenderId = m.SenderId,
-                    SenderName = FormatAccountName(m.Sender),
+                    SenderName = FormatAccountName(m.Sender as AccountBase),
                     Content = m.Content,
                     CreatedAt = m.CreatedAt,
                     IsMine = m.SenderId == accountId
@@ -185,10 +185,10 @@ namespace InstapropAPI.Controllers
             });
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var accountIdClaim = User.FindFirst("uid");
-            if (accountIdClaim != null && long.TryParse(accountIdClaim.Value, out long accountId))
+            if (accountIdClaim != null && Guid.TryParse(accountIdClaim.Value, out var accountId))
             {
                 return accountId;
             }
@@ -196,7 +196,7 @@ namespace InstapropAPI.Controllers
             return null;
         }
 
-        private async Task<Account> EnsureSupportAccountAsync()
+        private async Task<AccountBase> EnsureSupportAccountAsync()
         {
             var supportAccount = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.Email == SupportEmail);
@@ -206,7 +206,7 @@ namespace InstapropAPI.Controllers
                 return supportAccount;
             }
 
-            supportAccount = new Account
+            supportAccount = new DeveloperAccount
             {
                 FirstName = SupportFirstName,
                 LastName = SupportLastName,
@@ -217,7 +217,7 @@ namespace InstapropAPI.Controllers
                 EmailVerified = true,
                 PhoneVerified = true,
                 CreatedAt = DateTime.UtcNow,
-                ShowInDirectory = false
+                // ShowInDirectory removed (community feature)
             };
 
             _context.Accounts.Add(supportAccount);
@@ -226,17 +226,17 @@ namespace InstapropAPI.Controllers
             return supportAccount;
         }
 
-        private static string GetSupportTitle(Account supportAccount)
+        private static string GetSupportTitle(AccountBase supportAccount)
         {
             return FormatAccountNameStatic(supportAccount);
         }
 
-        private static string FormatAccountName(Account account)
+        private static string FormatAccountName(AccountBase account)
         {
             return FormatAccountNameStatic(account);
         }
 
-        private static string FormatAccountNameStatic(Account account)
+        private static string FormatAccountNameStatic(AccountBase account)
         {
             var first = account.FirstName?.Trim();
             var last = account.LastName?.Trim();
@@ -262,15 +262,15 @@ namespace InstapropAPI.Controllers
 
     public class HelpChatDetailsDto
     {
-        public long? ChatId { get; set; }
+        public Guid? ChatId { get; set; }
         public string SupportTitle { get; set; } = "Customer Support";
         public List<HelpChatMessageDto> Messages { get; set; } = new();
     }
 
     public class HelpChatMessageDto
     {
-        public long MessageId { get; set; }
-        public long SenderId { get; set; }
+        public Guid MessageId { get; set; }
+        public Guid SenderId { get; set; }
         public string SenderName { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
@@ -284,7 +284,7 @@ namespace InstapropAPI.Controllers
 
     public class HelpChatSendResponse
     {
-        public long ChatId { get; set; }
+        public Guid ChatId { get; set; }
         public bool CreatedNewChat { get; set; }
         public string SupportTitle { get; set; } = "Customer Support";
         public HelpChatMessageDto Message { get; set; } = new();

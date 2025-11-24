@@ -6,10 +6,10 @@ namespace InstapropAPI.Models
     public class NewsImage
     {
         [Key]
-        public long NewsImageId { get; set; }
+        public Guid NewsImageId { get; set; }
 
         [Required]
-        public long NewsArticleId { get; set; }
+        public Guid NewsArticleId { get; set; }
 
         [ForeignKey(nameof(NewsArticleId))]
         public NewsArticle NewsArticle { get; set; } = null!;

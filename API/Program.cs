@@ -78,9 +78,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 // Add Services
-//builder.Services.AddScoped<SeedDataService>();
-builder.Services.AddScoped<RealisticEgyptianSeedingService>();
 builder.Services.AddScoped<RoleSeederService>();
+builder.Services.AddScoped<GlobalSeedingService>();
 builder.Services.AddSingleton<FirestoreService>();
 builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
 builder.Services.AddScoped<EmailTemplateService>(); // HTML email templates
@@ -322,12 +321,12 @@ app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Database Setup: Seed Roles and Seed Data (migrations should be applied manually)
+// Database Setup: Seed Roles, Run Global Seeding, and Create Admin Account
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var seedService = scope.ServiceProvider.GetRequiredService<RealisticEgyptianSeedingService>();
     var roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeederService>();
+    var globalSeeding = scope.ServiceProvider.GetRequiredService<GlobalSeedingService>();
 
     try
     {
@@ -346,31 +345,99 @@ using (var scope = app.Services.CreateScope())
             Console.WriteLine($"✅ Seeded {rolesCount} roles successfully.");
         }
 
-        // Step 2: Check if database needs seeding (only if empty)
-        var hasAccounts = await context.Accounts.AnyAsync();
-        if (!hasAccounts)
+        // Step 2: Check account count before seeding
+        // Only seed if there is 1 or fewer accounts (allowing for the admin account)
+        var accountCount = await context.Accounts.CountAsync();
+        Console.WriteLine($"\n📊 Current account count: {accountCount}");
+        
+        if (accountCount > 1)
         {
-            Console.WriteLine("🌱 Database is empty. Starting comprehensive data seeding...");
-            await seedService.SeedAllDataAsync(skipClear: true);
-            Console.WriteLine("✅ All data seeding completed successfully!");
-
-            // Final verification
-            var accountsCount = await context.Accounts.CountAsync();
-            var propertiesCount = await context.ChildProperties.CountAsync();
-            var auctionsCount = await context.Auctions.CountAsync();
-            var communitiesCount = await context.Communities.CountAsync();
-            var newsCount = await context.NewsArticles.CountAsync();
-            
-            Console.WriteLine("📊 Database Summary:");
-            Console.WriteLine($"   - Accounts: {accountsCount}");
-            Console.WriteLine($"   - Properties: {propertiesCount}");
-            Console.WriteLine($"   - Auctions: {auctionsCount}");
-            Console.WriteLine($"   - Communities: {communitiesCount}");
-            Console.WriteLine($"   - News Articles: {newsCount}");
+            Console.WriteLine("ℹ️ Skipping global seeding - more than 1 account exists (admin + other accounts).");
+            Console.WriteLine("   Seeding will only run when there is 1 or fewer accounts.");
         }
         else
         {
-            Console.WriteLine("ℹ️ Database already contains data. Skipping seeding.");
+            Console.WriteLine("🌍 Running global seeding (will skip existing entities)...");
+            await globalSeeding.PreSeedTestDataAsync(skipClear: true);
+            Console.WriteLine("✅ Global seeding completed!");
+        }
+
+        // Step 3: Ensure default admin account exists
+        var adminConfig = builder.Configuration.GetSection("DefaultAdmin");
+        var adminEmail = adminConfig["Email"];
+        if (!string.IsNullOrEmpty(adminEmail))
+        {
+            var adminExists = await context.Accounts.AnyAsync(a => a.Email == adminEmail);
+            if (!adminExists)
+            {
+                Console.WriteLine("👤 Creating default admin account...");
+                
+                // Verify ADMIN_ROLE_ID exists
+                var adminRole = await context.Roles.FindAsync(Role.ADMIN_ROLE_ID);
+                if (adminRole == null)
+                {
+                    Console.WriteLine($"❌ ERROR: Admin role (ID: {Role.ADMIN_ROLE_ID}) does not exist. Cannot create admin account.");
+                }
+                else
+                {
+                    var adminAccount = new AdminAccount
+                    {
+                        Email = adminEmail,
+                        FirstName = adminConfig["FirstName"] ?? "Admin",
+                        LastName = adminConfig["LastName"] ?? "System",
+                        PhoneNumber = adminConfig["PhoneNumber"] ?? "+1234567890",
+                        RoleId = Role.ADMIN_ROLE_ID, // Use the constant GUID
+                        HashedPassword = BCrypt.Net.BCrypt.HashPassword(adminConfig["Password"] ?? "Admin123!"),
+                        Status = VerificationStatus.Verified,
+                        EmailVerified = true,
+                        PhoneVerified = true,
+                        TimeZone = "America/New_York",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    context.Accounts.Add(adminAccount);
+                    await context.SaveChangesAsync();
+                    
+                    // Verify the admin was created with correct role
+                    var createdAdmin = await context.Accounts.FirstOrDefaultAsync(a => a.Email == adminEmail);
+                    if (createdAdmin != null)
+                    {
+                        Console.WriteLine($"✅ Default admin created: {adminEmail}");
+                        Console.WriteLine($"   RoleId: {createdAdmin.RoleId}");
+                        Console.WriteLine($"   Expected Admin RoleId: {Role.ADMIN_ROLE_ID}");
+                        if (createdAdmin.RoleId == Role.ADMIN_ROLE_ID)
+                        {
+                            Console.WriteLine($"   ✅ RoleId matches correctly!");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"   ❌ ERROR: RoleId mismatch! Admin has wrong role.");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"ℹ️ Admin account already exists: {adminEmail}");
+                
+                // Verify existing admin has correct role
+                var existingAdmin = await context.Accounts.FirstOrDefaultAsync(a => a.Email == adminEmail);
+                if (existingAdmin != null)
+                {
+                    Console.WriteLine($"   Current RoleId: {existingAdmin.RoleId}");
+                    Console.WriteLine($"   Expected Admin RoleId: {Role.ADMIN_ROLE_ID}");
+                    if (existingAdmin.RoleId != Role.ADMIN_ROLE_ID)
+                    {
+                        Console.WriteLine($"   ⚠️ WARNING: Existing admin has wrong RoleId. Fixing...");
+                        existingAdmin.RoleId = Role.ADMIN_ROLE_ID;
+                        await context.SaveChangesAsync();
+                        Console.WriteLine($"   ✅ Fixed admin RoleId to {Role.ADMIN_ROLE_ID}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"   ✅ Admin RoleId is correct.");
+                    }
+                }
+            }
         }
     }
     catch (Exception ex)
@@ -381,7 +448,7 @@ using (var scope = app.Services.CreateScope())
             Console.WriteLine($"   Inner Exception: {ex.InnerException.Message}");
         }
         Console.WriteLine($"   Stack Trace: {ex.StackTrace}");
-        // Don't throw - allow app to start even if seeding fails
+        // Don't throw - allow app to start even if setup fails
     }
 }
 // Map API controllers - MUST be before fallback to ensure /api/* routes work

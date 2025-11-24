@@ -5,6 +5,7 @@ using InstapropAPI.Data;
 using InstapropAPI.Models;
 using InstapropAPI.Services;
 using System.Text.Json;
+using InstapropAPI.Attributes;
 
 namespace InstapropAPI.Controllers
 {
@@ -24,10 +25,10 @@ namespace InstapropAPI.Controllers
             _logger = logger;
         }
 
-        private long? GetCurrentAccountId()
+        private Guid? GetCurrentAccountId()
         {
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim != null && long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return userId;
             }
@@ -117,7 +118,7 @@ namespace InstapropAPI.Controllers
                 // Verify chat belongs to user
                 var aiChat = await _context.AIChats
                     .Include(c => c.Messages)
-                    .FirstOrDefaultAsync(c => c.AIChatId == request.AIChatId && c.UserId == userId);
+                    .FirstOrDefaultAsync(c => c.AIChatId == request.AIChatId && c.UserId == userId.Value);
 
                 if (aiChat == null)
                     return NotFound("Chat not found");
@@ -182,7 +183,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/AIBroker/conversation/{id}
         [HttpGet("conversation/{id}")]
-        public async Task<ActionResult<AIBrokerConversationDto>> GetConversation(long id)
+        public async Task<ActionResult<AIBrokerConversationDto>> GetConversation(Guid id)
         {
             var userId = GetCurrentAccountId();
             if (userId == null)
@@ -190,7 +191,7 @@ namespace InstapropAPI.Controllers
 
             var aiChat = await _context.AIChats
                 .Include(c => c.Messages)
-                .FirstOrDefaultAsync(c => c.AIChatId == id && c.UserId == userId);
+                .FirstOrDefaultAsync(c => c.AIChatId == id && c.UserId == userId.Value);
 
             if (aiChat == null)
                 return NotFound();
@@ -228,7 +229,7 @@ namespace InstapropAPI.Controllers
 
             var aiChats = await _context.AIChats
                 .Include(c => c.Messages)
-                .Where(c => c.UserId == userId)
+                .Where(c => c.UserId == userId.Value)
                 .OrderByDescending(c => c.UpdatedAt)
                 .ToListAsync();
 
@@ -255,7 +256,7 @@ namespace InstapropAPI.Controllers
             // Get most recent active chat
             var activeChat = await _context.AIChats
                 .Include(c => c.Messages)
-                .Where(c => c.UserId == userId && c.Status == "Active")
+                .Where(c => c.UserId == userId.Value && c.Status == "Active")
                 .OrderByDescending(c => c.UpdatedAt)
                 .FirstOrDefaultAsync();
 
@@ -693,14 +694,14 @@ namespace InstapropAPI.Controllers
     // DTOs
     public class AIBrokerMessageRequest
     {
-        public long AIChatId { get; set; }
+        public Guid AIChatId { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? QuestionType { get; set; }
     }
 
     public class AIBrokerConversationDto
     {
-        public long AIChatId { get; set; }
+        public Guid AIChatId { get; set; }
         public List<AIBrokerMessageDto> Messages { get; set; } = new List<AIBrokerMessageDto>();
     }
 
@@ -711,15 +712,15 @@ namespace InstapropAPI.Controllers
 
     public class AIBrokerMessageDto
     {
-        public long MessageId { get; set; }
+        public Guid MessageId { get; set; }
         public string Role { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string MessageType { get; set; } = string.Empty;
         public List<string>? Options { get; set; }
         public string? QuestionType { get; set; }
-        public long? PropertyId { get; set; }
-        public long? ProjectId { get; set; }
-        public long? DeveloperId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? ProjectId { get; set; }
+        public Guid? DeveloperId { get; set; }
         public List<PropertySuggestionDto>? Properties { get; set; }
         public List<DeveloperSuggestionDto>? Developers { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -727,7 +728,7 @@ namespace InstapropAPI.Controllers
 
     public class PropertySuggestionDto
     {
-        public long PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public int Bedrooms { get; set; }
@@ -736,7 +737,7 @@ namespace InstapropAPI.Controllers
         public string ImageUrl { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public long? AuctionId { get; set; }
+        public Guid? AuctionId { get; set; }
         public decimal CurrentPrice { get; set; }
         public DateTime? AuctionStartTime { get; set; }
         public string? AuctionStatus { get; set; }
@@ -744,7 +745,7 @@ namespace InstapropAPI.Controllers
 
     public class DeveloperSuggestionDto
     {
-        public long DeveloperId { get; set; }
+        public Guid DeveloperId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string CompanyName { get; set; } = string.Empty;
         public double AverageRating { get; set; }
@@ -764,7 +765,7 @@ namespace InstapropAPI.Controllers
 
     public class AIBrokerChatSummaryDto
     {
-        public long AIChatId { get; set; }
+        public Guid AIChatId { get; set; }
         public string Status { get; set; } = string.Empty;
         public string LastMessage { get; set; } = string.Empty;
         public DateTime LastMessageAt { get; set; }

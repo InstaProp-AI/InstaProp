@@ -7,11 +7,13 @@ using InstapropAPI.Data;
 using InstapropAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
+using InstapropAPI.Attributes;
 
 namespace InstapropAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AnalyticsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -32,7 +34,7 @@ namespace InstapropAPI.Controllers
             public const string DeveloperRankings = "analytics:developer-rankings";
             public static string BestInvestments(int limit) => $"analytics:best-investments:{limit}";
             public static string GoldComparison(int months) => $"analytics:gold-comparison:{months}";
-            public static string PriceTrends(int? parentPropertyId, string? propertyType, string? location, int months) =>
+            public static string PriceTrends(Guid? parentPropertyId, string? propertyType, string? location, int months) =>
                 $"analytics:price-trends:{parentPropertyId?.ToString() ?? "any"}:{propertyType ?? "any"}:{location ?? "any"}:{months}";
         }
 
@@ -161,7 +163,7 @@ namespace InstapropAPI.Controllers
         // GET: api/analytics/price-trends
         [HttpGet("price-trends")]
         public async Task<ActionResult<IEnumerable<PriceTrendResponse>>> GetPriceTrends(
-            [FromQuery] int? parentPropertyId,
+            [FromQuery] Guid? parentPropertyId,
             [FromQuery] string? propertyType,
             [FromQuery] string? location,
             [FromQuery] int months = 12)
@@ -183,7 +185,7 @@ namespace InstapropAPI.Controllers
         }
 
         private async Task<List<PriceTrendResponse>> BuildPriceTrendsAsync(
-            int? parentPropertyId,
+            Guid? parentPropertyId,
             string? propertyType,
             string? location,
             int months)
@@ -197,7 +199,7 @@ namespace InstapropAPI.Controllers
 
                 if (parentPropertyId.HasValue)
                 {
-                    query = query.Where(ph => ph.ParentPropertyId == parentPropertyId.Value);
+                    query = query.Where(ph => ph.ParentPropertyId == parentPropertyId);
                 }
 
                 if (!string.IsNullOrWhiteSpace(propertyType))
@@ -223,7 +225,7 @@ namespace InstapropAPI.Controllers
                         Date = ph.PriceDate,
                         Price = ph.Price,
                         Source = ph.Source ?? "Unknown",
-                        ParentPropertyId = ph.ParentPropertyId,
+                        ParentPropertyId = ph.ParentPropertyId.ToString(),
                         ProjectName = ph.ParentProperty != null && !string.IsNullOrWhiteSpace(ph.ParentProperty.ProjectName)
                             ? ph.ParentProperty.ProjectName
                             : "N/A",
@@ -335,10 +337,27 @@ namespace InstapropAPI.Controllers
         // GET: api/analytics/portfolio/{userId}
         [HttpGet("portfolio/{userId}")]
         [Authorize]
-        public async Task<ActionResult<PortfolioAnalyticsResponse>> GetPortfolioAnalytics(long userId)
+        public async Task<ActionResult<PortfolioAnalyticsResponse>> GetPortfolioAnalytics(Guid userId)
         {
             try
             {
+                // Get current user ID from claims
+                var accountIdClaim = User.FindFirst("uid");
+                if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var currentUserId))
+                {
+                    return Unauthorized("User not authenticated");
+                }
+
+                // Get user role to check if admin
+                var roleIdClaim = User.FindFirst("roleId");
+                var isAdmin = roleIdClaim != null && Guid.TryParse(roleIdClaim.Value, out var roleId) && roleId == Role.ADMIN_ROLE_ID;
+
+                // Users can only access their own portfolio, unless they're admin
+                if (!isAdmin && currentUserId != userId)
+                {
+                    return Forbid("You can only access your own portfolio analytics");
+                }
+
                 var userProperties = await _context.ChildProperties
                     .Where(p => p.OwnerId == userId)
                     .Include(p => p.ParentProperty)
@@ -392,8 +411,8 @@ namespace InstapropAPI.Controllers
 
                 return Ok(new PortfolioAnalyticsResponse
                 {
-                    UserId = userId,
-                    TotalProperties = userProperties.Count,
+                    UserId = userId.ToString(),
+                    TotalProperties = userProperties.Count(),
                     TotalInvested = totalInvested,
                     TotalCurrentValue = totalCurrentValue,
                     TotalProfitLoss = totalCurrentValue - totalInvested,
@@ -406,7 +425,7 @@ namespace InstapropAPI.Controllers
                         .FirstOrDefault()?.Name ?? "N/A",
                     PropertyBreakdown = userProperties.Select(p => new PropertyPerformanceData
                     {
-                        PropertyId = p.PropertyId,
+                        PropertyId = p.PropertyId.ToString(),
                         PropertyName = p.Name,
                         Location = p.Location,
                         PropertyType = PropertyTypeHelper.ToDisplayName(p.Type),
@@ -655,7 +674,7 @@ namespace InstapropAPI.Controllers
 
                     return new DeveloperRankingResponse
                     {
-                        DeveloperId = d.AccountId,
+                        DeveloperId = d.AccountId.ToString(),
                         DeveloperName = displayName,
                         ProjectCount = d.Projects.Count,
                         TotalProperties = propertyCount?.Count ?? 0,
@@ -713,7 +732,7 @@ namespace InstapropAPI.Controllers
 
                         return new BestInvestmentResponse
                         {
-                            PropertyId = property.PropertyId,
+                            PropertyId = property.PropertyId.ToString(),
                             PropertyName = !string.IsNullOrWhiteSpace(property.Name) ? property.Name : "Unnamed Property",
                             Location = !string.IsNullOrWhiteSpace(property.Location) ? property.Location : "Unknown",
                             PropertyType = PropertyTypeHelper.ToDisplayName(property.Type),
@@ -918,7 +937,7 @@ namespace InstapropAPI.Controllers
         public DateTime Date { get; set; }
         public decimal Price { get; set; }
         public string Source { get; set; } = string.Empty;
-        public int ParentPropertyId { get; set; }
+        public string ParentPropertyId { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
         public string PropertyType { get; set; } = string.Empty;
     }
@@ -938,7 +957,7 @@ namespace InstapropAPI.Controllers
 
     public class DeveloperRankingResponse
     {
-        public long DeveloperId { get; set; }
+        public string DeveloperId { get; set; } = string.Empty;
         public string DeveloperName { get; set; } = string.Empty;
         public int ProjectCount { get; set; }
         public int TotalProperties { get; set; }
@@ -948,7 +967,7 @@ namespace InstapropAPI.Controllers
 
     public class BestInvestmentResponse
     {
-        public int PropertyId { get; set; }
+        public string PropertyId { get; set; } = string.Empty;
         public string PropertyName { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public string PropertyType { get; set; } = string.Empty;
@@ -965,7 +984,7 @@ namespace InstapropAPI.Controllers
 
     public class PortfolioAnalyticsResponse
     {
-        public long UserId { get; set; }
+        public string UserId { get; set; } = string.Empty;
         public int TotalProperties { get; set; }
         public decimal TotalInvested { get; set; }
         public decimal TotalCurrentValue { get; set; }
@@ -978,7 +997,7 @@ namespace InstapropAPI.Controllers
 
     public class PropertyPerformanceData
     {
-        public int PropertyId { get; set; }
+        public string PropertyId { get; set; } = string.Empty;
         public string PropertyName { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public string PropertyType { get; set; } = string.Empty;

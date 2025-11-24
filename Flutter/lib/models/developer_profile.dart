@@ -1,5 +1,5 @@
 class DeveloperProfile {
-  final int developerId;
+  final String developerId;
   final String firstName;
   final String lastName;
   final String email;
@@ -40,8 +40,16 @@ class DeveloperProfile {
   String get fullName => '$firstName $lastName';
 
   factory DeveloperProfile.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return DeveloperProfile(
-      developerId: json['developerId'] ?? 0,
+      developerId: parseId(json['developerId']),
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
       email: json['email'] ?? '',
@@ -73,7 +81,7 @@ class DeveloperProfile {
 }
 
 class DeveloperProjectSummary {
-  final int projectId;
+  final String projectId;
   final String name;
   final String? location;
   final int propertiesCount;
@@ -90,8 +98,23 @@ class DeveloperProjectSummary {
   });
 
   factory DeveloperProjectSummary.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return DeveloperProjectSummary(
-      projectId: json['projectId'] ?? 0,
+      projectId: parseId(json['projectId']),
       name: json['name'] ?? '',
       location: json['location'],
       propertiesCount: json['propertiesCount'] ?? 0,
@@ -104,8 +127,8 @@ class DeveloperProjectSummary {
 }
 
 class DeveloperPropertySummary {
-  final int propertyId;
-  final int? projectId;
+  final String propertyId;
+  final String? projectId;
   final String name;
   final String? location;
   final String imageUrl;
@@ -129,9 +152,24 @@ class DeveloperPropertySummary {
   });
 
   factory DeveloperPropertySummary.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
+    String? parseOptionalId(dynamic id) {
+      if (id == null) return null;
+      if (id is String) return id.isEmpty ? null : id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return DeveloperPropertySummary(
-      propertyId: json['propertyId'] ?? 0,
-      projectId: json['projectId'],
+      propertyId: parseId(json['propertyId']),
+      projectId: parseOptionalId(json['projectId']),
       name: json['name'] ?? '',
       location: json['location'],
       imageUrl: json['imageUrl'] ?? '',
@@ -145,8 +183,8 @@ class DeveloperPropertySummary {
 }
 
 class DeveloperRatingModel {
-  final int ratingId;
-  final int userId;
+  final String ratingId;
+  final String userId;
   final String userName;
   final int rating;
   final String? comment;
@@ -164,9 +202,17 @@ class DeveloperRatingModel {
   });
 
   factory DeveloperRatingModel.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return DeveloperRatingModel(
-      ratingId: json['ratingId'] ?? 0,
-      userId: json['userId'] ?? 0,
+      ratingId: parseId(json['ratingId']),
+      userId: parseId(json['userId']),
       userName: json['userName'] ?? '',
       rating: json['rating'] ?? 0,
       comment: json['comment'],
@@ -179,7 +225,7 @@ class DeveloperRatingModel {
 }
 
 class FeaturedDeveloper {
-  final int developerId;
+  final String developerId;
   final String firstName;
   final String lastName;
   final String? companyName;
@@ -204,8 +250,16 @@ class FeaturedDeveloper {
   String get fullName => '$firstName $lastName';
 
   factory FeaturedDeveloper.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ID fields (handle both string GUID and int legacy formats)
+    String parseId(dynamic id, {String defaultValue = ''}) {
+      if (id == null) return defaultValue;
+      if (id is String) return id;
+      if (id is int) return id.toString(); // Legacy format
+      return id.toString();
+    }
+
     return FeaturedDeveloper(
-      developerId: json['developerId'] ?? 0,
+      developerId: parseId(json['developerId']),
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
       companyName: json['companyName'],

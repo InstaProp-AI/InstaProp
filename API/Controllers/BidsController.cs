@@ -30,7 +30,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/bids/by-auction/{auctionId} (Public - No auth required)
         [HttpGet("by-auction/{auctionId}")]
-        public async Task<IActionResult> GetBidsForAuction(long auctionId)
+        public async Task<IActionResult> GetBidsForAuction(Guid auctionId)
         {
             var bids = await _context.Bids
                 .Include(b => b.Bidder)
@@ -57,7 +57,7 @@ namespace InstapropAPI.Controllers
             });
 
             // Preload top badges for bidders
-            var bidderIds = bids.Where(b => b.BidderId != 0).Select(b => b.BidderId).Distinct().ToList();
+            var bidderIds = bids.Where(b => b.BidderId != Guid.Empty).Select(b => b.BidderId).Distinct().ToList();
             var topBadges = await _context.UserBadges
                 .Where(ub => bidderIds.Contains(ub.AccountId))
                 .GroupBy(ub => ub.AccountId)
@@ -90,7 +90,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/bids/bidders/{auctionId} (Public - Get unique bidders for an auction)
         [HttpGet("bidders/{auctionId}")]
-        public async Task<IActionResult> GetBiddersForAuction(long auctionId)
+        public async Task<IActionResult> GetBiddersForAuction(Guid auctionId)
         {
             // Get all bids for the auction - load into memory first
             var bidsForAuction = await _context.Bids
@@ -130,7 +130,7 @@ namespace InstapropAPI.Controllers
             {
                 // Get the current user ID from the JWT token
                 var userIdClaim = User.FindFirst("uid");
-                if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
                 {
                     return Unauthorized(new { message = "User not authenticated" });
                 }
@@ -234,7 +234,7 @@ namespace InstapropAPI.Controllers
         public async Task<IActionResult> GetUserBids()
         {
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return Unauthorized(new { message = "User not authenticated" });
             }
@@ -253,7 +253,7 @@ namespace InstapropAPI.Controllers
         // GET: api/bids/{bidId}
         [HttpGet("{bidId}")]
         [Authorize]
-        public async Task<IActionResult> GetBid(long bidId)
+        public async Task<IActionResult> GetBid(Guid bidId)
         {
             var bid = await _context.Bids
                 .Include(b => b.Bidder)
@@ -272,10 +272,10 @@ namespace InstapropAPI.Controllers
         [HttpDelete("{bidId}")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<IActionResult> DeleteBid(long bidId)
+        public async Task<IActionResult> DeleteBid(Guid bidId)
         {
             var userIdClaim = User.FindFirst("uid");
-            if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out long userId))
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return Unauthorized(new { message = "User not authenticated" });
             }
@@ -328,7 +328,7 @@ namespace InstapropAPI.Controllers
             return Ok(new { message = "Bid deleted successfully" });
         }
 
-        private async Task<decimal> GetCurrentPrice(long auctionId)
+        private async Task<decimal> GetCurrentPrice(Guid auctionId)
         {
             var bidsForAuction = await _context.Bids
                 .Where(b => b.AuctionId == auctionId)
@@ -347,12 +347,6 @@ namespace InstapropAPI.Controllers
             var auction = await _context.Auctions.FindAsync(auctionId);
             return auction?.StartPrice ?? 0;
         }
-    }
-
-    public class CreateBidDto
-    {
-        public long AuctionId { get; set; }
-        public double BidAmount { get; set; }
     }
 }
 

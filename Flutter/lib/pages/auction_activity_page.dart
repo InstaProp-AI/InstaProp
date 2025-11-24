@@ -195,7 +195,7 @@ class _AuctionActivityPageState extends State<AuctionActivityPage> {
 
   Widget _buildMyBidsSection(AppState appState) {
     // Group bids by auction and get the latest bid for each auction
-    final Map<int, Bid> latestBidsMap = {};
+    final Map<String, Bid> latestBidsMap = {};
     for (var bid in _myBids) {
       if (bid.auction != null) {
         final auctionId = bid.auction!.auctionId;

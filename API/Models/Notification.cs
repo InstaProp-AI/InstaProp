@@ -7,14 +7,14 @@ namespace InstapropAPI.Models
     public class Notification
     {
         [Key]
-        public long NotificationId { get; set; }
+        public Guid NotificationId { get; set; }
 
         // For individual notifications, UserId is set
         // For bulk notifications, UserId is null and Recipients is used
-        public long? UserId { get; set; }
+        public Guid? UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        public Account? User { get; set; }
+        public AccountBase? User { get; set; }
 
         [Required]
         [MaxLength(100)]
@@ -42,10 +42,10 @@ namespace InstapropAPI.Models
         public string? ReadByUsers { get; set; }
 
         // Related entity IDs (optional - for navigation)
-        public long? AuctionId { get; set; }
-        public long? BidId { get; set; }
-        public long? PropertyId { get; set; }
-        public long? EventId { get; set; }
+        public Guid? AuctionId { get; set; }
+        public Guid? BidId { get; set; }
+        public Guid? PropertyId { get; set; }
+        public Guid? EventId { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -55,7 +55,7 @@ namespace InstapropAPI.Models
         public bool IsBulkNotification => !string.IsNullOrEmpty(Recipients);
 
         // Helper method to check if user has read this notification
-        public bool IsReadByUser(long userId)
+        public bool IsReadByUser(Guid userId)
         {
             if (IsBulkNotification)
             {
@@ -66,7 +66,7 @@ namespace InstapropAPI.Models
         }
 
         // Helper method to mark as read for a user
-        public void MarkAsReadByUser(long userId)
+        public void MarkAsReadByUser(Guid userId)
         {
             if (IsBulkNotification)
             {

@@ -72,28 +72,10 @@ namespace InstapropAPI.Services
             await SeedKycDocumentsAsync(accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList());
 
             // Step 11: Seed Communities
-            var communities = await SeedCommunitiesAsync(projects, accounts);
+            // Community features removed - Step 11-17 skipped
+            // Note: All community seeding methods have been commented out
 
-            // Step 12: Seed Community Members
-            await SeedCommunityMembersAsync(communities, accounts);
-
-            // Step 13: Seed Community Posts
-            var posts = await SeedCommunityPostsAsync(communities, accounts);
-
-            // Step 14: Seed Post Reactions
-            await SeedPostReactionsAsync(posts, accounts);
-
-            // Step 15: Seed Post Likes
-            await SeedPostLikesAsync(posts, accounts);
-
-            // Step 16: Seed Post Comments
-            var comments = await SeedPostCommentsAsync(posts, accounts);
-
-            // Step 17: Seed Comment Reactions
-            await SeedCommentReactionsAsync(comments, accounts);
-
-            // Step 18: Seed Comment Likes
-            await SeedCommentLikesAsync(comments, accounts);
+            // Step 18: Seed Comment Likes - REMOVED (community feature)
 
             // Step 19: Seed News Articles
             var newsArticles = await SeedNewsArticlesAsync();
@@ -116,7 +98,7 @@ namespace InstapropAPI.Services
         }
 
         // Public method to seed news articles for each developer (3-5 articles per developer)
-        public async Task<Dictionary<long, List<NewsArticle>>> SeedDeveloperNewsAsync()
+        public async Task<Dictionary<Guid, List<NewsArticle>>> SeedDeveloperNewsAsync()
         {
             Console.WriteLine("📰 Seeding News Articles for Developers...");
             
@@ -128,11 +110,11 @@ namespace InstapropAPI.Services
             if (!developers.Any())
             {
                 Console.WriteLine("⚠️ No developers found. Skipping developer news seeding.");
-                return new Dictionary<long, List<NewsArticle>>();
+                return new Dictionary<Guid, List<NewsArticle>>();
             }
 
             var allArticles = new List<NewsArticle>();
-            var developerNewsMap = new Dictionary<long, List<NewsArticle>>();
+            var developerNewsMap = new Dictionary<Guid, List<NewsArticle>>();
             var random = new Random();
 
             // News templates for developers
@@ -219,7 +201,7 @@ namespace InstapropAPI.Services
         }
 
         // Public method to seed chats with messages for all developers
-        public async Task<Dictionary<long, List<Chat>>> SeedChatsWithMessagesAsync()
+        public async Task<Dictionary<Guid, List<Chat>>> SeedChatsWithMessagesAsync()
         {
             Console.WriteLine("💬 Seeding Chats and Messages for Developers...");
             
@@ -231,7 +213,7 @@ namespace InstapropAPI.Services
             if (!developers.Any())
             {
                 Console.WriteLine("⚠️ No developers found. Skipping chat seeding.");
-                return new Dictionary<long, List<Chat>>();
+                return new Dictionary<Guid, List<Chat>>();
             }
 
             // Get all regular users
@@ -242,7 +224,7 @@ namespace InstapropAPI.Services
             if (!users.Any())
             {
                 Console.WriteLine("⚠️ No users found. Skipping chat seeding.");
-                return new Dictionary<long, List<Chat>>();
+                return new Dictionary<Guid, List<Chat>>();
             }
 
             // Get projects for developers
@@ -251,12 +233,12 @@ namespace InstapropAPI.Services
                 .ToListAsync();
 
             // Get sales team members
-            var salesMembers = await _context.Accounts
+            var salesMembers = await _context.SalesAccounts
                 .Where(a => a.RoleId == Role.SALES_ROLE_ID && a.AssignedDeveloperId.HasValue)
                 .ToListAsync();
 
             var allChats = new List<Chat>();
-            var developerChatMap = new Dictionary<long, List<Chat>>();
+            var developerChatMap = new Dictionary<Guid, List<Chat>>();
             var random = new Random();
 
             // Message templates
@@ -428,15 +410,7 @@ namespace InstapropAPI.Services
             Console.WriteLine("🗑️ Clearing existing data...");
             
             // Clear in reverse dependency order
-            _context.CommentLikes.RemoveRange(_context.CommentLikes);
-            _context.CommentReactions.RemoveRange(_context.CommentReactions);
-            _context.PostComments.RemoveRange(_context.PostComments);
-            _context.PostLikes.RemoveRange(_context.PostLikes);
-            _context.PostReactions.RemoveRange(_context.PostReactions);
-            _context.PostCategories.RemoveRange(_context.PostCategories);
-            _context.CommunityPosts.RemoveRange(_context.CommunityPosts);
-            _context.CommunityMembers.RemoveRange(_context.CommunityMembers);
-            _context.Communities.RemoveRange(_context.Communities);
+            // Community-related tables removed (CommentLikes, CommentReactions, PostCategories, etc.)
             _context.NewsImages.RemoveRange(_context.NewsImages);
             _context.NewsArticles.RemoveRange(_context.NewsArticles);
             _context.Bids.RemoveRange(_context.Bids);
@@ -454,10 +428,10 @@ namespace InstapropAPI.Services
             Console.WriteLine("✅ Data cleared");
         }
 
-        private async Task<List<Account>> SeedAccountsAsync()
+        private async Task<List<AccountBase>> SeedAccountsAsync()
         {
             Console.WriteLine("👥 Seeding Accounts...");
-            var accounts = new List<Account>();
+            var accounts = new List<AccountBase>();
 
             // Seed 10 Developers individually
             var developers = await SeedDevelopersAsync();
@@ -474,12 +448,12 @@ namespace InstapropAPI.Services
             return accounts;
         }
 
-        private Task<List<Account>> SeedDevelopersAsync()
+        private Task<List<AccountBase>> SeedDevelopersAsync()
         {
-            var developers = new List<Account>();
+            var developers = new List<AccountBase>();
 
             // Developer 1: Palm Hills Developments
-            var dev1 = new Account
+            var dev1 = new DeveloperAccount
             {
                 FirstName = "Ahmed",
                 LastName = "El Masry",
@@ -495,7 +469,7 @@ namespace InstapropAPI.Services
             developers.Add(dev1);
 
             // Developer 2: Talaat Moustafa Group
-            var dev2 = new Account
+            var dev2 = new DeveloperAccount
             {
                 FirstName = "Mohamed",
                 LastName = "Talaat",
@@ -511,7 +485,7 @@ namespace InstapropAPI.Services
             developers.Add(dev2);
 
             // Developer 3: SODIC
-            var dev3 = new Account
+            var dev3 = new DeveloperAccount
             {
                 FirstName = "Mahmoud",
                 LastName = "El Sherbiny",
@@ -527,7 +501,7 @@ namespace InstapropAPI.Services
             developers.Add(dev3);
 
             // Developer 4: Emaar Misr
-            var dev4 = new Account
+            var dev4 = new DeveloperAccount
             {
                 FirstName = "Omar",
                 LastName = "Hassan",
@@ -543,7 +517,7 @@ namespace InstapropAPI.Services
             developers.Add(dev4);
 
             // Developer 5: Orascom Development
-            var dev5 = new Account
+            var dev5 = new DeveloperAccount
             {
                 FirstName = "Hassan",
                 LastName = "Ibrahim",
@@ -559,7 +533,7 @@ namespace InstapropAPI.Services
             developers.Add(dev5);
 
             // Developer 6: City Edge Developments
-            var dev6 = new Account
+            var dev6 = new DeveloperAccount
             {
                 FirstName = "Ali",
                 LastName = "Khaled",
@@ -575,7 +549,7 @@ namespace InstapropAPI.Services
             developers.Add(dev6);
 
             // Developer 7: Mountain View
-            var dev7 = new Account
+            var dev7 = new DeveloperAccount
             {
                 FirstName = "Youssef",
                 LastName = "Mostafa",
@@ -591,7 +565,7 @@ namespace InstapropAPI.Services
             developers.Add(dev7);
 
             // Developer 8: Al Ahly Sabbour
-            var dev8 = new Account
+            var dev8 = new DeveloperAccount
             {
                 FirstName = "Tarek",
                 LastName = "El Saeed",
@@ -607,7 +581,7 @@ namespace InstapropAPI.Services
             developers.Add(dev8);
 
             // Developer 9: Wadi Degla Developments
-            var dev9 = new Account
+            var dev9 = new DeveloperAccount
             {
                 FirstName = "Hany",
                 LastName = "El Gohary",
@@ -623,7 +597,7 @@ namespace InstapropAPI.Services
             developers.Add(dev9);
 
             // Developer 10: Misr Italia Properties
-            var dev10 = new Account
+            var dev10 = new DeveloperAccount
             {
                 FirstName = "Sherif",
                 LastName = "El Shazly",
@@ -641,13 +615,13 @@ namespace InstapropAPI.Services
             return Task.FromResult(developers);
         }
 
-        private Task<List<Account>> SeedUsersAsync()
+        private Task<List<AccountBase>> SeedUsersAsync()
         {
-            var users = new List<Account>();
+            var users = new List<AccountBase>();
 
             // Create 30 regular users with real Egyptian names
             // User 1
-            var user1 = new Account
+            var user1 = new UserAccount
             {
                 FirstName = "Ahmed",
                 LastName = "Hassan",
@@ -663,7 +637,7 @@ namespace InstapropAPI.Services
             users.Add(user1);
 
             // User 2
-            var user2 = new Account
+            var user2 = new UserAccount
             {
                 FirstName = "Fatma",
                 LastName = "Ahmed",
@@ -679,7 +653,7 @@ namespace InstapropAPI.Services
             users.Add(user2);
 
             // User 3
-            var user3 = new Account
+            var user3 = new UserAccount
             {
                 FirstName = "Mohamed",
                 LastName = "Ali",
@@ -695,7 +669,7 @@ namespace InstapropAPI.Services
             users.Add(user3);
 
             // User 4
-            var user4 = new Account
+            var user4 = new UserAccount
             {
                 FirstName = "Aisha",
                 LastName = "Mahmoud",
@@ -711,7 +685,7 @@ namespace InstapropAPI.Services
             users.Add(user4);
 
             // User 5
-            var user5 = new Account
+            var user5 = new UserAccount
             {
                 FirstName = "Omar",
                 LastName = "Ibrahim",
@@ -727,7 +701,7 @@ namespace InstapropAPI.Services
             users.Add(user5);
 
             // User 6
-            var user6 = new Account
+            var user6 = new UserAccount
             {
                 FirstName = "Mona",
                 LastName = "Youssef",
@@ -743,7 +717,7 @@ namespace InstapropAPI.Services
             users.Add(user6);
 
             // User 7
-            var user7 = new Account
+            var user7 = new UserAccount
             {
                 FirstName = "Khaled",
                 LastName = "Amr",
@@ -759,7 +733,7 @@ namespace InstapropAPI.Services
             users.Add(user7);
 
             // User 8
-            var user8 = new Account
+            var user8 = new UserAccount
             {
                 FirstName = "Nour",
                 LastName = "Tarek",
@@ -775,7 +749,7 @@ namespace InstapropAPI.Services
             users.Add(user8);
 
             // User 9
-            var user9 = new Account
+            var user9 = new UserAccount
             {
                 FirstName = "Mahmoud",
                 LastName = "Hany",
@@ -791,7 +765,7 @@ namespace InstapropAPI.Services
             users.Add(user9);
 
             // User 10
-            var user10 = new Account
+            var user10 = new UserAccount
             {
                 FirstName = "Dina",
                 LastName = "Sherif",
@@ -818,7 +792,7 @@ namespace InstapropAPI.Services
                 };
                 var (firstName, lastName) = names[(i - 11) % names.Length];
                 
-                var user = new Account
+                var user = new UserAccount
                 {
                     FirstName = firstName,
                     LastName = lastName,
@@ -845,7 +819,7 @@ namespace InstapropAPI.Services
                 };
                 var (firstName, lastName) = names[(i - 21) % names.Length];
                 
-                var user = new Account
+                var user = new UserAccount
                 {
                     FirstName = firstName,
                     LastName = lastName,
@@ -864,7 +838,7 @@ namespace InstapropAPI.Services
             return Task.FromResult(users);
         }
 
-        private async Task SeedDeveloperPermissionsAsync(List<Account> developers)
+        private async Task SeedDeveloperPermissionsAsync(List<AccountBase> developers)
         {
             Console.WriteLine("🔐 Seeding Developer Permissions...");
             var permissions = new List<DeveloperPermission>();
@@ -890,7 +864,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {permissions.Count} developer permissions");
         }
 
-        private async Task<List<Project>> SeedProjectsAsync(List<Account> developers)
+        private async Task<List<Project>> SeedProjectsAsync(List<AccountBase> developers)
         {
             Console.WriteLine("🏗️ Seeding Projects...");
             var projects = new List<Project>();
@@ -1306,7 +1280,7 @@ namespace InstapropAPI.Services
         // Helper method to create a unique child property with all details
         private ChildProperty CreateChildProperty(
             ParentProperty parent, 
-            Account owner, 
+            AccountBase owner, 
             int unitNumber, 
             int floorNumber, 
             string viewType, 
@@ -1364,7 +1338,7 @@ namespace InstapropAPI.Services
             };
         }
 
-        private async Task<List<ChildProperty>> SeedChildPropertiesAsync(List<ParentProperty> parentProperties, List<Account> accounts)
+        private async Task<List<ChildProperty>> SeedChildPropertiesAsync(List<ParentProperty> parentProperties, List<AccountBase> accounts)
         {
             Console.WriteLine("🏘️ Seeding Child Properties (creating each individually)...");
             var childProperties = new List<ChildProperty>();
@@ -1467,7 +1441,7 @@ namespace InstapropAPI.Services
             foreach (var property in childProperties)
             {
                 // Add 3-5 images per property
-                var imageCount = 3 + (property.PropertyId % 3);
+                var imageCount = 3 + (property.PropertyId.GetHashCode() % 3);
                 for (int i = 0; i < imageCount; i++)
                 {
                     var imageTypes = new[] { "Main", "Gallery", "Exterior", "Interior", "Kitchen", "Bedroom", "Bathroom", "Living Room" };
@@ -1478,7 +1452,7 @@ namespace InstapropAPI.Services
                         ImageType = imageTypes[i % imageTypes.Length],
                         IsMainImage = i == 0,
                         DisplayOrder = i,
-                        CreatedAt = DateTime.UtcNow.AddDays(-(property.PropertyId * 2 + i))
+                        CreatedAt = DateTime.UtcNow.AddDays(-(Math.Abs(property.PropertyId.GetHashCode()) % 100 + i))
                     });
                     imageIdIndex++;
                 }
@@ -1546,7 +1520,7 @@ namespace InstapropAPI.Services
             return auctions;
         }
 
-        private async Task SeedBidsAsync(List<Auction> auctions, List<Account> accounts)
+        private async Task SeedBidsAsync(List<Auction> auctions, List<AccountBase> accounts)
         {
             Console.WriteLine("💰 Seeding Bids...");
             var bids = new List<Bid>();
@@ -1580,7 +1554,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {bids.Count} bids");
         }
 
-        private async Task SeedKycDocumentsAsync(List<Account> users)
+        private async Task SeedKycDocumentsAsync(List<AccountBase> users)
         {
             Console.WriteLine("🆔 Seeding KYC Documents...");
             var documents = new List<UserDoc>();
@@ -1636,7 +1610,8 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {documents.Count} KYC documents");
         }
 
-        private async Task<List<Community>> SeedCommunitiesAsync(List<Project> projects, List<Account> accounts)
+        /* Community seeding methods removed - all community features have been removed
+        private async Task<List<Community>> SeedCommunitiesAsync(List<Project> projects, List<AccountBase> accounts)
         {
             Console.WriteLine("👥 Seeding Communities...");
             var communities = new List<Community>();
@@ -1777,7 +1752,7 @@ namespace InstapropAPI.Services
             return communities;
         }
 
-        private async Task SeedCommunityMembersAsync(List<Community> communities, List<Account> accounts)
+        private async Task SeedCommunityMembersAsync(List<Community> communities, List<AccountBase> accounts)
         {
             Console.WriteLine("👤 Seeding Community Members...");
             var members = new List<CommunityMember>();
@@ -1851,7 +1826,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {members.Count} community members");
         }
 
-        private async Task<List<CommunityPost>> SeedCommunityPostsAsync(List<Community> communities, List<Account> accounts)
+        private async Task<List<CommunityPost>> SeedCommunityPostsAsync(List<Community> communities, List<AccountBase> accounts)
         {
             Console.WriteLine("📝 Seeding Community Posts...");
             var posts = new List<CommunityPost>();
@@ -2014,7 +1989,7 @@ namespace InstapropAPI.Services
             return posts;
         }
 
-        private async Task SeedPostReactionsAsync(List<CommunityPost> posts, List<Account> accounts)
+        private async Task SeedPostReactionsAsync(List<CommunityPost> posts, List<AccountBase> accounts)
         {
             Console.WriteLine("❤️ Seeding Post Reactions...");
             var reactions = new List<PostReaction>();
@@ -2101,7 +2076,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {reactions.Count} post reactions");
         }
 
-        private async Task SeedPostLikesAsync(List<CommunityPost> posts, List<Account> accounts)
+        private async Task SeedPostLikesAsync(List<CommunityPost> posts, List<AccountBase> accounts)
         {
             Console.WriteLine("👍 Seeding Post Likes...");
             var likes = new List<PostLike>();
@@ -2124,7 +2099,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {likes.Count} post likes");
         }
 
-        private async Task<List<PostComment>> SeedPostCommentsAsync(List<CommunityPost> posts, List<Account> accounts)
+        private async Task<List<PostComment>> SeedPostCommentsAsync(List<CommunityPost> posts, List<AccountBase> accounts)
         {
             Console.WriteLine("💬 Seeding Post Comments...");
             var comments = new List<PostComment>();
@@ -2295,7 +2270,7 @@ namespace InstapropAPI.Services
             return comments;
         }
 
-        private async Task SeedCommentReactionsAsync(List<PostComment> comments, List<Account> accounts)
+        private async Task SeedCommentReactionsAsync(List<PostComment> comments, List<AccountBase> accounts)
         {
             Console.WriteLine("❤️ Seeding Comment Reactions...");
             var reactions = new List<CommentReaction>();
@@ -2324,7 +2299,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {reactions.Count} comment reactions");
         }
 
-        private async Task SeedCommentLikesAsync(List<PostComment> comments, List<Account> accounts)
+        private async Task SeedCommentLikesAsync(List<PostComment> comments, List<AccountBase> accounts)
         {
             Console.WriteLine("👍 Seeding Comment Likes...");
             var likes = new List<CommentLike>();
@@ -2350,6 +2325,7 @@ namespace InstapropAPI.Services
 
             Console.WriteLine($"✅ Seeded {likes.Count} comment likes");
         }
+        */
 
         private async Task<List<NewsArticle>> SeedNewsArticlesAsync()
         {

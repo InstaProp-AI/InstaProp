@@ -21,7 +21,7 @@ class HelpPage extends StatefulWidget {
 
 class _HelpPageState extends State<HelpPage> {
   final TextEditingController _messageController = TextEditingController();
-  final Set<int> _expandedFaqs = <int>{};
+  final Set<String> _expandedFaqs = <String>{};
 
   bool _loadingFaqs = true;
   bool _loadingChat = false;
@@ -88,7 +88,7 @@ class _HelpPageState extends State<HelpPage> {
     }
   }
 
-  void _toggleFaq(int faqId) {
+  void _toggleFaq(String faqId) {
     setState(() {
       if (_expandedFaqs.contains(faqId)) {
         _expandedFaqs.remove(faqId);

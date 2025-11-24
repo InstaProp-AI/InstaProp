@@ -11,11 +11,11 @@ namespace InstapropAPI.Models
     public class PropertyValuation
     {
         [Key]
-        public int ValuationId { get; set; }
+        public Guid ValuationId { get; set; }
 
         [Required]
         [ForeignKey("ChildProperty")]
-        public int PropertyId { get; set; }
+        public Guid PropertyId { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]

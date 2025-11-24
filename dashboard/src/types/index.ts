@@ -1,11 +1,11 @@
 export interface Account {
-  accountId: number;
+  accountId: string;
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber: string;
-  // SECURITY: Use roleId (non-guessable 64-bit ID) instead of type enum
-  roleId: number; // e.g., 9823749823749823 for Admin, 7823647823647823 for Developer, 8923748923748923 for User
+  // SECURITY: Use roleId (GUID) instead of type enum
+  roleId: string; // GUID for Admin, Developer, User roles
   roleName: 'User' | 'Developer' | 'Admin'; // For display purposes only
   // Legacy: Keep type for backward compatibility during migration
   type?: 'User' | 'Developer' | 'Admin'; // Deprecated - use roleName instead
@@ -15,6 +15,7 @@ export interface Account {
   isSuspended?: boolean;
   suspendedUntil?: string;
   suspensionReason?: string;
+  timeZone?: string; // User's preferred timezone (IANA timezone ID)
   createdAt: string;
   updatedAt?: string;
 }
@@ -33,19 +34,21 @@ export interface PaginatedResponse<T> {
   pagination: PaginationInfo;
 }
 
-// Role ID constants (matching backend)
+// Role ID constants (matching backend GUIDs)
 export const ROLE_IDS = {
-  USER: 8923748923748923,
-  DEVELOPER: 7823647823647823,
-  ADMIN: 9823749823749823,
+  USER: '89237489-2374-4923-8923-892374892374',
+  DEVELOPER: '78236478-2364-4782-3647-823647823647',
+  ADMIN: '98237498-2374-4982-3749-823749823749',
+  SALES: '67235467-2354-4672-3546-723546723546',
 } as const;
 
 export interface Project {
-  projectId: number;
-  developerId?: number;
+  projectId: string;
+  developerId?: string;
   name: string;
   description?: string;
   location?: string;
+  country?: string; // ISO 3166-1 alpha-2 country code
   createdAt: string;
   updatedAt?: string;
   isActive?: boolean;
@@ -54,7 +57,7 @@ export interface Project {
 }
 
 export interface ParentProperty {
-  parentPropertyId: number;
+  parentPropertyId: string;
   projectName?: string;
   type?: string;
   bedrooms?: number;
@@ -64,10 +67,10 @@ export interface ParentProperty {
 }
 
 export interface Property {
-  propertyId: number;
-  parentPropertyId?: number; // Link to parent property
-  ownerId: number;
-  projectId?: number;
+  propertyId: string;
+  parentPropertyId?: string; // Link to parent property
+  ownerId: string;
+  projectId?: string;
   name: string;
   description?: string;
   location?: string;
@@ -89,8 +92,8 @@ export interface Property {
 }
 
 export interface Auction {
-  auctionId: number;
-  propertyId: number;
+  auctionId: string;
+  propertyId: string;
   startPrice: number;
   currentPrice: number;
   startAt: string;
@@ -103,9 +106,9 @@ export interface Auction {
 }
 
 export interface Bid {
-  bidId: number;
-  auctionId: number;
-  bidderId: number;
+  bidId: string;
+  auctionId: string;
+  bidderId: string;
   bidAmount: number;
   createdAt: string;
   bidder?: Account;
@@ -146,12 +149,14 @@ export interface CreateProjectDto {
   name: string;
   description?: string;
   location?: string;
+  country?: string; // ISO 3166-1 alpha-2 country code
 }
 
 export interface UpdateProjectDto {
   name: string;
   description?: string;
   location?: string;
+  country?: string; // ISO 3166-1 alpha-2 country code
 }
 
 export interface CreatePropertyDto {
@@ -165,29 +170,29 @@ export interface CreatePropertyDto {
   yearBuilt: number;
   category?: string;
   imageUrl: string;
-  projectId?: number;
+  projectId?: string;
   type?: string; // 'Primary' or 'Resale' - optional for admin
 }
 
 export interface UserDocument {
-  docId: number;
-  userId: number;
+  docId: string;
+  userId: string;
   docType: string;
   imgUrl: string;
   uploadedAt: string;
 }
 
 export interface PropertyDocument {
-  docId: number;
-  propertyId: number;
+  docId: string;
+  propertyId: string;
   docType: string;
   imgUrl: string;
   uploadedAt: string;
 }
 
 export interface PropertyImage {
-  propertyImageId: number;
-  propertyId: number;
+  propertyImageId: string;
+  propertyId: string;
   imageUrl: string;
   imageType: string;
   isMainImage: boolean;
@@ -203,7 +208,6 @@ export enum FeaturePermission {
   Analytics = 'Analytics',
   
   // Optional features (admin-configurable)
-  Communities = 'Communities',
   News = 'News',
   Auctions = 'Auctions',
   Leaderboard = 'Leaderboard',
@@ -219,7 +223,6 @@ export type FeatureName =
   | 'Projects'
   | 'Properties'
   | 'Analytics'
-  | 'Communities'
   | 'News'
   | 'Auctions'
   | 'Leaderboard'
@@ -239,9 +242,9 @@ export interface UpdatePermissionsDto {
 }
 
 export interface SalesTeam {
-  teamId: number;
+  teamId: string;
   teamName: string;
-  developerId: number;
+  developerId: string;
   developerName?: string;
   developerEmail?: string;
   memberCount?: number;

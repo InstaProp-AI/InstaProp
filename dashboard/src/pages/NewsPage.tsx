@@ -44,7 +44,7 @@ interface PaginatedNewsResponse {
 }
 
 interface DeveloperNewsCount {
-  developerId: number;
+  developerId: string;
   developerName: string;
   email: string;
   newsCount: number;
@@ -106,8 +106,8 @@ const NewsPage: React.FC = () => {
       setCurrentUser(user);
       
       // Check if admin or developer
-      const isAdmin = user.roleId === 9823749823749823 || user.roleName === 'Admin';
-      const isDeveloper = user.roleId === 7823647823647823 || user.roleName === 'Developer';
+      const isAdmin = user.roleId === '98237498-2374-4982-3749-823749823749' || user.roleName === 'Admin';
+      const isDeveloper = user.roleId === '78236478-2364-7823-0000-000000000000' || user.roleName === 'Developer';
       
       if (isAdmin) {
         // Admin: Load developers with news counts and admin posts count
@@ -193,7 +193,7 @@ const NewsPage: React.FC = () => {
     }
   };
 
-  const handleFolderClick = (developerId: number | null) => {
+  const handleFolderClick = (developerId: string | null) => {
     setSelectedDeveloperId(developerId);
     setCurrentView('news');
     setCurrentPage(1);
@@ -265,7 +265,7 @@ const NewsPage: React.FC = () => {
       resetForm();
       setShowCreateModal(false);
       fetchNews();
-      if (currentUser?.roleId === 9823749823749823) {
+      if (currentUser?.roleId === '98237498-2374-4982-3749-823749823749') {
         await loadAdminNewsCount();
         await loadDevelopersWithNews();
       }
@@ -338,7 +338,7 @@ const NewsPage: React.FC = () => {
       setShowDeleteModal(false);
       setSelectedNews(null);
       fetchNews();
-      if (currentUser?.roleId === 9823749823749823) {
+      if (currentUser?.roleId === '98237498-2374-4982-3749-823749823749') {
         await loadAdminNewsCount();
         await loadDevelopersWithNews();
       }
@@ -400,8 +400,8 @@ const NewsPage: React.FC = () => {
     return article.imageUrl;
   };
 
-  const isAdmin = currentUser?.roleId === 9823749823749823 || currentUser?.roleName === 'Admin';
-  const isDeveloper = currentUser?.roleId === 7823647823647823 || currentUser?.roleName === 'Developer';
+  const isAdmin = currentUser?.roleId === '98237498-2374-4982-3749-823749823749' || currentUser?.roleName === 'Admin';
+  const isDeveloper = currentUser?.roleId === '78236478-2364-7823-0000-000000000000' || currentUser?.roleName === 'Developer';
 
   if (loading && news.length === 0 && currentView === 'news') {
     return (

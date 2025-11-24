@@ -7,12 +7,12 @@ class AuctionService {
     return await ApiClient.getList('/api/auction', Auction.fromJson);
   }
 
-  static Future<ApiResponse<Auction>> getAuction(int auctionId) async {
+  static Future<ApiResponse<Auction>> getAuction(String auctionId) async {
     return await ApiClient.get('/api/auction/$auctionId', Auction.fromJson);
   }
 
   static Future<ApiResponse<Auction>> createAuction({
-    required int propertyId,
+    required String propertyId,
     required double startPrice,
     required DateTime startAt,
     required int duration,
@@ -26,7 +26,7 @@ class AuctionService {
   }
 
   static Future<ApiResponse<Auction>> updateAuction({
-    required int auctionId,
+    required String auctionId,
     double? startPrice,
     DateTime? startAt,
     int? duration,
@@ -45,7 +45,7 @@ class AuctionService {
     );
   }
 
-  static Future<ApiResponse<void>> deleteAuction(int auctionId) async {
+  static Future<ApiResponse<void>> deleteAuction(String auctionId) async {
     return await ApiClient.delete('/api/auction/$auctionId');
   }
 
@@ -68,7 +68,7 @@ class AuctionService {
   }
 
   // Buy now - Purchase property immediately at buy now price
-  static Future<ApiResponse<Map<String, dynamic>>> buyNow(int auctionId) async {
+  static Future<ApiResponse<Map<String, dynamic>>> buyNow(String auctionId) async {
     return await ApiClient.post(
       '/api/auction/$auctionId/buynow',
       {},

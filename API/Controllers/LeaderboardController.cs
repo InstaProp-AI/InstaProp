@@ -46,7 +46,7 @@ namespace InstapropAPI.Controllers
             return Ok(result);
         }
 
-        private long? GetOptionalAccountId()
+        private Guid? GetOptionalAccountId()
         {
             var userIdClaim = User?.FindFirst("uid") ?? User?.FindFirst("sub");
             if (userIdClaim == null)
@@ -54,7 +54,7 @@ namespace InstapropAPI.Controllers
                 return null;
             }
 
-            return long.TryParse(userIdClaim.Value, out var parsed) ? parsed : null;
+            return Guid.TryParse(userIdClaim.Value, out var parsed) ? parsed : null;
         }
 
         private static bool TryParsePeriod(string raw, out LeaderboardPeriod period)

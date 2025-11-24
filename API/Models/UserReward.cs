@@ -7,13 +7,13 @@ namespace InstapropAPI.Models
     public class UserReward
     {
         [Key]
-        public long RewardId { get; set; }
+        public Guid RewardId { get; set; }
 
         [Required]
-        public long AccountId { get; set; }
+        public Guid AccountId { get; set; }
 
         [ForeignKey(nameof(AccountId))]
-        public Account Account { get; set; } = null!;
+        public AccountBase Account { get; set; } = null!;
 
         [Required]
         public int Points { get; set; }
@@ -24,7 +24,7 @@ namespace InstapropAPI.Models
 
         public string? Description { get; set; }
 
-        public long? RelatedPropertyId { get; set; }
+        public Guid? RelatedPropertyId { get; set; }
 
         public DateTime EarnedAt { get; set; } = DateTime.UtcNow;
     }
