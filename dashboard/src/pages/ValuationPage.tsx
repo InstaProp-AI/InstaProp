@@ -14,11 +14,11 @@ const ValuationPage: React.FC = () => {
   
   // Step-by-step selection state
   const [developers, setDevelopers] = useState<any[]>([]);
-  const [selectedDeveloperId, setSelectedDeveloperId] = useState<number | null>(null);
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState<string | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [properties, setProperties] = useState<any[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   
   const [selectedProperty, setSelectedProperty] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ const ValuationPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedDeveloperId) {
-      fetchProjects(selectedDeveloperId);
+      fetchProjects(String(selectedDeveloperId));
     } else {
       setProjects([]);
       setSelectedProjectId(null);
@@ -75,7 +75,7 @@ const ValuationPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedProjectId) {
-      fetchPropertiesForProject(selectedProjectId);
+      fetchPropertiesForProject(String(selectedProjectId));
     } else {
       setProperties([]);
       setSelectedPropertyId(null);
@@ -328,8 +328,8 @@ const ValuationPage: React.FC = () => {
           {selectedPropertyId && (
             <div className="pt-2">
               <button
-                onClick={() => handleCalculateValuation(selectedPropertyId)}
-                disabled={calculating || loadingAnalysis}
+                onClick={() => selectedPropertyId && handleCalculateValuation(selectedPropertyId)}
+                disabled={calculating || loadingAnalysis || !selectedPropertyId}
                 className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
               >
                 <Calculator className="h-5 w-5" />

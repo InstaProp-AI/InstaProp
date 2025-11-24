@@ -57,8 +57,8 @@ export default function PropertyDocumentsManager({ propertyId, propertyName }: P
     try {
       setLoading(true);
       const [docsData, imagesData] = await Promise.all([
-        documentsApi.getPropertyDocuments(propertyId),
-        documentsApi.getPropertyImages(propertyId)
+        documentsApi.getPropertyDocuments(String(propertyId)),
+        documentsApi.getPropertyImages(String(propertyId))
       ]);
       setDocuments(docsData);
       setImages(imagesData);
@@ -107,7 +107,7 @@ export default function PropertyDocumentsManager({ propertyId, propertyName }: P
 
     try {
       setUploading(true);
-      await documentsApi.uploadPropertyDocument(propertyId, selectedDocFile, selectedDocType);
+      await documentsApi.uploadPropertyDocument(String(propertyId), selectedDocFile, selectedDocType);
       toast.success('Document uploaded successfully');
       setSelectedDocFile(null);
       
@@ -132,7 +132,7 @@ export default function PropertyDocumentsManager({ propertyId, propertyName }: P
     try {
       setUploading(true);
       await documentsApi.uploadPropertyImage(
-        propertyId,
+        String(propertyId),
         selectedImageFile,
         selectedImageType,
         isMainImage,
@@ -155,7 +155,7 @@ export default function PropertyDocumentsManager({ propertyId, propertyName }: P
     }
   };
 
-  const handleDeleteDocument = async (docId: number) => {
+  const handleDeleteDocument = async (docId: string) => {
     if (!confirm('Are you sure you want to delete this document?')) {
       return;
     }
@@ -170,7 +170,7 @@ export default function PropertyDocumentsManager({ propertyId, propertyName }: P
     }
   };
 
-  const handleDeleteImage = async (imageId: number) => {
+  const handleDeleteImage = async (imageId: string) => {
     if (!confirm('Are you sure you want to delete this image?')) {
       return;
     }

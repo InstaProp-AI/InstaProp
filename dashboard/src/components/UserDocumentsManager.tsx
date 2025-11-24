@@ -40,7 +40,7 @@ export default function UserDocumentsManager({ userId, userName, isAdmin = false
       setLoading(true);
       console.log(`🔍 Loading documents for userId: ${userId}`);
       
-      const docs = await documentsApi.getUserDocuments(userId);
+      const docs = await documentsApi.getUserDocuments(String(userId));
       
       console.log(`📥 Received ${docs.length} documents:`, docs);
       setDocuments(docs);
@@ -87,7 +87,7 @@ export default function UserDocumentsManager({ userId, userName, isAdmin = false
     }
   };
 
-  const handleDelete = async (docId: number) => {
+  const handleDelete = async (docId: string) => {
     if (!confirm('Are you sure you want to delete this document?')) {
       return;
     }

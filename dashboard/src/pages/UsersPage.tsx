@@ -2120,7 +2120,7 @@ const UsersPage: React.FC = () => {
                           </p>
                           
                           <UserDocumentsManager 
-                            userId={selectedUser.accountId}
+                            userId={parseInt(selectedUser.accountId) || 0}
                             userName={`${selectedUser.firstName} ${selectedUser.lastName}`}
                             isAdmin={true}
                           />

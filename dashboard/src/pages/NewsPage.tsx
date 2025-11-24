@@ -59,7 +59,7 @@ const NewsPage: React.FC = () => {
   
   // Navigation state
   const [currentView, setCurrentView] = useState<ViewType>('folders');
-  const [selectedDeveloperId, setSelectedDeveloperId] = useState<number | null>(null);
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState<string | null>(null);
   const [developers, setDevelopers] = useState<DeveloperNewsCount[]>([]);
   const [adminNewsCount, setAdminNewsCount] = useState(0);
   
@@ -140,7 +140,7 @@ const NewsPage: React.FC = () => {
   const loadAdminNewsCount = async () => {
     try {
       // Get admin posts count (DeveloperId = null) using special value -1
-      const adminData: PaginatedNewsResponse = await newsApi.getNews(1, 1000, -1);
+      const adminData: PaginatedNewsResponse = await newsApi.getNews(1, 1000, '-1');
       setAdminNewsCount(adminData.totalCount || 0);
     } catch (error: any) {
       console.error('Error loading admin news count:', error);
@@ -153,9 +153,9 @@ const NewsPage: React.FC = () => {
       // Use -1 as special value for admin posts (DeveloperId = null)
       // undefined means show all (for admin) or own news (for developer)
       const developerIdParam = selectedDeveloperId === null && isAdmin 
-        ? -1  // Special value for admin posts
+        ? '-1'  // Special value for admin posts
         : selectedDeveloperId !== null 
-          ? selectedDeveloperId 
+          ? String(selectedDeveloperId) 
           : undefined;
       
       const data: PaginatedNewsResponse = await newsApi.getNews(
@@ -308,7 +308,7 @@ const NewsPage: React.FC = () => {
         return;
       }
       
-      await newsApi.updateNews(id, payload);
+      await newsApi.updateNews(String(id), payload);
       toast.success('News article updated successfully!');
       resetForm();
       setShowEditModal(false);
@@ -333,7 +333,7 @@ const NewsPage: React.FC = () => {
         return;
       }
       
-      await newsApi.deleteNews(id);
+      await newsApi.deleteNews(String(id));
       toast.success('News article deleted successfully!');
       setShowDeleteModal(false);
       setSelectedNews(null);

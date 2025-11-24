@@ -78,7 +78,7 @@ const ChatsPage: React.FC = () => {
   const [developers, setDevelopers] = useState<DeveloperChatCount[]>([]);
   const [currentView, setCurrentView] = useState<'folders' | 'chats'>('folders');
   const [selectedDeveloper, setSelectedDeveloper] = useState<DeveloperChatCount | null>(null);
-  const [selectedDeveloperId, setSelectedDeveloperId] = useState<number | undefined>(undefined);
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState<string | undefined>(undefined);
   
   // Stats state
   const [stats, setStats] = useState<ChatStats | null>(null);
@@ -139,7 +139,7 @@ const ChatsPage: React.FC = () => {
     }
   };
 
-  const fetchChats = async (developerId?: number) => {
+  const fetchChats = async (developerId?: string) => {
     try {
       const data = await chatsApi.getChats(developerId);
       setChats(data || []);
@@ -149,7 +149,7 @@ const ChatsPage: React.FC = () => {
     }
   };
 
-  const fetchStats = async (developerId?: number) => {
+  const fetchStats = async (developerId?: string) => {
     try {
       const data = await chatsApi.getChatStats(developerId);
       setStats(data);
@@ -158,7 +158,7 @@ const ChatsPage: React.FC = () => {
     }
   };
 
-  const fetchSalesMembers = async (developerId: number) => {
+  const fetchSalesMembers = async (developerId: string) => {
     try {
       const data = await chatsApi.getSalesMembersForDeveloper(developerId);
       setSalesMembers(data || []);
@@ -543,7 +543,7 @@ const ChatsPage: React.FC = () => {
                     <div className="relative">
                       <select
                         value={selectedChat.salesMemberId || ''}
-                        onChange={(e) => handleAssignSalesMember(selectedChat.chatId, e.target.value ? parseInt(e.target.value) : null)}
+                        onChange={(e) => handleAssignSalesMember(selectedChat.chatId, e.target.value || null)}
                         disabled={assigningSalesMember}
                         className="text-sm border border-gray-300 rounded px-3 py-1 pr-8 appearance-none bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                       >
@@ -575,7 +575,7 @@ const ChatsPage: React.FC = () => {
                   </div>
                 ) : selectedChat.messages && selectedChat.messages.length > 0 ? (
                   selectedChat.messages.map((message) => {
-                    const isFromDeveloper = message.senderId === selectedChat.developerId;
+                    const isFromDeveloper = String(message.senderId) === selectedChat.developerId;
                     return (
                       <div key={message.messageId} className="flex flex-col gap-2">
                         <div className="flex justify-between text-sm text-gray-500">

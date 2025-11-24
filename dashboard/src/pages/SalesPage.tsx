@@ -351,7 +351,7 @@ const SalesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this sales member?')) {
       try {
         await salesApi.deleteSalesAccount(id);

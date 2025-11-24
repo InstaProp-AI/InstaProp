@@ -26,7 +26,7 @@ const NotificationDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [selectedTargetType, setSelectedTargetType] = useState('logged_in_users');
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -105,7 +105,7 @@ const NotificationDashboardPage: React.FC = () => {
         targetType: selectedTargetType,
         title: title.trim(),
         message: message.trim(),
-        userIds: selectedTargetType === 'specific' ? selectedUserIds : undefined,
+        userIds: selectedTargetType === 'specific' ? selectedUserIds.map(id => parseInt(id) || 0) : undefined,
       });
 
       // Show detailed success message
@@ -136,7 +136,7 @@ const NotificationDashboardPage: React.FC = () => {
     }
   };
 
-  const toggleUserSelection = (userId: number) => {
+  const toggleUserSelection = (userId: string) => {
     setSelectedUserIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );

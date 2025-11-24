@@ -272,8 +272,8 @@ const AuctionsPage: React.FC = () => {
     setTimeout(() => {
       setAuctions([
         {
-          auctionId: 1,
-          propertyId: 1,
+          auctionId: '1',
+          propertyId: '1',
           propertyName: 'Modern Downtown Loft',
           propertyImage: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop',
           location: 'Downtown, New York',
@@ -290,8 +290,8 @@ const AuctionsPage: React.FC = () => {
           squareFeet: 1200
         },
         {
-          auctionId: 2,
-          propertyId: 2,
+          auctionId: '2',
+          propertyId: '2',
           propertyName: 'Luxury Beach House',
           propertyImage: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=300&fit=crop',
           location: 'Malibu, California',
@@ -308,8 +308,8 @@ const AuctionsPage: React.FC = () => {
           squareFeet: 2500
         },
         {
-          auctionId: 3,
-          propertyId: 3,
+          auctionId: '3',
+          propertyId: '3',
           propertyName: 'Commercial Office Space',
           propertyImage: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop',
           location: 'Financial District, San Francisco',
@@ -328,24 +328,24 @@ const AuctionsPage: React.FC = () => {
 
       setBids([
         {
-          bidId: 1,
-          auctionId: 1,
+          bidId: '1',
+          auctionId: '1',
           bidderName: 'John Smith',
           bidAmount: 520000,
           timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
           isHighest: true
         },
         {
-          bidId: 2,
-          auctionId: 1,
+          bidId: '2',
+          auctionId: '1',
           bidderName: 'Mike Wilson',
           bidAmount: 510000,
           timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
           isHighest: false
         },
         {
-          bidId: 3,
-          auctionId: 2,
+          bidId: '3',
+          auctionId: '2',
           bidderName: 'Sarah Johnson',
           bidAmount: 1350000,
           timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
@@ -487,7 +487,7 @@ const AuctionsPage: React.FC = () => {
     e.preventDefault();
     if (selectedAuction && newBidAmount > selectedAuction.currentBid) {
       const newBid: Bid = {
-        bidId: bids.length + 1,
+        bidId: String(bids.length + 1),
         auctionId: selectedAuction.auctionId,
         bidderName: 'Current User',
         bidAmount: newBidAmount,
