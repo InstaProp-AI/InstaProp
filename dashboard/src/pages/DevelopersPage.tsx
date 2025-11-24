@@ -38,7 +38,7 @@ const DevelopersPage: React.FC = () => {
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [developerPermissions, setDeveloperPermissions] = useState<DeveloperPermissions | null>(null);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
-  const [developerStats, setDeveloperStats] = useState<Map<number, { properties: number; projects: number }>>(new Map());
+  const [developerStats, setDeveloperStats] = useState<Map<string, { properties: number; projects: number }>>(new Map());
 
   useEffect(() => {
     fetchDevelopers();
@@ -70,7 +70,7 @@ const DevelopersPage: React.FC = () => {
   };
 
   const fetchDeveloperStats = async (devs: Account[]) => {
-    const statsMap = new Map<number, { properties: number; projects: number }>();
+    const statsMap = new Map<string, { properties: number; projects: number }>();
     
     for (const dev of devs) {
       try {

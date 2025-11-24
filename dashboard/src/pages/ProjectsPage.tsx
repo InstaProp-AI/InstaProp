@@ -319,8 +319,8 @@ const ProjectsPage: React.FC = () => {
     }
 
     try {
-      // Update property to remove project assignment by setting projectId to null
-      await propertiesApi.updateProperty(propertyId, { projectId: null });
+      // Update property to remove project assignment by setting projectId to undefined
+      await propertiesApi.updateProperty(propertyId, { projectId: undefined });
       toast.success('Property detached from project successfully!');
       fetchData(); // Refresh data
     } catch (error: any) {

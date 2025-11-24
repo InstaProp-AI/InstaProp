@@ -254,7 +254,7 @@ const ValuationPage: React.FC = () => {
               </label>
               <select
                 value={selectedDeveloperId || ''}
-                onChange={(e) => setSelectedDeveloperId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => setSelectedDeveloperId(e.target.value || null)}
                 disabled={loadingDevelopers}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
               >
@@ -286,7 +286,7 @@ const ValuationPage: React.FC = () => {
               </label>
               <select
                 value={selectedProjectId || ''}
-                onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => setSelectedProjectId(e.target.value || null)}
                 disabled={loadingProjects}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
               >
@@ -309,7 +309,7 @@ const ValuationPage: React.FC = () => {
               </label>
               <select
                 value={selectedPropertyId || ''}
-                onChange={(e) => setSelectedPropertyId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => setSelectedPropertyId(e.target.value || null)}
                 disabled={loadingProperties}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
               >

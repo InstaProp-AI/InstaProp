@@ -190,7 +190,7 @@ export default function DocumentsPage() {
             {selectedPropertyId && (
               <PropertyDocumentsManager
                 propertyId={selectedPropertyId}
-                propertyName={properties.find(p => p.propertyId === selectedPropertyId)?.name}
+                propertyName={properties.find(p => p.propertyId === String(selectedPropertyId))?.name}
               />
             )}
           </div>
