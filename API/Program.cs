@@ -298,11 +298,15 @@ foreach (var path in dashboardPaths)
     }
 }
 
+// Serve other static files from wwwroot (uploads, Flutter web bundle, etc.)
+app.UseStaticFiles();
+Console.WriteLine("✅ Default static files served from wwwroot");
+
 if (dashboardPath != null)
 {
     app.UseStaticFiles(new StaticFileOptions
     {
-        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(dashboardPath),
+        FileProvider = new PhysicalFileProvider(dashboardPath),
         RequestPath = ""
     });
     Console.WriteLine($"✅ React Dashboard served from: {dashboardPath}");
@@ -315,9 +319,6 @@ else
         Console.WriteLine($"   - {path}");
     }
 }
-
-// Serve other static files from wwwroot (uploads, etc.)
-app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseAuthentication();
 app.UseAuthorization();
 
