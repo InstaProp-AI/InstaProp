@@ -483,10 +483,20 @@ if (flutterDistPath != null)
     if (File.Exists(flutterIndex))
     {
         var flutterFileProvider = new PhysicalFileProvider(flutterDistPath);
+        
+        // First, serve static files from Flutter directory at /flutter path
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = flutterFileProvider,
+            RequestPath = "/flutter"
+        });
+        Console.WriteLine($"✅ Flutter static files served from: {flutterDistPath} at /flutter");
+        
+        // Then, add fallback for SPA routing (only for routes that don't match files)
         app.MapFallbackToFile("/flutter/{*path}", "index.html", new StaticFileOptions
         {
             FileProvider = flutterFileProvider,
-            RequestPath = ""
+            RequestPath = "/flutter"
         });
         Console.WriteLine($"✅ Flutter web fallback configured from: {flutterDistPath}");
     }
