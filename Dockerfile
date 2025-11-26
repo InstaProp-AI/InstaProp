@@ -39,7 +39,8 @@ RUN flutter config --enable-web
 RUN flutter build web --release --base-href=/flutter/ --pwa-strategy=offline-first
 
 # Ensure the Flutter web bundle uses the correct base href (fallback if flag fails)
-RUN sed -i 's#<base href="/">#<base href="/flutter/">#' build/web/index.html
+RUN sed -i 's#<base href="$FLUTTER_BASE_HREF">#<base href="/flutter/">#' build/web/index.html && \
+    sed -i 's#<base href="/">#<base href="/flutter/">#' build/web/index.html
 
 # ============================================
 # Stage 3: Build .NET API
