@@ -37,6 +37,19 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- TEST: If you see this message, the HTML is loading! -->
+  <div id="loading-test" style="position: fixed; top: 0; left: 0; width: 100%; background: #4CAF50; color: white; padding: 10px; text-align: center; z-index: 9999; font-family: Arial, sans-serif;">
+    ✅ Flutter HTML is loading! Base href: <span id="base-href-display"></span>
+  </div>
+  <script>
+    // Display the actual base href being used
+    document.getElementById('base-href-display').textContent = document.querySelector('base')?.href || 'NOT SET';
+    // Hide the test message after 3 seconds
+    setTimeout(() => {
+      const testDiv = document.getElementById('loading-test');
+      if (testDiv) testDiv.style.display = 'none';
+    }, 3000);
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
