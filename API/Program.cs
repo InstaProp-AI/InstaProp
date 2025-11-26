@@ -322,6 +322,79 @@ else
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Flutter SPA fallback middleware - must be after static files but before routing
+var flutterDistPaths = new[]
+{
+    Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "flutter"), // Published output (Docker)
+    Path.Combine(builder.Environment.ContentRootPath, "..", "API", "wwwroot", "flutter"), // Local dev publish
+};
+
+string? flutterDistPath = null;
+foreach (var path in flutterDistPaths)
+{
+    if (Directory.Exists(path))
+    {
+        flutterDistPath = path;
+        break;
+    }
+}
+
+if (flutterDistPath != null)
+{
+    var flutterIndex = Path.Combine(flutterDistPath, "index.html");
+    if (File.Exists(flutterIndex))
+    {
+        // Add middleware to serve Flutter index.html for SPA routing
+        // This runs AFTER static files, so actual files are served first
+        app.Use(async (context, next) =>
+        {
+            var path = context.Request.Path.Value ?? "";
+            
+            // Only handle /flutter routes that haven't been served by static files
+            if (path.StartsWith("/flutter") && !context.Response.HasStarted)
+            {
+                // Check if this is a direct /flutter request or a route that doesn't match a file
+                if (path == "/flutter" || path == "/flutter/")
+                {
+                    // Direct /flutter request - serve index.html
+                    var indexPath = Path.Combine(flutterDistPath, "index.html");
+                    if (File.Exists(indexPath))
+                    {
+                        context.Response.ContentType = "text/html; charset=utf-8";
+                        var html = await File.ReadAllTextAsync(indexPath);
+                        await context.Response.WriteAsync(html);
+                        return; // Don't call next()
+                    }
+                }
+                else if (path.StartsWith("/flutter/"))
+                {
+                    // Check if the requested file exists
+                    var relativePath = path.Substring("/flutter".Length).TrimStart('/');
+                    var filePath = Path.Combine(flutterDistPath, relativePath);
+                    
+                    // If file doesn't exist, serve index.html for SPA
+                    if (!File.Exists(filePath) && !Directory.Exists(filePath))
+                    {
+                        var indexPath = Path.Combine(flutterDistPath, "index.html");
+                        if (File.Exists(indexPath))
+                        {
+                            context.Response.ContentType = "text/html; charset=utf-8";
+                            var html = await File.ReadAllTextAsync(indexPath);
+                            await context.Response.WriteAsync(html);
+                            return; // Don't call next()
+                        }
+                    }
+                }
+            }
+            
+            // Continue to next middleware (static files should have already handled file requests)
+            await next();
+        });
+        
+        Console.WriteLine($"✅ Flutter SPA fallback middleware configured from: {flutterDistPath}");
+    }
+}
+
 // Database Setup: Seed Roles, Run Global Seeding, and Create Admin Account
 using (var scope = app.Services.CreateScope())
 {
@@ -459,60 +532,6 @@ Console.WriteLine("✅ API Controllers mapped at /api/*");
 // Health check endpoint for monitoring
 app.MapHealthChecks("/health");
 Console.WriteLine("✅ Health check endpoint available at /health");
-
-// Serve Flutter web app when hitting /flutter
-var flutterDistPaths = new[]
-{
-    Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "flutter"), // Published output (Docker)
-    Path.Combine(builder.Environment.ContentRootPath, "..", "API", "wwwroot", "flutter"), // Local dev publish
-};
-
-string? flutterDistPath = null;
-foreach (var path in flutterDistPaths)
-{
-    if (Directory.Exists(path))
-    {
-        flutterDistPath = path;
-        break;
-    }
-}
-
-if (flutterDistPath != null)
-{
-    var flutterIndex = Path.Combine(flutterDistPath, "index.html");
-    if (File.Exists(flutterIndex))
-    {
-        // Default UseStaticFiles() already serves from wwwroot, so /flutter/* files are automatically served
-        // Add fallback for SPA routing - serve index.html for /flutter and /flutter/* routes
-        app.MapFallback("/flutter/{*path}", async context =>
-        {
-            // Only serve index.html if the request path starts with /flutter
-            if (context.Request.Path.StartsWithSegments("/flutter"))
-            {
-                var indexPath = Path.Combine(flutterDistPath, "index.html");
-                if (File.Exists(indexPath))
-                {
-                    context.Response.ContentType = "text/html; charset=utf-8";
-                    var html = await File.ReadAllTextAsync(indexPath);
-                    await context.Response.WriteAsync(html);
-                    return;
-                }
-            }
-            context.Response.StatusCode = 404;
-        });
-        Console.WriteLine($"✅ Flutter web app configured from: {flutterDistPath}");
-        Console.WriteLine($"   Static files served via default wwwroot middleware at /flutter/*");
-        Console.WriteLine($"   SPA fallback configured for /flutter routes");
-    }
-    else
-    {
-        Console.WriteLine($"⚠️ Flutter index.html not found in: {flutterDistPath}. /flutter route disabled.");
-    }
-}
-else
-{
-    Console.WriteLine("⚠️ Flutter web build folder not found. /flutter route disabled.");
-}
 
 // Serve React dashboard for all non-API routes (SPA fallback)
 // Use the same path resolution as static files
