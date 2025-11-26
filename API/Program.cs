@@ -459,6 +459,46 @@ Console.WriteLine("✅ API Controllers mapped at /api/*");
 app.MapHealthChecks("/health");
 Console.WriteLine("✅ Health check endpoint available at /health");
 
+// Serve Flutter web app when hitting /flutter
+var flutterDistPaths = new[]
+{
+    Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "flutter"), // Published output (Docker)
+    Path.Combine(builder.Environment.ContentRootPath, "..", "API", "wwwroot", "flutter"), // Local dev publish
+};
+
+string? flutterDistPath = null;
+foreach (var path in flutterDistPaths)
+{
+    if (Directory.Exists(path))
+    {
+        flutterDistPath = path;
+        break;
+    }
+}
+
+if (flutterDistPath != null)
+{
+    var flutterIndex = Path.Combine(flutterDistPath, "index.html");
+    if (File.Exists(flutterIndex))
+    {
+        var flutterFileProvider = new PhysicalFileProvider(flutterDistPath);
+        app.MapFallbackToFile("/flutter/{*path}", "index.html", new StaticFileOptions
+        {
+            FileProvider = flutterFileProvider,
+            RequestPath = ""
+        });
+        Console.WriteLine($"✅ Flutter web fallback configured from: {flutterDistPath}");
+    }
+    else
+    {
+        Console.WriteLine($"⚠️ Flutter index.html not found in: {flutterDistPath}. /flutter route disabled.");
+    }
+}
+else
+{
+    Console.WriteLine("⚠️ Flutter web build folder not found. /flutter route disabled.");
+}
+
 // Serve React dashboard for all non-API routes (SPA fallback)
 // Use the same path resolution as static files
 var dashboardDistPaths = new[]

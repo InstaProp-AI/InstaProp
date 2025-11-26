@@ -27,12 +27,12 @@ class RoleIds {
       if (roleId == '67235467-2354-6723-0000-000000000000') return 'Sales';
     }
     // Handle legacy numeric format (backward compatibility)
-    final numId = int.tryParse(roleId);
-    if (numId != null) {
-      if (numId == 9823749823749823) return 'Admin';
-      if (numId == 7823647823647823) return 'Developer';
-      if (numId == 8923748923748923) return 'User';
-      if (numId == 6723546723546723) return 'Sales';
+    final numericId = roleId.toString().trim();
+    if (RegExp(r'^\d+$').hasMatch(numericId)) {
+      if (numericId == '9823749823749823') return 'Admin';
+      if (numericId == '7823647823647823') return 'Developer';
+      if (numericId == '8923748923748923') return 'User';
+      if (numericId == '6723546723546723') return 'Sales';
     }
     return 'User';
   }
