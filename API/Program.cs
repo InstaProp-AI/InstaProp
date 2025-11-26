@@ -482,23 +482,27 @@ if (flutterDistPath != null)
     var flutterIndex = Path.Combine(flutterDistPath, "index.html");
     if (File.Exists(flutterIndex))
     {
-        var flutterFileProvider = new PhysicalFileProvider(flutterDistPath);
-        
-        // First, serve static files from Flutter directory at /flutter path
-        app.UseStaticFiles(new StaticFileOptions
+        // Default UseStaticFiles() already serves from wwwroot, so /flutter/* files are automatically served
+        // Add fallback for SPA routing - serve index.html for /flutter and /flutter/* routes
+        app.MapFallback("/flutter/{*path}", async context =>
         {
-            FileProvider = flutterFileProvider,
-            RequestPath = "/flutter"
+            // Only serve index.html if the request path starts with /flutter
+            if (context.Request.Path.StartsWithSegments("/flutter"))
+            {
+                var indexPath = Path.Combine(flutterDistPath, "index.html");
+                if (File.Exists(indexPath))
+                {
+                    context.Response.ContentType = "text/html; charset=utf-8";
+                    var html = await File.ReadAllTextAsync(indexPath);
+                    await context.Response.WriteAsync(html);
+                    return;
+                }
+            }
+            context.Response.StatusCode = 404;
         });
-        Console.WriteLine($"✅ Flutter static files served from: {flutterDistPath} at /flutter");
-        
-        // Then, add fallback for SPA routing (only for routes that don't match files)
-        app.MapFallbackToFile("/flutter/{*path}", "index.html", new StaticFileOptions
-        {
-            FileProvider = flutterFileProvider,
-            RequestPath = "/flutter"
-        });
-        Console.WriteLine($"✅ Flutter web fallback configured from: {flutterDistPath}");
+        Console.WriteLine($"✅ Flutter web app configured from: {flutterDistPath}");
+        Console.WriteLine($"   Static files served via default wwwroot middleware at /flutter/*");
+        Console.WriteLine($"   SPA fallback configured for /flutter routes");
     }
     else
     {
