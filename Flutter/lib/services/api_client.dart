@@ -53,7 +53,7 @@ class ApiClient {
 
   // Set to true when building for production (APK/IPA)
   // Set to false for local development/testing
-  static const bool useProductionUrl = false; // ✅ Using local backend
+  static const bool useProductionUrl = true; // ✅ Using production backend
 
   // 🔧 Auto-detect best URL based on platform and environment
   static String get baseUrl {

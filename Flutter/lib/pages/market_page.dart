@@ -388,24 +388,27 @@ class _MarketPageState extends State<MarketPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.primary.withOpacity(0.2)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.lightbulb_outline,
                   color: AppColors.primary,
-                  size: 20,
+                  size: 24,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'The market shows strong fundamentals with a 12.5% ROI over the past month. This indicates healthy investor confidence and growing demand in premium locations.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
-                      height: 1.4,
-                      fontFamily: 'SF Pro Text',
-                    ),
+                const SizedBox(height: 12),
+                Text(
+                  'The market shows strong fundamentals with a 12.5% ROI over the past month. This indicates healthy investor confidence and growing demand in premium locations.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    height: 1.4,
+                    fontFamily: 'SF Pro Text',
                   ),
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
                 ),
               ],
             ),
