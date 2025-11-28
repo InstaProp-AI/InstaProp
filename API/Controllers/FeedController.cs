@@ -7,6 +7,7 @@ using InstapropAPI.Services;
 using InstapropAPI.Models.Feed;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using System.Linq;
 
 namespace InstapropAPI.Controllers
 {
@@ -36,28 +37,44 @@ namespace InstapropAPI.Controllers
             return null;
         }
 
-        // GET: api/feed/explore?page=1&pageSize=20
+        // GET: api/feed/explore?page=1&pageSize=20&nocache=true
         [HttpGet("explore")]
         public async Task<ActionResult<FeedResponseDto>> GetExploreFeed(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] Guid? userId = null)
+            [FromQuery] Guid? userId = null,
+            [FromQuery] bool nocache = false)
         {
             userId ??= GetCurrentAccountId();
 
             try
             {
-                // Check cache first
+                // Check cache first (but log livestream count in cache)
                 var cacheKey = $"feed_explore_p{page}_u{userId}";
-                if (_cache.TryGetValue(cacheKey, out FeedResponseDto? cached))
+                if (!nocache && _cache.TryGetValue(cacheKey, out FeedResponseDto? cached))
                 {
-                    _logger.LogInformation("Serving cached feed for page {Page} user {UserId}", page, userId);
-                    return Ok(cached);
+                    if (cached != null)
+                    {
+                        var cachedLivestreamCount = cached.Items.Count(x => x.Type == "livestream");
+                        _logger.LogInformation("Serving cached feed for page {Page} user {UserId} with {LivestreamCount} livestreams", 
+                            page, userId, cachedLivestreamCount);
+                        if (cachedLivestreamCount == 0)
+                        {
+                            _logger.LogWarning("⚠️ Cached feed has no livestreams - cache may be stale. Use ?nocache=true to bypass cache.");
+                        }
+                        return Ok(cached);
+                    }
+                }
+                
+                if (nocache)
+                {
+                    _logger.LogInformation("🔄 Cache bypassed (nocache=true) - generating fresh feed");
                 }
 
                 // Fetch all available content
                 var allAuctions = await GetAllAuctions();
                 var allLiveStreams = await GetActiveLiveStreams();
+                _logger.LogInformation("Feed generation: Found {Count} live streams to add to feed", allLiveStreams.Count);
                 var allNews = await GetAllNews();
                 var allProjects = await GetAllProjects();
                 var allDevelopers = await GetAllDevelopers();
@@ -90,18 +107,29 @@ namespace InstapropAPI.Controllers
                 }
 
                 // Add live streams (10% weight = 2 copies per stream, boosted by time)
+                // Ensure at least 1 copy is added even with low weights
+                _logger.LogInformation("Adding {Count} live streams to content pool with weight {Weight}", 
+                    allLiveStreams.Count, livestreamWeight);
                 foreach (var stream in allLiveStreams)
                 {
-                    var copies = (int)(2 * livestreamWeight);
+                    var copies = Math.Max(1, (int)(2 * livestreamWeight)); // Ensure at least 1 copy
+                    _logger.LogInformation("Adding live stream {StreamId} ({Title}) with {Copies} copies", 
+                        stream.StreamId, stream.Title, copies);
                     for (int i = 0; i < copies; i++)
                     {
                         contentPool.Add(new FeedItemDto
                         {
                             Type = "livestream",
                             Data = stream,
-                            Id = $"livestream_{stream.StreamId}"
+                            Id = $"livestream_{stream.StreamId}_copy{i}"
                         });
                     }
+                }
+                var livestreamCount = contentPool.Count(x => x.Type == "livestream");
+                _logger.LogInformation("Total livestream items in content pool: {Count}", livestreamCount);
+                if (livestreamCount == 0 && allLiveStreams.Count > 0)
+                {
+                    _logger.LogWarning("WARNING: Live streams exist but none were added to content pool!");
                 }
 
                 // Add news (10% weight = 2 copies, boosted by time)
@@ -252,8 +280,13 @@ namespace InstapropAPI.Controllers
                     HasMore = contentPool.Count > (skip + pageSize) && feedItems.Count >= pageSize
                 };
 
-                // Cache for 60 seconds
-                _cache.Set(cacheKey, response, TimeSpan.FromSeconds(60));
+                // Log livestream count in final response
+                var finalLivestreamCount = response.Items.Count(x => x.Type == "livestream");
+                _logger.LogInformation("Final feed response has {Count} livestream items out of {Total} total items", 
+                    finalLivestreamCount, response.Items.Count);
+                
+                // Cache for 30 seconds (reduced from 60 to ensure fresh data)
+                _cache.Set(cacheKey, response, TimeSpan.FromSeconds(30));
 
                 _logger.LogInformation("Generated feed page {Page} with {Count} items at {Hour}h", 
                     page, feedItems.Count, DateTime.Now.Hour);
@@ -528,6 +561,19 @@ namespace InstapropAPI.Controllers
                 .OrderByDescending(s => s.StartTime)
                 .Take(20)
                 .ToListAsync();
+
+            _logger.LogInformation("GetActiveLiveStreams: Found {Count} live streams with Status='Live'", streams.Count);
+            if (streams.Count == 0)
+            {
+                // Log total streams for debugging
+                var totalStreams = await _context.LiveStreams.CountAsync();
+                var streamsByStatus = await _context.LiveStreams
+                    .GroupBy(s => s.Status)
+                    .Select(g => new { Status = g.Key, Count = g.Count() })
+                    .ToListAsync();
+                _logger.LogWarning("No live streams found. Total streams: {Total}, By status: {Statuses}", 
+                    totalStreams, string.Join(", ", streamsByStatus.Select(s => $"{s.Status}:{s.Count}")));
+            }
 
             return streams.Select(s => new LiveStreamDto
             {

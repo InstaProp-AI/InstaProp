@@ -154,26 +154,6 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 color: Colors.white,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'Properties',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1A1A),
-                            letterSpacing: -1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ),
               titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               title: const Text(
@@ -314,7 +294,7 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 80,
+                    height: 100,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: _servedSearches.length,
@@ -570,19 +550,20 @@ class _PropertySearchPageState extends State<PropertySearchPage> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(search['icon'], color: AppColors.primary, size: 20),
+                child: Icon(search['icon'], color: AppColors.primary, size: 18),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 search['title'],
                 style: const TextStyle(

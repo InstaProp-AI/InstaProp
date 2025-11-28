@@ -51,6 +51,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/analytics/market-overview
         [HttpGet("market-overview")]
+        [AllowAnonymous]
         public async Task<ActionResult<MarketOverviewResponse>> GetMarketOverview()
         {
             try
@@ -162,6 +163,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/analytics/price-trends
         [HttpGet("price-trends")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<PriceTrendResponse>>> GetPriceTrends(
             [FromQuery] Guid? parentPropertyId,
             [FromQuery] string? propertyType,
@@ -279,6 +281,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/analytics/gold-comparison
         [HttpGet("gold-comparison")]
+        [AllowAnonymous]
         public async Task<ActionResult<GoldComparisonResponse>> GetGoldComparison(
             [FromQuery] int months = 12)
         {
@@ -299,6 +302,7 @@ namespace InstapropAPI.Controllers
 
         // GET: api/analytics/developer-rankings
         [HttpGet("developer-rankings")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<DeveloperRankingResponse>>> GetDeveloperRankings()
         {
             try
@@ -311,12 +315,19 @@ namespace InstapropAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                Console.WriteLine($"Error in GetDeveloperRankings: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                return StatusCode(500, new { error = $"Internal server error: {ex.Message}", details = ex.StackTrace });
             }
         }
 
         // GET: api/analytics/best-investments
         [HttpGet("best-investments")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<BestInvestmentResponse>>> GetBestInvestments(
             [FromQuery] int limit = 10)
         {
@@ -610,11 +621,13 @@ namespace InstapropAPI.Controllers
 
         private async Task<List<DeveloperRankingResponse>> LoadDeveloperRankingsAsync(int limit = 10)
         {
-            // Load developers with their profiles separately to avoid LINQ translation issues
-            var developers = await _context.Accounts
-                .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
-                .Include(a => a.Projects)
-                .ToListAsync();
+            try
+            {
+                // Load developers with their profiles separately to avoid LINQ translation issues
+                var developers = await _context.Accounts
+                    .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                    .Include(a => a.Projects)
+                    .ToListAsync();
 
             var developerIds = developers.Select(d => d.AccountId).ToList();
 
@@ -647,7 +660,9 @@ namespace InstapropAPI.Controllers
 
             // Load average property prices separately
             var averagePrices = await _context.Auctions
-                .Where(ac => ac.Property.Project != null && developerIds.Contains(ac.Property.Project.DeveloperId))
+                .Include(ac => ac.Property)
+                    .ThenInclude(p => p.Project)
+                .Where(ac => ac.Property != null && ac.Property.Project != null && developerIds.Contains(ac.Property.Project.DeveloperId))
                 .GroupBy(ac => ac.Property.Project!.DeveloperId)
                 .Select(g => new
                 {
@@ -688,7 +703,15 @@ namespace InstapropAPI.Controllers
                 .Take(limit)
                 .ToList();
 
-            return rankings;
+                return rankings;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading developer rankings: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                // Return empty list instead of throwing
+                return new List<DeveloperRankingResponse>();
+            }
         }
 
         private async Task<List<BestInvestmentResponse>> LoadBestInvestmentsAsync(int limit = 10)

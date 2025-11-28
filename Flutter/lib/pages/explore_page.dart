@@ -7,7 +7,6 @@ import '../models/auction.dart';
 import '../models/project_model.dart';
 import '../models/developer_profile.dart';
 import '../models/deal_highlight.dart';
-import '../models/project_story.dart';
 import '../models/investor_milestone.dart';
 import '../services/feed_service.dart';
 // CommunityPostService removed
@@ -19,7 +18,6 @@ import '../widgets/feed_project_card.dart';
 import '../widgets/feed_developer_card.dart';
 import '../widgets/feed_member_card.dart';
 import '../widgets/deal_highlight_card.dart';
-import '../widgets/project_story_card.dart';
 import '../widgets/investor_milestone_card.dart';
 // PostCard removed (community feature)
 import '../widgets/feed_live_stream_card.dart';
@@ -33,12 +31,14 @@ import 'auction_details_page.dart';
 // Community pages removed
 import 'property_details_page.dart';
 import 'chat_list_page.dart';
-import 'project_details_page.dart';
+import 'all_news_page.dart';
 import 'news_detail_page.dart';
 import 'live_stream_player_page.dart';
 import '../models/live_stream.dart';
 import '../models/valuation_prompt.dart';
 import '../models/payment_reminder.dart';
+import '../services/live_stream_service.dart';
+import 'lives_page.dart';
 
 class ExplorePageController {
   Future<void> Function()? _refreshCallback;
@@ -75,9 +75,7 @@ class _ExplorePageState extends State<ExplorePage> {
   static const int _pageSize = 20;
 
   late final PageController _featuredPageController;
-  late final PageController _storyPageController;
   int _featuredPageIndex = 0;
-  int _storyPageIndex = 0;
 
   bool _isLoading = false;
   bool _isInitialLoading =
@@ -85,12 +83,12 @@ class _ExplorePageState extends State<ExplorePage> {
   bool _hasMore = true;
   int _currentPage = 1;
   DateTime? _lastScrollCheck; // Debounce scroll checking
+  int _liveStreamCount = 0; // Count from backend
 
   @override
   void initState() {
     super.initState();
     _featuredPageController = PageController(viewportFraction: 0.88);
-    _storyPageController = PageController(viewportFraction: 0.82);
     widget.controller?._attach(_handleExternalRefresh);
     // Delay initial load to avoid init conflicts
     Future.delayed(Duration.zero, () {
@@ -155,8 +153,9 @@ class _ExplorePageState extends State<ExplorePage> {
       ),
       SliverToBoxAdapter(
         child: SizedBox(
-          height: 320,
+          height: 440,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Expanded(
                 child: PageView.builder(
@@ -171,7 +170,7 @@ class _ExplorePageState extends State<ExplorePage> {
                       padding: EdgeInsets.only(
                         left: index == 0 ? 16 : 8,
                         right: index == highlights.length - 1 ? 16 : 8,
-                        bottom: 12,
+                        bottom: 4,
                       ),
                       child: DealHighlightCard(
                         highlight: highlight,
@@ -193,60 +192,6 @@ class _ExplorePageState extends State<ExplorePage> {
     ];
   }
 
-  List<Widget> _buildProjectStoriesSlivers(List<FeedItem> items) {
-    final stories = items
-        .map((item) => item.data)
-        .whereType<ProjectStory>()
-        .toList(growable: false);
-    if (stories.isEmpty) {
-      return const [];
-    }
-
-    return [
-      SliverToBoxAdapter(
-        child: _buildSectionHeader(
-          'Project Stories',
-          subtitle: 'See how developments are progressing this week',
-        ),
-      ),
-      SliverToBoxAdapter(
-        child: SizedBox(
-          height: 260,
-          child: Column(
-            children: [
-              Expanded(
-                child: PageView.builder(
-                  controller: _storyPageController,
-                  itemCount: stories.length,
-                  onPageChanged: (index) =>
-                      setState(() => _storyPageIndex = index),
-                  itemBuilder: (context, index) {
-                    final story = stories[index];
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        left: index == 0 ? 16 : 12,
-                        right: index == stories.length - 1 ? 16 : 12,
-                        bottom: 12,
-                      ),
-                      child: ProjectStoryCard(
-                        story: story,
-                        onViewProject: () => _openProjectStory(story),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 4),
-              _buildDotsIndicator(
-                currentIndex: _storyPageIndex,
-                total: stories.length,
-              ),
-            ],
-          ),
-        ),
-      ),
-    ];
-  }
 
   List<Widget> _buildInvestorSpotlightSlivers(List<FeedItem> items) {
     final milestones = items
@@ -267,30 +212,27 @@ class _ExplorePageState extends State<ExplorePage> {
       SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final milestone = milestones[index];
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: index == milestones.length - 1 ? 20 : 12,
-                ),
-                child: InvestorMilestoneCard(
-                  milestone: milestone,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Celebrating ${milestone.investorName}\'s achievement!',
-                        ),
-                        duration: const Duration(seconds: 2),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final milestone = milestones[index];
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index == milestones.length - 1 ? 20 : 12,
+              ),
+              child: InvestorMilestoneCard(
+                milestone: milestone,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Celebrating ${milestone.investorName}\'s achievement!',
                       ),
-                    );
-                  },
-                ),
-              );
-            },
-            childCount: milestones.length,
-          ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            );
+          }, childCount: milestones.length),
         ),
       ),
     ];
@@ -298,9 +240,7 @@ class _ExplorePageState extends State<ExplorePage> {
 
   List<Widget> _buildDiscoverySlivers(List<FeedItem> items) {
     if (items.isEmpty) {
-      return const [
-        SliverToBoxAdapter(child: SizedBox(height: 24)),
-      ];
+      return const [SliverToBoxAdapter(child: SizedBox(height: 24))];
     }
 
     return [
@@ -313,21 +253,18 @@ class _ExplorePageState extends State<ExplorePage> {
       SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final item = items[index];
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: index == items.length - 1 ? 32 : 16,
-                ),
-                child: RepaintBoundary(
-                  key: ValueKey(item.id),
-                  child: _buildFeedItem(item),
-                ),
-              );
-            },
-            childCount: items.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final item = items[index];
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index == items.length - 1 ? 32 : 16,
+              ),
+              child: RepaintBoundary(
+                key: ValueKey(item.id),
+                child: _buildFeedItem(item),
+              ),
+            );
+          }, childCount: items.length),
         ),
       ),
     ];
@@ -356,9 +293,8 @@ class _ExplorePageState extends State<ExplorePage> {
     String? subtitle,
     Widget? trailing,
   }) {
-    final textTheme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -367,8 +303,11 @@ class _ExplorePageState extends State<ExplorePage> {
               Expanded(
                 child: Text(
                   title,
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
@@ -376,11 +315,14 @@ class _ExplorePageState extends State<ExplorePage> {
             ],
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               subtitle,
-              style: textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.normal,
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
               ),
             ),
           ],
@@ -389,10 +331,7 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  Widget _buildDotsIndicator({
-    required int currentIndex,
-    required int total,
-  }) {
+  Widget _buildDotsIndicator({required int currentIndex, required int total}) {
     if (total <= 1) return const SizedBox(height: 8);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -436,34 +375,21 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  void _openProjectStory(ProjectStory story) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProjectDetailsPage(
-          projectId: story.projectId,
-        ),
-      ),
-    );
-  }
 
   void _openNewsArticle(NewsArticle article) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => NewsDetailPage(news: article),
-      ),
+      MaterialPageRoute(builder: (context) => NewsDetailPage(news: article)),
     );
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    widget.controller?._detach();
-    _featuredPageController.dispose();
-    _storyPageController.dispose();
-    super.dispose();
+      _scrollController.removeListener(_onScroll);
+      _scrollController.dispose();
+      widget.controller?._detach();
+      _featuredPageController.dispose();
+      super.dispose();
   }
 
   void _onScroll() {
@@ -506,12 +432,20 @@ class _ExplorePageState extends State<ExplorePage> {
       _hasMore = true;
     });
 
-    final newItems = await _fetchUniqueFeedItems(page: 1);
+    // Load feed and live stream count in parallel
+    final results = await Future.wait([
+      _fetchUniqueFeedItems(page: 1),
+      _fetchLiveStreamCount(),
+    ]);
+
+    final newItems = results[0] as List<FeedItem>;
+    final count = results[1] as int;
 
     if (!mounted) return;
 
     setState(() {
       _isInitialLoading = false; // Clear initial loading state
+      _liveStreamCount = count;
       if (newItems.isNotEmpty) {
         _feedItems.addAll(newItems);
         _loadedIds.addAll(newItems.map((item) => item.id));
@@ -521,6 +455,19 @@ class _ExplorePageState extends State<ExplorePage> {
         _hasMore = false;
       }
     });
+  }
+
+  Future<int> _fetchLiveStreamCount() async {
+    try {
+      final response = await LiveStreamService.getLiveStreamCount();
+      if (response.success && response.data != null) {
+        return response.data!;
+      }
+      return 0;
+    } catch (e) {
+      print('Error fetching live stream count: $e');
+      return 0;
+    }
   }
 
   Future<void> _loadMoreFeed() async {
@@ -624,14 +571,22 @@ class _ExplorePageState extends State<ExplorePage> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.article_outlined),
+            tooltip: 'News',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AllNewsPage()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Chats',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const ChatListPage(),
-                ),
+                MaterialPageRoute(builder: (context) => const ChatListPage()),
               );
             },
           ),
@@ -665,15 +620,24 @@ class _ExplorePageState extends State<ExplorePage> {
 
     final consumedIds = <String>{};
 
-    final featuredDeals =
-        _takeItemsOfType(FeedItemType.dealHighlight, consumedIds, limit: 5);
-    final projectStories =
-        _takeItemsOfType(FeedItemType.projectStory, consumedIds, limit: 6);
-    final investorSpotlight =
-        _takeItemsOfType(FeedItemType.investorMilestone, consumedIds, limit: 4);
+    final featuredDeals = _takeItemsOfType(
+      FeedItemType.dealHighlight,
+      consumedIds,
+      limit: 5,
+    );
+    final liveStreams = _takeItemsOfType(
+      FeedItemType.livestream,
+      consumedIds,
+      limit: 3,
+    );
+    final investorSpotlight = _takeItemsOfType(
+      FeedItemType.investorMilestone,
+      consumedIds,
+      limit: 4,
+    );
     final discoveryItems = _feedItems
         .where((item) => !consumedIds.contains(item.id))
-        .toList(growable: false);
+        .toList(); // Make it growable to allow insertAll
 
     final slivers = <Widget>[];
 
@@ -692,8 +656,113 @@ class _ExplorePageState extends State<ExplorePage> {
       slivers.addAll(_buildFeaturedDealsSlivers(featuredDeals));
     }
 
-    if (projectStories.isNotEmpty) {
-      slivers.addAll(_buildProjectStoriesSlivers(projectStories));
+    // Add live streams to discovery items with prominent indicator
+    if (liveStreams.isNotEmpty || _liveStreamCount > 0) {
+      // Add a live streams banner before the streams
+      slivers.add(
+        SliverToBoxAdapter(
+          child: GestureDetector(
+            onTap: () {
+              // Navigate to Lives page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const LivesPage(),
+                ),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red.shade600,
+                    Colors.red.shade400,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.videocam,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      '🔴 LIVE NOW',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // Navigate to Lives page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LivesPage(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$_liveStreamCount ${_liveStreamCount == 1 ? 'Stream' : 'Streams'}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      discoveryItems.insertAll(0, liveStreams);
     }
 
     if (investorSpotlight.isNotEmpty) {
@@ -740,12 +809,6 @@ class _ExplorePageState extends State<ExplorePage> {
               ),
               _buildQuickActionChip(
                 context,
-                label: 'Add Property',
-                icon: Icons.add_home_work_outlined,
-                routeName: AppRouter.addProperty,
-              ),
-              _buildQuickActionChip(
-                context,
                 label: 'Market Insights',
                 icon: Icons.show_chart_outlined,
                 routeName: AppRouter.market,
@@ -766,10 +829,7 @@ class _ExplorePageState extends State<ExplorePage> {
   }) {
     return ActionChip(
       avatar: Icon(icon, size: 18, color: AppColors.primary),
-      label: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       onPressed: () => AppRouter.navigateTo(context, routeName),
       backgroundColor: AppColors.background,
       elevation: 0,
@@ -812,9 +872,8 @@ class _ExplorePageState extends State<ExplorePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => PropertyDetailsPage(
-                    propertyId: auction.propertyId,
-                  ),
+                  builder: (context) =>
+                      PropertyDetailsPage(propertyId: auction.propertyId),
                 ),
               );
             },
@@ -835,7 +894,13 @@ class _ExplorePageState extends State<ExplorePage> {
           break;
 
         case FeedItemType.developer:
-          card = FeedDeveloperCard(developer: item.data as FeaturedDeveloper);
+          final developer = item.data as FeaturedDeveloper;
+          // Additional validation: ensure developer has valid ID before displaying
+          if (developer.developerId.isEmpty) {
+            print('⚠️ Skipping developer card with empty ID');
+            return const SizedBox.shrink();
+          }
+          card = FeedDeveloperCard(developer: developer);
           break;
 
         case FeedItemType.member:
@@ -850,13 +915,6 @@ class _ExplorePageState extends State<ExplorePage> {
           );
           break;
 
-        case FeedItemType.projectStory:
-          final story = item.data as ProjectStory;
-          card = ProjectStoryCard(
-            story: story,
-            onViewProject: () => _openProjectStory(story),
-          );
-          break;
 
         case FeedItemType.investorMilestone:
           final milestone = item.data as InvestorMilestone;
@@ -896,14 +954,11 @@ class _ExplorePageState extends State<ExplorePage> {
           card = FeedValuationPromptCard(
             prompt: prompt,
             onTap: () {
-              if (prompt.propertyId != null) {
-                Navigator.pushNamed(
-                  context,
-                  '/valuation/${prompt.propertyId}',
-                );
-              } else {
-                Navigator.pushNamed(context, '/valuation');
-              }
+              Navigator.pushNamed(
+                context,
+                AppRouter.valuate,
+                arguments: prompt.propertyId,
+              );
             },
           );
           break;
@@ -925,6 +980,10 @@ class _ExplorePageState extends State<ExplorePage> {
             },
           );
           break;
+
+        case FeedItemType.projectStory:
+          // Project stories removed - skip this item
+          return const SizedBox.shrink();
       }
       return card;
     } catch (e) {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'api_client.dart';
 import '../models/live_stream.dart';
 import '../models/stream_chat_message.dart';
@@ -78,6 +80,55 @@ class LiveStreamService {
     return ApiClient.getList<StreamChatMessage>(
       '/api/livestream/$streamId/chat?page=$page&pageSize=$pageSize',
       StreamChatMessage.fromJson,
+    );
+  }
+
+  /// Get count of live streams
+  static Future<ApiResponse<int>> getLiveStreamCount() async {
+    try {
+      final token = await ApiClient.getToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+      
+      final uri = Uri.parse('${ApiClient.baseUrl}/api/livestream/count');
+      final response = await http.get(uri, headers: headers).timeout(ApiClient.timeout);
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Backend returns int - could be direct number or JSON number
+        int count = 0;
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is int) {
+            count = decoded;
+          } else if (decoded is Map<String, dynamic>) {
+            count = decoded['data'] as int? ?? decoded['value'] as int? ?? 0;
+          } else {
+            // Try parsing as direct string
+            count = int.tryParse(response.body) ?? 0;
+          }
+        } catch (e) {
+          // If JSON decode fails, try parsing as direct int
+          count = int.tryParse(response.body) ?? 0;
+        }
+        return ApiResponse.success(count, statusCode: response.statusCode);
+      } else {
+        return ApiResponse.error(
+          'Failed to get live stream count',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('Failed to get live stream count: $e');
+    }
+  }
+
+  /// Get all live streams (not just active)
+  static Future<ApiResponse<List<LiveStream>>> getAllStreams() async {
+    return ApiClient.getList<LiveStream>(
+      '/api/livestream/all',
+      LiveStream.fromJson,
     );
   }
 }

@@ -13,7 +13,7 @@ class AnalyticsService {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       };
-      
+
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/market-overview'),
         headers: headers,
@@ -45,7 +45,7 @@ class AnalyticsService {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       };
-      
+
       final queryParams = <String, String>{};
       if (parentPropertyId != null)
         queryParams['parentPropertyId'] = parentPropertyId.toString();
@@ -81,7 +81,7 @@ class AnalyticsService {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       };
-      
+
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/gold-comparison?months=$months'),
         headers: headers,
@@ -108,7 +108,7 @@ class AnalyticsService {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       };
-      
+
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/developer-rankings'),
         headers: headers,
@@ -140,7 +140,7 @@ class AnalyticsService {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       };
-      
+
       final response = await http.get(
         Uri.parse('$_baseUrl/api/analytics/best-investments?limit=$limit'),
         headers: headers,
@@ -305,7 +305,7 @@ class PriceTrendResponse {
   final DateTime date;
   final double price;
   final String source;
-  final int parentPropertyId;
+  final String parentPropertyId;
   final String projectName;
   final String propertyType;
 
@@ -319,11 +319,19 @@ class PriceTrendResponse {
   });
 
   factory PriceTrendResponse.fromJson(Map<String, dynamic> json) {
+    // Handle both String GUID and int legacy formats
+    String parseParentPropertyId(dynamic id) {
+      if (id == null) return '';
+      if (id is String) return id;
+      if (id is int) return id.toString();
+      return id.toString();
+    }
+
     return PriceTrendResponse(
       date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
       price: (json['price'] ?? 0).toDouble(),
       source: json['source'] ?? '',
-      parentPropertyId: json['parentPropertyId'] ?? 0,
+      parentPropertyId: parseParentPropertyId(json['parentPropertyId']),
       projectName: json['projectName'] ?? '',
       propertyType: json['propertyType'] ?? '',
     );
@@ -396,7 +404,7 @@ class DeveloperRankingResponse {
       if (id is int) return id.toString();
       return id.toString();
     }
-    
+
     return DeveloperRankingResponse(
       developerId: parseDeveloperId(json['developerId']),
       developerName: json['developerName'] ?? '',
@@ -409,7 +417,7 @@ class DeveloperRankingResponse {
 }
 
 class BestInvestmentResponse {
-  final int propertyId;
+  final String propertyId;
   final String propertyName;
   final String location;
   final String propertyType;
@@ -440,8 +448,30 @@ class BestInvestmentResponse {
   });
 
   factory BestInvestmentResponse.fromJson(Map<String, dynamic> json) {
+    // Handle both String GUID and int legacy formats
+    String parsePropertyId(dynamic id) {
+      if (id == null) return '';
+      if (id is String) return id;
+      if (id is int) return id.toString();
+      return id.toString();
+    }
+
+    // Parse priceTrend list - handle both List<dynamic> and List<num>
+    List<double> parsePriceTrend(dynamic trend) {
+      if (trend == null) return [];
+      if (trend is List) {
+        return trend.map((e) {
+          if (e is double) return e;
+          if (e is int) return e.toDouble();
+          if (e is String) return double.tryParse(e) ?? 0.0;
+          return 0.0;
+        }).toList();
+      }
+      return [];
+    }
+
     return BestInvestmentResponse(
-      propertyId: json['propertyId'] ?? 0,
+      propertyId: parsePropertyId(json['propertyId']),
       propertyName: json['propertyName'] ?? '',
       location: json['location'] ?? '',
       propertyType: json['propertyType'] ?? '',
@@ -453,12 +483,7 @@ class BestInvestmentResponse {
       squareFeet: json['squareFeet'] ?? 0,
       priceHistoryCount: json['priceHistoryCount'] ?? 0,
       averagePriceHistory: (json['averagePriceHistory'] ?? 0).toDouble(),
-      priceTrend:
-          (json['priceTrend'] as List<dynamic>?)
-              ?.map((e) => (e ?? 0).toDouble())
-              .toList()
-              .cast<double>() ??
-          <double>[],
+      priceTrend: parsePriceTrend(json['priceTrend']),
     );
   }
 }

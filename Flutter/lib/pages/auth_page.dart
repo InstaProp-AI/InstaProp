@@ -1,11 +1,14 @@
 import '../../theme/app_colors.dart';
+import '../../theme/app_animations.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/auth_service.dart';
 import '../services/google_sign_in_service.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/modern_button.dart';
+import '../widgets/modern_text_field.dart';
+import '../widgets/modern_card.dart';
 import 'kyc_verification_page.dart';
 import 'home_page.dart';
 import 'email_verification_page.dart';
@@ -76,12 +79,12 @@ class _AuthPageState extends State<AuthPage>
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: AppAnimations.normal, // 300ms
       vsync: this,
     );
     _fadeAnimation = CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeInOut,
+      curve: AppAnimations.defaultCurve,
     );
     _animationController.forward();
   }
@@ -389,235 +392,189 @@ class _AuthPageState extends State<AuthPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: Stack(
-        children: [
-          // Background Design
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.secondary.withOpacity(0.3),
-                    AppColors.background.withOpacity(0.1),
-                  ],
+      backgroundColor: AppColors.background, // #F8F9FA
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Column(
+            children: [
+              // Close Button
+              Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: IconButton(
+                    onPressed: () {
+                      // Try to pop, if can't pop (no previous route), go to home
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        Navigator.pushReplacementNamed(context, '/');
+                      }
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.border),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.shadowCard,
+                            offset: const Offset(0, 2),
+                            blurRadius: 8,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: AppColors.textPrimary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            bottom: -150,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.2),
-                    AppColors.secondary.withOpacity(0.05),
-                  ],
-                ),
-              ),
-            ),
-          ),
 
-          // Content
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Column(
-                children: [
-                  // Close Button
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: IconButton(
-                        onPressed: () {
-                          // Try to pop, if can't pop (no previous route), go to home
-                          if (Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                          } else {
-                            Navigator.pushReplacementNamed(context, '/');
-                          }
-                        },
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Logo
+                        Container(
+                          width: 80,
+                          height: 80,
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.secondary),
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.05),
-                                blurRadius: 10,
+                                color: AppColors.shadowCard,
+                                offset: const Offset(0, 2),
+                                blurRadius: 8,
                                 spreadRadius: 0,
                               ),
                             ],
                           ),
                           child: const Icon(
-                            Icons.close,
-                            color: AppColors.primary,
+                            Icons.home_work_rounded,
+                            size: 40,
+                            color: Colors.white,
                           ),
                         ),
-                      ),
-                    ),
-                  ),
 
-                  Expanded(
-                    child: Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Logo
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: AppColors.accentGradient,
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.shadowPrimary,
-                                    blurRadius: 20,
-                                    spreadRadius: 0,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.home_work_rounded,
-                                size: 50,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
+                        const SizedBox(height: 24),
 
-                            const SizedBox(height: 24),
+                        // Title
+                        const Text(
+                          'Instaprop',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
 
-                            // Title
-                            const Text(
-                              'Instaprop',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -1,
-                              ),
-                            ),
+                        const SizedBox(height: 8),
 
-                            const SizedBox(height: 8),
+                        Text(
+                          _isLogin
+                              ? 'Welcome back!'
+                              : 'Create your account',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.normal,
+                            fontFamily: 'SF Pro Text',
+                          ),
+                        ),
 
-                            Text(
-                              _isLogin
-                                  ? 'Welcome back!'
-                                  : 'Create your account',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                        const SizedBox(height: 32),
 
-                            const SizedBox(height: 48),
-
-                            // Error Message
-                            if (_errorMessage != null)
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                margin: const EdgeInsets.only(bottom: 24),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppColors.primary),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.error_outline,
-                                      color: AppColors.primary,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        _errorMessage!,
-                                        style: const TextStyle(
-                                          color: AppColors.primary,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          letterSpacing: -0.3,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                            // Forms
-                            Container(
-                              constraints: const BoxConstraints(maxWidth: 440),
-                              child: _isLogin
-                                  ? _buildLoginForm()
-                                  : _buildSignupForm(),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // Toggle Login/Signup
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                        // Error Message
+                        if (_errorMessage != null)
+                          ModernCard(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            color: AppColors.error.withOpacity(0.1),
+                            child: Row(
                               children: [
-                                Text(
-                                  _isLogin
-                                      ? "Don't have an account? "
-                                      : "Already have an account? ",
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 14,
-                                  ),
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.error,
+                                  size: 20,
                                 ),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _isLogin = !_isLogin;
-                                      _errorMessage = null;
-                                    });
-                                  },
+                                const SizedBox(width: 12),
+                                Expanded(
                                   child: Text(
-                                    _isLogin ? 'Sign Up' : 'Login',
+                                    _errorMessage!,
                                     style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.3,
+                                      color: AppColors.error,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.normal,
+                                      fontFamily: 'SF Pro Text',
                                     ),
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+
+                        // Forms
+                        Container(
+                          constraints: const BoxConstraints(maxWidth: 440),
+                          child: _isLogin
+                              ? _buildLoginForm()
+                              : _buildSignupForm(),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Toggle Login/Signup
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _isLogin
+                                  ? "Don't have an account? "
+                                  : "Already have an account? ",
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 15,
+                                fontFamily: 'SF Pro Text',
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isLogin = !_isLogin;
+                                  _errorMessage = null;
+                                });
+                              },
+                              child: Text(
+                                _isLogin ? 'Sign Up' : 'Login',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'SF Pro Text',
+                                ),
+                              ),
+                            ),
                           ],
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -628,11 +585,11 @@ class _AuthPageState extends State<AuthPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildTextField(
+          ModernTextField(
             controller: _loginEmailController,
-            label: 'Email',
-            hint: 'your.email@example.com',
-            icon: Icons.email_outlined,
+            labelText: 'Email',
+            hintText: 'your.email@example.com',
+            prefixIcon: const Icon(Icons.email_outlined, size: 20),
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               if (value?.isEmpty == true) return 'Email is required';
@@ -640,19 +597,20 @@ class _AuthPageState extends State<AuthPage>
               return null;
             },
           ),
-          const SizedBox(height: 20),
-          _buildTextField(
+          const SizedBox(height: 16),
+          ModernTextField(
             controller: _loginPasswordController,
-            label: 'Password',
-            hint: 'Enter your password',
-            icon: Icons.lock_outline,
+            labelText: 'Password',
+            hintText: 'Enter your password',
+            prefixIcon: const Icon(Icons.lock_outline, size: 20),
             obscureText: _obscureLoginPassword,
             suffixIcon: IconButton(
               icon: Icon(
                 _obscureLoginPassword
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: AppColors.secondary,
+                color: AppColors.textSecondary,
+                size: 20,
               ),
               onPressed: () {
                 setState(() => _obscureLoginPassword = !_obscureLoginPassword);
@@ -678,31 +636,18 @@ class _AuthPageState extends State<AuthPage>
                 style: TextStyle(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: -0.3,
+                  fontSize: 15,
+                  fontFamily: 'SF Pro Text',
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 32),
-          Container(
-            height: 56,
-            decoration: BoxDecoration(
-              color: _isLoading ? AppColors.secondary : AppColors.primary,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: LoadingButton(
-              onPressed: _isLoading ? null : _handleLogin,
-              isLoading: _isLoading,
-              child: const Text(
-                'Login',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.surface,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
+          const SizedBox(height: 24),
+          ModernButton(
+            text: 'Login',
+            type: ModernButtonType.primary,
+            onPressed: _isLoading ? null : _handleLogin,
+            isLoading: _isLoading,
           ),
 
           const SizedBox(height: 24),
@@ -710,68 +655,32 @@ class _AuthPageState extends State<AuthPage>
           // Divider with OR
           Row(
             children: [
-              const Expanded(child: Divider(color: AppColors.border)),
+              const Expanded(child: Divider(color: AppColors.divider)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
                   'OR',
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                    fontSize: 13,
+                    fontFamily: 'SF Pro Text',
                   ),
                 ),
               ),
-              const Expanded(child: Divider(color: AppColors.border)),
+              const Expanded(child: Divider(color: AppColors.divider)),
             ],
           ),
 
           const SizedBox(height: 24),
 
           // Google Sign-In Button (Login)
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: OutlinedButton(
-              onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                backgroundColor: AppColors.surface,
-                side: const BorderSide(color: AppColors.border, width: 1.5),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _isGoogleLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.email_outlined,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
+          ModernButton(
+            text: 'Continue with Google',
+            type: ModernButtonType.secondary,
+            icon: Icons.email_outlined,
+            onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
+            isLoading: _isGoogleLoading,
           ),
         ],
       ),
@@ -787,34 +696,34 @@ class _AuthPageState extends State<AuthPage>
           Row(
             children: [
               Expanded(
-                child: _buildTextField(
+                child: ModernTextField(
                   controller: _signupFirstNameController,
-                  label: 'First Name',
-                  hint: 'John',
-                  icon: Icons.person_outline,
+                  labelText: 'First Name',
+                  hintText: 'John',
+                  prefixIcon: const Icon(Icons.person_outline, size: 20),
                   validator: (value) =>
                       value?.isEmpty == true ? 'Required' : null,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
-                child: _buildTextField(
+                child: ModernTextField(
                   controller: _signupLastNameController,
-                  label: 'Last Name',
-                  hint: 'Doe',
-                  icon: Icons.person_outline,
+                  labelText: 'Last Name',
+                  hintText: 'Doe',
+                  prefixIcon: const Icon(Icons.person_outline, size: 20),
                   validator: (value) =>
                       value?.isEmpty == true ? 'Required' : null,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          _buildTextField(
+          const SizedBox(height: 16),
+          ModernTextField(
             controller: _signupEmailController,
-            label: 'Email',
-            hint: 'your.email@example.com',
-            icon: Icons.email_outlined,
+            labelText: 'Email',
+            hintText: 'your.email@example.com',
+            prefixIcon: const Icon(Icons.email_outlined, size: 20),
             keyboardType: TextInputType.emailAddress,
             onChanged: (value) {
               setState(() {
@@ -852,17 +761,17 @@ class _AuthPageState extends State<AuthPage>
                 children: [
                   const Icon(
                     Icons.error_outline,
-                    color: AppColors.primary,
+                    color: AppColors.error,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   const Text(
                     'Please enter a valid email address',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.2,
+                      color: AppColors.error,
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ],
@@ -875,28 +784,28 @@ class _AuthPageState extends State<AuthPage>
                 children: [
                   const Icon(
                     Icons.error_outline,
-                    color: AppColors.primary,
+                    color: AppColors.error,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   const Text(
                     'This email is already registered',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.2,
+                      color: AppColors.error,
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 20),
-          _buildTextField(
+          const SizedBox(height: 16),
+          ModernTextField(
             controller: _signupPhoneController,
-            label: 'Phone Number',
-            hint: '+1 234 567 8900',
-            icon: Icons.phone_outlined,
+            labelText: 'Phone Number',
+            hintText: '+1 234 567 8900',
+            prefixIcon: const Icon(Icons.phone_outlined, size: 20),
             keyboardType: TextInputType.phone,
             onChanged: (value) {
               setState(() {
@@ -931,17 +840,17 @@ class _AuthPageState extends State<AuthPage>
                 children: [
                   const Icon(
                     Icons.error_outline,
-                    color: AppColors.primary,
+                    color: AppColors.error,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   const Text(
                     'Phone number must have at least 10 digits',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.2,
+                      color: AppColors.error,
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ],
@@ -954,54 +863,58 @@ class _AuthPageState extends State<AuthPage>
                 children: [
                   const Icon(
                     Icons.error_outline,
-                    color: AppColors.primary,
+                    color: AppColors.error,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   const Text(
                     'This phone number is already registered',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.2,
+                      color: AppColors.error,
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.secondary),
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: DropdownButtonFormField<String>(
               value: _selectedGender,
               decoration: const InputDecoration(
                 labelText: 'Gender',
-                labelStyle: TextStyle(color: AppColors.primary, fontSize: 14),
-                prefixIcon: Icon(Icons.wc_outlined, color: AppColors.primary),
+                labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                prefixIcon: Icon(Icons.wc_outlined, color: AppColors.textSecondary, size: 20),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
+                  horizontal: 16,
+                  vertical: 14,
                 ),
               ),
               dropdownColor: AppColors.surface,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontFamily: 'SF Pro Text',
+              ),
               items: ['Male', 'Female'].map((gender) {
                 return DropdownMenuItem(value: gender, child: Text(gender));
               }).toList(),
               onChanged: (value) => setState(() => _selectedGender = value!),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildTextField(
+          const SizedBox(height: 16),
+          ModernTextField(
             controller: _signupPasswordController,
-            label: 'Password',
-            hint: 'At least 8 characters',
-            icon: Icons.lock_outline,
+            labelText: 'Password',
+            hintText: 'At least 8 characters',
+            prefixIcon: const Icon(Icons.lock_outline, size: 20),
             obscureText: _obscurePassword,
             onChanged: (value) {
               setState(() {
@@ -1021,7 +934,8 @@ class _AuthPageState extends State<AuthPage>
                 _obscurePassword
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: AppColors.secondary,
+                color: AppColors.textSecondary,
+                size: 20,
               ),
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
@@ -1053,12 +967,12 @@ class _AuthPageState extends State<AuthPage>
                 ],
               ),
             ),
-          const SizedBox(height: 20),
-          _buildTextField(
+          const SizedBox(height: 16),
+          ModernTextField(
             controller: _signupConfirmPasswordController,
-            label: 'Confirm Password',
-            hint: 'Re-enter password',
-            icon: Icons.lock_outline,
+            labelText: 'Confirm Password',
+            hintText: 'Re-enter password',
+            prefixIcon: const Icon(Icons.lock_outline, size: 20),
             obscureText: _obscureConfirmPassword,
             onChanged: (value) {
               setState(() {
@@ -1072,7 +986,8 @@ class _AuthPageState extends State<AuthPage>
                 _obscureConfirmPassword
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: AppColors.secondary,
+                color: AppColors.textSecondary,
+                size: 20,
               ),
               onPressed: () => setState(
                 () => _obscureConfirmPassword = !_obscureConfirmPassword,
@@ -1089,17 +1004,17 @@ class _AuthPageState extends State<AuthPage>
                 children: [
                   const Icon(
                     Icons.error_outline,
-                    color: AppColors.primary,
+                    color: AppColors.error,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   const Text(
                     'Passwords do not match',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.2,
+                      color: AppColors.error,
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ],
@@ -1114,42 +1029,28 @@ class _AuthPageState extends State<AuthPage>
                 children: [
                   const Icon(
                     Icons.check_circle,
-                    color: AppColors.primary,
+                    color: AppColors.success,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   const Text(
                     'Passwords match',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.2,
+                      color: AppColors.success,
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 32),
-          Container(
-            height: 56,
-            decoration: BoxDecoration(
-              color: _isLoading ? AppColors.secondary : AppColors.primary,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: LoadingButton(
-              onPressed: _isLoading ? null : _handleSignup,
-              isLoading: _isLoading,
-              child: const Text(
-                'Sign up',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.surface,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
+          const SizedBox(height: 24),
+          ModernButton(
+            text: 'Sign up',
+            type: ModernButtonType.primary,
+            onPressed: _isLoading ? null : _handleSignup,
+            isLoading: _isLoading,
           ),
 
           const SizedBox(height: 24),
@@ -1157,113 +1058,34 @@ class _AuthPageState extends State<AuthPage>
           // Divider with OR
           Row(
             children: [
-              const Expanded(child: Divider(color: AppColors.border)),
+              const Expanded(child: Divider(color: AppColors.divider)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
                   'OR',
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                    fontSize: 13,
+                    fontFamily: 'SF Pro Text',
                   ),
                 ),
               ),
-              const Expanded(child: Divider(color: AppColors.border)),
+              const Expanded(child: Divider(color: AppColors.divider)),
             ],
           ),
 
           const SizedBox(height: 24),
 
           // Google Sign-In Button (Signup)
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: OutlinedButton(
-              onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                backgroundColor: AppColors.surface,
-                side: const BorderSide(color: AppColors.border, width: 1.5),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _isGoogleLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.email_outlined,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
+          ModernButton(
+            text: 'Continue with Google',
+            type: ModernButtonType.secondary,
+            icon: Icons.email_outlined,
+            onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
+            isLoading: _isGoogleLoading,
           ),
-
-          const SizedBox(height: 12),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    bool obscureText = false,
-    TextInputType? keyboardType,
-    Widget? suffixIcon,
-    String? Function(String?)? validator,
-    void Function(String)? onChanged,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.secondary),
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        validator: validator,
-        onChanged: onChanged,
-        style: const TextStyle(fontSize: 16, letterSpacing: -0.3),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          labelStyle: const TextStyle(color: AppColors.primary, fontSize: 14),
-          hintStyle: const TextStyle(color: AppColors.secondary, fontSize: 14),
-          prefixIcon: Icon(icon, color: AppColors.primary),
-          suffixIcon: suffixIcon,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
-          ),
-        ),
       ),
     );
   }
@@ -1274,19 +1096,22 @@ class _AuthPageState extends State<AuthPage>
         Icon(
           isMet ? Icons.check_circle : Icons.circle_outlined,
           size: 16,
-          color: isMet ? AppColors.primary : AppColors.secondary,
+          color: isMet ? AppColors.success : AppColors.textTertiary,
         ),
         const SizedBox(width: 8),
         Text(
           text,
           style: TextStyle(
-            fontSize: 12,
-            color: isMet ? AppColors.primary : AppColors.secondary,
-            fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
-            letterSpacing: -0.2,
+            fontSize: 13,
+            color: isMet ? AppColors.success : AppColors.textSecondary,
+            fontWeight: FontWeight.normal,
+            fontFamily: 'SF Pro Text',
           ),
         ),
       ],
     );
   }
 }
+
+
+

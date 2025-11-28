@@ -5,6 +5,8 @@ import '../providers/app_state.dart';
 import '../models/event.dart';
 import '../services/event_service.dart';
 import '../services/api_client.dart';
+import '../widgets/modern_button.dart';
+import '../widgets/modern_card.dart';
 import 'add_event_dialog.dart';
 import 'event_details_dialog.dart';
 import 'add_event_choice_dialog.dart';
@@ -214,7 +216,9 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
             ),
           ),
-          ElevatedButton(
+          ModernButton(
+            text: 'Sign Up',
+            type: ModernButtonType.primary,
             onPressed: () {
               Navigator.pop(context);
               Navigator.push(
@@ -222,18 +226,6 @@ class _CalendarPageState extends State<CalendarPage> {
                 MaterialPageRoute(builder: (context) => const AuthPage()),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Sign Up',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
           ),
         ],
       ),
@@ -265,15 +257,24 @@ class _CalendarPageState extends State<CalendarPage> {
     // Show public calendar if not authenticated
     if (!appState.isLoggedIn) {
       return Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Public Calendar'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: AppColors.surface,
+          title: Text(
+            'Public Calendar',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
           actions: [
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: _showAddEventDialog,
               tooltip: 'Add Event',
+              color: AppColors.primary,
             ),
           ],
         ),
@@ -283,15 +284,24 @@ class _CalendarPageState extends State<CalendarPage> {
 
     // Show full calendar for logged-in users
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('My Calendar'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: AppColors.surface,
+        title: Text(
+          'My Calendar',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _showAddEventDialog,
             tooltip: 'Add Event',
+            color: AppColors.primary,
           ),
         ],
       ),
@@ -328,9 +338,10 @@ class _CalendarPageState extends State<CalendarPage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
+              ModernButton(
+                text: 'Retry',
+                type: ModernButtonType.primary,
                 onPressed: _loadEvents,
-                child: const Text('Retry'),
               ),
             ],
           ),
@@ -355,9 +366,11 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
                 Text(
                   '${_getMonthName(_currentMonth.month)} ${_currentMonth.year}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
                 IconButton(
                   onPressed: _nextMonth,
@@ -382,9 +395,10 @@ class _CalendarPageState extends State<CalendarPage> {
 
           // Public Events Info (only for non-logged users)
           if (!context.read<AppState>().isLoggedIn)
-            Container(
+            ModernCard(
+              margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
-              color: AppColors.primary,
+              color: AppColors.primary.withOpacity(0.1),
               child: Row(
                 children: [
                   Icon(Icons.info_outline, color: AppColors.primary, size: 20),
@@ -392,7 +406,10 @@ class _CalendarPageState extends State<CalendarPage> {
                   Expanded(
                     child: Text(
                       'Viewing public events only. Log in to see your personal calendar.',
-                      style: TextStyle(color: AppColors.primary, fontSize: 12),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontFamily: 'SF Pro Text',
+                      ),
                     ),
                   ),
                 ],
@@ -433,9 +450,10 @@ class _CalendarPageState extends State<CalendarPage> {
                     child: Center(
                       child: Text(
                         day,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'SF Pro Text',
                         ),
                       ),
                     ),
@@ -575,7 +593,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     itemCount: selectedDateEvents.length,
                     itemBuilder: (context, index) {
                       final event = selectedDateEvents[index];
-                      return Card(
+                      return ModernCard(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: Container(
@@ -586,12 +604,34 @@ class _CalendarPageState extends State<CalendarPage> {
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                          title: Text(event.title),
+                          title: Text(
+                            event.title,
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  fontFamily: 'SF Pro Text',
+                                ),
+                          ),
                           subtitle: event.description != null
-                              ? Text(event.description!)
+                              ? Text(
+                                  event.description!,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontFamily: 'SF Pro Text',
+                                      ),
+                                )
                               : null,
                           trailing: event.startTime != null
-                              ? Text(_formatTime(event.startTime!))
+                              ? Text(
+                                  _formatTime(event.startTime!),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontFamily: 'SF Pro Text',
+                                      ),
+                                )
                               : null,
                           onTap: () => _showEventDetails(event),
                         ),
@@ -659,14 +699,9 @@ class _CalendarPageState extends State<CalendarPage> {
           !event.isCompleted;
     }).toList()..sort((a, b) => a.eventDate.compareTo(b.eventDate));
 
-    return Container(
+    return ModernCard(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -678,8 +713,9 @@ class _CalendarPageState extends State<CalendarPage> {
                 child: Text(
                   'Upcoming Events (Next 2 Months)',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
@@ -711,7 +747,10 @@ class _CalendarPageState extends State<CalendarPage> {
                     const SizedBox(height: 8),
                     Text(
                       'No upcoming events in the next 2 months',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontFamily: 'SF Pro Text',
+                      ),
                     ),
                   ],
                 ),
@@ -727,10 +766,9 @@ class _CalendarPageState extends State<CalendarPage> {
                 child: Center(
                   child: Text(
                     '+${upcomingEvents.length - 10} more events',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ),
@@ -746,14 +784,9 @@ class _CalendarPageState extends State<CalendarPage> {
     final eventColor = event.type.color;
     final isInstallment = event.type == EventType.installment;
 
-    return Container(
+    return ModernCard(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.background),
-      ),
       child: Row(
         children: [
           Expanded(
@@ -781,7 +814,11 @@ class _CalendarPageState extends State<CalendarPage> {
                               child: Text(
                                 event.title,
                                 style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w600),
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                      fontFamily: 'SF Pro Text',
+                                    ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -870,22 +907,15 @@ class _CalendarPageState extends State<CalendarPage> {
           if (isInstallment && !event.isCompleted)
             Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: ElevatedButton(
+              child: ModernButton(
+                text: 'I Have Paid',
+                type: ModernButtonType.primary,
                 onPressed: () async {
                   await _markEventAsPaid(event);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  minimumSize: const Size(0, 0),
-                ),
-                child: const Text(
-                  'I Have Paid',
-                  style: TextStyle(fontSize: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
               ),
             ),
@@ -905,13 +935,10 @@ class _CalendarPageState extends State<CalendarPage> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          ModernButton(
+            text: 'Confirm',
+            type: ModernButtonType.primary,
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirm'),
           ),
         ],
       ),

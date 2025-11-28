@@ -347,20 +347,14 @@ class _LeaderboardPageState extends State<LeaderboardPage>
 
   BoxDecoration _heroDecoration() {
     return BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Theme.of(context).colorScheme.primary,
-          Theme.of(context).colorScheme.primary.withOpacity(0.85),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.primary,
+      borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
-          blurRadius: 20,
-          offset: const Offset(0, 10),
+          color: Colors.black.withOpacity(0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+          spreadRadius: 0,
         ),
       ],
     );

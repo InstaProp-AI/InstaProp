@@ -188,18 +188,7 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
         ),
         // Gradient overlay
         Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withOpacity(0.3),
-                Colors.transparent,
-                Colors.black.withOpacity(0.7),
-              ],
-              stops: const [0.0, 0.5, 1.0],
-            ),
-          ),
+          decoration: BoxDecoration(color: Colors.black.withOpacity(0.3)),
         ),
         // Image indicators
         if (widget.news.images.length > 1)

@@ -16,10 +16,7 @@ import '../widgets/country_flag.dart';
 class PropertyDetailsPage extends StatefulWidget {
   final String propertyId;
 
-  const PropertyDetailsPage({
-    super.key,
-    required this.propertyId,
-  });
+  const PropertyDetailsPage({super.key, required this.propertyId});
 
   @override
   State<PropertyDetailsPage> createState() => _PropertyDetailsPageState();
@@ -30,6 +27,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   Map<String, dynamic>? _financials;
   MarketOverviewResponse? _marketOverview;
   List<PriceTrendResponse>? _priceTrends;
+  List<BestInvestmentResponse>? _bestInvestments;
   bool _isLoading = true;
   String? _error;
 
@@ -47,7 +45,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
 
     try {
       // Load property bundle, financials, and market data in parallel
-      final property = await PropertyService.getPropertyMarketBundle(widget.propertyId);
+      final property = await PropertyService.getPropertyMarketBundle(
+        widget.propertyId,
+      );
       if (!property.success || property.data == null) {
         setState(() {
           _error = property.error ?? 'Failed to load property details.';
@@ -57,10 +57,12 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       }
 
       final bundle = property.data!;
-      
+
       // Load financials and market data in parallel
       final results = await Future.wait([
-        PropertyService.getPropertyFinancials(widget.propertyId).catchError((e) {
+        PropertyService.getPropertyFinancials(widget.propertyId).catchError((
+          e,
+        ) {
           return ApiResponse<Map<String, dynamic>>.error('Not available');
         }),
         AnalyticsService.getMarketOverview().catchError((e) => null),
@@ -70,13 +72,16 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           location: bundle.property.location,
           months: 12,
         ).catchError((e) => null),
+        AnalyticsService.getBestInvestments(limit: 10).catchError((e) => null),
       ]);
 
       if (!mounted) return;
 
-      final financialsResponse = results[0] as ApiResponse<Map<String, dynamic>>;
+      final financialsResponse =
+          results[0] as ApiResponse<Map<String, dynamic>>;
       final marketOverview = results[1] as MarketOverviewResponse?;
       final priceTrends = results[2] as List<PriceTrendResponse>?;
+      final bestInvestments = results[3] as List<BestInvestmentResponse>?;
 
       setState(() {
         _bundle = bundle;
@@ -85,6 +90,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
         }
         _marketOverview = marketOverview;
         _priceTrends = priceTrends;
+        _bestInvestments = bestInvestments;
         _isLoading = false;
       });
     } catch (e) {
@@ -130,7 +136,11 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+              const Icon(
+                Icons.error_outline,
+                color: Colors.redAccent,
+                size: 48,
+              ),
               const SizedBox(height: 16),
               Text(
                 _error!,
@@ -148,8 +158,10 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -188,11 +200,19 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       // Enhanced Market Analysis (even with limited data)
       const SizedBox(height: 16),
       _buildEnhancedMarketAnalysis(
-        bundle.property, 
-        bundle.marketAnalytics, 
+        bundle.property,
+        bundle.marketAnalytics,
         bundle.siblings,
         _marketOverview,
         _priceTrends,
+      ),
+      // Market Strategies & Investment Insights
+      const SizedBox(height: 16),
+      _buildMarketStrategiesAndInsights(
+        bundle.property,
+        bundle.marketAnalytics,
+        _marketOverview,
+        _bestInvestments,
       ),
       const SizedBox(height: 48),
     ];
@@ -248,7 +268,11 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: Colors.grey,
+              ),
               const SizedBox(width: 6),
               // Country Flag
               CountryFlag(
@@ -261,10 +285,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
               Expanded(
                 child: Text(
                   property.location,
-                  style: const TextStyle(
-                    color: Colors.black54,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.black54, fontSize: 14),
                 ),
               ),
             ],
@@ -348,8 +369,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
         _buildStatCard(
           icon: Icons.price_change_outlined,
           label: 'Avg Market',
-          value:
-              _formatCurrency(analytics!.priceStats!.statistics.averagePrice),
+          value: _formatCurrency(
+            analytics!.priceStats!.statistics.averagePrice,
+          ),
           highlight: true,
         ),
       );
@@ -441,10 +463,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
               const SizedBox(height: 16),
               const Text(
                 'Compound Amenities',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -453,10 +472,8 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                 children: amenities
                     .where((amenity) => amenity.isAvailable)
                     .map(
-                      (amenity) => _buildAmenityChip(
-                        amenity.icon,
-                        amenity.label,
-                      ),
+                      (amenity) =>
+                          _buildAmenityChip(amenity.icon, amenity.label),
                     )
                     .toList(),
               ),
@@ -544,8 +561,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                 Expanded(
                   child: _buildMarketStatTile(
                     label: '12M Change',
-                    value:
-                        '${stats.priceChangePercent.toStringAsFixed(1)}%',
+                    value: '${stats.priceChangePercent.toStringAsFixed(1)}%',
                     icon: Icons.trending_up,
                     accent: stats.priceChangePercent >= 0
                         ? Colors.green
@@ -565,9 +581,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                   ? _buildEmptyMarketState()
                   : SizedBox(
                       height: 220,
-                      child: LineChart(
-                        _buildPriceHistoryChartData(history),
-                      ),
+                      child: LineChart(_buildPriceHistoryChartData(history)),
                     ),
             ),
           ),
@@ -576,7 +590,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     );
   }
 
-  LineChartData _buildPriceHistoryChartData(List<PropertyPriceHistory> history) {
+  LineChartData _buildPriceHistoryChartData(
+    List<PropertyPriceHistory> history,
+  ) {
     final sortedHistory = [...history]
       ..sort((a, b) => a.priceDate.compareTo(b.priceDate));
 
@@ -589,12 +605,12 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       labels[i] = '${entry.priceDate.month}/${entry.priceDate.year % 100}';
     }
 
-    final minPrice = sortedHistory.map((e) => e.price).reduce(
-          (value, element) => value < element ? value : element,
-        );
-    final maxPrice = sortedHistory.map((e) => e.price).reduce(
-          (value, element) => value > element ? value : element,
-        );
+    final minPrice = sortedHistory
+        .map((e) => e.price)
+        .reduce((value, element) => value < element ? value : element);
+    final maxPrice = sortedHistory
+        .map((e) => e.price)
+        .reduce((value, element) => value > element ? value : element);
 
     return LineChartData(
       gridData: FlGridData(show: true),
@@ -607,8 +623,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       ),
       titlesData: FlTitlesData(
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles:
-            const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
@@ -661,8 +678,11 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Icon(Icons.signal_cellular_connected_no_internet_4_bar,
-                color: Colors.grey, size: 32),
+            Icon(
+              Icons.signal_cellular_connected_no_internet_4_bar,
+              color: Colors.grey,
+              size: 32,
+            ),
             SizedBox(height: 8),
             Text(
               'No price history available yet.',
@@ -689,10 +709,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -776,10 +793,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           const SizedBox(width: 6),
           Text(
             text,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ],
       ),
@@ -801,10 +815,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           const SizedBox(width: 8),
           Text(
             label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ],
       ),
@@ -817,6 +828,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
 
     return SizedBox(
       width: 220,
+      height: 180,
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: InkWell(
@@ -825,68 +837,74 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => PropertyDetailsPage(
-                  propertyId: sibling.propertyId,
-                ),
+                builder: (_) =>
+                    PropertyDetailsPage(propertyId: sibling.propertyId),
               ),
             );
           },
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
                 child: PropertyImageCarousel(
                   images: images,
                   fallbackImageUrl: sibling.imageUrl,
-                  height: 110,
+                  height: 100,
                   showIndicators: false,
                   showNavigationButtons: false,
                   showImageCounter: false,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sibling.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        letterSpacing: -0.1,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sibling.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          letterSpacing: -0.1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${sibling.bedrooms} BR • ${sibling.bathrooms} Bath',
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
+                      const SizedBox(height: 4),
+                      Text(
+                        '${sibling.bedrooms} BR • ${sibling.bathrooms} Bath',
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${sibling.squareFeet} sqft',
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
+                      const SizedBox(height: 4),
+                      Text(
+                        '${sibling.squareFeet} sqft',
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      price > 0 ? _formatCurrency(price) : 'Price on request',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                      const Spacer(),
+                      Text(
+                        price > 0 ? _formatCurrency(price) : 'Price on request',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -982,28 +1000,29 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   ) {
     // Use real financials data from backend
     dynamic buyingPriceNum = _financials?['buyingPrice'];
-    if (buyingPriceNum == null) buyingPriceNum = _financials?['contractedPrice'];
+    if (buyingPriceNum == null)
+      buyingPriceNum = _financials?['contractedPrice'];
     if (buyingPriceNum == null) buyingPriceNum = property.buyingPrice;
     final buyingPrice = buyingPriceNum is num ? buyingPriceNum.toDouble() : 0.0;
-    
+
     dynamic marketValueNum = _financials?['marketValue'];
     if (marketValueNum == null) {
       final avgPrice = analytics?.priceStats?.statistics.averagePrice ?? 0;
       marketValueNum = avgPrice;
     }
     final marketValue = marketValueNum is num ? marketValueNum.toDouble() : 0.0;
-    
+
     dynamic roiPercentNum = _financials?['roiPercent'];
     final roiPercent = roiPercentNum is num ? roiPercentNum.toDouble() : null;
-    
+
     String? paybackPeriod;
-    
+
     // Calculate payback period if we have ROI
     if (roiPercent != null && roiPercent > 0) {
       // Estimate based on annual appreciation rate (6% average)
       final annualAppreciation = 0.06;
       final yearsToDouble = (72 / (roiPercent * annualAppreciation)).abs();
-      paybackPeriod = yearsToDouble < 1 
+      paybackPeriod = yearsToDouble < 1
           ? '${(yearsToDouble * 12).toStringAsFixed(0)} months'
           : '${yearsToDouble.toStringAsFixed(1)} years';
     } else if (buyingPrice > 0 && marketValue > 0) {
@@ -1012,7 +1031,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       if (calculatedROI > 0) {
         final annualAppreciation = 0.06;
         final yearsToDouble = (72 / (calculatedROI * annualAppreciation)).abs();
-        paybackPeriod = yearsToDouble < 1 
+        paybackPeriod = yearsToDouble < 1
             ? '${(yearsToDouble * 12).toStringAsFixed(0)} months'
             : '${yearsToDouble.toStringAsFixed(1)} years';
       }
@@ -1068,14 +1087,19 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                     Expanded(
                       child: _buildAnalysisTile(
                         label: 'ROI',
-                        value: roiPercent != null 
+                        value: roiPercent != null
                             ? '${roiPercent.toStringAsFixed(1)}%'
                             : buyingPrice > 0 && marketValue > 0
-                                ? '${((marketValue - buyingPrice) / buyingPrice * 100).toStringAsFixed(1)}%'
-                                : 'N/A',
+                            ? '${((marketValue - buyingPrice) / buyingPrice * 100).toStringAsFixed(1)}%'
+                            : 'N/A',
                         icon: Icons.percent,
-                        color: (roiPercent ?? ((marketValue - buyingPrice) / buyingPrice * 100)) >= 0 
-                            ? Colors.green 
+                        color:
+                            (roiPercent ??
+                                    ((marketValue - buyingPrice) /
+                                        buyingPrice *
+                                        100)) >=
+                                0
+                            ? Colors.green
                             : Colors.red,
                       ),
                     ),
@@ -1217,12 +1241,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.green.shade50,
-                        Colors.green.shade100,
-                      ],
-                    ),
+                    color: AppColors.success.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -1302,21 +1321,23 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     final hasAnalyticsData = analytics?.hasData ?? false;
     final hasMarketOverview = marketOverview?.hasData ?? false;
     final hasPriceTrends = priceTrends?.isNotEmpty ?? false;
-    
+
     // Get average price from real data
     double avgPrice = 0;
     double priceChange = 0;
-    
+
     if (hasAnalyticsData && analytics != null && analytics.priceStats != null) {
       avgPrice = analytics.priceStats!.statistics.averagePrice.toDouble();
-      priceChange = analytics.priceStats!.statistics.priceChangePercent.toDouble();
+      priceChange = analytics.priceStats!.statistics.priceChangePercent
+          .toDouble();
     } else if (hasMarketOverview) {
       final overview = marketOverview!;
       if (overview.areaPrices.isNotEmpty) {
         // Find matching area price
         final areaPrice = overview.areaPrices.firstWhere(
-          (ap) => ap.area.toLowerCase().contains(property.location.toLowerCase()) ||
-                  property.location.toLowerCase().contains(ap.area.toLowerCase()),
+          (ap) =>
+              ap.area.toLowerCase().contains(property.location.toLowerCase()) ||
+              property.location.toLowerCase().contains(ap.area.toLowerCase()),
           orElse: () => overview.areaPrices.first,
         );
         avgPrice = areaPrice.averagePrice;
@@ -1330,11 +1351,13 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
         if (prices.length > 1) {
           final firstPrice = prices.first;
           final lastPrice = prices.last;
-          priceChange = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice * 100) : 0;
+          priceChange = firstPrice > 0
+              ? ((lastPrice - firstPrice) / firstPrice * 100)
+              : 0;
         }
       }
     }
-    
+
     final hasData = hasAnalyticsData || hasMarketOverview || hasPriceTrends;
     final siblingCount = siblings.length;
 
@@ -1389,7 +1412,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                       child: _buildAnalysisTile(
                         label: '12M Trend',
                         value: '${priceChange.toStringAsFixed(1)}%',
-                        icon: priceChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                        icon: priceChange >= 0
+                            ? Icons.trending_up
+                            : Icons.trending_down,
                         color: priceChange >= 0 ? Colors.green : Colors.red,
                       ),
                     ),
@@ -1408,7 +1433,10 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.amber.shade700),
+                          Icon(
+                            Icons.info_outline,
+                            color: Colors.amber.shade700,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Limited Market Data',
@@ -1432,7 +1460,11 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Icon(Icons.apartment, size: 16, color: Colors.amber.shade700),
+                            Icon(
+                              Icons.apartment,
+                              size: 16,
+                              color: Colors.amber.shade700,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               '$siblingCount similar units available',
@@ -1451,7 +1483,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
               ],
               const SizedBox(height: 12),
               // Price per sqft analysis
-              if (property.buyingPrice != null && property.buyingPrice! > 0 && property.squareFeet > 0) ...[
+              if (property.buyingPrice != null &&
+                  property.buyingPrice! > 0 &&
+                  property.squareFeet > 0) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1475,7 +1509,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                               ),
                             ),
                             Text(
-                              _formatCurrency(property.buyingPrice! / property.squareFeet),
+                              _formatCurrency(
+                                property.buyingPrice! / property.squareFeet,
+                              ),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -1495,7 +1531,6 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       ),
     );
   }
-
 
   Widget _buildAnalysisTile({
     required String label,
@@ -1600,6 +1635,536 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     }
     return color;
   }
+
+  Widget _buildMarketStrategiesAndInsights(
+    ChildProperty property,
+    PropertyMarketAnalytics? analytics,
+    MarketOverviewResponse? marketOverview,
+    List<BestInvestmentResponse>? bestInvestments,
+  ) {
+    final buyingPrice = property.buyingPrice ?? 0.0;
+    final pricePerSqft = property.squareFeet > 0
+        ? (buyingPrice / property.squareFeet)
+        : 0.0;
+
+    // Get market data for comparison
+    double? marketAvgPrice;
+    double? marketAvgPricePerSqft;
+
+    if (marketOverview != null && marketOverview.areaPrices.isNotEmpty) {
+      final matchingArea = marketOverview.areaPrices.firstWhere(
+        (ap) =>
+            ap.area.toLowerCase().contains(property.location.toLowerCase()) ||
+            property.location.toLowerCase().contains(ap.area.toLowerCase()),
+        orElse: () => marketOverview.areaPrices.first,
+      );
+      marketAvgPrice = matchingArea.averagePrice;
+    }
+
+    if (bestInvestments != null && bestInvestments.isNotEmpty) {
+      final similarProperties = bestInvestments
+          .where(
+            (inv) =>
+                inv.propertyType.toLowerCase() ==
+                    property.typeLabel.toLowerCase() ||
+                inv.location.toLowerCase().contains(
+                  property.location.toLowerCase(),
+                ),
+          )
+          .toList();
+
+      if (similarProperties.isNotEmpty) {
+        marketAvgPricePerSqft =
+            similarProperties
+                .map((inv) => inv.pricePerSqm)
+                .reduce((a, b) => a + b) /
+            similarProperties.length;
+      }
+    }
+
+    // Calculate ROI and metrics
+    dynamic marketValueNum = _financials?['marketValue'];
+    if (marketValueNum == null && analytics?.priceStats != null) {
+      marketValueNum = analytics!.priceStats!.statistics.averagePrice;
+    }
+    final marketValue = marketValueNum is num
+        ? marketValueNum.toDouble()
+        : buyingPrice;
+
+    final roi = buyingPrice > 0 && marketValue > buyingPrice
+        ? ((marketValue - buyingPrice) / buyingPrice * 100)
+        : null;
+
+    // Calculate cap rate (estimated rental yield)
+    final estimatedRentalYield = buyingPrice > 0
+        ? 5.5
+        : null; // 5.5% average rental yield
+    final capRate = estimatedRentalYield;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.lightbulb_outline,
+                      color: Colors.blue.shade700,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Market Strategies & Investment Insights',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Pricing Analysis
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pricing Analysis',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildPricingMetric(
+                            'Property Price',
+                            _formatCurrency(buyingPrice),
+                            Icons.price_check,
+                            AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildPricingMetric(
+                            'Price/Sqft',
+                            _formatCurrency(pricePerSqft),
+                            Icons.square_foot,
+                            Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (roi != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildPricingMetric(
+                              'ROI',
+                              '${roi.toStringAsFixed(1)}%',
+                              Icons.trending_up,
+                              roi >= 0 ? Colors.green : Colors.red,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildPricingMetric(
+                              'Cap Rate',
+                              capRate != null
+                                  ? '${capRate.toStringAsFixed(1)}%'
+                                  : 'N/A',
+                              Icons.percent,
+                              Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Investment Strategies
+              const Text(
+                'Investment Strategies',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildStrategyTip(
+                Icons.psychology,
+                'Smart Investment',
+                _getSmartInvestmentTip(
+                  buyingPrice,
+                  marketAvgPrice,
+                  pricePerSqft,
+                  marketAvgPricePerSqft,
+                ),
+                Colors.blue,
+              ),
+              const SizedBox(height: 10),
+              _buildStrategyTip(
+                Icons.trending_up,
+                'Market Position',
+                _getMarketPositionTip(roi, marketAvgPrice, buyingPrice),
+                Colors.green,
+              ),
+              const SizedBox(height: 10),
+              _buildStrategyTip(
+                Icons.local_offer,
+                'Value Assessment',
+                _getValueAssessmentTip(
+                  pricePerSqft,
+                  marketAvgPricePerSqft,
+                  property.location,
+                ),
+                Colors.purple,
+              ),
+              const SizedBox(height: 16),
+              // Investment Potential
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.purple.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.insights,
+                          color: Colors.purple.shade700,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Investment Potential',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _getInvestmentPotential(
+                        pricePerSqft,
+                        roi,
+                        marketAvgPrice,
+                        marketAvgPricePerSqft,
+                        property,
+                      ),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.purple.shade800,
+                        height: 1.4,
+                      ),
+                    ),
+                    if (marketAvgPrice != null && marketAvgPrice > 0) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              buyingPrice < marketAvgPrice
+                                  ? Icons.trending_down
+                                  : Icons.trending_up,
+                              size: 16,
+                              color: buyingPrice < marketAvgPrice
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Market avg: ${_formatCurrency(marketAvgPrice)} '
+                                '(${buyingPrice < marketAvgPrice ? "Below" : "Above"} market)',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPricingMetric(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStrategyTip(
+    IconData icon,
+    String title,
+    String description,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _getDarkerColor(color),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getDarkerColor(Color color) {
+    if (color is MaterialColor) {
+      return color[900] ?? color;
+    }
+    return Color.fromRGBO(
+      (color.red * 0.5).round(),
+      (color.green * 0.5).round(),
+      (color.blue * 0.5).round(),
+      1.0,
+    );
+  }
+
+  String _getSmartInvestmentTip(
+    double buyingPrice,
+    double? marketAvgPrice,
+    double pricePerSqft,
+    double? marketAvgPricePerSqft,
+  ) {
+    if (marketAvgPrice != null && marketAvgPrice > 0) {
+      final priceDiff = ((buyingPrice - marketAvgPrice) / marketAvgPrice * 100);
+      if (priceDiff < -5) {
+        return 'Great value! Property price is ${priceDiff.abs().toStringAsFixed(1)}% below market average. Strong investment opportunity.';
+      } else if (priceDiff > 10) {
+        return 'Premium pricing. Property is ${priceDiff.toStringAsFixed(1)}% above market. High-end location/features.';
+      } else {
+        return 'Fair market pricing. Aligned with market average. Good investment opportunity.';
+      }
+    }
+
+    if (marketAvgPricePerSqft != null && marketAvgPricePerSqft > 0) {
+      final sqftDiff =
+          ((pricePerSqft - marketAvgPricePerSqft) /
+          marketAvgPricePerSqft *
+          100);
+      if (sqftDiff < -10) {
+        return 'Exceptional value! Price per sqft is ${sqftDiff.abs().toStringAsFixed(1)}% below market.';
+      } else if (sqftDiff > 15) {
+        return 'Premium property. Above market pricing indicates high-end features.';
+      }
+    }
+
+    return 'Property pricing appears competitive. Consider market trends and location factors.';
+  }
+
+  String _getMarketPositionTip(
+    double? roi,
+    double? marketAvgPrice,
+    double buyingPrice,
+  ) {
+    if (roi != null && roi > 0) {
+      if (roi > 20) {
+        return 'Excellent ROI of ${roi.toStringAsFixed(1)}%. Strong growth potential with high returns.';
+      } else if (roi > 10) {
+        return 'Good ROI of ${roi.toStringAsFixed(1)}%. Steady growth expected.';
+      } else if (roi > 0) {
+        return 'Positive ROI of ${roi.toStringAsFixed(1)}%. Moderate growth potential.';
+      }
+    }
+
+    if (marketAvgPrice != null && marketAvgPrice > 0) {
+      final priceDiff = ((buyingPrice - marketAvgPrice) / marketAvgPrice * 100);
+      if (priceDiff < -10) {
+        return 'Strong market position. Significantly below market average.';
+      } else if (priceDiff > 10) {
+        return 'Premium market position. Above market indicates high value.';
+      }
+    }
+
+    return 'Market position appears stable. Monitor market trends for optimal timing.';
+  }
+
+  String _getValueAssessmentTip(
+    double pricePerSqft,
+    double? marketAvgPricePerSqft,
+    String location,
+  ) {
+    if (marketAvgPricePerSqft != null && marketAvgPricePerSqft > 0) {
+      final sqftDiff =
+          ((pricePerSqft - marketAvgPricePerSqft) /
+          marketAvgPricePerSqft *
+          100);
+      if (sqftDiff < -10) {
+        return 'Excellent value proposition. ${sqftDiff.abs().toStringAsFixed(1)}% below market per sqft.';
+      } else if (sqftDiff > 15) {
+        return 'Premium value. ${sqftDiff.toStringAsFixed(1)}% above market suggests premium location/features.';
+      } else {
+        return 'Fair value. Aligned with market pricing for ${location}.';
+      }
+    }
+
+    return 'Value assessment based on location and property features. Consider comparable properties.';
+  }
+
+  String _getInvestmentPotential(
+    double pricePerSqft,
+    double? roi,
+    double? marketAvgPrice,
+    double? marketAvgPricePerSqft,
+    ChildProperty property,
+  ) {
+    if (marketAvgPricePerSqft != null && marketAvgPricePerSqft > 0) {
+      final sqftDiff =
+          ((pricePerSqft - marketAvgPricePerSqft) /
+          marketAvgPricePerSqft *
+          100);
+      if (sqftDiff < -10 && (roi == null || roi > 10)) {
+        return '🔥 Exceptional investment opportunity! Price per sqft is ${sqftDiff.abs().toStringAsFixed(1)}% below market with strong ROI potential.';
+      } else if (sqftDiff < -5 && (roi == null || roi > 5)) {
+        return '✅ Great investment opportunity. Below market pricing with steady growth potential.';
+      } else if (sqftDiff > 15) {
+        return '💎 Premium property. Above market pricing indicates high-end location/features.';
+      }
+    }
+
+    if (roi != null) {
+      if (roi > 20) {
+        return '🔥 High ROI of ${roi.toStringAsFixed(1)}%. Excellent investment potential with strong returns.';
+      } else if (roi > 10) {
+        return '✅ Good ROI of ${roi.toStringAsFixed(1)}%. Steady growth and moderate returns expected.';
+      } else if (roi > 0) {
+        return '📊 Positive ROI of ${roi.toStringAsFixed(1)}%. Moderate investment potential.';
+      }
+    }
+
+    if (marketAvgPrice != null && marketAvgPrice > 0) {
+      final priceDiff =
+          ((property.buyingPrice ?? 0) - marketAvgPrice) / marketAvgPrice * 100;
+      if (priceDiff < -5) {
+        return '✅ Good investment opportunity. Below market pricing with growth potential.';
+      }
+    }
+
+    return '📊 Moderate investment potential. Consider location, amenities, and market trends.';
+  }
 }
 
 class _Amenity {
@@ -1609,4 +2174,3 @@ class _Amenity {
 
   const _Amenity(this.label, this.isAvailable, this.icon);
 }
-

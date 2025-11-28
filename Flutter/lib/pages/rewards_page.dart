@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/reward_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/modern_card.dart';
+import '../widgets/modern_button.dart';
 
 class RewardsPage extends StatefulWidget {
   const RewardsPage({super.key});
@@ -61,15 +64,19 @@ class _RewardsPageState extends State<RewardsPage>
 
     if (appState.token == null) {
       return Scaffold(
+        backgroundColor: AppColors.background,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lock_outline, size: 80, color: Colors.grey[400]),
+              Icon(Icons.lock_outline, size: 80, color: AppColors.textTertiary),
               const SizedBox(height: 20),
               Text(
                 'Login to view rewards',
-                style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.textSecondary,
+                  fontFamily: 'SF Pro Text',
+                ),
               ),
             ],
           ),
@@ -78,28 +85,33 @@ class _RewardsPageState extends State<RewardsPage>
     }
 
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Rewards'),
-        backgroundColor: const Color(0xFF667eea),
-        foregroundColor: Colors.white,
+        title: Text(
+          'Rewards',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
       ),
       body: Column(
         children: [
           // Points Display Header
-          Container(
-            width: double.infinity,
+          ModernCard(
             padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-              ),
-            ),
+            margin: const EdgeInsets.all(16),
+            color: AppColors.primary,
             child: Column(
               children: [
                 const Icon(Icons.stars, size: 50, color: Colors.white),
@@ -107,29 +119,35 @@ class _RewardsPageState extends State<RewardsPage>
                 // Current Points (Spendable)
                 Text(
                   '${appState.user?.currentPoints ?? 0}',
-                  style: const TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
-                const Text(
+                Text(
                   'Current Points (Spendable)',
-                  style: TextStyle(fontSize: 14, color: Colors.white70),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    fontFamily: 'SF Pro Text',
+                  ),
                 ),
                 const SizedBox(height: 8),
                 // Total Earned Points (Lifetime)
                 Text(
                   '${appState.user?.totalEarnedPoints ?? 0}',
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: Colors.white70,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
-                const Text(
+                Text(
                   'Total Earned (Lifetime)',
-                  style: TextStyle(fontSize: 12, color: Colors.white60),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white60,
+                    fontFamily: 'SF Pro Text',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 // Progress bar
@@ -153,18 +171,18 @@ class _RewardsPageState extends State<RewardsPage>
                       const SizedBox(height: 6),
                       Text(
                         'Next milestone: ${_getNextMilestone(appState.user?.totalEarnedPoints ?? 0)} pts',
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.white70,
                           fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Text',
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Progress: ${(_getProgressToNextBadge(appState.user?.totalEarnedPoints ?? 0) * 100).toStringAsFixed(1)}% to next milestone',
-                        style: const TextStyle(
-                          fontSize: 10,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.white60,
+                          fontFamily: 'SF Pro Text',
                         ),
                       ),
                     ],
@@ -176,12 +194,17 @@ class _RewardsPageState extends State<RewardsPage>
 
           // Tab Bar
           Container(
-            color: Colors.white,
+            color: AppColors.surface,
             child: TabBar(
               controller: _tabController,
-              indicatorColor: const Color(0xFF667eea),
-              labelColor: const Color(0xFF667eea),
-              unselectedLabelColor: Colors.grey,
+              indicatorColor: AppColors.primary,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Text',
+              ),
+              unselectedLabelStyle: const TextStyle(fontFamily: 'SF Pro Text'),
               isScrollable: true,
               tabs: const [
                 Tab(text: 'My Codes'),
@@ -222,16 +245,22 @@ class _RewardsPageState extends State<RewardsPage>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.redeem, size: 80, color: Colors.grey[300]),
+                Icon(Icons.redeem, size: 80, color: AppColors.textTertiary),
                 const SizedBox(height: 20),
                 Text(
                   'No redemptions yet',
-                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   'Redeem your first reward to see it here!',
-                  style: TextStyle(color: Colors.grey[500]),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontFamily: 'SF Pro Text',
+                  ),
                 ),
               ],
             ),
@@ -240,33 +269,50 @@ class _RewardsPageState extends State<RewardsPage>
 
         final redemptions = snapshot.data!.data!;
         return ListView.builder(
-          padding: EdgeInsets.zero,
+          padding: const EdgeInsets.all(16),
           itemCount: redemptions.length,
           itemBuilder: (context, index) {
             final redemption = redemptions[index];
-            return Card(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            return ModernCard(
+              margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: const Color(0xFF667eea).withOpacity(0.1),
-                  child: const Icon(Icons.redeem, color: Color(0xFF667eea)),
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  child: Icon(Icons.redeem, color: AppColors.primary),
                 ),
-                title: Text(redemption['rewardType'] ?? 'Unknown'),
-                subtitle: Text('Code: ${redemption['promoCode'] ?? ''}'),
+                title: Text(
+                  redemption['rewardType'] ?? 'Unknown',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'SF Pro Text',
+                  ),
+                ),
+                subtitle: Text(
+                  'Code: ${redemption['promoCode'] ?? ''}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontFamily: 'SF Pro Text',
+                  ),
+                ),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       '${redemption['pointsSpent'] ?? 0} pts',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF667eea),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                        fontFamily: 'SF Pro Text',
                       ),
                     ),
                     Text(
                       _formatDate(redemption['redeemedAt']),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontFamily: 'SF Pro Text',
+                      ),
                     ),
                   ],
                 ),
@@ -284,16 +330,22 @@ class _RewardsPageState extends State<RewardsPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, size: 80, color: Colors.grey[300]),
+            Icon(Icons.history, size: 80, color: AppColors.textTertiary),
             const SizedBox(height: 20),
             Text(
               'No activity yet',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
             const SizedBox(height: 10),
             Text(
               'Start exploring properties to earn points!',
-              style: TextStyle(color: Colors.grey[500]),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
+              ),
             ),
           ],
         ),
@@ -305,25 +357,42 @@ class _RewardsPageState extends State<RewardsPage>
       itemCount: recentRewards.length,
       itemBuilder: (context, index) {
         final reward = recentRewards[index];
-        return Card(
+        return ModernCard(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: const Color(0xFF667eea).withOpacity(0.1),
+              backgroundColor: AppColors.primary.withOpacity(0.1),
               child: Text(
                 '+${reward['points']}',
-                style: const TextStyle(
-                  color: Color(0xFF667eea),
-                  fontWeight: FontWeight.bold,
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
                   fontSize: 12,
+                  fontFamily: 'SF Pro Text',
                 ),
               ),
             ),
-            title: Text(reward['rewardType'] ?? 'Unknown'),
-            subtitle: Text(reward['description'] ?? ''),
+            title: Text(
+              reward['rewardType'] ?? 'Unknown',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                fontFamily: 'SF Pro Text',
+              ),
+            ),
+            subtitle: Text(
+              reward['description'] ?? '',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
+              ),
+            ),
             trailing: Text(
               _formatDate(reward['earnedAt']),
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
+              ),
             ),
           ),
         );
@@ -384,53 +453,42 @@ class _RewardsPageState extends State<RewardsPage>
         final badge = allBadges[index];
         final unlocked = badge['unlocked'] as bool;
 
-        return Card(
-          elevation: unlocked ? 4 : 1,
-          child: Container(
-            decoration: unlocked
-                ? BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  )
-                : null,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  badge['icon'] as String,
-                  style: TextStyle(
-                    fontSize: 48,
-                    color: unlocked ? Colors.white : Colors.grey[300],
-                  ),
+        return ModernCard(
+          color: unlocked ? AppColors.primary : null,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                badge['icon'] as String,
+                style: TextStyle(
+                  fontSize: 48,
+                  color: unlocked ? Colors.white : AppColors.textTertiary,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  badge['name'] as String,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: unlocked ? Colors.white : Colors.grey[700],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                badge['name'] as String,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: unlocked ? Colors.white : AppColors.textPrimary,
+                  fontFamily: 'SF Pro Text',
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  badge['description'] as String,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: unlocked ? Colors.white70 : AppColors.textSecondary,
+                    fontFamily: 'SF Pro Text',
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
                 ),
-                const SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    badge['description'] as String,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: unlocked ? Colors.white70 : Colors.grey[500],
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -444,31 +502,28 @@ class _RewardsPageState extends State<RewardsPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Container(
-            width: double.infinity,
+          ModernCard(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
+            color: AppColors.primary,
             child: Column(
               children: [
                 const Icon(Icons.redeem, size: 50, color: Colors.white),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Redeem Your Points',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
                     color: Colors.white,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'You have $totalPoints points',
-                  style: const TextStyle(fontSize: 14, color: Colors.white70),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    fontFamily: 'SF Pro Text',
+                  ),
                 ),
               ],
             ),
@@ -476,9 +531,13 @@ class _RewardsPageState extends State<RewardsPage>
           const SizedBox(height: 24),
 
           // Vouchers Section
-          const Text(
+          Text(
             'Gift Vouchers',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontFamily: 'SF Pro Display',
+            ),
           ),
           const SizedBox(height: 12),
           _buildRedeemCard(
@@ -524,7 +583,7 @@ class _RewardsPageState extends State<RewardsPage>
     final appState = Provider.of<AppState>(context, listen: false);
     final canRedeem = (appState.user?.currentPoints ?? 0) >= points;
 
-    return Card(
+    return ModernCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: Container(
@@ -536,42 +595,51 @@ class _RewardsPageState extends State<RewardsPage>
           ),
           child: Icon(icon, color: color, size: 28),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          title,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontFamily: 'SF Pro Text',
+          ),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(description),
+            Text(
+              description,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
+              ),
+            ),
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.stars, size: 14, color: Colors.grey[600]),
+                Icon(Icons.stars, size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
                 Text(
                   '$points points',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'SF Pro Text',
                   ),
                 ),
               ],
             ),
           ],
         ),
-        trailing: ElevatedButton(
+        trailing: ModernButton(
+          text: 'Redeem',
+          type: ModernButtonType.primary,
           onPressed: canRedeem
               ? () {
                   _showRedeemDialog(title, points);
                 }
               : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: canRedeem ? color : Colors.grey,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-          child: const Text('Redeem'),
+          width: null,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
         isThreeLine: true,
       ),

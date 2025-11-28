@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/news_article.dart';
 import '../services/api_client.dart';
 import '../services/news_service.dart';
+import '../providers/app_state.dart';
+import '../theme/app_colors.dart';
+import '../widgets/modern_search_bar.dart';
 import 'news_detail_page.dart';
 
 class AllNewsPage extends StatefulWidget {
@@ -12,7 +16,7 @@ class AllNewsPage extends StatefulWidget {
 }
 
 class _AllNewsPageState extends State<AllNewsPage> {
-  final NewsService _newsService = NewsService(ApiClient.baseUrl);
+  late NewsService _newsService;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -28,8 +32,16 @@ class _AllNewsPageState extends State<AllNewsPage> {
   @override
   void initState() {
     super.initState();
+    // Initialize NewsService with token
+    _initializeNewsService();
     _loadNews();
     _scrollController.addListener(_onScroll);
+  }
+
+  void _initializeNewsService() {
+    // News is now anonymous, but use token if available
+    final appState = Provider.of<AppState>(context, listen: false);
+    _newsService = NewsService(ApiClient.baseUrl, token: appState.token);
   }
 
   @override
@@ -61,20 +73,46 @@ class _AllNewsPageState extends State<AllNewsPage> {
     });
 
     try {
-      final response = await _newsService.searchNews(
-        query: _searchQuery.isEmpty ? null : _searchQuery,
-        category: _selectedCategory,
-        dateFrom: _dateFrom,
-        dateTo: _dateTo,
-        page: _currentPage,
-        pageSize: 10,
-      );
+      // News is now anonymous, but use token if available for better experience
+      final appState = Provider.of<AppState>(context, listen: false);
+      _newsService = NewsService(ApiClient.baseUrl, token: appState.token);
+
+      // Check if any filters are applied
+      final hasFilters = _searchQuery.isNotEmpty ||
+          _selectedCategory != null ||
+          _dateFrom != null ||
+          _dateTo != null;
+
+      final PaginatedNewsResponse response;
+
+      // Use getAllNews when no filters are applied, otherwise use searchNews
+      if (!hasFilters) {
+        response = await _newsService.getAllNews(
+          page: _currentPage,
+          pageSize: 10,
+        );
+      } else {
+        response = await _newsService.searchNews(
+          query: _searchQuery.isEmpty ? null : _searchQuery,
+          category: _selectedCategory,
+          dateFrom: _dateFrom,
+          dateTo: _dateTo,
+          page: _currentPage,
+          pageSize: 10,
+        );
+      }
+
+      // Sort by date (newest first)
+      final sortedItems = List<NewsArticle>.from(response.items);
+      sortedItems.sort((a, b) => b.publishedDate.compareTo(a.publishedDate));
 
       setState(() {
         if (refresh) {
-          _news = response.items;
+          _news = sortedItems;
         } else {
-          _news.addAll(response.items);
+          _news.addAll(sortedItems);
+          // Re-sort all news after adding new items
+          _news.sort((a, b) => b.publishedDate.compareTo(a.publishedDate));
         }
         _hasMore = response.hasMore;
         _currentPage++;
@@ -85,9 +123,11 @@ class _AllNewsPageState extends State<AllNewsPage> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load news: $e')));
+        final errorMessage = e.toString();
+        print('❌ Error loading news: $errorMessage');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load news: $errorMessage')),
+        );
       }
     }
   }
@@ -118,59 +158,191 @@ class _AllNewsPageState extends State<AllNewsPage> {
     _refreshNews();
   }
 
+  void _showFilterDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Filter News',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Category',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Text',
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterOption('All', null),
+                _buildFilterOption('Real Estate', 'Real Estate'),
+                _buildFilterOption('Market Updates', 'Market Updates'),
+                _buildFilterOption('Technology', 'Technology'),
+                _buildFilterOption('Finance', 'Finance'),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _clearFilters,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      'Clear',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Text',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _refreshNews();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      'Apply',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Text',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterOption(String label, String? value) {
+    final isSelected = _selectedCategory == value;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 14,
+          fontFamily: 'SF Pro Text',
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected ? AppColors.surface : AppColors.textPrimary,
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedCategory = selected ? value : null;
+        });
+      },
+      backgroundColor: AppColors.background,
+      selectedColor: AppColors.primary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.border,
+          width: 1,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'News',
           style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1A1A),
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'SF Pro Display',
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            tooltip: 'Filter',
+            onPressed: _showFilterDialog,
+          ),
+        ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(120),
+          preferredSize: const Size.fromHeight(100),
           child: Column(
             children: [
               // Search bar
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
+                  horizontal: 16,
                   vertical: 8,
                 ),
-                child: TextField(
+                child: ModernSearchBar(
                   controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search news...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              _performSearch();
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                  ),
+                  hintText: 'Search news...',
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                   onSubmitted: (_) => _performSearch(),
                 ),
               ),
               // Filter chips
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
+                  horizontal: 16,
                   vertical: 8,
                 ),
                 child: SingleChildScrollView(
@@ -208,11 +380,24 @@ class _AllNewsPageState extends State<AllNewsPage> {
                         Padding(
                           padding: const EdgeInsets.only(left: 8),
                           child: FilterChip(
-                            label: const Text('Clear'),
+                            label: const Text(
+                              'Clear',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontFamily: 'SF Pro Text',
+                              ),
+                            ),
                             onSelected: (_) => _clearFilters(),
-                            backgroundColor: Colors.red[50],
-                            selectedColor: Colors.red[100],
-                            labelStyle: TextStyle(color: Colors.red[700]),
+                            backgroundColor: AppColors.error.withOpacity(0.1),
+                            selectedColor: AppColors.error.withOpacity(0.2),
+                            labelStyle: const TextStyle(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Text',
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
                           ),
                         ),
                     ],
@@ -225,17 +410,23 @@ class _AllNewsPageState extends State<AllNewsPage> {
       ),
       body: RefreshIndicator(
         onRefresh: _refreshNews,
+        color: AppColors.primary,
         child: _news.isEmpty && !_isLoading
             ? _buildEmptyState()
             : ListView.builder(
                 controller: _scrollController,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 itemCount: _news.length + (_isLoading ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == _news.length) {
                     return _buildLoadingIndicator();
                   }
-                  return _buildNewsCard(_news[index]);
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: index == _news.length - 1 ? 0 : 12,
+                    ),
+                    child: _buildNewsCard(_news[index]),
+                  );
                 },
               ),
       ),
@@ -244,7 +435,10 @@ class _AllNewsPageState extends State<AllNewsPage> {
 
   Widget _buildFilterChip(String label, String? value, bool isSelected) {
     return FilterChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontFamily: 'SF Pro Text'),
+      ),
       selected: isSelected,
       onSelected: (selected) {
         setState(() {
@@ -252,11 +446,19 @@ class _AllNewsPageState extends State<AllNewsPage> {
         });
         _refreshNews();
       },
-      backgroundColor: Colors.grey[100],
-      selectedColor: Colors.blue[100],
+      backgroundColor: AppColors.background,
+      selectedColor: AppColors.primary.withOpacity(0.15),
       labelStyle: TextStyle(
-        color: isSelected ? Colors.blue[700] : Colors.grey[700],
+        color: isSelected ? AppColors.primary : AppColors.textSecondary,
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+        fontFamily: 'SF Pro Text',
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.border,
+          width: isSelected ? 1 : 0,
+        ),
       ),
     );
   }
@@ -267,14 +469,13 @@ class _AllNewsPageState extends State<AllNewsPage> {
         MaterialPageRoute(builder: (context) => NewsDetailPage(news: news)),
       ),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
+              color: AppColors.shadowCard,
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -290,26 +491,26 @@ class _AllNewsPageState extends State<AllNewsPage> {
               child: Container(
                 height: 200,
                 width: double.infinity,
-                color: Colors.grey[200],
+                color: AppColors.background,
                 child: news.images.isNotEmpty
                     ? Image.network(
                         news.firstImageUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return const Center(
+                          return Center(
                             child: Icon(
                               Icons.article_outlined,
                               size: 48,
-                              color: Colors.grey,
+                              color: AppColors.textTertiary,
                             ),
                           );
                         },
                       )
-                    : const Center(
+                    : Center(
                         child: Icon(
                           Icons.article_outlined,
                           size: 48,
-                          color: Colors.grey,
+                          color: AppColors.textTertiary,
                         ),
                       ),
               ),
@@ -326,38 +527,44 @@ class _AllNewsPageState extends State<AllNewsPage> {
                       if (news.category != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 12,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             news.categoryDisplayName,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Colors.blue[700],
+                              fontFamily: 'SF Pro Text',
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
                       if (news.category != null) const SizedBox(width: 8),
                       Text(
                         news.formattedDate,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontFamily: 'SF Pro Text',
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   // Title
                   Text(
                     news.title,
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A1A),
-                      letterSpacing: -0.3,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                      color: AppColors.textPrimary,
+                      height: 1.3,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -366,9 +573,10 @@ class _AllNewsPageState extends State<AllNewsPage> {
                   // Content preview
                   Text(
                     news.content,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      fontFamily: 'SF Pro Text',
+                      color: AppColors.textSecondary,
                       height: 1.4,
                     ),
                     maxLines: 3,
@@ -386,7 +594,7 @@ class _AllNewsPageState extends State<AllNewsPage> {
   Widget _buildLoadingIndicator() {
     return const Padding(
       padding: EdgeInsets.all(20),
-      child: Center(child: CircularProgressIndicator()),
+      child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
     );
   }
 
@@ -397,33 +605,48 @@ class _AllNewsPageState extends State<AllNewsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.article_outlined, size: 64, color: Colors.grey[400]),
+            Icon(
+              Icons.article_outlined,
+              size: 64,
+              color: AppColors.textTertiary,
+            ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'No news found',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
+                fontFamily: 'SF Pro Display',
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Try adjusting your search or filters',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: 14,
+                fontFamily: 'SF Pro Text',
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _clearFilters,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[600],
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro Text',
                 ),
               ),
               child: const Text('Clear Filters'),

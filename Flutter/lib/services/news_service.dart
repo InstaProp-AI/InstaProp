@@ -18,7 +18,7 @@ class NewsService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/news/latest?count=$count'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -41,7 +41,7 @@ class NewsService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/news?page=$page&pageSize=$pageSize'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -60,7 +60,7 @@ class NewsService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/news/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -99,7 +99,7 @@ class NewsService {
 
       final response = await http.get(
         uri,
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {

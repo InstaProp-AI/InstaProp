@@ -145,96 +145,187 @@ class _FloatingAIBrokerButtonState extends State<FloatingAIBrokerButton>
 
   /// Show login required dialog with login button
   void _showLoginRequiredDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => AlertDialog(
+    // Ensure we have a valid context
+    if (!mounted) {
+      debugPrint('❌ Cannot show dialog - widget not mounted');
+      return;
+    }
+    
+    // Use post-frame callback to ensure Navigator is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      // Try to get Navigator - use rootNavigator
+      final navigator = Navigator.maybeOf(context, rootNavigator: true);
+      
+      if (navigator == null) {
+        debugPrint('❌ No Navigator found - navigating directly to auth page');
+        // Fallback: Navigate directly to auth page
+        try {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AuthPage()),
+          );
+        } catch (e) {
+          debugPrint('❌ Failed to navigate: $e');
+          // Last resort: show snackbar if ScaffoldMessenger is available
+          try {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please sign in to use the AI Broker. Go to Profile to login.'),
+                duration: Duration(seconds: 4),
+                backgroundColor: Colors.blue,
+              ),
+            );
+          } catch (e2) {
+            debugPrint('❌ Could not show snackbar either: $e2');
+          }
+        }
+        return;
+      }
+      
+      // We have a Navigator, show the dialog
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black54,
+        builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
-        title: const Row(
-          children: [
-            Icon(Icons.login, color: AppColors.primary, size: 28),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Login Required',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'You need to be logged in to use the AI Broker bot.',
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.5,
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Please log in to continue.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
-            ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: Colors.white,
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AuthPage(),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.login, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Go to Login',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon with gradient background
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
                   ),
                 ),
-              ],
-            ),
+                child: const Icon(
+                  Icons.smart_toy,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Sign Up to Use Our AI Broker',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'SF Pro Display',
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Get instant property insights, investment advice, and personalized recommendations from our AI-powered broker.',
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'SF Pro Text',
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Sign up now to unlock the full potential of AI-driven real estate assistance.',
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: AppColors.textTertiary,
+                  fontFamily: 'SF Pro Text',
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.grey[300]!),
+                        ),
+                      ),
+                      child: Text(
+                        'Maybe Later',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Text',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        // Navigate to auth page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AuthPage(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.login, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Sign Up / Login',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Text',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    );
+      );
+    });
   }
 
   @override
@@ -331,21 +422,13 @@ class _FloatingAIBrokerButtonState extends State<FloatingAIBrokerButton>
                   onPanStart: (details) {
                     debugPrint('🔵 Pan start');
                     setState(() {
-                      _isDragging = false;
-                      _showDismissZone = false;
+                      _isDragging = true;
+                      _showDismissZone = true;
                     });
+                    _dismissZoneController.forward();
                   },
                   onPanUpdate: (details) {
-                    if (!_isDragging) {
-                      debugPrint('🔵 Starting drag');
-                      setState(() {
-                        _showDismissZone = true;
-                      });
-                      _dismissZoneController.forward();
-                    }
-
                     setState(() {
-                      _isDragging = true;
                       final size = MediaQuery.of(context).size;
 
                       // Convert to leftOffset for easier calculation during drag
@@ -367,11 +450,13 @@ class _FloatingAIBrokerButtonState extends State<FloatingAIBrokerButton>
                         size.height - 60.0,
                       );
 
-                      // Check if over dismiss zone
-                      _isOverDismissZone = _isInDismissZone(
-                        leftOffset!,
-                        topOffset,
-                      );
+                      // Check if over dismiss zone (only if leftOffset is set)
+                      if (leftOffset != null) {
+                        _isOverDismissZone = _isInDismissZone(
+                          leftOffset!,
+                          topOffset,
+                        );
+                      }
                     });
                   },
                   onPanEnd: (details) {

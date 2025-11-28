@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/analytics_service.dart';
@@ -53,11 +54,7 @@ class _MarketHubPageState extends State<MarketHubPage>
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-          ),
+          color: AppColors.background,
         ),
         child: SafeArea(
           child: FadeTransition(
@@ -95,9 +92,7 @@ class _MarketHubPageState extends State<MarketHubPage>
                             title: 'Live Auctions',
                             subtitle: 'Active property auctions',
                             icon: Icons.gavel,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFff6b6b), Color(0xFFee5a24)],
-                            ),
+                            color: AppColors.error,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -117,9 +112,7 @@ class _MarketHubPageState extends State<MarketHubPage>
                             title: 'Browse Properties',
                             subtitle: 'Search and filter properties',
                             icon: Icons.home,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF4ecdc4), Color(0xFF44a08d)],
-                            ),
+                            color: AppColors.success,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -140,9 +133,7 @@ class _MarketHubPageState extends State<MarketHubPage>
                             title: 'Market Insights',
                             subtitle: 'Investment analysis and trends',
                             icon: Icons.analytics,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFa8edea), Color(0xFFfed6e3)],
-                            ),
+                            color: AppColors.primary,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -173,7 +164,7 @@ class _MarketHubPageState extends State<MarketHubPage>
     required String title,
     required String subtitle,
     required IconData icon,
-    required Gradient gradient,
+    required Color color,
     required VoidCallback onTap,
     required String badge,
     required Color badgeColor,
@@ -181,13 +172,14 @@ class _MarketHubPageState extends State<MarketHubPage>
     return Container(
       height: 140,
       decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(20),
+        color: color,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: AppColors.shadowCard,
+            offset: const Offset(0, 2),
+            blurRadius: 8,
+            spreadRadius: 0,
           ),
         ],
       ),

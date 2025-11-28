@@ -338,6 +338,18 @@ namespace InstapropAPI.Services
             await SeedTestDeveloperProfilesAsync(developers);
             Console.WriteLine($"   ✅ Created profiles for {developers.Count} developers");
 
+            Console.WriteLine("\n📈 Step 16: Seeding Property Price History...");
+            var priceHistoryCount = await SeedPropertyPriceHistoryAsync(parentProperties, auctions);
+            Console.WriteLine($"   ✅ Created {priceHistoryCount} price history records");
+
+            Console.WriteLine("\n🥇 Step 17: Seeding Gold Prices...");
+            var goldPriceCount = await SeedGoldPriceAsync();
+            Console.WriteLine($"   ✅ Created {goldPriceCount} gold price records");
+
+            Console.WriteLine("\n📹 Step 18: Seeding Live Streams...");
+            var liveStreamCount = await SeedTestLiveStreamsAsync(developers);
+            Console.WriteLine($"   ✅ Created {liveStreamCount} live streams");
+
             await _context.SaveChangesAsync();
 
             Console.WriteLine("\n================================================");
@@ -1154,8 +1166,230 @@ namespace InstapropAPI.Services
             }
         }
 
+        private async Task<int> SeedPropertyPriceHistoryAsync(List<ParentProperty> parentProperties, List<Auction> auctions)
+        {
+            if (parentProperties.Count == 0)
+            {
+                Console.WriteLine("   ⚠️ No parent properties available, skipping price history...");
+                return 0;
+            }
+
+            var existingHistory = await _context.PropertyPriceHistories
+                .Select(ph => ph.ParentPropertyId)
+                .Distinct()
+                .ToListAsync();
+
+            var priceHistories = new List<PropertyPriceHistory>();
+            var now = DateTime.UtcNow;
+
+            foreach (var parentProperty in parentProperties)
+            {
+                // Skip if already has history
+                if (existingHistory.Contains(parentProperty.ParentPropertyId))
+                    continue;
+
+                // Generate price history for the last 18 months
+                var monthsToGenerate = 18;
+                var basePrice = parentProperties.IndexOf(parentProperty) % 2 == 0
+                    ? 500000m + (_random.Next(0, 500000))
+                    : 800000m + (_random.Next(0, 700000));
+
+                for (int i = monthsToGenerate; i >= 0; i--)
+                {
+                    var priceDate = now.AddMonths(-i);
+                    
+                    // Create price trend (slight variations with overall growth)
+                    var monthVariation = (decimal)(_random.Next(-5, 15)) / 100m; // -5% to +15% variation
+                    var trendFactor = 1.0m + (decimal)(monthsToGenerate - i) * 0.01m; // Slight upward trend
+                    var price = basePrice * (1.0m + monthVariation) * trendFactor;
+                    
+                    // Ensure price is positive and reasonable
+                    price = Math.Max(price, basePrice * 0.7m);
+                    price = Math.Min(price, basePrice * 1.5m);
+
+                    var source = i % 3 == 0 ? PriceSource.AuctionWin 
+                        : i % 3 == 1 ? PriceSource.Listing 
+                        : PriceSource.DirectSale;
+
+                    var priceHistory = new PropertyPriceHistory
+                    {
+                        PriceHistoryId = Guid.NewGuid(),
+                        ParentPropertyId = parentProperty.ParentPropertyId,
+                        Price = Math.Round(price, 2),
+                        PriceDate = priceDate,
+                        Source = source,
+                        CreatedAt = now.AddMonths(-i)
+                    };
+
+                    // Link to auction if available and source is AuctionWin
+                    if (source == PriceSource.AuctionWin && auctions.Any())
+                    {
+                        var relatedAuction = auctions
+                            .Where(a => a.Property != null && a.Property.ParentPropertyId == parentProperty.ParentPropertyId)
+                            .FirstOrDefault();
+                        if (relatedAuction != null)
+                        {
+                            priceHistory.AuctionId = relatedAuction.AuctionId;
+                        }
+                    }
+
+                    priceHistories.Add(priceHistory);
+                }
+            }
+
+            if (priceHistories.Any())
+            {
+                await _context.PropertyPriceHistories.AddRangeAsync(priceHistories);
+                await _context.SaveChangesAsync();
+            }
+
+            return priceHistories.Count;
+        }
+
+        private async Task<int> SeedGoldPriceAsync()
+        {
+            var existingGoldPrices = await _context.GoldPrices
+                .Select(gp => new { gp.Year, gp.Month })
+                .ToListAsync();
+
+            var goldPrices = new List<GoldPrice>();
+            var now = DateTime.UtcNow;
+            var basePricePerGram = 2000m; // Base price in EGP per gram
+
+            // Generate gold prices for the last 24 months
+            for (int i = 24; i >= 0; i--)
+            {
+                var priceDate = now.AddMonths(-i);
+                var year = priceDate.Year;
+                var month = priceDate.Month;
+
+                // Skip if already exists
+                if (existingGoldPrices.Any(gp => gp.Year == year && gp.Month == month))
+                    continue;
+
+                // Create realistic gold price trend with variations
+                var monthVariation = (decimal)(_random.Next(-3, 8)) / 100m; // -3% to +8% variation
+                var trendFactor = 1.0m + (decimal)(24 - i) * 0.008m; // Slight upward trend over time
+                var pricePerGram = basePricePerGram * (1.0m + monthVariation) * trendFactor;
+                
+                // Ensure price is positive and reasonable (between 1800 and 2500 EGP per gram)
+                pricePerGram = Math.Max(pricePerGram, 1800m);
+                pricePerGram = Math.Min(pricePerGram, 2500m);
+
+                var goldPrice = new GoldPrice
+                {
+                    GoldPriceId = Guid.NewGuid(),
+                    PricePerGram = Math.Round(pricePerGram, 2),
+                    Year = year,
+                    Month = month,
+                    Date = new DateTime(year, month, 1),
+                    Source = GoldPriceSource.Manual,
+                    CreatedAt = priceDate,
+                    UpdatedAt = priceDate
+                };
+
+                goldPrices.Add(goldPrice);
+            }
+
+            if (goldPrices.Any())
+            {
+                await _context.GoldPrices.AddRangeAsync(goldPrices);
+                await _context.SaveChangesAsync();
+            }
+
+            return goldPrices.Count;
+        }
+
+        private async Task<int> SeedTestLiveStreamsAsync(List<AccountBase> developers)
+        {
+            if (developers.Count == 0)
+            {
+                Console.WriteLine("   ⚠️ No developers available, skipping live streams...");
+                return 0;
+            }
+
+            var existingStreams = await _context.LiveStreams
+                .Select(s => s.StreamId)
+                .ToListAsync();
+
+            var liveStreams = new List<LiveStream>();
+            var now = DateTime.UtcNow;
+
+            // Create 2-3 live streams for demo
+            var streamTitles = new[]
+            {
+                "Exclusive Property Tour - New Cairo Development",
+                "Live Q&A: Investment Opportunities in Dubai",
+                "Virtual Property Showcase - Luxury Apartments"
+            };
+
+            var streamDescriptions = new[]
+            {
+                "Join us for an exclusive tour of our latest development project in New Cairo. See the properties, amenities, and ask questions in real-time!",
+                "Get expert insights on the best investment opportunities in Dubai's real estate market. Ask our team anything!",
+                "Experience luxury living with our virtual property showcase. See stunning apartments with premium finishes and world-class amenities."
+            };
+
+            var streamUrls = new[]
+            {
+                "https://example.com/stream/new-cairo-tour",
+                "https://example.com/stream/dubai-investment-qa",
+                "https://example.com/stream/luxury-apartments"
+            };
+
+            var thumbnailUrls = new[]
+            {
+                "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800",
+                "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800",
+                "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800"
+            };
+
+            for (int i = 0; i < Math.Min(3, developers.Count); i++)
+            {
+                var developer = developers[i];
+                var streamId = Guid.NewGuid();
+
+                // Skip if already exists
+                if (existingStreams.Contains(streamId))
+                    continue;
+
+                var startTime = now.AddHours(-_random.Next(0, 2)); // Started 0-2 hours ago
+                var viewerCount = _random.Next(50, 500); // Random viewer count
+
+                var stream = new LiveStream
+                {
+                    StreamId = streamId,
+                    DeveloperId = developer.AccountId,
+                    Title = streamTitles[i % streamTitles.Length],
+                    Description = streamDescriptions[i % streamDescriptions.Length],
+                    StreamUrl = streamUrls[i % streamUrls.Length],
+                    ThumbnailUrl = thumbnailUrls[i % thumbnailUrls.Length],
+                    Status = "Live",
+                    ViewerCount = viewerCount,
+                    StartTime = startTime,
+                    EndTime = null,
+                    CreatedAt = startTime
+                };
+
+                liveStreams.Add(stream);
+            }
+
+            if (liveStreams.Any())
+            {
+                await _context.LiveStreams.AddRangeAsync(liveStreams);
+                await _context.SaveChangesAsync();
+            }
+
+            return liveStreams.Count;
+        }
+
         private async Task ClearAllDataAsync()
         {
+            _context.PropertyPriceHistories.RemoveRange(_context.PropertyPriceHistories);
+            _context.GoldPrices.RemoveRange(_context.GoldPrices);
+            _context.StreamChatMessages.RemoveRange(_context.StreamChatMessages);
+            _context.StreamViewers.RemoveRange(_context.StreamViewers);
+            _context.LiveStreams.RemoveRange(_context.LiveStreams);
             _context.DeveloperRatings.RemoveRange(_context.DeveloperRatings);
             _context.DeveloperPermissions.RemoveRange(_context.DeveloperPermissions);
             _context.DeveloperProfiles.RemoveRange(_context.DeveloperProfiles);

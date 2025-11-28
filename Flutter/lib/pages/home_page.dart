@@ -1,4 +1,5 @@
 import '../../theme/app_colors.dart';
+import '../../theme/app_animations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -10,6 +11,7 @@ import '../services/api_client.dart';
 import '../services/news_service.dart';
 import '../models/news_article.dart';
 import '../widgets/property_image_carousel.dart';
+import '../widgets/capsule_bottom_nav_bar.dart';
 import 'auction_details_page.dart';
 import 'properties_management_page.dart';
 import 'project_details_page.dart';
@@ -39,11 +41,14 @@ class _HomePageState extends State<HomePage>
 
     try {
       _animationController = AnimationController(
-        duration: const Duration(milliseconds: 800),
+        duration: AppAnimations.normal, // 300ms
         vsync: this,
       );
       _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+        CurvedAnimation(
+          parent: _animationController,
+          curve: AppAnimations.defaultCurve,
+        ),
       );
 
       // Add a small delay before starting animation to prevent assertion errors
@@ -65,7 +70,9 @@ class _HomePageState extends State<HomePage>
                 // Redirect sales users to sales chats page
                 if (appState.user?.isSales == true) {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => const SalesChatsPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const SalesChatsPage(),
+                    ),
                   );
                   return;
                 }
@@ -134,60 +141,45 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildBottomNavigation() {
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.secondary, width: 1)),
-      ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (index == _selectedIndex) {
-            if (index == 1) {
-              _exploreController.scrollToTopAndReload();
-            }
-            return;
-          }
-
-          setState(() {
-            _selectedIndex = index;
-          });
-
+    return CapsuleBottomNavBar(
+      currentIndex: _selectedIndex,
+      onTap: (index) {
+        if (index == _selectedIndex) {
           if (index == 1) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _exploreController.scrollToTopAndReload();
-            });
+            _exploreController.scrollToTopAndReload();
           }
-        },
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.secondary,
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.2,
+          return;
+        }
+
+        setState(() {
+          _selectedIndex = index;
+        });
+
+        if (index == 1) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _exploreController.scrollToTopAndReload();
+          });
+        }
+      },
+      items: const [
+        CapsuleNavItem(
+          icon: Icons.store_outlined,
+          selectedIcon: Icons.store_rounded,
+          label: 'Market',
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w500,
-          letterSpacing: -0.2,
+        CapsuleNavItem(
+          icon: Icons.explore_outlined,
+          selectedIcon: Icons.explore_rounded,
+          label: 'Explore',
         ),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.store_rounded),
-            label: 'Market',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore_rounded),
-            label: 'Explore',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_rounded),
-            label: 'Profile',
-          ),
-        ],
-      ),
+        CapsuleNavItem(
+          icon: Icons.person_outline,
+          selectedIcon: Icons.person_rounded,
+          label: 'Profile',
+        ),
+      ],
+      // Optional: Add badge counts if needed
+      // badgeCounts: {0: 3, 2: 1}, // Example: 3 notifications on Market, 1 on Profile
     );
   }
 
@@ -197,6 +189,12 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildProfilePage(BuildContext context, AppState appState) {
     return const PropertiesManagementPage();
+  }
+
+  Future<List<NewsArticle>> _getLatestNews(BuildContext context) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final newsService = NewsService(ApiClient.baseUrl, token: appState.token);
+    return await newsService.getLatestNews(count: 3);
   }
 
   // MINIMAL REDESIGNED WIDGETS
@@ -210,14 +208,22 @@ class _HomePageState extends State<HomePage>
         ),
       ),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
         height: 400,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowCard,
+              offset: const Offset(0, 2),
+              blurRadius: 8,
+              spreadRadius: 0,
+            ),
+          ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -230,17 +236,15 @@ class _HomePageState extends State<HomePage>
                 showNavigationButtons: false,
                 showImageCounter: false,
               ),
-              // Gradient overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.0),
-                      Colors.black.withOpacity(0.7),
-                    ],
-                    stops: const [0.5, 1.0],
+              // Subtle overlay (no gradient, just dark overlay at bottom)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 200,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
                   ),
                 ),
               ),
@@ -250,7 +254,7 @@ class _HomePageState extends State<HomePage>
                 left: 0,
                 right: 0,
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -771,7 +775,7 @@ class _HomePageState extends State<HomePage>
           ),
           const SizedBox(height: 20),
           FutureBuilder<List<NewsArticle>>(
-            future: NewsService(ApiClient.baseUrl).getLatestNews(count: 3),
+            future: _getLatestNews(context),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -936,17 +940,15 @@ class _AutoScrollingNewsCarouselState
                         color: Colors.grey,
                       ),
                     ),
-              // Gradient overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.0),
-                      Colors.black.withOpacity(0.7),
-                    ],
-                    stops: const [0.5, 1.0],
+              // Subtle overlay (no gradient, just dark overlay at bottom)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 200,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
                   ),
                 ),
               ),
@@ -957,16 +959,7 @@ class _AutoScrollingNewsCarouselState
                 right: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.0),
-                        Colors.black.withOpacity(0.3),
-                        Colors.black.withOpacity(0.7),
-                      ],
-                      stops: const [0.0, 0.3, 1.0],
-                    ),
+                    color: Colors.black.withOpacity(0.3),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -1046,17 +1039,14 @@ class _AutoScrollingNewsCarouselState
       child: Container(
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-          ),
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF667eea).withOpacity(0.3),
-              blurRadius: 8,
+              color: AppColors.shadowCard,
               offset: const Offset(0, 2),
+              blurRadius: 8,
+              spreadRadius: 0,
             ),
           ],
         ),

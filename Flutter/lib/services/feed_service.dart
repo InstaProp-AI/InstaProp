@@ -18,6 +18,7 @@ import '../models/payment_reminder.dart';
 import 'news_service.dart';
 import 'project_service.dart';
 import 'developer_service.dart';
+import 'live_stream_service.dart';
 import 'api_client.dart';
 
 // Backend response model
@@ -75,8 +76,21 @@ class FeedResponseDto {
               itemData = InvestorMilestone.fromJson(data);
               break;
             case 'livestream':
-              itemType = FeedItemType.livestream;
-              itemData = LiveStream.fromJson(data);
+              try {
+                print('🔍 Parsing livestream item...');
+                print('   Raw data keys: ${data.keys.toList()}');
+                itemType = FeedItemType.livestream;
+                final stream = LiveStream.fromJson(data);
+                itemData = stream;
+                print('✅ Successfully parsed livestream item: ${stream.title} (ID: ${stream.streamId})');
+              } catch (e, stackTrace) {
+                print('❌ Error parsing livestream item: $e');
+                print('   Stack trace: $stackTrace');
+                print('   Data: $data');
+                // Set itemType to null so this item is skipped
+                itemType = null;
+                itemData = null;
+              }
               break;
             case 'valuationPrompt':
               itemType = FeedItemType.valuationPrompt;
@@ -90,9 +104,12 @@ class FeedResponseDto {
 
           if (itemType != null) {
             items.add(FeedItem(type: itemType, data: itemData, id: id));
+          } else {
+            print('⚠️ Skipped feed item with null type: $type');
           }
-        } catch (e) {
-          print('❌ Error parsing feed item: $e');
+        } catch (e, stackTrace) {
+          print('❌ Error parsing feed item (type: ${item['type']}, id: ${item['id']}): $e');
+          print('   Stack trace: $stackTrace');
         }
       }
     }
@@ -114,11 +131,13 @@ class FeedService {
   static List<NewsArticle> _cachedNews = [];
   static List<ProjectModel> _cachedProjects = [];
   static List<FeaturedDeveloper> _cachedDevelopers = [];
+  static List<LiveStream> _cachedLiveStreams = [];
 
   static const int _fallbackAuctionTarget = 4;
   static const int _fallbackNewsTarget = 1;
   static const int _fallbackProjectTarget = 1;
   static const int _fallbackDeveloperTarget = 1;
+  static const int _fallbackLiveStreamTarget = 2;
   static const int _fallbackNotificationCap = 2;
 
   /// Get mixed feed from backend API (now completely randomized server-side!)
@@ -163,6 +182,15 @@ class FeedService {
           response.data != null &&
           response.data!.items.isNotEmpty) {
         print('✅ Received ${response.data!.items.length} items from backend');
+        
+        // Debug: Count live streams in response
+        final livestreamCount = response.data!.items.where((item) => item.type == FeedItemType.livestream).length;
+        if (livestreamCount > 0) {
+          print('📹 Found $livestreamCount live stream(s) in backend response');
+        } else {
+          print('⚠️ No live streams found in backend response');
+        }
+        
         return response.data!.items;
       }
 
@@ -199,6 +227,7 @@ class FeedService {
         _fetchNews(),
         _fetchProjects(),
         _fetchDevelopers(),
+        _fetchLiveStreams(),
       ]);
 
       var auctions = List<Auction>.from(results[0] as List<Auction>);
@@ -206,6 +235,7 @@ class FeedService {
       var projects = List<ProjectModel>.from(results[2] as List<ProjectModel>);
       var developers =
           List<FeaturedDeveloper>.from(results[3] as List<FeaturedDeveloper>);
+      var liveStreams = List<LiveStream>.from(results[4] as List<LiveStream>);
 
       if (auctions.isNotEmpty) {
         _cachedAuctions = auctions;
@@ -229,6 +259,12 @@ class FeedService {
         _cachedDevelopers = developers;
       } else if (_cachedDevelopers.isNotEmpty) {
         developers = _cachedDevelopers;
+      }
+
+      if (liveStreams.isNotEmpty) {
+        _cachedLiveStreams = liveStreams;
+      } else if (_cachedLiveStreams.isNotEmpty) {
+        liveStreams = _cachedLiveStreams;
       }
 
       final feedItems = <FeedItem>[];
@@ -294,6 +330,19 @@ class FeedService {
         idBuilder: (developer, index) =>
             'developer_${developer.developerId}_vp${virtualPage}_$index',
       );
+
+      if (liveStreams.isNotEmpty) {
+        print('📹 Adding ${liveStreams.length} live stream(s) to fallback feed');
+        appendContent<LiveStream>(
+          source: liveStreams,
+          desiredCount: _fallbackLiveStreamTarget,
+          type: FeedItemType.livestream,
+          idBuilder: (stream, index) =>
+              'livestream_${stream.streamId}_vp${virtualPage}_$index',
+        );
+      } else {
+        print('⚠️ No live streams available for fallback feed');
+      }
 
       // Add REAL notifications from database with sensible limits
       final notifications = await _fetchRealNotifications();
@@ -605,7 +654,10 @@ class FeedService {
 
   static Future<List<NewsArticle>> _fetchNews() async {
     try {
-      return await NewsService(ApiClient.baseUrl).getLatestNews(count: 5);
+      // Get token for authentication
+      final token = await ApiClient.getToken();
+      final newsService = NewsService(ApiClient.baseUrl, token: token);
+      return await newsService.getLatestNews(count: 5);
     } catch (e) {
       print('Error fetching news: $e');
       return [];
@@ -637,9 +689,54 @@ class FeedService {
 
   static Future<List<FeaturedDeveloper>> _fetchDevelopers() async {
     try {
-      return await DeveloperService(ApiClient.baseUrl).getFeaturedDevelopers();
+      final developers = await DeveloperService(ApiClient.baseUrl).getFeaturedDevelopers();
+      
+      // Filter to only include developers with valid IDs and profiles
+      // This ensures only real developers that can be viewed are shown
+      final validDevelopers = developers.where((developer) {
+        // Validate developer has a non-empty ID
+        if (developer.developerId.isEmpty) {
+          print('⚠️ Filtered out developer with empty ID');
+          return false;
+        }
+        
+        // Validate developer has a name (company or full name)
+        final hasName = (developer.companyName != null && developer.companyName!.isNotEmpty) ||
+                       (developer.firstName.isNotEmpty || developer.lastName.isNotEmpty);
+        if (!hasName) {
+          print('⚠️ Filtered out developer without name: ${developer.developerId}');
+          return false;
+        }
+        
+        // Validate GUID format (should be a valid GUID)
+        final guidPattern = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+        if (!guidPattern.hasMatch(developer.developerId)) {
+          print('⚠️ Filtered out developer with invalid GUID format: ${developer.developerId}');
+          return false;
+        }
+        
+        return true;
+      }).toList();
+      
+      print('✅ Filtered developers: ${developers.length} -> ${validDevelopers.length} valid');
+      return validDevelopers;
     } catch (e) {
       print('Error fetching developers: $e');
+      return [];
+    }
+  }
+
+  static Future<List<LiveStream>> _fetchLiveStreams() async {
+    try {
+      final response = await LiveStreamService.getActiveStreams();
+      if (response.success && response.data != null) {
+        print('✅ Fetched ${response.data!.length} live streams');
+        return response.data!;
+      }
+      print('⚠️ No live streams found or error: ${response.error}');
+      return [];
+    } catch (e) {
+      print('Error fetching live streams: $e');
       return [];
     }
   }

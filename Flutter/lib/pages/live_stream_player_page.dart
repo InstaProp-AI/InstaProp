@@ -6,10 +6,7 @@ import '../widgets/live_stream_chat_overlay.dart';
 class LiveStreamPlayerPage extends StatefulWidget {
   final LiveStream stream;
 
-  const LiveStreamPlayerPage({
-    super.key,
-    required this.stream,
-  });
+  const LiveStreamPlayerPage({super.key, required this.stream});
 
   @override
   State<LiveStreamPlayerPage> createState() => _LiveStreamPlayerPageState();
@@ -50,7 +47,6 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -113,9 +109,7 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            )
+          ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : Stack(
               fit: StackFit.expand,
               children: [
@@ -127,8 +121,11 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: Colors.black,
                       child: const Center(
-                        child: Icon(Icons.videocam_off,
-                            size: 64, color: Colors.white54),
+                        child: Icon(
+                          Icons.videocam_off,
+                          size: 64,
+                          color: Colors.white54,
+                        ),
                       ),
                     ),
                   )
@@ -136,11 +133,14 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
                   Container(
                     color: Colors.black,
                     child: const Center(
-                      child: Icon(Icons.videocam,
-                          size: 64, color: Colors.white54),
+                      child: Icon(
+                        Icons.videocam,
+                        size: 64,
+                        color: Colors.white54,
+                      ),
                     ),
                   ),
-                
+
                 // Chat overlay (right side)
                 if (_showChat && widget.stream.status == 'Live')
                   Positioned(
@@ -152,7 +152,7 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
                       isStreamLive: widget.stream.status == 'Live',
                     ),
                   ),
-                
+
                 // Controls overlay
                 Positioned(
                   bottom: 0,
@@ -161,14 +161,7 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.8),
-                          Colors.transparent,
-                        ],
-                      ),
+                      color: Colors.black.withOpacity(0.3),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -202,15 +195,16 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
                               backgroundColor: Colors.white,
                               backgroundImage:
                                   widget.stream.developerProfileImageUrl != null
-                                      ? NetworkImage(
-                                          widget.stream.developerProfileImageUrl!,
-                                        )
-                                      : null,
-                              child: widget.stream.developerProfileImageUrl == null
+                                  ? NetworkImage(
+                                      widget.stream.developerProfileImageUrl!,
+                                    )
+                                  : null,
+                              child:
+                                  widget.stream.developerProfileImageUrl == null
                                   ? Text(
                                       widget.stream.developerName.isNotEmpty
                                           ? widget.stream.developerName[0]
-                                              .toUpperCase()
+                                                .toUpperCase()
                                           : 'D',
                                       style: const TextStyle(
                                         color: Colors.black,
@@ -241,4 +235,3 @@ class _LiveStreamPlayerPageState extends State<LiveStreamPlayerPage> {
     );
   }
 }
-

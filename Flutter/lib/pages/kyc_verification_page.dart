@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../services/kyc_service.dart';
 import '../theme/app_colors.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/modern_button.dart';
 
 /// Clean, simplified KYC Verification Page
 ///
@@ -150,17 +150,18 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
           ],
         ),
         actions: [
-          TextButton(
+          ModernButton(
+            text: 'Cancel',
+            type: ModernButtonType.text,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          ModernButton(
+            text: 'Skip for Now',
+            type: ModernButtonType.primary,
             onPressed: () {
               Navigator.pop(context); // Close dialog
               _showSuccessDialog(skipped: true);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Skip for Now'),
           ),
         ],
       ),
@@ -182,9 +183,7 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.primary],
-                  ),
+                  color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -219,46 +218,30 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
                 style: TextStyle(fontSize: 14, color: Colors.grey[500]),
               ),
               const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop(); // Close dialog
+              ModernButton(
+                text: widget.isNewSignup ? 'Get Started' : 'Back to Profile',
+                type: ModernButtonType.primary,
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close dialog
 
-                    // Refresh user profile to get updated status
-                    final appState = context.read<AppState>();
-                    await appState.refreshUserProfile();
+                  // Refresh user profile to get updated status
+                  final appState = context.read<AppState>();
+                  await appState.refreshUserProfile();
 
-                    if (widget.isNewSignup) {
-                      // For new signups, go to home page
-                      if (mounted) {
-                        Navigator.of(
-                          context,
-                        ).pushNamedAndRemoveUntil('/', (route) => false);
-                      }
-                    } else {
-                      // For existing users, go back to profile
-                      if (mounted) {
-                        Navigator.of(context).pop();
-                      }
+                  if (widget.isNewSignup) {
+                    // For new signups, go to home page
+                    if (mounted) {
+                      Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/', (route) => false);
                     }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    widget.isNewSignup ? 'Get Started' : 'Back to Profile',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.surface,
-                    ),
-                  ),
-                ),
+                  } else {
+                    // For existing users, go back to profile
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  }
+                },
               ),
             ],
           ),
@@ -310,12 +293,7 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.2),
-                    AppColors.primary.withOpacity(0.05),
-                  ],
-                ),
+                color: AppColors.primary.withOpacity(0.12),
               ),
             ),
           ),
@@ -327,12 +305,7 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.15),
-                    AppColors.primary.withOpacity(0.03),
-                  ],
-                ),
+                color: AppColors.primary.withOpacity(0.09),
               ),
             ),
           ),
@@ -419,12 +392,7 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary.withOpacity(0.1),
-                                AppColors.primary.withOpacity(0.05),
-                              ],
-                            ),
+                            color: AppColors.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: AppColors.primary.withOpacity(0.2),
@@ -584,34 +552,11 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
 
                         // Complete Button
                         if (_hasSufficientDocuments())
-                          Container(
-                            height: 56,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [AppColors.primary, AppColors.primary],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.4),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: LoadingButton(
-                              onPressed: _isUploading ? null : _handleComplete,
-                              isLoading: false,
-                              child: const Text(
-                                'Complete Verification',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.surface,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
+                          ModernButton(
+                            text: 'Complete Verification',
+                            type: ModernButtonType.primary,
+                            onPressed: _isUploading ? null : _handleComplete,
+                            isLoading: _isUploading,
                           ),
 
                         const SizedBox(height: 16),
@@ -619,15 +564,10 @@ class _KycVerificationPageState extends State<KycVerificationPage> {
                         // Skip Button (only for new signups)
                         if (widget.isNewSignup)
                           Center(
-                            child: TextButton(
+                            child: ModernButton(
+                              text: 'I\'ll do this later',
+                              type: ModernButtonType.text,
                               onPressed: _isUploading ? null : _handleSkip,
-                              child: const Text(
-                                'I\'ll do this later',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
                             ),
                           ),
 

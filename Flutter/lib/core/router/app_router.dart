@@ -14,6 +14,8 @@ import '../../pages/add_property_financial_page.dart';
 import '../../pages/properties_management_page.dart';
 import '../../models/news_article.dart';
 import '../../pages/leaderboard_page.dart';
+import '../../pages/onboarding/onboarding_page.dart';
+import '../../pages/lives_page.dart';
 
 /// Centralized app router
 class AppRouter {
@@ -22,6 +24,7 @@ class AppRouter {
   static const String home = '/home';
   static const String auth = '/auth';
   static const String login = '/login';
+  static const String onboarding = '/onboarding';
   static const String profile = '/profile';
   static const String valuate = '/valuate';
   static const String allNews = '/all-news';
@@ -30,6 +33,7 @@ class AppRouter {
   static const String market = '/market';
   static const String auctions = '/auctions';
   static const String leaderboard = '/leaderboard';
+  static const String lives = '/lives';
   static const String propertyManagement = '/properties';
   static const String addProperty = '/add-property';
   static const String addPropertyFinancial = '/add-property/financial';
@@ -42,6 +46,10 @@ class AppRouter {
       case home:
         return MaterialPageRoute(builder: (_) => const HomePage());
 
+      // Onboarding route
+      case onboarding:
+        return MaterialPageRoute(builder: (_) => const OnboardingPage());
+
       // Auth routes
       case auth:
       case login:
@@ -51,7 +59,10 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const SettingsPage());
 
       case valuate:
-        return MaterialPageRoute(builder: (_) => const ValuatePage());
+        final propertyId = args is String ? args : (args is Map<String, dynamic> ? args['propertyId'] as String? : null);
+        return MaterialPageRoute(
+          builder: (_) => ValuatePage(propertyId: propertyId),
+        );
 
       // News routes
       case allNews:
@@ -79,6 +90,9 @@ class AppRouter {
 
       case auctions:
         return MaterialPageRoute(builder: (_) => const AuctionsPage());
+
+      case lives:
+        return MaterialPageRoute(builder: (_) => const LivesPage());
 
       case propertyManagement:
         return MaterialPageRoute(builder: (_) => const PropertiesManagementPage());

@@ -497,53 +497,103 @@ class _AuctionActivityPageState extends State<AuctionActivityPage> {
   }
 
   Widget _buildMyAuctionsSection(BuildContext context, AppState appState) {
-    final userAuctions = appState.userAuctions;
-    final liveAuctions = userAuctions.where((a) => a.isActive).toList();
-    final endedAuctions = userAuctions.where((a) => a.isEnded).toList();
-    final requestedAuctions = userAuctions
-        .where((a) => a.status == 'Requested')
-        .toList();
+    try {
+      print('🔄 Building My Auctions Section...');
+      final userAuctions = appState.userAuctions;
+      print('   User auctions count: ${userAuctions.length}');
+      
+      // Safety check: filter out any null or invalid auctions
+      final validAuctions = userAuctions.where((a) {
+        try {
+          // Try to access properties that would throw if auction is invalid
+          final _ = a.auctionId;
+          final _ = a.propertyId;
+          final _ = a.currentPrice;
+          final _ = a.bidCount;
+          return true;
+        } catch (e) {
+          print('⚠️ Invalid auction detected: $e');
+          return false;
+        }
+      }).toList();
+      
+      final liveAuctions = validAuctions.where((a) {
+        try {
+          return a.isActive;
+        } catch (e) {
+          print('⚠️ Error checking if auction is active: $e');
+          return false;
+        }
+      }).toList();
+      
+      final endedAuctions = validAuctions.where((a) {
+        try {
+          return a.isEnded;
+        } catch (e) {
+          print('⚠️ Error checking if auction is ended: $e');
+          return false;
+        }
+      }).toList();
+      
+      final requestedAuctions = validAuctions
+          .where((a) {
+            try {
+              return a.status == 'Requested';
+            } catch (e) {
+              print('⚠️ Error checking auction status: $e');
+              return false;
+            }
+          })
+          .toList();
+      
+      print('   Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}, Requested: ${requestedAuctions.length}');
 
-    return Column(
+      return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         // Section Header
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'My Auctions',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A1A),
-                letterSpacing: -0.7,
+            const Expanded(
+              child: Text(
+                'My Auctions',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A1A),
+                  letterSpacing: -0.7,
+                ),
               ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => const CreateAuctionRequestDialog(),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+            Flexible(
+              child: ElevatedButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => const CreateAuctionRequestDialog(),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, size: 18),
+                    SizedBox(width: 4),
+                    Text('Create'),
+                  ],
                 ),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.add, size: 18),
-                  SizedBox(width: 4),
-                  Text('Create'),
-                ],
               ),
             ),
           ],
@@ -584,9 +634,60 @@ class _AuctionActivityPageState extends State<AuctionActivityPage> {
         ],
 
         // Empty State
-        if (userAuctions.isEmpty) _buildEmptyAuctionsState(context),
+        if (validAuctions.isEmpty) _buildEmptyAuctionsState(context),
       ],
     );
+    } catch (e, stackTrace) {
+      print('❌ Error building My Auctions Section: $e');
+      print('   Stack trace: $stackTrace');
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade700),
+                const SizedBox(width: 8),
+                const Text(
+                  'Error Loading My Auctions',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Error: ${e.toString()}',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.red.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                // Reload auctions
+                appState.loadAuctions();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildAuctionSubsection(

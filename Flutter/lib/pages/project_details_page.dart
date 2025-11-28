@@ -8,6 +8,7 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import 'developer_profile_page.dart';
 import 'chat_page.dart';
+import 'property_details_page.dart';
 
 class ProjectDetailsPage extends StatefulWidget {
   final String projectId;
@@ -398,17 +399,28 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
   }
 
   Widget _buildPropertyCard(ProjectProperty property) {
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 16),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.secondary.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PropertyDetailsPage(
+              propertyId: property.propertyId,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 220,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.secondary.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Image.network(
@@ -487,6 +499,7 @@ class _ProjectDetailsPageState extends State<ProjectDetailsPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

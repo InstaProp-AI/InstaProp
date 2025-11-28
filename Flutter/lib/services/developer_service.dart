@@ -16,21 +16,58 @@ class DeveloperService {
   // Get developer profile by ID
   Future<DeveloperProfile> getDeveloperProfile(String developerId) async {
     try {
+      // Validate GUID format
+      if (developerId.isEmpty) {
+        throw Exception('Developer ID cannot be empty');
+      }
+      
+      // Try to parse as GUID to validate format
+      try {
+        // Remove any whitespace
+        final cleanId = developerId.trim();
+        // Check if it looks like a GUID (has dashes or is 32 hex chars)
+        if (!RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            .hasMatch(cleanId) && 
+            !RegExp(r'^[0-9a-fA-F]{32}$').hasMatch(cleanId)) {
+          print('Warning: Developer ID does not appear to be a valid GUID: $cleanId');
+        }
+      } catch (e) {
+        print('Warning: Could not validate GUID format: $e');
+      }
+      
+      print('Fetching developer profile for ID: $developerId');
+      final url = Uri.parse('$baseUrl/api/developer/profile/${Uri.encodeComponent(developerId.trim())}');
+      print('Request URL: $url');
+      
       final response = await http.get(
-        Uri.parse('$baseUrl/api/developer/profile/$developerId'),
-        headers: {'Content-Type': 'application/json'},
+        url,
+        headers: headers,
       );
 
+      print('Developer profile response status: ${response.statusCode}');
+      print('Developer profile response headers: ${response.headers}');
+      
       if (response.statusCode == 200) {
-        return DeveloperProfile.fromJson(json.decode(response.body));
+        final responseBody = response.body;
+        print('Developer profile response body length: ${responseBody.length}');
+        return DeveloperProfile.fromJson(json.decode(responseBody));
+      } else if (response.statusCode == 404) {
+        final errorBody = response.body;
+        print('Developer profile 404 error response: $errorBody');
+        throw Exception('Developer not found. The developer profile may not exist or the ID may be incorrect.');
       } else {
+        final errorBody = response.body;
+        print('Developer profile error response (${response.statusCode}): $errorBody');
         throw Exception(
-          'Failed to load developer profile: ${response.statusCode}',
+          'Failed to load developer profile: ${response.statusCode}. ${errorBody.isNotEmpty ? errorBody : ""}',
         );
       }
     } catch (e) {
       print('Error fetching developer profile: $e');
-      throw Exception('Failed to load developer profile');
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Failed to load developer profile: ${e.toString()}');
     }
   }
 

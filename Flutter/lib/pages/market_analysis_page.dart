@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/analytics_service.dart';
 import 'auctions_page.dart';
@@ -143,9 +144,7 @@ class _MarketAnalysisPageState extends State<MarketAnalysisPage> {
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-            ),
+            color: AppColors.primary,
           ),
         ),
       ),

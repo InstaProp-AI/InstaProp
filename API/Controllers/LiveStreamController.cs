@@ -178,7 +178,104 @@ namespace InstapropAPI.Controllers
             return Ok(dtos);
         }
 
+        // POST: api/livestream/seed-test-data
+        // Creates test live streams for development/demo purposes
+        [HttpPost("seed-test-data")]
+        [AllowAnonymous]
+        public async Task<ActionResult<string>> SeedTestLiveStreams()
+        {
+            try
+            {
+                // Get first developer account
+                var developer = await _context.Accounts
+                    .Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID)
+                    .FirstOrDefaultAsync();
+
+                if (developer == null)
+                {
+                    return BadRequest("No developer accounts found. Please create a developer account first.");
+                }
+
+                // Check if test streams already exist
+                var existingCount = await _context.LiveStreams
+                    .Where(s => s.Status == "Live")
+                    .CountAsync();
+
+                if (existingCount > 0)
+                {
+                    return Ok($"Test live streams already exist ({existingCount} streams with Status='Live'). No new streams created.");
+                }
+
+                var now = DateTime.UtcNow;
+                var random = new Random();
+                var liveStreams = new List<LiveStream>();
+
+                var streamTitles = new[]
+                {
+                    "Exclusive Property Tour - New Cairo Development",
+                    "Live Q&A: Investment Opportunities in Dubai",
+                    "Virtual Property Showcase - Luxury Apartments"
+                };
+
+                var streamDescriptions = new[]
+                {
+                    "Join us for an exclusive tour of our latest development project in New Cairo. See the properties, amenities, and ask questions in real-time!",
+                    "Get expert insights on the best investment opportunities in Dubai's real estate market. Ask our team anything!",
+                    "Experience luxury living with our virtual property showcase. See stunning apartments with premium finishes and world-class amenities."
+                };
+
+                var streamUrls = new[]
+                {
+                    "https://example.com/stream/new-cairo-tour",
+                    "https://example.com/stream/dubai-investment-qa",
+                    "https://example.com/stream/luxury-apartments"
+                };
+
+                var thumbnailUrls = new[]
+                {
+                    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800",
+                    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800",
+                    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800"
+                };
+
+                for (int i = 0; i < 3; i++)
+                {
+                    var startTime = now.AddHours(-random.Next(0, 2)); // Started 0-2 hours ago
+                    var viewerCount = random.Next(50, 500);
+
+                    var stream = new LiveStream
+                    {
+                        StreamId = Guid.NewGuid(),
+                        DeveloperId = developer.AccountId,
+                        Title = streamTitles[i],
+                        Description = streamDescriptions[i],
+                        StreamUrl = streamUrls[i],
+                        ThumbnailUrl = thumbnailUrls[i],
+                        Status = "Live",
+                        ViewerCount = viewerCount,
+                        StartTime = startTime,
+                        EndTime = null,
+                        CreatedAt = startTime
+                    };
+
+                    liveStreams.Add(stream);
+                }
+
+                await _context.LiveStreams.AddRangeAsync(liveStreams);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Created {Count} test live streams", liveStreams.Count);
+                return Ok($"Successfully created {liveStreams.Count} test live streams.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error seeding test live streams");
+                return StatusCode(500, $"Error creating test live streams: {ex.Message}");
+            }
+        }
+
         // GET: api/livestream/active
+        [AllowAnonymous]
         [HttpGet("active")]
         public async Task<ActionResult<IEnumerable<LiveStreamDto>>> GetActiveStreams()
         {
@@ -187,6 +284,34 @@ namespace InstapropAPI.Controllers
             var streams = await _context.LiveStreams
                 .Include(s => s.Developer)
                 .Where(s => s.Status == "Live")
+                .OrderByDescending(s => s.StartTime)
+                .ToListAsync();
+
+            var result = streams.Select(s => MapToDto(s, accountId));
+            return Ok(result);
+        }
+
+        // GET: api/livestream/count
+        [AllowAnonymous]
+        [HttpGet("count")]
+        public async Task<ActionResult<int>> GetLiveStreamCount()
+        {
+            var count = await _context.LiveStreams
+                .Where(s => s.Status == "Live")
+                .CountAsync();
+
+            return Ok(count);
+        }
+
+        // GET: api/livestream/all
+        [AllowAnonymous]
+        [HttpGet("all")]
+        public async Task<ActionResult<IEnumerable<LiveStreamDto>>> GetAllStreams()
+        {
+            var accountId = GetCurrentAccountId();
+
+            var streams = await _context.LiveStreams
+                .Include(s => s.Developer)
                 .OrderByDescending(s => s.StartTime)
                 .ToListAsync();
 

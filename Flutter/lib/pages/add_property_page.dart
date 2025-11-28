@@ -8,8 +8,8 @@ import '../services/property_service.dart';
 import '../services/api_client.dart';
 import '../models/project_model.dart';
 import '../models/property_type.dart';
-import '../widgets/custom_text_field.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/modern_text_field.dart';
+import '../widgets/modern_button.dart';
 import '../widgets/reward_popup.dart';
 import '../core/router/app_router.dart';
 
@@ -55,16 +55,24 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
   final List<PlatformFile> _selectedImages = [];
   List<ProjectModel> _projects = [];
 
-  final List<int> _bedroomOptions =
-      List<int>.generate(11, (index) => index); // 0-10
-  final List<int> _bathroomOptions =
-      List<int>.generate(11, (index) => index); // 0-10
+  final List<int> _bedroomOptions = List<int>.generate(
+    11,
+    (index) => index,
+  ); // 0-10
+  final List<int> _bathroomOptions = List<int>.generate(
+    11,
+    (index) => index,
+  ); // 0-10
 
-  List<String> get _builtYearOptions =>
-      List<String>.generate(2025 - 1980 + 1, (index) => (2025 - index).toString());
+  List<String> get _builtYearOptions => List<String>.generate(
+    2025 - 1980 + 1,
+    (index) => (2025 - index).toString(),
+  );
 
-  List<String> get _deliveryYearOptions =>
-      List<String>.generate(2040 - 2025 + 1, (index) => (2025 + index).toString());
+  List<String> get _deliveryYearOptions => List<String>.generate(
+    2040 - 2025 + 1,
+    (index) => (2025 + index).toString(),
+  );
 
   @override
   void initState() {
@@ -172,8 +180,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     });
 
     try {
-      final normalizedArea =
-          _areaController.text.trim().replaceAll(',', '');
+      final normalizedArea = _areaController.text.trim().replaceAll(',', '');
       final areaValue = double.tryParse(normalizedArea);
 
       if (areaValue == null || areaValue <= 0) {
@@ -189,8 +196,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         _isBuilt ? _selectedBuiltYear! : _selectedDeliveryYear!,
       );
 
-      final DateTime? deliveryDate =
-          _isBuilt ? null : DateTime(year, 1, 1);
+      final DateTime? deliveryDate = _isBuilt ? null : DateTime(year, 1, 1);
 
       ProjectModel? selectedProject;
       if (_selectedProjectId != null) {
@@ -235,10 +241,10 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         if (_selectedImages.isNotEmpty) {
           final uploadResponse =
               await PropertyService.uploadPropertyImagesPlatform(
-            propertyId,
-            _selectedImages,
-            imageType: 'Gallery',
-          );
+                propertyId,
+                _selectedImages,
+                imageType: 'Gallery',
+              );
 
           if (!uploadResponse.success) {
             setState(() {
@@ -271,8 +277,9 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           _selectedBedrooms = 1;
           _selectedBathrooms = 1;
           _isBuilt = true;
-          _selectedBuiltYear =
-              _builtYearOptions.isNotEmpty ? _builtYearOptions.first : null;
+          _selectedBuiltYear = _builtYearOptions.isNotEmpty
+              ? _builtYearOptions.first
+              : null;
           _selectedDeliveryYear = _deliveryYearOptions.isNotEmpty
               ? _deliveryYearOptions.first
               : null;
@@ -296,10 +303,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           Navigator.pushReplacementNamed(
             context,
             AppRouter.addPropertyFinancial,
-            arguments: {
-              'propertyId': propertyId,
-              'propertyName': propertyName,
-            },
+            arguments: {'propertyId': propertyId, 'propertyName': propertyName},
           );
         }
       } else {
@@ -325,10 +329,18 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         final isLoggedIn = appState.isLoggedIn;
 
         return Scaffold(
+          backgroundColor: AppColors.background,
           appBar: AppBar(
-            title: const Text('Add Property'),
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.surface,
+            title: Text(
+              'Add Property',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            backgroundColor: AppColors.surface,
+            foregroundColor: AppColors.textPrimary,
+            elevation: 0,
           ),
           body: Stack(
             children: [
@@ -348,7 +360,11 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           Text(
                             'Add New Property',
                             style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                  fontFamily: 'SF Pro Display',
+                                ),
                           ),
 
                           const SizedBox(height: 8),
@@ -356,7 +372,10 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           Text(
                             'Fill in the details below to add your property to the platform',
                             style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: AppColors.primary),
+                                ?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontFamily: 'SF Pro Text',
+                                ),
                           ),
 
                           const SizedBox(height: 32),
@@ -394,7 +413,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                             ),
 
                           // Unit number
-                          CustomTextField(
+                          ModernTextField(
                             controller: _unitNumberController,
                             labelText: 'Unit Number',
                             hintText: 'e.g., Unit 5B',
@@ -406,7 +425,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           const SizedBox(height: 16),
 
                           // Location
-                          CustomTextField(
+                          ModernTextField(
                             controller: _locationController,
                             labelText: 'Location',
                             hintText: 'e.g., 123 Main St, City, State',
@@ -425,7 +444,11 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           Text(
                             'Property Details',
                             style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  fontFamily: 'SF Pro Display',
+                                ),
                           ),
 
                           const SizedBox(height: 16),
@@ -438,7 +461,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
                           const SizedBox(height: 16),
 
-                          CustomTextField(
+                          ModernTextField(
                             controller: _areaController,
                             labelText: 'Area (sqm)',
                             hintText: 'e.g., 185',
@@ -469,7 +492,11 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           Text(
                             'Property Images',
                             style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  fontFamily: 'SF Pro Display',
+                                ),
                           ),
 
                           const SizedBox(height: 8),
@@ -477,24 +504,20 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           Text(
                             'Add photos of your property (required)',
                             style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: AppColors.primary),
+                                ?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontFamily: 'SF Pro Text',
+                                ),
                           ),
 
                           const SizedBox(height: 16),
 
                           // Image picker button
-                          OutlinedButton.icon(
+                          ModernButton(
+                            text: 'Select Images',
+                            type: ModernButtonType.secondary,
                             onPressed: _pickImages,
-                            icon: const Icon(Icons.add_photo_alternate),
-                            label: const Text('Select Images'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 16,
-                              ),
-                              side: const BorderSide(color: AppColors.primary),
-                              foregroundColor: AppColors.primary,
-                            ),
+                            icon: Icons.add_photo_alternate,
                           ),
 
                           const SizedBox(height: 16),
@@ -619,10 +642,11 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           const SizedBox(height: 32),
 
                           // Submit button
-                          LoadingButton(
+                          ModernButton(
+                            text: 'Add Property',
+                            type: ModernButtonType.primary,
                             onPressed: _isLoading ? null : _submitProperty,
                             isLoading: _isLoading,
-                            child: const Text('Add Property'),
                           ),
                         ],
                       ),
@@ -656,19 +680,12 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Lock icon with gradient background
+                              // Lock icon
                               Container(
                                 width: 80,
                                 height: 80,
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.green[400]!,
-                                      AppColors.primary,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  color: AppColors.primary,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -704,32 +721,12 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                               const SizedBox(height: 32),
 
                               // Login button
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () =>
-                                      Navigator.of(context).pushNamed('/auth'),
-                                  icon: const Icon(Icons.login),
-                                  label: const Text(
-                                    'Sign In',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.surface,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                      horizontal: 24,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 2,
-                                  ),
-                                ),
+                              ModernButton(
+                                text: 'Sign In',
+                                type: ModernButtonType.primary,
+                                onPressed: () =>
+                                    Navigator.of(context).pushNamed('/auth'),
+                                icon: Icons.login,
                               ),
                               const SizedBox(height: 16),
 
@@ -797,9 +794,9 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
   Widget _buildProjectDropdown(BuildContext context) {
     final labelStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        );
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+    );
 
     Widget content;
     if (_loadingProjects) {
@@ -837,9 +834,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
       content = DropdownButtonFormField<String?>(
         value: _selectedProjectId,
         decoration: InputDecoration(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -882,9 +877,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
       value: _selectedType,
       decoration: InputDecoration(
         labelText: 'Property Type',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
@@ -923,10 +916,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
             ),
             items: _bedroomOptions.map((value) {
               final label = value >= 10 ? '10+' : value.toString();
-              return DropdownMenuItem<int>(
-                value: value,
-                child: Text(label),
-              );
+              return DropdownMenuItem<int>(value: value, child: Text(label));
             }).toList(),
             onChanged: (value) {
               if (value == null) return;
@@ -952,10 +942,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
             ),
             items: _bathroomOptions.map((value) {
               final label = value >= 10 ? '10+' : value.toString();
-              return DropdownMenuItem<int>(
-                value: value,
-                child: Text(label),
-              );
+              return DropdownMenuItem<int>(value: value, child: Text(label));
             }).toList(),
             onChanged: (value) {
               if (value == null) return;
@@ -971,17 +958,12 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
   Widget _buildConstructionStatusSection(BuildContext context) {
     final textStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        );
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+    );
 
     final yearItems = (_isBuilt ? _builtYearOptions : _deliveryYearOptions)
-        .map(
-          (year) => DropdownMenuItem<String>(
-            value: year,
-            child: Text(year),
-          ),
-        )
+        .map((year) => DropdownMenuItem<String>(value: year, child: Text(year)))
         .toList();
 
     return Column(
@@ -999,8 +981,9 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
                   if (!selected) return;
                   setState(() {
                     _isBuilt = true;
-                    _selectedBuiltYear ??=
-                        _builtYearOptions.isNotEmpty ? _builtYearOptions.first : null;
+                    _selectedBuiltYear ??= _builtYearOptions.isNotEmpty
+                        ? _builtYearOptions.first
+                        : null;
                   });
                 },
               ),
@@ -1028,9 +1011,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           value: _isBuilt ? _selectedBuiltYear : _selectedDeliveryYear,
           decoration: InputDecoration(
             labelText: _isBuilt ? 'Year Built' : 'Delivery Year',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
@@ -1046,8 +1027,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
               }
             });
           },
-          validator: (value) =>
-              value == null ? 'Please select a year' : null,
+          validator: (value) => value == null ? 'Please select a year' : null,
         ),
       ],
     );
@@ -1055,9 +1035,9 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
 
   Widget _buildAmenitiesSection(BuildContext context) {
     final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        );
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1068,26 +1048,56 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildAmenityChip('Garden', _hasGarden,
-                (value) => _hasGarden = value),
-            _buildAmenityChip('Clubhouse', _hasClubhouse,
-                (value) => _hasClubhouse = value),
-            _buildAmenityChip('Infrastructure', _hasInfrastructure,
-                (value) => _hasInfrastructure = value),
-            _buildAmenityChip('Underground parking', _hasUndergroundParking,
-                (value) => _hasUndergroundParking = value),
-            _buildAmenityChip('Medical center', _hasMedicalCenter,
-                (value) => _hasMedicalCenter = value),
-            _buildAmenityChip('Commercial strip', _hasCommercialStrip,
-                (value) => _hasCommercialStrip = value),
-            _buildAmenityChip('Business hub', _hasBusinessHub,
-                (value) => _hasBusinessHub = value),
-            _buildAmenityChip('Outdoor pools', _hasOutdoorPools,
-                (value) => _hasOutdoorPools = value),
-            _buildAmenityChip('Bicycles lanes', _hasBicycleLanes,
-                (value) => _hasBicycleLanes = value),
-            _buildAmenityChip('Jogging trail', _hasJoggingTrail,
-                (value) => _hasJoggingTrail = value),
+            _buildAmenityChip(
+              'Garden',
+              _hasGarden,
+              (value) => _hasGarden = value,
+            ),
+            _buildAmenityChip(
+              'Clubhouse',
+              _hasClubhouse,
+              (value) => _hasClubhouse = value,
+            ),
+            _buildAmenityChip(
+              'Infrastructure',
+              _hasInfrastructure,
+              (value) => _hasInfrastructure = value,
+            ),
+            _buildAmenityChip(
+              'Underground parking',
+              _hasUndergroundParking,
+              (value) => _hasUndergroundParking = value,
+            ),
+            _buildAmenityChip(
+              'Medical center',
+              _hasMedicalCenter,
+              (value) => _hasMedicalCenter = value,
+            ),
+            _buildAmenityChip(
+              'Commercial strip',
+              _hasCommercialStrip,
+              (value) => _hasCommercialStrip = value,
+            ),
+            _buildAmenityChip(
+              'Business hub',
+              _hasBusinessHub,
+              (value) => _hasBusinessHub = value,
+            ),
+            _buildAmenityChip(
+              'Outdoor pools',
+              _hasOutdoorPools,
+              (value) => _hasOutdoorPools = value,
+            ),
+            _buildAmenityChip(
+              'Bicycles lanes',
+              _hasBicycleLanes,
+              (value) => _hasBicycleLanes = value,
+            ),
+            _buildAmenityChip(
+              'Jogging trail',
+              _hasJoggingTrail,
+              (value) => _hasJoggingTrail = value,
+            ),
           ],
         ),
       ],

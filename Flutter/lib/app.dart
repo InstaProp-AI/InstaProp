@@ -4,6 +4,9 @@ import 'core/router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'providers/app_state.dart';
 import 'pages/home_page.dart';
+import 'pages/auth_page.dart';
+import 'pages/onboarding/onboarding_page.dart';
+import 'services/onboarding_service.dart';
 import 'widgets/floating_ai_broker_button.dart';
 
 /// Error boundary widget to catch and handle errors gracefully
@@ -103,6 +106,76 @@ class ErrorPage extends StatelessWidget {
   }
 }
 
+/// Initial route widget that checks onboarding and auth status
+class InitialRouteWidget extends StatefulWidget {
+  const InitialRouteWidget({super.key});
+
+  @override
+  State<InitialRouteWidget> createState() => _InitialRouteWidgetState();
+}
+
+class _InitialRouteWidgetState extends State<InitialRouteWidget> {
+  bool _isLoading = true;
+  Widget? _initialRoute;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _determineInitialRoute();
+    });
+  }
+
+  Future<void> _determineInitialRoute() async {
+    try {
+      // Check if onboarding is completed
+      final onboardingComplete = await OnboardingService.isOnboardingComplete();
+
+      if (!onboardingComplete) {
+        // Show onboarding for first-time users
+        if (mounted) {
+          setState(() {
+            _initialRoute = const OnboardingPage();
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // Always allow browsing - show HomePage (supports freemium/guest browsing)
+      // Users can browse the app without logging in
+      if (mounted) {
+        setState(() {
+          _initialRoute = const HomePage();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // On error, default to onboarding (safer for first-time users)
+      // This ensures users see onboarding if there's any issue checking status
+      if (mounted) {
+        setState(() {
+          _initialRoute = const OnboardingPage();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return _initialRoute ?? const AuthPage();
+  }
+}
+
 /// Main app widget
 class InstapropApp extends StatelessWidget {
   const InstapropApp({super.key});
@@ -133,7 +206,7 @@ class InstapropApp extends StatelessWidget {
                 debugShowCheckedModeBanner: false,
                 theme: AppTheme.lightTheme,
                 onGenerateRoute: AppRouter.onGenerateRoute,
-                home: const HomePage(),
+                home: const InitialRouteWidget(),
                 // Add error boundary and floating button
                 builder: (context, child) {
                   return ErrorBoundary(

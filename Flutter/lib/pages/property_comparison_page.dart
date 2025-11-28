@@ -1,12 +1,14 @@
 import '../../theme/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/property.dart';
 import '../models/property_type.dart';
 import '../models/auction.dart';
 import '../services/property_service.dart';
 import '../services/auction_service.dart';
 import '../widgets/property_image_carousel.dart';
+import '../widgets/modern_button.dart';
+import '../widgets/modern_card.dart';
+import '../widgets/modern_search_bar.dart';
 
 class PropertyComparisonPage extends StatefulWidget {
   final List<Property>? preSelectedProperties;
@@ -79,11 +81,12 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
         final matchesSearch =
             searchQuery.isEmpty ||
             property.name.toLowerCase().contains(searchQuery) ||
-            (property.location ?? '').toLowerCase().contains(searchQuery) ||
+            property.location.toLowerCase().contains(searchQuery) ||
             property.typeLabel.toLowerCase().contains(searchQuery);
 
         // Type filter
-        final matchesType = _selectedTypeFilter == 'All' ||
+        final matchesType =
+            _selectedTypeFilter == 'All' ||
             property.typeLabel == _selectedTypeFilter;
 
         // Bedrooms filter
@@ -139,32 +142,43 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Compare Properties'),
-        backgroundColor: const Color(0xFF667eea),
+        title: Text(
+          'Compare Properties',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
       ),
       body: Column(
         children: [
           // Selected Properties Header
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.grey[100],
+            color: AppColors.surface,
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     'Selected: ${selectedProperties.length}/5 (Min: 2)',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'SF Pro Text',
+                    ),
                   ),
                 ),
                 if (selectedProperties.length >= 2)
-                  ElevatedButton.icon(
+                  ModernButton(
+                    text: 'Compare',
+                    type: ModernButtonType.primary,
                     onPressed: () => _showComparisonTable(),
-                    icon: const Icon(Icons.compare_arrows),
-                    label: const Text('Compare'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF667eea),
-                    ),
+                    icon: Icons.compare_arrows,
                   ),
               ],
             ),
@@ -187,30 +201,40 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                       children: [
                         GestureDetector(
                           onTap: () => _removeProperty(index),
-                          child: Card(
+                          child: ModernCard(
+                            padding: EdgeInsets.zero,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      image: property.imageUrl != null
+                                      image: property.imageUrl.isNotEmpty
                                           ? DecorationImage(
                                               image: NetworkImage(
-                                                property.imageUrl!,
+                                                property.imageUrl,
                                               ),
                                               fit: BoxFit.cover,
                                             )
                                           : null,
-                                      color: Colors.grey[300],
+                                      color: AppColors.textTertiary,
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(16),
+                                        topRight: Radius.circular(16),
+                                      ),
                                     ),
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.all(4),
+                                  padding: const EdgeInsets.all(8),
                                   child: Text(
                                     property.name,
-                                    style: const TextStyle(fontSize: 10),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontSize: 10,
+                                          color: AppColors.textPrimary,
+                                          fontFamily: 'SF Pro Text',
+                                        ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -243,11 +267,11 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                   return Container(
                     width: 100,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Card(
+                    child: ModernCard(
                       child: Center(
                         child: Icon(
                           Icons.add,
-                          color: Colors.grey[400],
+                          color: AppColors.textTertiary,
                           size: 40,
                         ),
                       ),
@@ -264,36 +288,16 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+              color: AppColors.surface,
+              border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Search Bar
-                TextField(
+                ModernSearchBar(
                   controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search properties...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
+                  hintText: 'Search properties...',
                 ),
                 const SizedBox(height: 12),
 
@@ -306,9 +310,36 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                         value: _selectedTypeFilter,
                         decoration: InputDecoration(
                           labelText: 'Property Type',
+                          labelStyle: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontFamily: 'SF Pro Text',
+                              ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.border),
                           ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: AppColors.background,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontFamily: 'SF Pro Text',
                         ),
                         items: _typeFilters.map((typeLabel) {
                           return DropdownMenuItem<String>(
@@ -333,15 +364,36 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                         value: _selectedBedrooms,
                         decoration: InputDecoration(
                           labelText: 'Bedrooms',
+                          labelStyle: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontFamily: 'SF Pro Text',
+                              ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: AppColors.background,
+                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontFamily: 'SF Pro Text',
                         ),
                         items: [
                           const DropdownMenuItem(value: 0, child: Text('All')),
@@ -377,24 +429,26 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                         Icon(
                           Icons.search_off,
                           size: 64,
-                          color: Colors.grey[400],
+                          color: AppColors.textTertiary,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No properties found',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'SF Pro Display',
+                              ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Try adjusting your filters',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.textTertiary,
+                                fontFamily: 'SF Pro Text',
+                              ),
                         ),
                       ],
                     ),
@@ -406,37 +460,63 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                       final isSelected = selectedProperties.contains(property);
                       final canAdd = selectedProperties.length < 5;
 
-                      return ListTile(
-                        leading: Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            image: property.imageUrl != null
-                                ? DecorationImage(
-                                    image: NetworkImage(property.imageUrl!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(8),
+                      return ModernCard(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
                           ),
+                          leading: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              image: property.imageUrl.isNotEmpty
+                                  ? DecorationImage(
+                                      image: NetworkImage(property.imageUrl),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                              color: AppColors.textTertiary,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          title: Text(
+                            property.name,
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  fontFamily: 'SF Pro Text',
+                                ),
+                          ),
+                          subtitle: Text(
+                            '${property.bedrooms} bed • ${property.bathrooms} bath • ${property.typeLabel}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontFamily: 'SF Pro Text',
+                                ),
+                          ),
+                          trailing: isSelected
+                              ? Icon(
+                                  Icons.check_circle,
+                                  color: AppColors.success,
+                                )
+                              : canAdd
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.add_circle_outline,
+                                    color: AppColors.primary,
+                                  ),
+                                  onPressed: () => _addProperty(property),
+                                )
+                              : null,
+                          enabled: !isSelected && canAdd,
                         ),
-                        title: Text(property.name),
-                        subtitle: Text(
-                          '${property.bedrooms} bed • ${property.bathrooms} bath • ${property.typeLabel}',
-                        ),
-                        trailing: isSelected
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                              )
-                            : canAdd
-                            ? IconButton(
-                                icon: const Icon(Icons.add_circle_outline),
-                                onPressed: () => _addProperty(property),
-                              )
-                            : null,
-                        enabled: !isSelected && canAdd,
                       );
                     },
                   ),
@@ -457,9 +537,11 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
         expand: false,
         builder: (context, scrollController) {
           return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Column(
               children: [
@@ -468,7 +550,7 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                   width: 40,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: AppColors.textTertiary,
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
@@ -476,16 +558,18 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         'Property Comparison',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close, color: AppColors.textSecondary),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -527,10 +611,10 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                       width: 150,
                       height: 120,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withOpacity(0.06),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -557,13 +641,24 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
           // Data Table
           DataTable(
             columnSpacing: 20,
+            headingRowColor: MaterialStateProperty.all(AppColors.background),
+            dataRowColor: MaterialStateProperty.resolveWith((states) {
+              if (states.contains(MaterialState.selected)) {
+                return AppColors.primary.withOpacity(0.1);
+              }
+              return null;
+            }),
             columns: [
-              const DataColumn(
+              DataColumn(
                 label: SizedBox(
                   width: 120,
                   child: Text(
                     'Feature',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'SF Pro Text',
+                    ),
                   ),
                 ),
               ),
@@ -573,7 +668,11 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                     width: 150,
                     child: Text(
                       'Property ${selectedProperties.indexOf(p) + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'SF Pro Text',
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -622,7 +721,11 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
               width: 120,
               child: Text(
                 row['label'] as String,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'SF Pro Text',
+                ),
               ),
             ),
           ),
@@ -635,6 +738,10 @@ class _PropertyComparisonPageState extends State<PropertyComparisonPage> {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontFamily: 'SF Pro Text',
+                  ),
                 ),
               ),
             ),

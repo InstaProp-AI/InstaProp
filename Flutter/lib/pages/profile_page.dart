@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../providers/app_state.dart';
 import '../services/auth_service.dart';
-import '../widgets/custom_text_field.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/modern_text_field.dart';
+import '../widgets/modern_button.dart';
+import '../widgets/modern_card.dart';
 import '../models/user.dart';
 import 'kyc_verification_page.dart';
 import 'email_verification_page.dart';
@@ -81,16 +82,24 @@ class _SettingsPageState extends State<SettingsPage> {
               size: 28,
             ),
             const SizedBox(width: 12),
-            const Text('Important Notice'),
+            Text(
+              'Important Notice',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Editing your profile will change your account status to:',
-              style: TextStyle(fontSize: 14),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontFamily: 'SF Pro Text'),
             ),
             const SizedBox(height: 12),
             Container(
@@ -119,22 +128,31 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 12),
             Text(
               'Your account will need to be re-verified by an admin after you save changes.',
-              style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textPrimary,
+                fontFamily: 'SF Pro Text',
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
+              ),
+            ),
           ),
-          ElevatedButton(
+          ModernButton(
+            text: 'Continue Editing',
+            type: ModernButtonType.primary,
             onPressed: () {
               Navigator.pop(context);
               setState(() => _isEditing = true);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Continue Editing'),
           ),
         ],
       ),
@@ -232,12 +250,18 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.security, color: AppColors.primary, size: 28),
             const SizedBox(width: 12),
-            const Text('Verification Required'),
+            Text(
+              'Verification Required',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -250,15 +274,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   : emailChanged
                   ? 'email'
                   : 'phone number'}.',
-              style: const TextStyle(fontSize: 14),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontFamily: 'SF Pro Text'),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.secondary),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 children: [
@@ -271,10 +297,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           : emailChanged
                           ? 'email'
                           : 'phone'} to continue.',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.primary,
-                        fontSize: 13,
                         fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Text',
                       ),
                     ),
                   ),
@@ -292,9 +318,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     'Profile updated. Please verify your contact information.';
               });
             },
-            child: const Text('Later'),
+            child: Text(
+              'Later',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
+              ),
+            ),
           ),
-          ElevatedButton(
+          ModernButton(
+            text: 'Verify Now',
+            type: ModernButtonType.primary,
             onPressed: () {
               Navigator.pop(context);
               // Navigate to appropriate verification page
@@ -346,8 +380,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 );
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Verify Now'),
           ),
         ],
       ),
@@ -424,7 +456,7 @@ class _SettingsPageState extends State<SettingsPage> {
         }
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.background,
           body: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -449,30 +481,26 @@ class _SettingsPageState extends State<SettingsPage> {
                               );
                             }
                           },
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.grey[100],
-                          ),
+                          icon: const Icon(Icons.arrow_back),
+                          color: AppColors.textPrimary,
                         ),
                         const SizedBox(width: 8),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Settings',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF1A1A1A),
-                              letterSpacing: -1,
-                            ),
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'SF Pro Display',
+                                ),
                           ),
                         ),
                         if (!_isEditing)
                           IconButton(
                             onPressed: _showEditWarning,
                             icon: const Icon(Icons.edit_outlined),
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.grey[100],
-                            ),
+                            color: AppColors.primary,
                           ),
                       ],
                     ),
@@ -492,15 +520,18 @@ class _SettingsPageState extends State<SettingsPage> {
                             children: [
                               CircleAvatar(
                                 radius: 50,
-                                backgroundColor: Colors.grey[200],
+                                backgroundColor: AppColors.surfaceVariant,
                                 child: Text(
                                   (appState.user?.firstName ?? 'U')[0]
                                       .toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1A1A1A),
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                 ),
                               ),
                               if (appState.user?.topBadgeIcon != null)
@@ -510,12 +541,19 @@ class _SettingsPageState extends State<SettingsPage> {
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: AppColors.surface,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.grey[300]!,
+                                        color: AppColors.border,
                                         width: 2,
                                       ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.shadowCard,
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     child: Text(
                                       appState.user!.topBadgeIcon!,
@@ -535,20 +573,21 @@ class _SettingsPageState extends State<SettingsPage> {
                             children: [
                               Text(
                                 appState.user?.fullName ?? 'Guest User',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1A1A1A),
-                                  letterSpacing: -0.5,
-                                ),
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 appState.user?.email ?? 'No email',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontFamily: 'SF Pro Text',
+                                    ),
                               ),
                             ],
                           ),
@@ -601,51 +640,42 @@ class _SettingsPageState extends State<SettingsPage> {
 
                         // Quick Access (only when not editing)
                         if (!_isEditing) ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildFeatureCard(
+                          _buildFeatureCard(
+                            context,
+                            icon: Icons.verified_user,
+                            title: 'Verification',
+                            subtitle: 'KYC Status',
+                            color: AppColors.primary,
+                            onTap: () {
+                              if (appState.user!.status ==
+                                  VerificationStatus.notVerified) {
+                                Navigator.push(
                                   context,
-                                  icon: Icons.verified_user,
-                                  title: 'Verification',
-                                  subtitle: 'KYC Status',
-                                  color: Colors.blue,
-                                  onTap: () {
-                                    if (appState.user!.status ==
-                                        VerificationStatus.notVerified) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              KycVerificationPage(
-                                                firstName:
-                                                    appState.user!.firstName,
-                                                lastName:
-                                                    appState.user!.lastName,
-                                                email: appState.user!.email,
-                                                isNewSignup: false,
-                                              ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
+                                  MaterialPageRoute(
+                                    builder: (context) => KycVerificationPage(
+                                      firstName: appState.user!.firstName,
+                                      lastName: appState.user!.lastName,
+                                      email: appState.user!.email,
+                                      isNewSignup: false,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
                           ),
                           const SizedBox(height: 24),
                         ],
 
                         // Email & Phone Verification Status
                         if (!_isEditing) ...[
-                          const Text(
+                          Text(
                             'Account Verification',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A1A1A),
-                              letterSpacing: -0.5,
-                            ),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'SF Pro Display',
+                                ),
                           ),
                           const SizedBox(height: 16),
 
@@ -701,55 +731,91 @@ class _SettingsPageState extends State<SettingsPage> {
 
                         // Error message
                         if (_errorMessage != null)
-                          Container(
+                          ModernCard(
                             padding: const EdgeInsets.all(16),
                             margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(
-                                color: Colors.red[700],
-                                fontSize: 14,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: AppColors.error,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: AppColors.error,
+                                            fontFamily: 'SF Pro Text',
+                                          ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
 
                         // Success message
                         if (_successMessage != null)
-                          Container(
+                          ModernCard(
                             padding: const EdgeInsets.all(16),
                             margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.green[50],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _successMessage!,
-                              style: TextStyle(
-                                color: Colors.green[700],
-                                fontSize: 14,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: AppColors.success,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _successMessage!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: AppColors.success,
+                                            fontFamily: 'SF Pro Text',
+                                          ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
 
                         // Profile form
-                        const Text(
+                        Text(
                           'Personal Information',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1A),
-                            letterSpacing: -0.5,
-                          ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
                         ),
 
                         const SizedBox(height: 16),
 
                         // First name
-                        CustomTextField(
+                        ModernTextField(
                           controller: _firstNameController,
                           labelText: 'First Name',
                           enabled: _isEditing,
@@ -761,7 +827,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 16),
 
                         // Last name
-                        CustomTextField(
+                        ModernTextField(
                           controller: _lastNameController,
                           labelText: 'Last Name',
                           enabled: _isEditing,
@@ -773,7 +839,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 16),
 
                         // Phone number
-                        CustomTextField(
+                        ModernTextField(
                           controller: _phoneController,
                           labelText: 'Phone Number',
                           keyboardType: TextInputType.phone,
@@ -786,7 +852,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 16),
 
                         // Email
-                        CustomTextField(
+                        ModernTextField(
                           controller: _emailController,
                           labelText: 'Email',
                           keyboardType: TextInputType.emailAddress,
@@ -802,29 +868,27 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 16),
 
                         // Member since (read-only)
-                        Container(
+                        ModernCard(
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 'Member Since',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontFamily: 'SF Pro Text',
+                                    ),
                               ),
                               Text(
                                 '${appState.user?.createdAt.day ?? 0}/${appState.user?.createdAt.month ?? 0}/${appState.user?.createdAt.year ?? 0}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                      fontFamily: 'SF Pro Text',
+                                    ),
                               ),
                             ],
                           ),
@@ -833,91 +897,28 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 32),
 
                         // Security Section
-                        const Text(
+                        Text(
                           'Security',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1A),
-                            letterSpacing: -0.5,
-                          ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
                         ),
                         const SizedBox(height: 16),
 
                         if (!_showChangePassword)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showChangePassword = true;
-                                  _passwordErrorMessage = null;
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[100],
-                                foregroundColor: const Color(0xFF1A1A1A),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.lock_outlined, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Change Password'),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        const SizedBox(height: 32),
-
-                        // Security Section
-                        const Text(
-                          'Security',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1A),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        if (!_showChangePassword)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showChangePassword = true;
-                                  _passwordErrorMessage = null;
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[100],
-                                foregroundColor: const Color(0xFF1A1A1A),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.lock_outlined, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Change Password'),
-                                ],
-                              ),
-                            ),
+                          ModernButton(
+                            text: 'Change Password',
+                            icon: Icons.lock_outlined,
+                            type: ModernButtonType.secondary,
+                            onPressed: () {
+                              setState(() {
+                                _showChangePassword = true;
+                                _passwordErrorMessage = null;
+                              });
+                            },
                           ),
 
                         if (_showChangePassword)
@@ -932,19 +933,34 @@ class _SettingsPageState extends State<SettingsPage> {
                                     padding: const EdgeInsets.all(16),
                                     margin: const EdgeInsets.only(bottom: 16),
                                     decoration: BoxDecoration(
-                                      color: Colors.red[50],
+                                      color: AppColors.error.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Text(
-                                      _passwordErrorMessage!,
-                                      style: TextStyle(
-                                        color: Colors.red[700],
-                                        fontSize: 14,
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.error_outline,
+                                          color: AppColors.error,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            _passwordErrorMessage!,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  color: AppColors.error,
+                                                  fontFamily: 'SF Pro Text',
+                                                ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
 
-                                CustomTextField(
+                                ModernTextField(
                                   controller: _currentPasswordController,
                                   labelText: 'Current Password',
                                   obscureText: true,
@@ -954,7 +970,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                CustomTextField(
+                                ModernTextField(
                                   controller: _newPasswordController,
                                   labelText: 'New Password',
                                   obscureText: true,
@@ -970,7 +986,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                CustomTextField(
+                                ModernTextField(
                                   controller: _confirmPasswordController,
                                   labelText: 'Confirm New Password',
                                   obscureText: true,
@@ -989,17 +1005,20 @@ class _SettingsPageState extends State<SettingsPage> {
                                 Row(
                                   children: [
                                     Expanded(
-                                      child: LoadingButton(
+                                      child: ModernButton(
+                                        text: 'Update',
+                                        type: ModernButtonType.primary,
+                                        isLoading: _isChangingPassword,
                                         onPressed: _isChangingPassword
                                             ? null
                                             : _changePassword,
-                                        isLoading: _isChangingPassword,
-                                        child: const Text('Update'),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
-                                      child: OutlinedButton(
+                                      child: ModernButton(
+                                        text: 'Cancel',
+                                        type: ModernButtonType.secondary,
                                         onPressed: _isChangingPassword
                                             ? null
                                             : () {
@@ -1014,7 +1033,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                                       .clear();
                                                 });
                                               },
-                                        child: const Text('Cancel'),
                                       ),
                                     ),
                                   ],
@@ -1029,67 +1047,74 @@ class _SettingsPageState extends State<SettingsPage> {
                         if (appState.user!.status !=
                                 VerificationStatus.verified &&
                             !_isEditing)
-                          Container(
+                          ModernCard(
                             padding: const EdgeInsets.all(20),
                             margin: const EdgeInsets.only(bottom: 24),
-                            decoration: BoxDecoration(
-                              color:
-                                  appState.user!.status ==
-                                      VerificationStatus.pending
-                                  ? Colors.blue[50]
-                                  : Colors.orange[50],
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      appState.user!.status ==
-                                              VerificationStatus.pending
-                                          ? Icons.hourglass_empty
-                                          : Icons.verified_user,
-                                      color:
-                                          appState.user!.status ==
-                                              VerificationStatus.pending
-                                          ? Colors.blue[700]
-                                          : Colors.orange[700],
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color:
+                                    appState.user!.status ==
+                                        VerificationStatus.pending
+                                    ? AppColors.primary.withOpacity(0.1)
+                                    : AppColors.warning.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
                                         appState.user!.status ==
                                                 VerificationStatus.pending
-                                            ? 'Documents Under Review'
-                                            : 'Complete Your Verification',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1A1A1A),
+                                            ? Icons.hourglass_empty
+                                            : Icons.verified_user,
+                                        color:
+                                            appState.user!.status ==
+                                                VerificationStatus.pending
+                                            ? AppColors.primary
+                                            : AppColors.warning,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          appState.user!.status ==
+                                                  VerificationStatus.pending
+                                              ? 'Documents Under Review'
+                                              : 'Complete Your Verification',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.textPrimary,
+                                                fontFamily: 'SF Pro Text',
+                                              ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  appState.user!.status ==
-                                          VerificationStatus.pending
-                                      ? 'Your documents are being reviewed. We\'ll notify you once verified.'
-                                      : 'Upload your ID or Passport to unlock all features',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[600],
+                                    ],
                                   ),
-                                ),
-                                if (appState.user!.status ==
-                                    VerificationStatus.notVerified) ...[
-                                  const SizedBox(height: 16),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    appState.user!.status ==
+                                            VerificationStatus.pending
+                                        ? 'Your documents are being reviewed. We\'ll notify you once verified.'
+                                        : 'Upload your ID or Passport to unlock all features',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                          fontFamily: 'SF Pro Text',
+                                        ),
+                                  ),
+                                  if (appState.user!.status ==
+                                      VerificationStatus.notVerified) ...[
+                                    const SizedBox(height: 16),
+                                    ModernButton(
+                                      text: 'Upload Documents',
+                                      icon: Icons.upload_file,
+                                      type: ModernButtonType.primary,
                                       onPressed: () {
                                         Navigator.push(
                                           context,
@@ -1106,62 +1131,47 @@ class _SettingsPageState extends State<SettingsPage> {
                                           ),
                                         );
                                       },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                      child: const Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.upload_file, size: 20),
-                                          SizedBox(width: 8),
-                                          Text('Upload Documents'),
-                                        ],
-                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           ),
 
                         // Edit Warning
                         if (_isEditing)
-                          Container(
+                          ModernCard(
                             padding: const EdgeInsets.all(16),
                             margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  color: Colors.blue[700],
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Saving changes will set your account to pending. An admin will review your updates.',
-                                    style: TextStyle(
-                                      color: Colors.blue[700],
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Saving changes will set your account to pending. An admin will review your updates.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w500,
+                                            fontFamily: 'SF Pro Text',
+                                          ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
 
@@ -1170,15 +1180,18 @@ class _SettingsPageState extends State<SettingsPage> {
                           Row(
                             children: [
                               Expanded(
-                                child: LoadingButton(
-                                  onPressed: _isLoading ? null : _updateProfile,
+                                child: ModernButton(
+                                  text: 'Save Changes',
+                                  type: ModernButtonType.primary,
                                   isLoading: _isLoading,
-                                  child: const Text('Save Changes'),
+                                  onPressed: _isLoading ? null : _updateProfile,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: OutlinedButton(
+                                child: ModernButton(
+                                  text: 'Cancel',
+                                  type: ModernButtonType.secondary,
                                   onPressed: _isLoading
                                       ? null
                                       : () {
@@ -1189,15 +1202,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                             _loadUserData();
                                           });
                                         },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text('Cancel'),
                                 ),
                               ),
                             ],
@@ -1206,27 +1210,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: 32),
 
                         // Logout button
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: _logout,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: BorderSide(color: Colors.red[300]!),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.logout, size: 20),
-                                SizedBox(width: 8),
-                                Text('Logout'),
-                              ],
-                            ),
-                          ),
+                        ModernButton(
+                          text: 'Logout',
+                          icon: Icons.logout,
+                          type: ModernButtonType.secondary,
+                          onPressed: _logout,
                         ),
 
                         const SizedBox(height: 32),
@@ -1246,22 +1234,22 @@ class _SettingsPageState extends State<SettingsPage> {
   Color _getStatusColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return Colors.green.withOpacity(0.1);
+        return AppColors.success.withOpacity(0.1);
       case VerificationStatus.pending:
-        return Colors.blue.withOpacity(0.1);
+        return AppColors.primary.withOpacity(0.1);
       case VerificationStatus.notVerified:
-        return Colors.orange.withOpacity(0.1);
+        return AppColors.warning.withOpacity(0.1);
     }
   }
 
   Color _getStatusTextColor(VerificationStatus status) {
     switch (status) {
       case VerificationStatus.verified:
-        return Colors.green;
+        return AppColors.success;
       case VerificationStatus.pending:
-        return Colors.blue;
+        return AppColors.primary;
       case VerificationStatus.notVerified:
-        return Colors.orange;
+        return AppColors.warning;
     }
   }
 
@@ -1294,25 +1282,21 @@ class _SettingsPageState extends State<SettingsPage> {
     required bool isVerified,
     required VoidCallback onVerify,
   }) {
-    return Container(
+    return ModernCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: isVerified
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.grey[200],
+                  ? AppColors.success.withOpacity(0.1)
+                  : AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              color: isVerified ? Colors.green : Colors.grey[600],
+              color: isVerified ? AppColors.success : AppColors.textSecondary,
               size: 20,
             ),
           ),
@@ -1323,16 +1307,19 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Color(0xFF1A1A1A),
+                    color: AppColors.textPrimary,
+                    fontFamily: 'SF Pro Text',
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontFamily: 'SF Pro Text',
+                  ),
                 ),
               ],
             ),
@@ -1342,20 +1329,21 @@ class _SettingsPageState extends State<SettingsPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.success.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle, size: 14, color: Colors.green),
+                  Icon(Icons.check_circle, size: 14, color: AppColors.success),
                   const SizedBox(width: 4),
                   Text(
                     'Verified',
                     style: TextStyle(
-                      color: Colors.green,
+                      color: AppColors.success,
                       fontWeight: FontWeight.w600,
                       fontSize: 11,
+                      fontFamily: 'SF Pro Text',
                     ),
                   ),
                 ],
@@ -1376,6 +1364,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
+                  fontFamily: 'SF Pro Text',
                 ),
               ),
             ),
@@ -1394,12 +1383,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: ModernCard(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(16),
-        ),
         child: Column(
           children: [
             Container(
@@ -1413,17 +1398,20 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 15,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+                color: AppColors.textPrimary,
+                fontFamily: 'SF Pro Text',
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontFamily: 'SF Pro Text',
+              ),
               textAlign: TextAlign.center,
             ),
           ],

@@ -90,15 +90,34 @@ class _AuctionsPageState extends State<AuctionsPage>
   @override
   void initState() {
     super.initState();
+    print('🔄 AuctionsPage initState called');
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       // Ensure auctions are loaded before applying filters
       final appState = context.read<AppState>();
-      if (appState.auctions.isEmpty) {
-        appState.loadAuctions().then((_) {
-          _applyFilters();
-        });
-      } else {
+      print(
+        '🔄 AuctionsPage post-frame callback - auctions: ${appState.auctions.length}, loading: ${appState.loadingAuctions}',
+      );
+
+      // Always try to load auctions if empty, even if not loading
+      if (appState.auctions.isEmpty && !appState.loadingAuctions) {
+        print('🔄 Loading auctions from initState...');
+        appState
+            .loadAuctions()
+            .then((_) {
+              if (mounted) {
+                print('✅ Auctions loaded, applying filters');
+                _applyFilters();
+              }
+            })
+            .catchError((e) {
+              print('❌ Error loading auctions in initState: $e');
+            });
+      } else if (appState.auctions.isNotEmpty) {
+        print('✅ Auctions already loaded, applying filters');
         _applyFilters();
+      } else {
+        print('⏳ Auctions are loading...');
       }
     });
   }
@@ -111,7 +130,19 @@ class _AuctionsPageState extends State<AuctionsPage>
   void _applyFilters() {
     try {
       final appState = context.read<AppState>();
-      print('Applying filters - auctions count: ${appState.auctions.length}');
+      print(
+        '🔄 Applying filters - auctions count: ${appState.auctions.length}',
+      );
+
+      // Safety check: ensure auctions list is valid
+      if (appState.auctions.isEmpty) {
+        print('⚠️ No auctions to filter');
+        setState(() {
+          _filteredAuctions = [];
+        });
+        return;
+      }
+
       List<Auction> auctions = List.from(appState.auctions);
 
       // Apply price range filter
@@ -367,158 +398,265 @@ class _AuctionsPageState extends State<AuctionsPage>
               'AuctionsPage builder - loadingAuctions: ${appState.loadingAuctions}, auctions length: ${appState.auctions.length}',
             );
 
-            // Track auction updates for highlighting
-            _trackAuctionUpdates(appState.auctions);
+            // Safety check: if auctions list is null or has parsing errors, show error
+            if (appState.auctions.isEmpty && !appState.loadingAuctions) {
+              print(
+                '⚠️ AuctionsPage: No auctions available - showing empty state',
+              );
+            }
 
-            // Re-apply filters when AppState auctions actually change
-            // Use a hash to detect if auction data changed
-            final currentHash = appState.auctions.fold<int>(
-              0,
-              (hash, auction) =>
-                  hash ^
-                  auction.auctionId.hashCode ^
-                  auction.currentPrice.hashCode ^
-                  auction.bidCount.hashCode,
-            );
-
-            if (currentHash != _lastAuctionsHash) {
-              _lastAuctionsHash = currentHash;
+            // Force load auctions if they're empty and not loading
+            if (appState.auctions.isEmpty && !appState.loadingAuctions) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  _applyFilters();
+                  print('🔄 Force loading auctions from build method');
+                  appState.loadAuctions();
                 }
               });
             }
 
+            // Track auction updates for highlighting
+            if (appState.auctions.isNotEmpty) {
+              _trackAuctionUpdates(appState.auctions);
+            }
+
+            // Re-apply filters when AppState auctions actually change
+            // Use a hash to detect if auction data changed
+            if (appState.auctions.isNotEmpty) {
+              try {
+                final currentHash = appState.auctions.fold<int>(0, (
+                  hash,
+                  auction,
+                ) {
+                  try {
+                    return hash ^
+                        auction.auctionId.hashCode ^
+                        auction.currentPrice.hashCode ^
+                        auction.bidCount.hashCode;
+                  } catch (e) {
+                    print(
+                      '⚠️ Error calculating hash for auction ${auction.auctionId}: $e',
+                    );
+                    return hash; // Return hash unchanged if this auction fails
+                  }
+                });
+
+                if (currentHash != _lastAuctionsHash) {
+                  _lastAuctionsHash = currentHash;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      try {
+                        _applyFilters();
+                      } catch (e) {
+                        print('❌ Error in post-frame filter application: $e');
+                      }
+                    }
+                  });
+                }
+              } catch (e) {
+                print('❌ Error calculating auctions hash: $e');
+                // Continue anyway - filters will be applied on next build
+              }
+            }
+
             return CustomScrollView(
-            slivers: [
-              // Minimal Header
-              SliverAppBar(
-                backgroundColor: Colors.white,
-                elevation: 0,
-                pinned: true,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                title: Row(
-                  children: [
-                    const Text(
-                      'Auctions',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A1A),
+              slivers: [
+                // Minimal Header
+                SliverAppBar(
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  pinned: true,
+                  leading: IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title: Row(
+                    children: [
+                      const Text(
+                        'Auctions',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
+                      const SizedBox(width: 8),
+                      if (appState.loadingAuctions)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
+                  actions: [
+                    // VIP Button
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFD700).withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.diamond, color: Colors.white, size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'VIP',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      onPressed: () => _handleVipButtonPress(context, appState),
+                    ),
+                    PopupMenuButton<String>(
+                      onSelected: _setSort,
+                      icon: const Icon(Icons.sort, color: Color(0xFF1A1A1A)),
+                      itemBuilder: (BuildContext context) {
+                        return _sortOptions.entries.map((entry) {
+                          return PopupMenuItem<String>(
+                            value: entry.key,
+                            child: Row(
+                              children: [
+                                if (_currentSort == entry.key)
+                                  Icon(
+                                    Icons.check,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  )
+                                else
+                                  const SizedBox(width: 20),
+                                const SizedBox(width: 8),
+                                Text(entry.value),
+                              ],
+                            ),
+                          );
+                        }).toList();
+                      },
                     ),
                     const SizedBox(width: 8),
-                    if (appState.loadingAuctions)
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
                   ],
                 ),
-                actions: [
-                  // VIP Button
-                  IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFFD700).withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
+
+                // Content
+                if (appState.loadingAuctions)
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.diamond, color: Colors.white, size: 16),
-                          SizedBox(width: 4),
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
                           Text(
-                            'VIP',
+                            'Loading auctions...',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontSize: 14,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    onPressed: () => _handleVipButtonPress(context, appState),
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: _setSort,
-                    icon: const Icon(Icons.sort, color: Color(0xFF1A1A1A)),
-                    itemBuilder: (BuildContext context) {
-                      return _sortOptions.entries.map((entry) {
-                        return PopupMenuItem<String>(
-                          value: entry.key,
-                          child: Row(
-                            children: [
-                              if (_currentSort == entry.key)
-                                Icon(
-                                  Icons.check,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                )
-                              else
-                                const SizedBox(width: 20),
-                              const SizedBox(width: 8),
-                              Text(entry.value),
-                            ],
-                          ),
-                        );
-                      }).toList();
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ),
+                  )
+                else if (appState.auctions.isEmpty)
+                  SliverFillRemaining(
+                    child: _buildEmptyState(
+                      context,
+                      'No Auctions',
+                      'No auctions available at the moment.\nPull down to refresh.',
+                      Icons.gavel_outlined,
+                    ),
+                  )
+                else
+                  SliverToBoxAdapter(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Filter bar
+                        _buildScrollableFilterBar(),
 
-              // Content
-              if (appState.loadingAuctions)
-                const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (appState.auctions.isEmpty)
-                SliverFillRemaining(
-                  child: _buildEmptyState(
-                    context,
-                    'No Auctions',
-                    'No auctions available at the moment',
-                    Icons.gavel_outlined,
+                        // Auctions content
+                        Builder(
+                          builder: (context) {
+                            print('🔨 Builder building auctions tables...');
+                            try {
+                              final result = _buildAuctionsTables(appState);
+                              print(
+                                '✅ Builder got result from _buildAuctionsTables',
+                              );
+                              return result;
+                            } catch (e, stackTrace) {
+                              print('❌ Error building auctions tables: $e');
+                              print('Stack trace: $stackTrace');
+                              return Container(
+                                padding: const EdgeInsets.all(40),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        size: 48,
+                                        color: Colors.red,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Error displaying auctions',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        e.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                )
-              else
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      // Filter bar
-                      _buildScrollableFilterBar(),
-
-                      // Auctions content
-                      _buildAuctionsTables(appState),
-                    ],
-                  ),
-                ),
-            ],
-          );
+              ],
+            );
           } catch (e, stackTrace) {
-            print('Error in AuctionsPage build: $e');
-            print('Stack trace: $stackTrace');
+            print('❌ CRITICAL ERROR in AuctionsPage build: $e');
+            print('   Error type: ${e.runtimeType}');
+            print('   Stack trace: $stackTrace');
+            print('   AppState auctions length: ${appState.auctions.length}');
+            print('   Loading state: ${appState.loadingAuctions}');
             return CustomScrollView(
               slivers: [
                 SliverAppBar(
@@ -526,7 +664,10 @@ class _AuctionsPageState extends State<AuctionsPage>
                   elevation: 0,
                   pinned: true,
                   leading: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Color(0xFF1A1A1A),
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                   title: const Text(
@@ -543,11 +684,41 @@ class _AuctionsPageState extends State<AuctionsPage>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red,
+                        ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Error loading auctions',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            'Error: ${e.toString()}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            appState.loadAuctions();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade700,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Retry Loading'),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -604,255 +775,349 @@ class _AuctionsPageState extends State<AuctionsPage>
   }
 
   Widget _buildAuctionsTables(AppState appState) {
-    print(
-      '_buildAuctionsTables - appState.auctions: ${appState.auctions.length}, _filteredAuctions: ${_filteredAuctions.length}',
-    );
+    try {
+      print(
+        '_buildAuctionsTables - appState.auctions: ${appState.auctions.length}, _filteredAuctions: ${_filteredAuctions.length}',
+      );
 
-    final auctionsToShow = _filteredAuctions.isEmpty
-        ? appState.auctions
-        : _filteredAuctions;
+      // Safety check: filter out any invalid auctions
+      final validAuctions = appState.auctions.where((auction) {
+        try {
+          // Validate auction has required properties
+          final _ = auction.auctionId;
+          final _ = auction.propertyId;
+          final _ = auction.currentPrice;
+          final _ = auction.bidCount;
+          final _ = auction.startAt;
+          return true;
+        } catch (e) {
+          print('⚠️ Invalid auction detected in _buildAuctionsTables: $e');
+          return false;
+        }
+      }).toList();
 
-    // Separate upcoming, live and ended auctions
-    final now = DateTime.now();
+      final auctionsToShow = _filteredAuctions.isEmpty
+          ? validAuctions
+          : _filteredAuctions.where((auction) {
+              try {
+                final _ = auction.auctionId;
+                return true;
+              } catch (e) {
+                return false;
+              }
+            }).toList();
 
-    final upcomingAuctions = auctionsToShow
-        .where(
-          (auction) =>
-              auction.status == 'Active' && now.isBefore(auction.startAt),
-        )
-        .toList();
+      // Separate upcoming, live and ended auctions
+      final now = DateTime.now();
 
-    final liveAuctions = auctionsToShow
-        .where(
-          (auction) =>
-              auction.isActive &&
+      final upcomingAuctions = auctionsToShow.where((auction) {
+        try {
+          return auction.status == 'Active' && now.isBefore(auction.startAt);
+        } catch (e) {
+          print('⚠️ Error checking if auction is upcoming: $e');
+          return false;
+        }
+      }).toList();
+
+      final liveAuctions = auctionsToShow.where((auction) {
+        try {
+          return auction.isActive &&
               auction.status != 'Ended' &&
               now.isAfter(auction.startAt) &&
-              !now.isAfter(auction.endAt),
-        )
-        .toList();
+              !now.isAfter(auction.endAt);
+        } catch (e) {
+          print('⚠️ Error checking if auction is live: $e');
+          return false;
+        }
+      }).toList();
 
-    final endedAuctions = auctionsToShow
-        .where(
-          (auction) =>
-              auction.isEnded ||
+      final endedAuctions = auctionsToShow.where((auction) {
+        try {
+          return auction.isEnded ||
               auction.status == 'Ended' ||
-              now.isAfter(auction.endAt),
-        )
-        .toList();
+              now.isAfter(auction.endAt);
+        } catch (e) {
+          print('⚠️ Error checking if auction is ended: $e');
+          return false;
+        }
+      }).toList();
 
-    print(
-      'Auctions separation - Total: ${auctionsToShow.length}, Upcoming: ${upcomingAuctions.length}, Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}',
-    );
-
-    // Debug each auction
-    for (var auction in auctionsToShow) {
       print(
-        'Auction ${auction.auctionId}: status=${auction.status}, endAt=${auction.endAt}, isActive=${auction.isActive}, isEnded=${auction.isEnded}',
+        'Auctions separation - Total: ${auctionsToShow.length}, Upcoming: ${upcomingAuctions.length}, Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}',
       );
-      print('  - Current time: ${DateTime.now()}');
-      print('  - End time: ${auction.endAt}');
+
+      // Debug each auction (with error handling)
+      for (var auction in auctionsToShow) {
+        try {
+          print(
+            'Auction ${auction.auctionId}: status=${auction.status}, endAt=${auction.endAt}, isActive=${auction.isActive}, isEnded=${auction.isEnded}',
+          );
+          print('  - Current time: ${DateTime.now()}');
+          print('  - End time: ${auction.endAt}');
+          print(
+            '  - Time difference: ${auction.endAt.difference(DateTime.now()).inMinutes} minutes',
+          );
+        } catch (e) {
+          print('⚠️ Error debugging auction: $e');
+        }
+      }
+
+      print('✅ _buildAuctionsTables returning widget tree');
       print(
-        '  - Time difference: ${auction.endAt.difference(DateTime.now()).inMinutes} minutes',
+        '   Upcoming: ${upcomingAuctions.length}, Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}',
+      );
+
+      // Debug: Add a visible test container to verify rendering
+      return Padding(
+        padding: const EdgeInsets.only(top: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Debug test widget
+            Container(
+              height: 50,
+              color: Colors.red.withOpacity(0.3),
+              child: Center(
+                child: Text(
+                  'DEBUG: Auctions Table Builder - Live: ${liveAuctions.length}, Ended: ${endedAuctions.length}',
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Upcoming Auctions Section
+            if (upcomingAuctions.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Upcoming',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${upcomingAuctions.length}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildAuctionsTable(
+                context,
+                upcomingAuctions,
+                isLive: false,
+                isUpcoming: true,
+              ),
+              const SizedBox(height: 32),
+            ],
+
+            // Live Auctions Section
+            if (liveAuctions.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Live Now',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${liveAuctions.length}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildAuctionsTable(
+                context,
+                liveAuctions,
+                isLive: true,
+                isUpcoming: false,
+              ),
+              const SizedBox(height: 32),
+            ],
+
+            // Ended Auctions Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  const Text(
+                    'Ended',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${endedAuctions.length}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (endedAuctions.isNotEmpty)
+              _buildAuctionsTable(context, endedAuctions, isLive: false)
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.hourglass_empty,
+                      size: 48,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No Ended Auctions',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Check back later for completed auctions',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+            // Empty state if no auctions
+            if (auctionsToShow.isEmpty) ...[
+              const SizedBox(height: 32),
+              _buildEmptyState(
+                context,
+                'No Auctions Found',
+                'No auctions match your current filters',
+                Icons.filter_list_off,
+              ),
+            ],
+
+            const SizedBox(height: 100),
+          ],
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('❌ CRITICAL ERROR in _buildAuctionsTables: $e');
+      print('   Stack trace: $stackTrace');
+      return Container(
+        padding: const EdgeInsets.all(40),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Error displaying auctions',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Error: ${e.toString()}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  appState.loadAuctions();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       );
     }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: Column(
-        children: [
-          // Upcoming Auctions Section
-          if (upcomingAuctions.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  const Text(
-                    'Upcoming',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A1A),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${upcomingAuctions.length}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildAuctionsTable(
-              context,
-              upcomingAuctions,
-              isLive: false,
-              isUpcoming: true,
-            ),
-            const SizedBox(height: 32),
-          ],
-
-          // Live Auctions Section
-          if (liveAuctions.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Live Now',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A1A),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${liveAuctions.length}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildAuctionsTable(
-              context,
-              liveAuctions,
-              isLive: true,
-              isUpcoming: false,
-            ),
-            const SizedBox(height: 32),
-          ],
-
-          // Ended Auctions Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                const Text(
-                  'Ended',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${endedAuctions.length}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (endedAuctions.isNotEmpty)
-            _buildAuctionsTable(context, endedAuctions, isLive: false)
-          else
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.hourglass_empty,
-                    size: 48,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No Ended Auctions',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Check back later for completed auctions',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-
-          // Empty state if no auctions
-          if (auctionsToShow.isEmpty) ...[
-            const SizedBox(height: 32),
-            _buildEmptyState(
-              context,
-              'No Auctions Found',
-              'No auctions match your current filters',
-              Icons.filter_list_off,
-            ),
-          ],
-
-          const SizedBox(height: 100),
-        ],
-      ),
-    );
   }
 
   Widget _buildAuctionsTable(
@@ -861,12 +1126,27 @@ class _AuctionsPageState extends State<AuctionsPage>
     required bool isLive,
     bool isUpcoming = false,
   }) {
+    print(
+      '🔨 _buildAuctionsTable called - auctions: ${auctions.length}, isLive: $isLive, isUpcoming: $isUpcoming',
+    );
+
+    if (auctions.isEmpty) {
+      print(
+        '⚠️ _buildAuctionsTable: auctions list is empty, returning SizedBox.shrink()',
+      );
+      return const SizedBox.shrink();
+    }
+
     Color headerColor = Colors.grey[50]!;
 
     // Calculate dynamic height based on actual auction count (max 5)
     final displayCount = auctions.length > 5 ? 5 : auctions.length;
     final dynamicHeight =
         displayCount * 60.0 + 48.0; // rows × 60px + header height
+
+    print(
+      '✅ _buildAuctionsTable: Building table with height: $dynamicHeight, displayCount: $displayCount',
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -883,6 +1163,7 @@ class _AuctionsPageState extends State<AuctionsPage>
               minWidth: MediaQuery.of(context).size.width - 40,
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Sticky Header row
                 Container(
@@ -1233,10 +1514,7 @@ class _AuctionsPageState extends State<AuctionsPage>
                 child: _buildPropertyTypeTag(auction.property?.listingType),
               ),
               const SizedBox(width: 8),
-              SizedBox(
-                width: 70,
-                child: _buildDocsCell(auction),
-              ),
+              SizedBox(width: 70, child: _buildDocsCell(auction)),
               const SizedBox(width: 8),
               Expanded(
                 child: Align(
@@ -1302,10 +1580,7 @@ class _AuctionsPageState extends State<AuctionsPage>
     final masterPlanUrl = _getMasterPlanUrl(auction);
     if (masterPlanUrl == null) {
       return const Center(
-        child: Text(
-          '—',
-          style: TextStyle(color: Colors.grey, fontSize: 11),
-        ),
+        child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 11)),
       );
     }
 

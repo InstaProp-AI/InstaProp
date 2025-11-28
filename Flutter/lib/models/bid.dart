@@ -48,11 +48,10 @@ class Bid {
       bidder: json['bidder'] != null || json['Bidder'] != null
           ? Account.fromJson(json['bidder'] ?? json['Bidder'])
           : null,
-      bidAmount: (json['bidAmount'] ?? json['BidAmount'] ?? 0).toDouble(),
-      createdAt: DateTime.parse(
-        json['createdAt'] ??
-            json['CreatedAt'] ??
-            DateTime.now().toIso8601String(),
+      bidAmount: _parseDouble(json['bidAmount'] ?? json['BidAmount'], defaultValue: 0.0),
+      createdAt: _parseDateTime(
+        json['createdAt'] ?? json['CreatedAt'],
+        defaultValue: DateTime.now(),
       ),
       auction: parseAuction(),
     );
@@ -68,5 +67,36 @@ class Bid {
       'createdAt': createdAt.toIso8601String(),
       'auction': auction?.toJson(),
     };
+  }
+
+  // Helper to safely parse double from double, int, or string
+  static double _parseDouble(dynamic value, {double defaultValue = 0.0}) {
+    if (value == null) return defaultValue;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        print('⚠️ Failed to parse double from string: $value');
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  }
+
+  // Helper to safely parse DateTime from string or DateTime
+  static DateTime _parseDateTime(dynamic value, {required DateTime defaultValue}) {
+    if (value == null) return defaultValue;
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        print('⚠️ Failed to parse DateTime from string: $value');
+        return defaultValue;
+      }
+    }
+    return defaultValue;
   }
 }

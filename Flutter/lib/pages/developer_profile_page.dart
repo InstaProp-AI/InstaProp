@@ -6,6 +6,7 @@ import '../services/chat_service.dart';
 import '../services/api_client.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../widgets/modern_button.dart';
 import 'chat_page.dart';
 import 'project_details_page.dart';
 import 'property_details_page.dart';
@@ -53,10 +54,21 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
       print('Stack trace: $stackTrace');
       if (mounted) {
         setState(() => _loading = false);
+        
+        String errorMessage = 'Failed to load developer profile';
+        if (e.toString().contains('404') || e.toString().contains('not found')) {
+          errorMessage = 'This developer profile is no longer available. The developer may have been removed or their account may have been deactivated.';
+        } else if (e.toString().contains('401') || e.toString().contains('unauthorized')) {
+          errorMessage = 'You do not have permission to view this developer profile.';
+        } else {
+          errorMessage = 'Failed to load developer profile: ${e.toString()}';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load developer profile: ${e.toString()}'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -65,7 +77,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
 
   Future<void> _startChat() async {
     final appState = Provider.of<AppState>(context, listen: false);
-    
+
     // Check if user is authenticated
     if (appState.token == null || appState.token!.isEmpty) {
       if (!mounted) return;
@@ -97,7 +109,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      
+
       // Extract error message
       String errorMessage = 'Failed to start chat';
       if (e is Exception) {
@@ -105,9 +117,9 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
       } else {
         errorMessage = e.toString();
       }
-      
+
       print('Chat creation error: $errorMessage');
-      
+
       // Show error dialog with details
       showDialog(
         context: context,
@@ -122,18 +134,12 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
               Text('Error'),
             ],
           ),
-          content: Text(
-            errorMessage,
-            style: const TextStyle(fontSize: 16),
-          ),
+          content: Text(errorMessage, style: const TextStyle(fontSize: 16)),
           actions: [
-            ElevatedButton(
+            ModernButton(
+              text: 'OK',
+              type: ModernButtonType.primary,
               onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.surface,
-              ),
-              child: const Text('OK'),
             ),
           ],
         ),
@@ -147,9 +153,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
       context: context,
       barrierDismissible: true,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.login, color: AppColors.primary, size: 28),
@@ -157,10 +161,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
             Expanded(
               child: Text(
                 'Login Required',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -171,18 +172,12 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
           children: [
             Text(
               'You need to be logged in to start a chat with the developer.',
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.5,
-              ),
+              style: TextStyle(fontSize: 16, height: 1.5),
             ),
             SizedBox(height: 16),
             Text(
               'Please log in to continue.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ],
         ),
@@ -191,44 +186,20 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
           ),
-          ElevatedButton(
+          ModernButton(
+            text: 'Login',
+            type: ModernButtonType.primary,
             onPressed: () {
               Navigator.pop(context); // Close dialog
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const AuthPage(),
-                ),
+                MaterialPageRoute(builder: (context) => const AuthPage()),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.login, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Go to Login',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+            icon: Icons.login,
           ),
         ],
       ),
@@ -285,13 +256,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
           iconTheme: const IconThemeData(color: AppColors.surface),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: AppColors.primaryGradient,
-                ),
-              ),
+              decoration: const BoxDecoration(color: AppColors.primary),
               child: SafeArea(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -589,7 +554,11 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
           const SizedBox(height: 16),
           const Text('Failed to load profile'),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: _loadProfile, child: const Text('Retry')),
+          ModernButton(
+            text: 'Retry',
+            type: ModernButtonType.primary,
+            onPressed: _loadProfile,
+          ),
         ],
       ),
     );
@@ -609,15 +578,12 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Text(
               'Projects',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 200,
+            height: 240,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               scrollDirection: Axis.horizontal,
@@ -628,9 +594,8 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ProjectDetailsPage(
-                          projectId: project.projectId,
-                        ),
+                        builder: (_) =>
+                            ProjectDetailsPage(projectId: project.projectId),
                       ),
                     );
                   },
@@ -652,20 +617,23 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         ClipRRect(
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(16),
                             topRight: Radius.circular(16),
                           ),
-                          child: project.coverImageUrl != null &&
+                          child:
+                              project.coverImageUrl != null &&
                                   project.coverImageUrl!.isNotEmpty
                               ? Image.network(
                                   project.coverImageUrl!,
                                   height: 110,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _buildProjectPlaceholder(),
+                                  errorBuilder: (_, __, ___) =>
+                                      _buildProjectPlaceholder(),
                                 )
                               : _buildProjectPlaceholder(),
                         ),
@@ -673,6 +641,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 project.name,
@@ -738,11 +707,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
       width: double.infinity,
       color: AppColors.primary.withOpacity(0.08),
       child: const Center(
-        child: Icon(
-          Icons.apartment,
-          size: 32,
-          color: AppColors.primary,
-        ),
+        child: Icon(Icons.apartment, size: 32, color: AppColors.primary),
       ),
     );
   }
@@ -761,15 +726,12 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Text(
               'Featured Properties',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 230,
+            height: 280,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               scrollDirection: Axis.horizontal,
@@ -804,6 +766,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         ClipRRect(
                           borderRadius: const BorderRadius.only(
@@ -816,7 +779,8 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                                   height: 120,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _buildPropertyPlaceholder(),
+                                  errorBuilder: (_, __, ___) =>
+                                      _buildPropertyPlaceholder(),
                                 )
                               : _buildPropertyPlaceholder(),
                         ),
@@ -824,6 +788,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 property.name,
@@ -845,11 +810,19 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
                               const SizedBox(height: 6),
                               Row(
                                 children: [
-                                  const Icon(Icons.king_bed, size: 14, color: AppColors.secondary),
+                                  const Icon(
+                                    Icons.king_bed,
+                                    size: 14,
+                                    color: AppColors.secondary,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text('${property.bedrooms}'),
                                   const SizedBox(width: 8),
-                                  const Icon(Icons.bathtub, size: 14, color: AppColors.secondary),
+                                  const Icon(
+                                    Icons.bathtub,
+                                    size: 14,
+                                    color: AppColors.secondary,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text('${property.bathrooms}'),
                                 ],

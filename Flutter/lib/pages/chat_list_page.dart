@@ -837,13 +837,9 @@ class _ChatListPageState extends State<ChatListPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue[50]!, Colors.blue[100]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: AppColors.surfaceVariant,
           border: Border(
-            bottom: BorderSide(color: Colors.blue[200]!, width: 2),
+            bottom: BorderSide(color: AppColors.border, width: 1),
           ),
         ),
         child: Row(
@@ -853,9 +849,7 @@ class _ChatListPageState extends State<ChatListPage> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Colors.blue, Colors.blueAccent],
-                ),
+                color: AppColors.primary,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(

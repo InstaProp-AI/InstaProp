@@ -8,23 +8,40 @@ class FeedDeveloperCard extends StatelessWidget {
 
   const FeedDeveloperCard({super.key, required this.developer});
 
+  void _navigateToProfile(BuildContext context) {
+    print('Developer card tapped - ID: ${developer.developerId}');
+    print('Developer card tapped - ID type: ${developer.developerId.runtimeType}');
+    print('Developer card tapped - ID length: ${developer.developerId.length}');
+    print('Developer card tapped - Company: ${developer.companyName}');
+    print('Developer card tapped - Name: ${developer.firstName} ${developer.lastName}');
+    
+    if (developer.developerId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid developer ID'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            DeveloperProfilePage(developerId: developer.developerId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  DeveloperProfilePage(developerId: developer.developerId),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      onTap: () => _navigateToProfile(context),
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -88,16 +105,7 @@ class FeedDeveloperCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DeveloperProfilePage(
-                              developerId: developer.developerId,
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: () => _navigateToProfile(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,

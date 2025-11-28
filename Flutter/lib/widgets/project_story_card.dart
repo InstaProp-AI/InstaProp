@@ -6,11 +6,7 @@ class ProjectStoryCard extends StatelessWidget {
   final ProjectStory story;
   final VoidCallback? onViewProject;
 
-  const ProjectStoryCard({
-    super.key,
-    required this.story,
-    this.onViewProject,
-  });
+  const ProjectStoryCard({super.key, required this.story, this.onViewProject});
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +20,7 @@ class ProjectStoryCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -124,8 +121,10 @@ class ProjectStoryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -166,7 +165,10 @@ class ProjectStoryCard extends StatelessWidget {
                     if (story.latestMilestone!.completedDate != null)
                       const Icon(Icons.check_circle, color: Colors.green)
                     else
-                      const Icon(Icons.schedule, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.schedule,
+                        color: AppColors.textSecondary,
+                      ),
                   ],
                 ),
               ),
@@ -258,4 +260,3 @@ class _StatChip extends StatelessWidget {
     );
   }
 }
-

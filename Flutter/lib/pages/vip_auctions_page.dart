@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
+import '../theme/app_colors.dart';
+import '../widgets/modern_card.dart';
+import '../widgets/modern_button.dart';
 
 class VipAuctionsPage extends StatelessWidget {
   const VipAuctionsPage({super.key});
@@ -8,7 +9,7 @@ class VipAuctionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
           // VIP Header
@@ -20,17 +21,7 @@ class VipAuctionsPage extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF1A1A1A),
-                    Color(0xFF2D2D2D),
-                    Color(0xFF1A1A1A),
-                  ],
-                ),
-              ),
+              decoration: const BoxDecoration(color: AppColors.textPrimary),
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
@@ -43,9 +34,7 @@ class VipAuctionsPage extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                              ),
+                              color: AppColors.warning,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
@@ -70,20 +59,20 @@ class VipAuctionsPage extends StatelessWidget {
                               children: [
                                 Text(
                                   'VIP Auctions',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 28,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w700,
                                     color: Colors.white,
-                                    letterSpacing: -0.5,
+                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Exclusive Premium Properties',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.white70,
-                                    fontWeight: FontWeight.w400,
+                                    fontFamily: 'SF Pro Text',
                                   ),
                                 ),
                               ],
@@ -112,9 +101,7 @@ class VipAuctionsPage extends StatelessWidget {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                      ),
+                      color: AppColors.warning,
                       borderRadius: BorderRadius.circular(60),
                       boxShadow: [
                         BoxShadow(
@@ -134,13 +121,12 @@ class VipAuctionsPage extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   // Coming Soon Text
-                  const Text(
+                  Text(
                     'Coming Soon',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
-                      letterSpacing: -1,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
 
@@ -148,10 +134,10 @@ class VipAuctionsPage extends StatelessWidget {
 
                   Text(
                     'Exclusive VIP auctions are being prepared',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[600],
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w500,
+                      fontFamily: 'SF Pro Text',
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -160,22 +146,18 @@ class VipAuctionsPage extends StatelessWidget {
 
                   Text(
                     'Premium properties with special features',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontFamily: 'SF Pro Text',
+                    ),
                     textAlign: TextAlign.center,
                   ),
 
                   const SizedBox(height: 40),
 
                   // Features Preview
-                  Container(
+                  ModernCard(
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue[50]!, Colors.purple[50]!],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue[200]!),
-                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -184,12 +166,7 @@ class VipAuctionsPage extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFFFD700),
-                                    Color(0xFFFFA500),
-                                  ],
-                                ),
+                                color: AppColors.warning,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(
@@ -199,13 +176,14 @@ class VipAuctionsPage extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
+                            Text(
                               'VIP Features Preview',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1A1A1A),
-                              ),
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                             ),
                           ],
                         ),
@@ -226,11 +204,12 @@ class VipAuctionsPage extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     feature,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodyLarge
+                                        ?.copyWith(
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Text',
+                                        ),
                                   ),
                                 ),
                               ],
@@ -244,62 +223,22 @@ class VipAuctionsPage extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   // Notification Button
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF667eea).withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.notifications_active,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Get Notified When Available',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                  ModernButton(
+                    text: 'Get Notified When Available',
+                    type: ModernButtonType.primary,
+                    onPressed: () {
+                      // Handle notification subscription
+                    },
+                    icon: Icons.notifications_active,
                   ),
 
                   const SizedBox(height: 24),
 
                   // Back to Regular Auctions
-                  TextButton(
+                  ModernButton(
+                    text: 'Back to Regular Auctions',
+                    type: ModernButtonType.text,
                     onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: Text(
-                      'Back to Regular Auctions',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                   ),
 
                   const SizedBox(height: 40),

@@ -53,24 +53,15 @@ class ApiClient {
 
   // Set to true when building for production (APK/IPA)
   // Set to false for local development/testing
-  static const bool useProductionUrl = false; // ✅ Changed to use localhost
+  static const bool useProductionUrl = false; // ✅ Using local backend
 
   // 🔧 Auto-detect best URL based on platform and environment
   static String get baseUrl {
-    // For web platform, use same origin (API serves the web app)
-    if (kIsWeb) {
-      // When running on web, use relative URL to same origin
-      // This allows the API to serve both the web app and API endpoints
-      return '';
-    }
-
-    // Use production URL if enabled
-    if (useProductionUrl &&
-        productionBaseUrl != 'https://YOUR-RAILWAY-APP-NAME.railway.app') {
+    // If using production URL, return production base URL
+    if (useProductionUrl) {
       return productionBaseUrl;
     }
 
-    // Development URLs based on platform
     if (Platform.isAndroid) {
       return devBaseUrlAndroid;
       // For Android emulator, use: return 'http://10.0.2.2:5284';
@@ -185,15 +176,30 @@ class ApiClient {
         final items = <T>[];
 
         for (int i = 0; i < list.length; i++) {
+          final item = list[i];
           try {
-            final item = list[i];
             if (item is! Map<String, dynamic>) {
+              print(
+                '⚠️ Skipping item at index $i: not a Map (type: ${item.runtimeType})',
+              );
               continue;
             }
             items.add(fromJson(item));
-          } catch (e) {
+          } catch (e, stackTrace) {
+            print('❌ Error parsing item at index $i: $e');
+            print('   Stack trace: $stackTrace');
+            final itemStr = item.toString();
+            print(
+              '   Item data: ${itemStr.length > 200 ? itemStr.substring(0, 200) : itemStr}',
+            );
             // Continue parsing other items
           }
+        }
+
+        if (items.length < list.length) {
+          print(
+            '⚠️ Parsed ${items.length} out of ${list.length} items (${list.length - items.length} failed)',
+          );
         }
 
         return ApiResponse.success(items, statusCode: response.statusCode);

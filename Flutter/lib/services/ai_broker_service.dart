@@ -12,7 +12,7 @@ class AIBrokerService {
 
   // Send a message to AI broker
   static Future<ApiResponse<AIBrokerResponse>> sendMessage({
-    required int aichatId,
+    required String aichatId,
     required String message,
     String? questionType,
   }) async {
@@ -25,7 +25,7 @@ class AIBrokerService {
 
   // Get conversation history
   static Future<ApiResponse<AIBrokerConversation>> getConversation(
-    int aichatId,
+    String aichatId,
   ) async {
     return await ApiClient.get(
       '/api/aibroker/conversation/$aichatId',
@@ -52,7 +52,7 @@ class AIBrokerService {
 
 // AI Chat Summary for list view
 class AIBrokerChatSummary {
-  final int aichatId;
+  final String aichatId;
   final String status;
   final String lastMessage;
   final DateTime lastMessageAt;
@@ -67,14 +67,12 @@ class AIBrokerChatSummary {
   });
 
   factory AIBrokerChatSummary.fromJson(Map<String, dynamic> json) {
-    // Parse chat ID
-    int chatId = 0;
+    // Parse chat ID - now handles GUID strings
+    String chatId = '';
     final possibleKeys = ['aiChatId', 'AIChatId', 'aichatId'];
     for (var key in possibleKeys) {
       if (json.containsKey(key) && json[key] != null) {
-        chatId = json[key] is int
-            ? json[key]
-            : int.tryParse(json[key].toString()) ?? 0;
+        chatId = json[key].toString();
         break;
       }
     }
@@ -95,7 +93,7 @@ class AIBrokerChatSummary {
 
 // Models
 class AIBrokerConversation {
-  final int aichatId;
+  final String aichatId;
   final List<AIBrokerMessage> messages;
 
   AIBrokerConversation({required this.aichatId, required this.messages});
@@ -107,21 +105,34 @@ class AIBrokerConversation {
 
     final messagesData = json['messages'] ?? json['Messages'];
     if (messagesData != null && messagesData is List) {
-      messagesList = messagesData
-          .map((e) => AIBrokerMessage.fromJson(e as Map<String, dynamic>))
-          .toList();
+      try {
+        messagesList = messagesData
+            .map((messageData) {
+              try {
+                return AIBrokerMessage.fromJson(messageData as Map<String, dynamic>);
+              } catch (e, stackTrace) {
+                print('❌ Error parsing message: $e');
+                print('   Stack trace: $stackTrace');
+                print('   Message data: $messageData');
+                rethrow;
+              }
+            })
+            .toList();
+      } catch (e, stackTrace) {
+        print('❌ Error parsing messages list: $e');
+        print('   Stack trace: $stackTrace');
+        rethrow;
+      }
     }
 
-    // Parse chat ID - handle both camelCase and PascalCase
-    int chatId = 0;
+    // Parse chat ID - now handles GUID strings
+    String chatId = '';
 
     // Try all possible key variations
     final possibleKeys = ['aiChatId', 'AIChatId', 'aichatId', 'Aichatid'];
     for (var key in possibleKeys) {
       if (json.containsKey(key) && json[key] != null) {
-        chatId = json[key] is int
-            ? json[key]
-            : int.tryParse(json[key].toString()) ?? 0;
+        chatId = json[key].toString();
         print('🔍 Found chatId with key "$key": $chatId');
         break;
       }
@@ -182,6 +193,21 @@ class AIBrokerMessage {
   });
 
   factory AIBrokerMessage.fromJson(Map<String, dynamic> json) {
+    // Helper to safely parse int from int or string
+    int? parseInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is String) {
+        try {
+          return int.parse(value);
+        } catch (e) {
+          print('⚠️ Failed to parse int from string: $value');
+          return null;
+        }
+      }
+      return null;
+    }
+
     List<String>? optionsList;
     if (json['options'] != null || json['Options'] != null) {
       final opts = json['options'] ?? json['Options'];
@@ -211,15 +237,15 @@ class AIBrokerMessage {
     }
 
     return AIBrokerMessage(
-      messageId: json['messageId'] ?? json['MessageId'] ?? 0,
+      messageId: parseInt(json['messageId'] ?? json['MessageId']) ?? 0,
       role: json['role'] ?? json['Role'] ?? '',
       content: json['content'] ?? json['Content'] ?? '',
       messageType: json['messageType'] ?? json['MessageType'] ?? 'Text',
       options: optionsList,
       questionType: json['questionType'] ?? json['QuestionType'],
-      propertyId: json['propertyId'] ?? json['PropertyId'],
-      projectId: json['projectId'] ?? json['ProjectId'],
-      developerId: json['developerId'] ?? json['DeveloperId'],
+      propertyId: parseInt(json['propertyId'] ?? json['PropertyId']),
+      projectId: parseInt(json['projectId'] ?? json['ProjectId']),
+      developerId: parseInt(json['developerId'] ?? json['DeveloperId']),
       properties: propertiesList,
       developers: developersList,
       createdAt: DateTime.parse(
@@ -263,6 +289,36 @@ class PropertySuggestion {
   });
 
   factory PropertySuggestion.fromJson(Map<String, dynamic> json) {
+    // Helper to safely parse int from int or string
+    int parseInt(dynamic value, {int defaultValue = 0}) {
+      if (value == null) return defaultValue;
+      if (value is int) return value;
+      if (value is String) {
+        try {
+          return int.parse(value);
+        } catch (e) {
+          print('⚠️ Failed to parse int from string: $value');
+          return defaultValue;
+        }
+      }
+      return defaultValue;
+    }
+
+    // Helper to safely parse nullable int
+    int? parseIntNullable(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is String) {
+        try {
+          return int.parse(value);
+        } catch (e) {
+          print('⚠️ Failed to parse int from string: $value');
+          return null;
+        }
+      }
+      return null;
+    }
+
     DateTime? startTime;
     final startTimeStr = json['auctionStartTime'] ?? json['AuctionStartTime'];
     if (startTimeStr != null && startTimeStr.toString().isNotEmpty) {
@@ -274,16 +330,16 @@ class PropertySuggestion {
     }
 
     return PropertySuggestion(
-      propertyId: json['propertyId'] ?? json['PropertyId'] ?? 0,
+      propertyId: parseInt(json['propertyId'] ?? json['PropertyId']),
       name: json['name'] ?? json['Name'] ?? '',
       location: json['location'] ?? json['Location'] ?? '',
-      bedrooms: json['bedrooms'] ?? json['Bedrooms'] ?? 0,
-      bathrooms: json['bathrooms'] ?? json['Bathrooms'] ?? 0,
-      squareFeet: json['squareFeet'] ?? json['SquareFeet'] ?? 0,
+      bedrooms: parseInt(json['bedrooms'] ?? json['Bedrooms']),
+      bathrooms: parseInt(json['bathrooms'] ?? json['Bathrooms']),
+      squareFeet: parseInt(json['squareFeet'] ?? json['SquareFeet']),
       imageUrl: json['imageUrl'] ?? json['ImageUrl'] ?? '',
       type: json['type'] ?? json['Type'] ?? '',
       status: json['status'] ?? json['Status'] ?? '',
-      auctionId: json['auctionId'] ?? json['AuctionId'],
+      auctionId: parseIntNullable(json['auctionId'] ?? json['AuctionId']),
       currentPrice: (json['currentPrice'] ?? json['CurrentPrice'] ?? 0)
           .toDouble(),
       auctionStartTime: startTime,
@@ -312,14 +368,29 @@ class DeveloperSuggestion {
   });
 
   factory DeveloperSuggestion.fromJson(Map<String, dynamic> json) {
+    // Helper to safely parse int from int or string
+    int parseInt(dynamic value, {int defaultValue = 0}) {
+      if (value == null) return defaultValue;
+      if (value is int) return value;
+      if (value is String) {
+        try {
+          return int.parse(value);
+        } catch (e) {
+          print('⚠️ Failed to parse int from string: $value');
+          return defaultValue;
+        }
+      }
+      return defaultValue;
+    }
+
     return DeveloperSuggestion(
-      developerId: json['developerId'] ?? json['DeveloperId'] ?? 0,
+      developerId: parseInt(json['developerId'] ?? json['DeveloperId']),
       name: json['name'] ?? json['Name'] ?? '',
       companyName: json['companyName'] ?? json['CompanyName'] ?? '',
       averageRating: (json['averageRating'] ?? json['AverageRating'] ?? 0)
           .toDouble(),
-      totalProjects: json['totalProjects'] ?? json['TotalProjects'] ?? 0,
-      totalRatings: json['totalRatings'] ?? json['TotalRatings'] ?? 0,
+      totalProjects: parseInt(json['totalProjects'] ?? json['TotalProjects']),
+      totalRatings: parseInt(json['totalRatings'] ?? json['TotalRatings']),
       specialization: json['specialization'] ?? json['Specialization'] ?? '',
     );
   }

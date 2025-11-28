@@ -18,11 +18,13 @@ namespace InstapropAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ImageFixService _imageFixService;
+        private readonly GlobalSeedingService _seedingService;
 
-        public AdminController(AppDbContext context, ImageFixService imageFixService)
+        public AdminController(AppDbContext context, ImageFixService imageFixService, GlobalSeedingService seedingService)
         {
             _context = context;
             _imageFixService = imageFixService;
+            _seedingService = seedingService;
         }
 
         // GET: api/Admin/users - Get paginated users for admin dashboard
@@ -1236,6 +1238,34 @@ namespace InstapropAPI.Controllers
             }
         }
 
+        // POST: api/Admin/seed-data
+        [HttpPost("seed-data")]
+        [AllowAnonymous] // Allow anonymous for local development
+        public async Task<ActionResult<object>> SeedData([FromQuery] bool skipClear = false)
+        {
+            try
+            {
+                Console.WriteLine("🌱 Starting data seeding...");
+                await _seedingService.PreSeedTestDataAsync(skipClear: skipClear);
+                
+                return Ok(new
+                {
+                    success = true,
+                    message = "Data seeding completed successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Seeding error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
 
     }
 }

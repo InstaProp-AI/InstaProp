@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Instagram-style animation constants and curves
-/// Provides smooth, addictive animations throughout the app
+/// Modern, minimalist animation constants and curves
+/// Provides smooth, subtle animations throughout the app
 class AppAnimations {
   // ========================================================================
   // ANIMATION DURATIONS
   // ========================================================================
   static const Duration quick = Duration(milliseconds: 200);
-  static const Duration normal = Duration(milliseconds: 300);
+  static const Duration normal = Duration(milliseconds: 300); // Standard duration
   static const Duration slow = Duration(milliseconds: 500);
   static const Duration slower = Duration(milliseconds: 800);
 
   // Heart animation duration (for like double-tap)
-  static const Duration heartAnimation = Duration(milliseconds: 600);
+  static const Duration heartAnimation = Duration(milliseconds: 300);
 
   // Page transition durations
-  static const Duration pageTransition = Duration(milliseconds: 400);
+  static const Duration pageTransition = Duration(milliseconds: 300);
 
   // Loading animation
   static const Duration shimmerDuration = Duration(milliseconds: 1200);
@@ -25,8 +25,8 @@ class AppAnimations {
   // CURVES
   // ========================================================================
 
-  /// Default ease in-out curve (for general transitions)
-  static const Curve defaultCurve = Curves.easeInOut;
+  /// Default curve: cubic-bezier(0.4, 0.0, 0.2, 1) - Material Design standard
+  static const Curve defaultCurve = Cubic(0.4, 0.0, 0.2, 1.0);
 
   /// Smooth decelerate (for navigation transitions)
   static const Curve decelerate = Curves.decelerate;
@@ -67,7 +67,7 @@ class AppAnimations {
     return Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeIn));
+    ).animate(CurvedAnimation(parent: controller, curve: defaultCurve));
   }
 
   /// Slide up animation (for bottom sheets, comments)
@@ -77,17 +77,17 @@ class AppAnimations {
     return Tween<Offset>(
       begin: const Offset(0.0, 1.0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(parent: controller, curve: defaultCurve));
   }
 
-  /// Scale animation (for button press feedback)
+  /// Scale animation (for button press feedback) - subtle scale to 0.98
   static Animation<double> createScaleAnimation(
     AnimationController controller,
   ) {
     return Tween<double>(
       begin: 1.0,
-      end: 0.95,
-    ).animate(CurvedAnimation(parent: controller, curve: Curves.fastOutSlowIn));
+      end: 0.98,
+    ).animate(CurvedAnimation(parent: controller, curve: defaultCurve));
   }
 
   // ========================================================================

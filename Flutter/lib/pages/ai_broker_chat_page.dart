@@ -14,7 +14,7 @@ import 'auction_details_page.dart';
 import 'dart:async';
 
 class AIBrokerChatPage extends StatefulWidget {
-  final int? aichatId;
+  final String? aichatId;
 
   const AIBrokerChatPage({super.key, this.aichatId});
 
@@ -28,7 +28,7 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
 
   List<AIBrokerMessage> _messages = [];
   List<AppNotification> _notificationMessages = [];
-  int? _currentChatId;
+  String? _currentChatId;
   bool _isLoading = false;
   bool _isSending = false;
   StreamSubscription<AppNotification>? _notificationSubscription;
@@ -49,39 +49,58 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
   }
 
   Future<void> _initializeChat() async {
+    print('🤖 _initializeChat: Starting initialization');
     setState(() => _isLoading = true);
 
     try {
       // First, check if there's already an active chat in AppState
       final appState = Provider.of<AppState>(context, listen: false);
+      print(
+        '🤖 _initializeChat: AppState activeAIChatId = ${appState.activeAIChatId}, widget.aichatId = ${widget.aichatId}',
+      );
 
       if (widget.aichatId != null) {
         // If a specific chat ID was passed, load it
+        print(
+          '🤖 _initializeChat: Loading specific chat ID: ${widget.aichatId}',
+        );
         await _loadConversation(widget.aichatId!);
       } else if (appState.activeAIChatId != null) {
         // If we have an active chat ID stored, use it
-        print('🤖 Loading existing chat: ${appState.activeAIChatId}');
+        print(
+          '🤖 _initializeChat: Loading existing chat from AppState: ${appState.activeAIChatId}',
+        );
         await _loadConversation(appState.activeAIChatId!);
       } else {
         // No active chat, try to get the most recent one from API
-        print('🤖 Checking for existing chat from API...');
+        print('🤖 _initializeChat: Checking for existing chat from API...');
         final activeResponse = await AIBrokerService.getActiveChat();
+        print(
+          '🤖 _initializeChat: Active chat response: success=${activeResponse.success}, data=${activeResponse.data}',
+        );
 
         if (activeResponse.success && activeResponse.data != null) {
-          print('🤖 Found active chat: ${activeResponse.data!.aichatId}');
+          print(
+            '🤖 _initializeChat: Found active chat: ${activeResponse.data!.aichatId}',
+          );
           appState.setActiveAIChatId(activeResponse.data!.aichatId);
           await _loadConversation(activeResponse.data!.aichatId);
         } else {
           // No existing chat, create a new one
-          print('🤖 No existing chat found, creating new one');
+          print('🤖 _initializeChat: No existing chat found, creating new one');
           await _startNewConversation();
         }
       }
-    } catch (e) {
-      print('🤖 Error initializing chat: $e');
+      print('🤖 _initializeChat: Initialization completed successfully');
+    } catch (e, stackTrace) {
+      print('🤖 _initializeChat: ❌ Error: $e');
+      print('🤖 _initializeChat: Stack trace: $stackTrace');
       _showError('Error initializing chat: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        print('🤖 _initializeChat: Set loading to false');
+      }
     }
   }
 
@@ -184,32 +203,48 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
 
   Future<void> _startNewConversation() async {
     try {
-      print('🤖 Starting AI Broker conversation...');
+      print('🤖 _startNewConversation: Starting AI Broker conversation...');
       final response = await AIBrokerService.startConversation();
 
-      print('🤖 Response received: ${response.success}');
-      print('🤖 Error: ${response.error}');
-      print('🤖 Status code: ${response.statusCode}');
+      print(
+        '🤖 _startNewConversation: Response received: success=${response.success}, error=${response.error}, statusCode=${response.statusCode}',
+      );
 
       if (response.success && response.data != null) {
-        print('🤖 Chat ID: ${response.data!.aichatId}');
-        print('🤖 Messages count: ${response.data!.messages.length}');
+        print('🤖 _startNewConversation: Chat ID: ${response.data!.aichatId}');
+        print(
+          '🤖 _startNewConversation: Messages count: ${response.data!.messages.length}',
+        );
+        print(
+          '🤖 _startNewConversation: Messages: ${response.data!.messages.map((m) => '${m.role}: ${m.content.substring(0, m.content.length > 30 ? 30 : m.content.length)}...').toList()}',
+        );
 
         // Store the new chat ID in AppState
         final appState = Provider.of<AppState>(context, listen: false);
         appState.setActiveAIChatId(response.data!.aichatId);
+        print('🤖 _startNewConversation: Stored chat ID in AppState');
 
-        setState(() {
-          _currentChatId = response.data!.aichatId;
-          _messages = response.data!.messages;
-        });
-        _scrollToBottom();
+        if (mounted) {
+          setState(() {
+            _currentChatId = response.data!.aichatId;
+            _messages = response.data!.messages;
+          });
+          print(
+            '🤖 _startNewConversation: setState completed - _currentChatId=$_currentChatId, _messages.length=${_messages.length}',
+          );
+          _scrollToBottom();
+        } else {
+          print(
+            '🤖 _startNewConversation: Widget not mounted, skipping setState',
+          );
+        }
       } else {
+        print('🤖 _startNewConversation: ❌ Failed - ${response.error}');
         _showError(response.error ?? 'Failed to start conversation');
       }
     } catch (e, stackTrace) {
-      print('🤖 Exception: $e');
-      print('🤖 Stack trace: $stackTrace');
+      print('🤖 _startNewConversation: ❌ Exception: $e');
+      print('🤖 _startNewConversation: Stack trace: $stackTrace');
       _showError('Error starting conversation: $e');
     }
   }
@@ -256,20 +291,40 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
     }
   }
 
-  Future<void> _loadConversation(int aichatId) async {
+  Future<void> _loadConversation(String aichatId) async {
     setState(() => _isLoading = true);
 
     try {
       final response = await AIBrokerService.getConversation(aichatId);
 
+      print(
+        '🤖 _loadConversation response: success=${response.success}, data=${response.data}',
+      );
+
       if (response.success && response.data != null) {
+        print(
+          '🤖 Setting messages: ${response.data!.messages.length} messages',
+        );
+        print(
+          '🤖 Messages: ${response.data!.messages.map((m) => '${m.role}: ${m.content.substring(0, m.content.length > 50 ? 50 : m.content.length)}...').toList()}',
+        );
+
         setState(() {
           _currentChatId = response.data!.aichatId;
           _messages = response.data!.messages;
         });
+
+        print(
+          '🤖 After setState: _messages.length = ${_messages.length}, _currentChatId = $_currentChatId',
+        );
         _scrollToBottom();
+      } else {
+        print('🤖 Response failed: ${response.error}');
+        _showError(response.error ?? 'Failed to load conversation');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('🤖 Exception in _loadConversation: $e');
+      print('🤖 Stack trace: $stackTrace');
       _showError('Error loading conversation: $e');
     } finally {
       setState(() => _isLoading = false);
@@ -407,8 +462,14 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    print(
+      '🤖 AIBrokerChatPage.build() called - _isLoading=$_isLoading, _messages.length=${_messages.length}, _currentChatId=$_currentChatId',
+    );
     return Consumer<AppState>(
       builder: (context, appState, _) {
+        print(
+          '🤖 AIBrokerChatPage Consumer builder - activeAIChatId=${appState.activeAIChatId}',
+        );
         return Scaffold(
           appBar: AppBar(
             title: Row(
@@ -495,43 +556,90 @@ class _AIBrokerChatPageState extends State<AIBrokerChatPage> {
           ),
           body: _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : Column(
-                  children: [
-                    // Messages List (notifications + AI messages)
-                    Expanded(
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount:
-                            _notificationMessages.length +
-                            _messages.length +
-                            (_isSending ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          // Show typing indicator at the end
-                          if (_isSending &&
-                              index ==
-                                  _notificationMessages.length +
-                                      _messages.length) {
-                            return _buildTypingIndicator();
-                          }
+              : Builder(
+                  builder: (context) {
+                    print(
+                      '🤖 Building body: _messages.length=${_messages.length}, _notificationMessages.length=${_notificationMessages.length}, _isLoading=$_isLoading',
+                    );
+                    final totalItems =
+                        _notificationMessages.length +
+                        _messages.length +
+                        (_isSending ? 1 : 0);
+                    print('🤖 Total items to display: $totalItems');
 
-                          // Show notifications first
-                          if (index < _notificationMessages.length) {
-                            final notification = _notificationMessages[index];
-                            return _buildNotificationMessage(notification);
-                          }
+                    return Column(
+                      children: [
+                        // Messages List (notifications + AI messages)
+                        Expanded(
+                          child: totalItems == 0
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.chat_bubble_outline,
+                                        size: 64,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No messages yet',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: AppColors.textSecondary,
+                                          fontFamily: 'SF Pro Text',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  controller: _scrollController,
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: totalItems,
+                                  itemBuilder: (context, index) {
+                                    print(
+                                      '🤖 Building item $index of $totalItems',
+                                    );
 
-                          // Then show AI broker messages
-                          final messageIndex =
-                              index - _notificationMessages.length;
-                          final message = _messages[messageIndex];
-                          return _buildMessage(message);
-                        },
-                      ),
-                    ),
-                    // Text Input Area
-                    _buildMessageInput(),
-                  ],
+                                    // Show typing indicator at the end
+                                    if (_isSending &&
+                                        index ==
+                                            _notificationMessages.length +
+                                                _messages.length) {
+                                      return _buildTypingIndicator();
+                                    }
+
+                                    // Show notifications first
+                                    if (index < _notificationMessages.length) {
+                                      final notification =
+                                          _notificationMessages[index];
+                                      return _buildNotificationMessage(
+                                        notification,
+                                      );
+                                    }
+
+                                    // Then show AI broker messages
+                                    final messageIndex =
+                                        index - _notificationMessages.length;
+                                    if (messageIndex >= 0 &&
+                                        messageIndex < _messages.length) {
+                                      final message = _messages[messageIndex];
+                                      print(
+                                        '🤖 Building message $messageIndex: role=${message.role}, content=${message.content.substring(0, message.content.length > 30 ? 30 : message.content.length)}...',
+                                      );
+                                      return _buildMessage(message);
+                                    }
+
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                        ),
+                        // Text Input Area
+                        _buildMessageInput(),
+                      ],
+                    );
+                  },
                 ),
         );
       },

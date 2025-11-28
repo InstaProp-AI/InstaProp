@@ -62,19 +62,18 @@ class Auction {
       auctionId: parseId(json['auctionId'] ?? json['AuctionId']),
       propertyId: parseId(json['propertyId'] ?? json['PropertyId']),
       property: parseProperty(),
-      startPrice: (json['startPrice'] ?? json['StartPrice'] ?? 0).toDouble(),
-      currentPrice: (json['currentPrice'] ?? json['CurrentPrice'] ?? 0)
-          .toDouble(),
-      startAt: DateTime.parse(
-        json['startAt'] ?? json['StartAt'] ?? DateTime.now().toIso8601String(),
+      startPrice: _parseDouble(json['startPrice'] ?? json['StartPrice'], defaultValue: 0.0),
+      currentPrice: _parseDouble(json['currentPrice'] ?? json['CurrentPrice'], defaultValue: 0.0),
+      startAt: _parseDateTime(
+        json['startAt'] ?? json['StartAt'],
+        defaultValue: DateTime.now(),
       ),
-      duration: json['duration'] ?? json['Duration'] ?? 0,
-      bidCount: json['bidCount'] ?? json['BidCount'] ?? 0,
+      duration: _parseInt(json['duration'] ?? json['Duration'], defaultValue: 0),
+      bidCount: _parseInt(json['bidCount'] ?? json['BidCount'], defaultValue: 0),
       status: json['status'] ?? json['Status'] ?? '',
-      createdAt: DateTime.parse(
-        json['createdAt'] ??
-            json['CreatedAt'] ??
-            DateTime.now().toIso8601String(),
+      createdAt: _parseDateTime(
+        json['createdAt'] ?? json['CreatedAt'],
+        defaultValue: DateTime.now(),
       ),
       bids: (() {
         final dynamic raw = json['bids'] ?? json['Bids'] ?? [];
@@ -193,5 +192,52 @@ class Auction {
       return parsed;
     }
     return null;
+  }
+
+  // Helper to safely parse int from int or string
+  static int _parseInt(dynamic value, {int defaultValue = 0}) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      try {
+        return int.parse(value);
+      } catch (e) {
+        print('⚠️ Failed to parse int from string: $value');
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  }
+
+  // Helper to safely parse double from double, int, or string
+  static double _parseDouble(dynamic value, {double defaultValue = 0.0}) {
+    if (value == null) return defaultValue;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        print('⚠️ Failed to parse double from string: $value');
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  }
+
+  // Helper to safely parse DateTime from string or DateTime
+  static DateTime _parseDateTime(dynamic value, {required DateTime defaultValue}) {
+    if (value == null) return defaultValue;
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        print('⚠️ Failed to parse DateTime from string: $value');
+        return defaultValue;
+      }
+    }
+    return defaultValue;
   }
 }

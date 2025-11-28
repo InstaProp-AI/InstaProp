@@ -53,7 +53,7 @@ class AppState extends ChangeNotifier {
   bool _isFloatingButtonHidden = false;
 
   // Active AI Broker chat ID
-  int? _activeAIChatId;
+  String? _activeAIChatId;
 
   // Getters
   List<Auction> get auctions => _auctions;
@@ -67,7 +67,7 @@ class AppState extends ChangeNotifier {
   bool get loadingStats => _loadingStats;
   bool get isRefreshing => _isRefreshing;
   bool get isFloatingButtonHidden => _isFloatingButtonHidden;
-  int? get activeAIChatId => _activeAIChatId;
+  String? get activeAIChatId => _activeAIChatId;
 
   // Featured auctions (top 2 by bid count)
   List<Auction> get featuredAuctions {
@@ -305,33 +305,60 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> loadAuctions() async {
-    print('loadAuctions called - current auctions length: ${_auctions.length}');
+    print('🔄 loadAuctions called - current auctions length: ${_auctions.length}');
     _loadingAuctions = true;
     notifyListeners();
 
     try {
-      print('Loading auctions...');
+      print('📡 Loading auctions from API...');
       // Add a small delay to ensure API is ready
       await Future.delayed(const Duration(milliseconds: 500));
       final response = await AuctionService.getAuctions();
       print(
-        'Auction response: ${response.success}, data: ${response.data?.length}',
+        '📥 Auction response: success=${response.success}, data length=${response.data?.length}, error=${response.error}',
       );
+      
       if (response.success && response.data != null) {
-        _auctions = response.data!;
-        print('Loaded ${_auctions.length} auctions');
+        // Auctions are already parsed by ApiClient (with error handling)
+        // Just validate that they're valid Auction objects
+        final validAuctions = <Auction>[];
+        
+        for (int i = 0; i < response.data!.length; i++) {
+          try {
+            final auction = response.data![i];
+            // Validate auction has required properties
+            final _ = auction.auctionId;
+            final _ = auction.propertyId;
+            final _ = auction.startPrice;
+            final _ = auction.currentPrice;
+            final _ = auction.startAt;
+            final _ = auction.duration;
+            final _ = auction.bidCount;
+            validAuctions.add(auction);
+          } catch (e, stackTrace) {
+            print('❌ Invalid auction at index $i: $e');
+            print('   Stack trace: $stackTrace');
+          }
+        }
+        
+        _auctions = validAuctions;
+        print('✅ Loaded ${validAuctions.length} valid auctions (from ${response.data!.length} total)');
+        if (validAuctions.length < response.data!.length) {
+          print('⚠️ Skipped ${response.data!.length - validAuctions.length} invalid auctions');
+        }
       } else {
-        print('Error loading auctions: ${response.error}');
+        print('❌ Error loading auctions: ${response.error}');
         _auctions = [];
       }
-    } catch (e) {
-      print('Error loading auctions: $e');
+    } catch (e, stackTrace) {
+      print('❌ Exception loading auctions: $e');
+      print('   Stack trace: $stackTrace');
       _auctions = [];
     } finally {
       _loadingAuctions = false;
       notifyListeners();
       print(
-        'loadAuctions completed - final auctions length: ${_auctions.length}',
+        '✅ loadAuctions completed - final auctions length: ${_auctions.length}',
       );
     }
   }
@@ -479,7 +506,7 @@ class AppState extends ChangeNotifier {
   }
 
   // AI Chat management
-  void setActiveAIChatId(int? chatId) {
+  void setActiveAIChatId(String? chatId) {
     _activeAIChatId = chatId;
     notifyListeners();
   }

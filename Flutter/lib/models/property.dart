@@ -205,10 +205,10 @@ class Property {
       listingType: parseListingType(),
       type: parsePropertyType(),
       status: parsePropertyStatus(),
-      bedrooms: json['bedrooms'] ?? json['Bedrooms'] ?? 0,
-      bathrooms: json['bathrooms'] ?? json['Bathrooms'] ?? 0,
-      squareFeet: json['squareFeet'] ?? json['SquareFeet'] ?? 0,
-      yearBuilt: json['yearBuilt'] ?? json['YearBuilt'] ?? 0,
+      bedrooms: _parseInt(json['bedrooms'] ?? json['Bedrooms'], defaultValue: 0),
+      bathrooms: _parseInt(json['bathrooms'] ?? json['Bathrooms'], defaultValue: 0),
+      squareFeet: _parseInt(json['squareFeet'] ?? json['SquareFeet'], defaultValue: 0),
+      yearBuilt: _parseInt(json['yearBuilt'] ?? json['YearBuilt'], defaultValue: 0),
       imageUrl: json['imageUrl'] ?? json['ImageUrl'] ?? '',
       createdAt: DateTime.parse(
         json['createdAt'] ??
@@ -334,6 +334,21 @@ class Property {
       default:
         return PropertyStatus.notApproved;
     }
+  }
+
+  // Helper to safely parse int from int or string
+  static int _parseInt(dynamic value, {int defaultValue = 0}) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is String) {
+      try {
+        return int.parse(value);
+      } catch (e) {
+        print('⚠️ Failed to parse int from string: $value');
+        return defaultValue;
+      }
+    }
+    return defaultValue;
   }
 }
 

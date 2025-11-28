@@ -395,48 +395,26 @@ if (flutterDistPath != null)
     }
 }
 
-// Database Setup: Seed Roles, Run Global Seeding, and Create Admin Account
+// Database Setup: Seed Roles and Create Admin Account
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeederService>();
-    var globalSeeding = scope.ServiceProvider.GetRequiredService<GlobalSeedingService>();
 
     try
     {
-        // Step 1: Seed Roles (required before any accounts can be created)
-        Console.WriteLine("🔐 Seeding Roles...");
-        await roleSeeder.SeedRolesAsync();
-        
-        // Verify roles were created
+        // Verify roles exist (roles should already be seeded)
         var rolesCount = await context.Roles.CountAsync();
         if (rolesCount == 0)
         {
-            Console.WriteLine("⚠️ WARNING: Roles table is empty. Make sure migrations are applied first.");
+            Console.WriteLine("⚠️ WARNING: Roles table is empty. Make sure roles are seeded manually.");
         }
         else
         {
-            Console.WriteLine($"✅ Seeded {rolesCount} roles successfully.");
+            Console.WriteLine($"✅ Found {rolesCount} roles in database.");
         }
 
-        // Step 2: Check account count before seeding
-        // Only seed if there is 1 or fewer accounts (allowing for the admin account)
-        var accountCount = await context.Accounts.CountAsync();
-        Console.WriteLine($"\n📊 Current account count: {accountCount}");
-        
-        if (accountCount > 1)
-        {
-            Console.WriteLine("ℹ️ Skipping global seeding - more than 1 account exists (admin + other accounts).");
-            Console.WriteLine("   Seeding will only run when there is 1 or fewer accounts.");
-        }
-        else
-        {
-            Console.WriteLine("🌍 Running global seeding (will skip existing entities)...");
-            await globalSeeding.PreSeedTestDataAsync(skipClear: true);
-            Console.WriteLine("✅ Global seeding completed!");
-        }
-
-        // Step 3: Ensure default admin account exists
+        // Step 1: Ensure default admin account exists
         var adminConfig = builder.Configuration.GetSection("DefaultAdmin");
         var adminEmail = adminConfig["Email"];
         if (!string.IsNullOrEmpty(adminEmail))

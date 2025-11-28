@@ -14,8 +14,8 @@ import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
 import '../services/project_service.dart';
 import '../services/api_client.dart';
-import '../widgets/custom_text_field.dart';
-import '../widgets/loading_button.dart';
+import '../widgets/modern_text_field.dart';
+import '../widgets/modern_button.dart';
 import '../widgets/auction_timer.dart';
 import '../widgets/property_image_carousel.dart';
 import '../widgets/reward_popup.dart';
@@ -79,8 +79,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
     PropertyDoc? exactPlan;
     try {
-      exactPlan =
-          docs.firstWhere((doc) => _isMasterPlanType(doc.docType, strict: true));
+      exactPlan = docs.firstWhere(
+        (doc) => _isMasterPlanType(doc.docType, strict: true),
+      );
     } catch (_) {
       exactPlan = null;
     }
@@ -245,12 +246,15 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         );
 
     _animationController.forward();
-    // Load initial data from API first, then start Firestore listeners
-    _loadBids().then((_) {
-      // Only start Firestore listeners after initial data is loaded
-      // This gives the backend time to sync data to Firestore
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _startFirestoreListeners();
+    // Load full auction data from API first to ensure all data is available
+    _loadAuctionData().then((_) {
+      // Load bids after auction data is loaded
+      _loadBids().then((_) {
+        // Only start Firestore listeners after initial data is loaded
+        // This gives the backend time to sync data to Firestore
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _startFirestoreListeners();
+        });
       });
     });
     // Load market data for strategies
@@ -259,9 +263,38 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     _startFallbackPolling();
   }
 
+  /// Load full auction data from API to ensure all property details are available
+  Future<void> _loadAuctionData() async {
+    try {
+      print(
+        'Loading full auction data for auction ID: ${widget.auction.auctionId}',
+      );
+      final response = await AuctionService.getAuction(
+        widget.auction.auctionId,
+      );
+      if (response.success && response.data != null) {
+        if (mounted) {
+          setState(() {
+            _currentAuction = response.data!;
+            _previousPrice = response.data!.currentPrice;
+          });
+          print(
+            '✅ Auction data loaded successfully with property: ${_currentAuction?.property?.name ?? "N/A"}',
+          );
+        }
+      } else {
+        print('⚠️ Failed to load auction data: ${response.error}');
+        // Keep the widget.auction as fallback
+      }
+    } catch (e) {
+      print('❌ Error loading auction data: $e');
+      // Keep the widget.auction as fallback
+    }
+  }
+
   Future<void> _loadMarketData() async {
     if (_currentAuction?.property == null) return;
-    
+
     try {
       // Load market data in parallel
       final results = await Future.wait([
@@ -322,11 +355,13 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           (bids) {
             if (mounted) {
               print('🔥 Firestore: Received ${bids.length} bids');
-              
+
               // If Firebase returns 0 bids, verify with database to ensure
               // there wasn't an error storing them in Firebase
               if (bids.isEmpty) {
-                print('⚠️ Firebase returned 0 bids, verifying with database...');
+                print(
+                  '⚠️ Firebase returned 0 bids, verifying with database...',
+                );
                 _verifyBidsWithDatabase();
               } else {
                 setState(() {
@@ -399,16 +434,20 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   /// This ensures we catch cases where bids exist in database but weren't synced to Firebase
   Future<void> _verifyBidsWithDatabase() async {
     try {
-      print('🔍 Verifying bids with database for auction ${_currentAuction!.auctionId}');
+      print(
+        '🔍 Verifying bids with database for auction ${_currentAuction!.auctionId}',
+      );
       final response = await BidService.getBids(_currentAuction!.auctionId);
-      
+
       if (response.success && response.data != null) {
         final dbBidCount = response.data!.length;
         print('📊 Database has $dbBidCount bids');
-        
+
         if (dbBidCount > 0) {
           // Database has bids but Firebase returned 0 - use database data
-          print('⚠️ Database has $dbBidCount bids but Firebase returned 0. Using database data.');
+          print(
+            '⚠️ Database has $dbBidCount bids but Firebase returned 0. Using database data.',
+          );
           if (mounted) {
             setState(() {
               _bids = response.data!;
@@ -770,7 +809,10 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: Colors.white.withOpacity(0.12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -801,13 +843,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             // Gradient Overlay (IgnorePointer allows touch to pass through)
             IgnorePointer(
               child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, AppColors.textPrimary],
-                  ),
-                ),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.3)),
               ),
             ),
 
@@ -835,9 +871,10 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       children: [
                         // Country Flag
                         CountryFlag(
-                          countryCode: CountryFlag.extractCountryCodeFromLocation(
-                            _currentAuction!.property?.location,
-                          ),
+                          countryCode:
+                              CountryFlag.extractCountryCodeFromLocation(
+                                _currentAuction!.property?.location,
+                              ),
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -892,7 +929,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   }
 
   Widget _buildNavigationButtons() {
-    if (_currentAuction == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (_currentAuction == null)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     final property = _currentAuction!.property;
     final propertyId = _currentAuction!.propertyId;
@@ -900,123 +938,125 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
     return SliverToBoxAdapter(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        margin: const EdgeInsets.only(top: 8, bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Quick Navigation',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+            // Property Details Button
+            _buildFloatingNavButton(
+              icon: Icons.home_outlined,
+              label: 'Property',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PropertyDetailsPage(propertyId: propertyId),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                // Property Details Button
-                _buildNavigationButton(
-                  icon: Icons.home,
-                  label: 'Property Details',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PropertyDetailsPage(
-                          propertyId: propertyId,
-                        ),
-                      ),
+            // Project Details Button (if project exists)
+            if (projectId != null && projectId.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              _buildFloatingNavButton(
+                icon: Icons.business_outlined,
+                label: 'Project',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ProjectDetailsPage(projectId: projectId),
+                    ),
+                  );
+                },
+              ),
+            ],
+            // Developer Profile Button (if project exists)
+            if (projectId != null && projectId.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              _buildFloatingNavButton(
+                icon: Icons.person_outline,
+                label: 'Developer',
+                onTap: () async {
+                  // Fetch project to get developer ID
+                  try {
+                    final projectService = ProjectService(ApiClient.baseUrl);
+                    final project = await projectService.getProjectDetails(
+                      projectId,
                     );
-                  },
-                ),
-                // Project Details Button (if project exists)
-                if (projectId != null && projectId.isNotEmpty)
-                  _buildNavigationButton(
-                    icon: Icons.business,
-                    label: 'Project',
-                    onTap: () {
+                    if (mounted && project.developerId.isNotEmpty) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ProjectDetailsPage(
-                            projectId: projectId,
+                          builder: (context) => DeveloperProfilePage(
+                            developerId: project.developerId,
                           ),
                         ),
                       );
-                    },
-                  ),
-                // Developer Profile Button (if project exists, we'll get developer from project)
-                if (projectId != null && projectId.isNotEmpty)
-                  _buildNavigationButton(
-                    icon: Icons.person,
-                    label: 'Developer',
-                    onTap: () async {
-                      // Fetch project to get developer ID
-                      try {
-                        final projectService = ProjectService(ApiClient.baseUrl);
-                        final project = await projectService.getProjectDetails(projectId);
-                        if (mounted && project.developerId.isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DeveloperProfilePage(
-                                developerId: project.developerId,
-                              ),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Failed to load developer: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-              ],
-            ),
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to load developer: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavigationButton({
+  Widget _buildFloatingNavButton({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 20),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.surface,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'SF Pro Text',
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
-        elevation: 2,
       ),
     );
   }
@@ -1061,14 +1101,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary.withOpacity(0.15),
-                        AppColors.primary.withOpacity(0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -1278,9 +1311,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                   child: Text(
                     label,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -1289,9 +1322,9 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
             Text(
               value,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
           ],
         ),
@@ -1396,12 +1429,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     final chipColor = color ?? AppColors.primary;
     return Chip(
       avatar: Icon(icon, size: 16, color: chipColor),
-      label: Text(
-        label,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: chipColor.withOpacity(0.3)),
@@ -1798,7 +1826,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         key: _formKey,
                         child: Column(
                           children: [
-                            CustomTextField(
+                            ModernTextField(
                               controller: _bidController,
                               labelText: 'Bid Amount',
                               hintText: 'Enter your bid amount',
@@ -1817,10 +1845,11 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                               },
                             ),
                             const SizedBox(height: 16),
-                            LoadingButton(
+                            ModernButton(
+                              text: 'Place Bid',
+                              type: ModernButtonType.primary,
                               onPressed: _isLoading ? null : _placeBid,
                               isLoading: _isLoading,
-                              child: const Text('Place Bid'),
                             ),
                           ],
                         ),
@@ -2207,13 +2236,18 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
 
   Widget _buildMarketStrategiesAndPricing() {
     final property = _currentAuction?.property;
-    if (property == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (property == null)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     final currentPrice = _currentAuction!.currentPrice;
     final startPrice = _currentAuction!.startPrice;
     final priceIncrease = currentPrice - startPrice;
-    final priceIncreasePercent = startPrice > 0 ? (priceIncrease / startPrice * 100).toDouble() : 0.0;
-    final pricePerSqft = property.squareFeet > 0 ? (currentPrice / property.squareFeet).toDouble() : 0.0;
+    final priceIncreasePercent = startPrice > 0
+        ? (priceIncrease / startPrice * 100).toDouble()
+        : 0.0;
+    final pricePerSqft = property.squareFeet > 0
+        ? (currentPrice / property.squareFeet).toDouble()
+        : 0.0;
     final timeRemaining = _currentAuction!.endAt.difference(DateTime.now());
     final isActive = _currentAuction!.isActive;
     final bidCount = _currentAuction!.bidCount;
@@ -2221,29 +2255,38 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     // Get real market data for comparison
     double? marketAvgPrice;
     double? marketAvgPricePerSqft;
-    
+
     if (_marketOverview != null && _marketOverview!.areaPrices.isNotEmpty) {
       // Find matching area or use overall average
       final matchingArea = _marketOverview!.areaPrices.firstWhere(
-        (ap) => ap.area.toLowerCase().contains(property.location.toLowerCase()) ||
-                property.location.toLowerCase().contains(ap.area.toLowerCase()),
+        (ap) =>
+            ap.area.toLowerCase().contains(property.location.toLowerCase()) ||
+            property.location.toLowerCase().contains(ap.area.toLowerCase()),
         orElse: () => _marketOverview!.areaPrices.first,
       );
       marketAvgPrice = matchingArea.averagePrice;
     }
-    
+
     if (_bestInvestments != null && _bestInvestments!.isNotEmpty) {
       // Find similar properties in best investments
       final propertyTypeLabel = property.typeLabel;
-      final similarProperties = _bestInvestments!.where((inv) =>
-        inv.propertyType.toLowerCase() == propertyTypeLabel.toLowerCase() ||
-        inv.location.toLowerCase().contains(property.location.toLowerCase())
-      ).toList();
-      
+      final similarProperties = _bestInvestments!
+          .where(
+            (inv) =>
+                inv.propertyType.toLowerCase() ==
+                    propertyTypeLabel.toLowerCase() ||
+                inv.location.toLowerCase().contains(
+                  property.location.toLowerCase(),
+                ),
+          )
+          .toList();
+
       if (similarProperties.isNotEmpty) {
-        marketAvgPricePerSqft = similarProperties
-            .map((inv) => inv.pricePerSqm)
-            .reduce((a, b) => a + b) / similarProperties.length;
+        marketAvgPricePerSqft =
+            similarProperties
+                .map((inv) => inv.pricePerSqm)
+                .reduce((a, b) => a + b) /
+            similarProperties.length;
       }
     }
 
@@ -2294,12 +2337,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary.withOpacity(0.1),
-                            AppColors.primary.withOpacity(0.05),
-                          ],
-                        ),
+                        color: AppColors.primary.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -2342,11 +2380,11 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                                 child: _buildPricingMetric(
                                   'From Start',
                                   '${priceIncreasePercent.toStringAsFixed(1)}%',
-                                  priceIncreasePercent >= 0 
-                                      ? Icons.trending_up 
+                                  priceIncreasePercent >= 0
+                                      ? Icons.trending_up
                                       : Icons.trending_down,
-                                  priceIncreasePercent >= 0 
-                                      ? Colors.green 
+                                  priceIncreasePercent >= 0
+                                      ? Colors.green
                                       : Colors.red,
                                 ),
                               ),
@@ -2381,15 +2419,19 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       isActive && timeRemaining.inHours < 2
                           ? 'Last hour bidding! Prices typically increase 15-25% in final hour.'
                           : isActive
-                              ? 'Early bidding establishes your presence. Consider strategic bids.'
-                              : 'Auction ${_currentAuction!.isEnded ? "ended" : "not started yet"}.',
+                          ? 'Early bidding establishes your presence. Consider strategic bids.'
+                          : 'Auction ${_currentAuction!.isEnded ? "ended" : "not started yet"}.',
                       Colors.orange,
                     ),
                     const SizedBox(height: 10),
                     _buildStrategyTip(
                       Icons.psychology,
                       'Smart Bidding',
-                      _getSmartBiddingTip(bidCount, currentPrice, marketAvgPrice),
+                      _getSmartBiddingTip(
+                        bidCount,
+                        currentPrice,
+                        marketAvgPrice,
+                      ),
                       Colors.blue,
                     ),
                     const SizedBox(height: 10),
@@ -2399,8 +2441,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                       priceIncreasePercent > 20
                           ? 'Strong momentum! Property is gaining value rapidly.'
                           : priceIncreasePercent > 10
-                              ? 'Steady growth. Good investment potential.'
-                              : 'Early stage. Opportunity for early entry.',
+                          ? 'Steady growth. Good investment potential.'
+                          : 'Early stage. Opportunity for early entry.',
                       Colors.green,
                     ),
                     const SizedBox(height: 16),
@@ -2417,7 +2459,11 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.insights, color: Colors.purple.shade700, size: 24),
+                              Icon(
+                                Icons.insights,
+                                color: Colors.purple.shade700,
+                                size: 24,
+                              ),
                               const SizedBox(width: 12),
                               const Expanded(
                                 child: Text(
@@ -2433,8 +2479,8 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                           const SizedBox(height: 8),
                           Text(
                             _getInvestmentPotential(
-                              pricePerSqft, 
-                              priceIncreasePercent, 
+                              pricePerSqft,
+                              priceIncreasePercent,
                               bidCount,
                               marketAvgPrice,
                               marketAvgPricePerSqft,
@@ -2456,12 +2502,12 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
                               child: Row(
                                 children: [
                                   Icon(
-                                    currentPrice < marketAvgPrice 
-                                        ? Icons.trending_down 
+                                    currentPrice < marketAvgPrice
+                                        ? Icons.trending_down
                                         : Icons.trending_up,
                                     size: 16,
-                                    color: currentPrice < marketAvgPrice 
-                                        ? Colors.green 
+                                    color: currentPrice < marketAvgPrice
+                                        ? Colors.green
                                         : Colors.orange,
                                   ),
                                   const SizedBox(width: 8),
@@ -2492,7 +2538,12 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     );
   }
 
-  Widget _buildPricingMetric(String label, String value, IconData icon, Color color) {
+  Widget _buildPricingMetric(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -2531,7 +2582,12 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     );
   }
 
-  Widget _buildStrategyTip(IconData icon, String title, String description, Color color) {
+  Widget _buildStrategyTip(
+    IconData icon,
+    String title,
+    String description,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -2585,9 +2641,14 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
     );
   }
 
-  String _getSmartBiddingTip(int bidCount, double currentPrice, double? marketAvgPrice) {
+  String _getSmartBiddingTip(
+    int bidCount,
+    double currentPrice,
+    double? marketAvgPrice,
+  ) {
     if (marketAvgPrice != null && marketAvgPrice > 0) {
-      final priceDiff = ((currentPrice - marketAvgPrice) / marketAvgPrice * 100);
+      final priceDiff =
+          ((currentPrice - marketAvgPrice) / marketAvgPrice * 100);
       if (priceDiff < -5) {
         return 'Great value! Current bid is ${priceDiff.abs().toStringAsFixed(1)}% below market average. Strong opportunity.';
       } else if (priceDiff > 10) {
@@ -2596,7 +2657,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         return 'Fair market pricing. Aligned with market average. Good investment opportunity.';
       }
     }
-    
+
     // Fallback to bid count analysis
     if (bidCount > 5) {
       return 'High competition detected. Consider bidding above market average if you\'re serious.';
@@ -2608,15 +2669,18 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
   }
 
   String _getInvestmentPotential(
-    double pricePerSqft, 
-    double priceIncreasePercent, 
+    double pricePerSqft,
+    double priceIncreasePercent,
     int bidCount,
     double? marketAvgPrice,
     double? marketAvgPricePerSqft,
   ) {
     // Use real market data for assessment
     if (marketAvgPricePerSqft != null && marketAvgPricePerSqft > 0) {
-      final sqftDiff = ((pricePerSqft - marketAvgPricePerSqft) / marketAvgPricePerSqft * 100);
+      final sqftDiff =
+          ((pricePerSqft - marketAvgPricePerSqft) /
+          marketAvgPricePerSqft *
+          100);
       if (sqftDiff < -10 && priceIncreasePercent > 15 && bidCount > 8) {
         return '🔥 Exceptional value! Price per sqft is ${sqftDiff.abs().toStringAsFixed(1)}% below market with strong momentum. High demand property.';
       } else if (sqftDiff < -5 && priceIncreasePercent > 10) {
@@ -2625,7 +2689,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
         return '💎 Premium property. Above market pricing indicates high-end location/features.';
       }
     }
-    
+
     // Fallback to original logic
     if (pricePerSqft > 0 && priceIncreasePercent > 15 && bidCount > 8) {
       return '🔥 High demand property with strong price appreciation. Competitive bidding expected.';
@@ -2770,11 +2834,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
               Icons.calendar_today,
             ),
             const SizedBox(height: 8),
-            _buildDetailItem(
-              'Type',
-              property.typeLabel,
-              Icons.category,
-            ),
+            _buildDetailItem('Type', property.typeLabel, Icons.category),
           ],
         ),
       ],
@@ -2912,11 +2972,7 @@ class _AuctionDetailsPageState extends State<AuctionDetailsPage>
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.background, AppColors.background],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: AppColors.background,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.green[200]!),
           ),

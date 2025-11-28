@@ -14,7 +14,7 @@ import 'dart:async';
 
 /// Messenger-style floating chat window
 class FloatingChatWindow extends StatefulWidget {
-  final int? aichatId;
+  final String? aichatId;
   final VoidCallback onClose;
 
   const FloatingChatWindow({super.key, this.aichatId, required this.onClose});
@@ -30,7 +30,7 @@ class _FloatingChatWindowState extends State<FloatingChatWindow>
 
   List<AIBrokerMessage> _messages = [];
   List<AppNotification> _notificationMessages = [];
-  int? _currentChatId;
+  String? _currentChatId;
   bool _isLoading = false;
   bool _isSending = false;
   bool _isMinimized = false;
@@ -179,7 +179,7 @@ class _FloatingChatWindowState extends State<FloatingChatWindow>
     }
   }
 
-  Future<void> _loadConversation(int aichatId) async {
+  Future<void> _loadConversation(String aichatId) async {
     try {
       final response = await AIBrokerService.getConversation(aichatId);
 

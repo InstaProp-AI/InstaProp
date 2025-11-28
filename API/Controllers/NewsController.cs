@@ -10,7 +10,6 @@ namespace InstapropAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [FeaturePermissionAttribute("News")]
     public class NewsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -39,15 +38,13 @@ namespace InstapropAPI.Controllers
 
         // GET: api/news?page=1&pageSize=10&developerId=
         [HttpGet]
-        [Authorize]
         public async Task<ActionResult<PaginatedNewsResponse>> GetNews(
             [FromQuery] int page = 1, 
             [FromQuery] int pageSize = 10,
             [FromQuery] string? developerId = null)
         {
             var account = await GetCurrentAccountAsync();
-            if (account == null)
-                return Unauthorized("User not authenticated");
+            var isAuthenticated = account != null;
 
             var query = _context.NewsArticles
                 .Include(n => n.Images)
@@ -57,6 +54,12 @@ namespace InstapropAPI.Controllers
             // Handle special values: "-1" or empty GUID string means "show admin posts" (DeveloperId = null)
             if (!string.IsNullOrEmpty(developerId))
             {
+                // Only authenticated admins can filter by developer
+                if (!isAuthenticated || account!.RoleId != Role.ADMIN_ROLE_ID)
+                {
+                    return BadRequest(new { error = "Developer filtering is only available for authenticated admins." });
+                }
+
                 // Special value: "-1" means show only admin posts (DeveloperId = null)
                 if (developerId == "-1" || developerId == "00000000-0000-0000-0000-000000000000")
                 {
@@ -74,7 +77,7 @@ namespace InstapropAPI.Controllers
                 }
             }
             // If developer, only show their own news
-            else if (account.RoleId == Role.DEVELOPER_ROLE_ID)
+            else if (isAuthenticated && account!.RoleId == Role.DEVELOPER_ROLE_ID)
             {
                 var currentAccountId = GetCurrentAccountId();
                 query = query.Where(n => n.DeveloperId == currentAccountId);
@@ -83,18 +86,18 @@ namespace InstapropAPI.Controllers
             // This is the default view for admin
 
             // For published/unpublished filtering
-            if (account.RoleId == Role.DEVELOPER_ROLE_ID)
+            if (isAuthenticated && account!.RoleId == Role.DEVELOPER_ROLE_ID)
             {
                 // Developers see all their news (published and unpublished)
                 // Already filtered above
             }
-            else if (account.RoleId == Role.ADMIN_ROLE_ID)
+            else if (isAuthenticated && account!.RoleId == Role.ADMIN_ROLE_ID)
             {
                 // Admins see all news (no published filter)
             }
             else
             {
-                // Other users only see published news
+                // Anonymous users and other authenticated users only see published news
                 query = query.Where(n => n.IsPublished);
             }
 

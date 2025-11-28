@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/auction.dart';
 import '../theme/app_colors.dart';
 import 'image_carousel.dart';
@@ -11,7 +10,6 @@ class FeedAuctionCard extends StatefulWidget {
   final Auction auction;
   final VoidCallback? onTap; // For bidding/auction details navigation
   final VoidCallback? onPropertyTap; // For property details navigation
-  final VoidCallback? onSave;
   final VoidCallback? onShare;
 
   const FeedAuctionCard({
@@ -19,7 +17,6 @@ class FeedAuctionCard extends StatefulWidget {
     required this.auction,
     this.onTap,
     this.onPropertyTap,
-    this.onSave,
     this.onShare,
   });
 
@@ -30,7 +27,6 @@ class FeedAuctionCard extends StatefulWidget {
 class _FeedAuctionCardState extends State<FeedAuctionCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
-  bool _isSaved = false;
 
   @override
   void initState() {
@@ -216,33 +212,6 @@ class _FeedAuctionCardState extends State<FeedAuctionCard>
                     ),
                   ),
                 ),
-
-              // Save Button (top right)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isSaved = !_isSaved;
-                    });
-                    HapticFeedback.lightImpact();
-                    widget.onSave?.call();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isSaved ? Icons.bookmark : Icons.bookmark_border,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
 
               // Countdown Timer (bottom right) - only show for live auctions
               if (isLive)

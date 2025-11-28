@@ -7,11 +7,7 @@ class DealHighlightCard extends StatelessWidget {
   final DealHighlight highlight;
   final VoidCallback? onTap;
 
-  const DealHighlightCard({
-    super.key,
-    required this.highlight,
-    this.onTap,
-  });
+  const DealHighlightCard({super.key, required this.highlight, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -19,19 +15,21 @@ class DealHighlightCard extends StatelessWidget {
     final textTheme = theme.textTheme;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 4,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeroImage(),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -313,4 +311,3 @@ class _InfoPill extends StatelessWidget {
     );
   }
 }
-

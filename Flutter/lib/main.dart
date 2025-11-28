@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'app.dart';
 import 'core/firebase_status.dart';
+import 'services/onboarding_service.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized first
@@ -162,6 +163,13 @@ void main() async {
     await FirebaseStatus.ensureInitialized();
   } catch (e) {
     // Silently handle Firebase initialization errors (API fallback will handle)
+  }
+
+  // 🔧 DEBUG: Reset onboarding to see it again (set to false when done testing)
+  const bool resetOnboardingForTesting = true;
+  if (resetOnboardingForTesting) {
+    await OnboardingService.resetOnboarding();
+    print('✅ Onboarding reset - you will see onboarding screen');
   }
 
   // Run the app with extensive error handling

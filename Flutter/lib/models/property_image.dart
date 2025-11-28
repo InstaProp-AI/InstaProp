@@ -34,7 +34,7 @@ class PropertyImage {
       imageUrl: json['imageUrl'] ?? json['ImageUrl'] ?? '',
       imageType: json['imageType'] ?? json['ImageType'] ?? 'Gallery',
       isMainImage: json['isMainImage'] ?? json['IsMainImage'] ?? false,
-      displayOrder: json['displayOrder'] ?? json['DisplayOrder'] ?? 0,
+      displayOrder: _parseInt(json['displayOrder'] ?? json['DisplayOrder'], defaultValue: 0),
       deleteUrl: json['deleteUrl'] ?? json['DeleteUrl'],
       createdAt: DateTime.parse(
         json['createdAt'] ??
@@ -55,5 +55,20 @@ class PropertyImage {
       'deleteUrl': deleteUrl,
       'createdAt': createdAt.toIso8601String(),
     };
+  }
+
+  // Helper to safely parse int from int or string
+  static int _parseInt(dynamic value, {int defaultValue = 0}) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is String) {
+      try {
+        return int.parse(value);
+      } catch (e) {
+        print('⚠️ Failed to parse int from string: $value');
+        return defaultValue;
+      }
+    }
+    return defaultValue;
   }
 }
