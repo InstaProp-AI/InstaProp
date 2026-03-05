@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using InstapropAPI.Services;
 using BCrypt.Net;
 using System.Linq;
+using InstapropAPI.Models.Financial;
 
 namespace InstapropAPI.Controllers
 {
@@ -19,12 +20,21 @@ namespace InstapropAPI.Controllers
         private readonly AppDbContext _context;
         private readonly ImageFixService _imageFixService;
         private readonly GlobalSeedingService _seedingService;
+        private readonly IFinancialService _financialService;
+        private readonly FeatureFlagService _featureFlagService;
 
-        public AdminController(AppDbContext context, ImageFixService imageFixService, GlobalSeedingService seedingService)
+        public AdminController(
+            AppDbContext context,
+            ImageFixService imageFixService,
+            GlobalSeedingService seedingService,
+            IFinancialService financialService,
+            FeatureFlagService featureFlagService)
         {
             _context = context;
             _imageFixService = imageFixService;
             _seedingService = seedingService;
+            _financialService = financialService;
+            _featureFlagService = featureFlagService;
         }
 
         // GET: api/Admin/users - Get paginated users for admin dashboard
@@ -1267,7 +1277,165 @@ namespace InstapropAPI.Controllers
             }
         }
 
+        // ─────────────────────────────────────────────
+        // FINANCIAL MANAGEMENT (internal, admin-only)
+        // ─────────────────────────────────────────────
+
+        /// <summary>GET /api/admin/finance/balances — List all user balances (paginated).</summary>
+        [HttpGet("finance/balances")]
+        public async Task<IActionResult> GetAllBalances([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        {
+            var balances = await _financialService.GetAllBalancesAsync(page, pageSize);
+            return Ok(new { success = true, data = balances });
+        }
+
+        /// <summary>GET /api/admin/finance/balances/{accountId} — Get balance for a specific user.</summary>
+        [HttpGet("finance/balances/{accountId}")]
+        public async Task<IActionResult> GetUserBalance(Guid accountId)
+        {
+            var balance = await _financialService.GetBalanceAsync(accountId);
+            if (balance == null) return Ok(new { success = true, data = (object?)null, message = "No balance record found." });
+            return Ok(new { success = true, data = balance });
+        }
+
+        /// <summary>GET /api/admin/finance/transactions/{accountId} — List transactions for a user.</summary>
+        [HttpGet("finance/transactions/{accountId}")]
+        public async Task<IActionResult> GetUserTransactions(Guid accountId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var transactions = await _financialService.GetTransactionsAsync(accountId, page, pageSize);
+            return Ok(new { success = true, data = transactions });
+        }
+
+        /// <summary>GET /api/admin/finance/pending — List all pending transactions across all users.</summary>
+        [HttpGet("finance/pending")]
+        public async Task<IActionResult> GetPendingTransactions([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        {
+            var pending = await _financialService.GetPendingTransactionsAsync(page, pageSize);
+            return Ok(new { success = true, data = pending, count = pending.Count });
+        }
+
+        /// <summary>POST /api/admin/finance/transactions/{id}/confirm — Confirm a pending transaction.</summary>
+        [HttpPost("finance/transactions/{transactionId}/confirm")]
+        public async Task<IActionResult> ConfirmTransaction(Guid transactionId, [FromBody] AdminConfirmRequest request)
+        {
+            try
+            {
+                var adminId = GetCurrentAdminId();
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var tx = await _financialService.ConfirmTransactionAsync(transactionId, adminId, request.GatewayReference, ip);
+                return Ok(new { success = true, message = "Transaction confirmed.", data = tx });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>POST /api/admin/finance/transactions/{id}/reject — Reject a pending transaction.</summary>
+        [HttpPost("finance/transactions/{transactionId}/reject")]
+        public async Task<IActionResult> RejectTransaction(Guid transactionId, [FromBody] AdminRejectRequest request)
+        {
+            try
+            {
+                var adminId = GetCurrentAdminId();
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var tx = await _financialService.RejectTransactionAsync(transactionId, adminId, request.Reason, ip);
+                return Ok(new { success = true, message = "Transaction rejected.", data = tx });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>POST /api/admin/finance/transactions/{id}/reverse — Reverse a confirmed transaction.</summary>
+        [HttpPost("finance/transactions/{transactionId}/reverse")]
+        public async Task<IActionResult> ReverseTransaction(Guid transactionId, [FromBody] AdminRejectRequest request)
+        {
+            try
+            {
+                var adminId = GetCurrentAdminId();
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var tx = await _financialService.ReverseTransactionAsync(transactionId, adminId, request.Reason, ip);
+                return Ok(new { success = true, message = "Transaction reversed.", data = tx });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>POST /api/admin/finance/adjust — Apply a manual credit or debit to a user's balance.</summary>
+        [HttpPost("finance/adjust")]
+        public async Task<IActionResult> ManualAdjustment([FromBody] ManualAdjustmentRequest request)
+        {
+            try
+            {
+                var adminId = GetCurrentAdminId();
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+                if (request.Type != TransactionType.ManualCredit && request.Type != TransactionType.ManualDebit)
+                    return BadRequest(new { success = false, message = "Type must be ManualCredit or ManualDebit." });
+
+                var tx = await _financialService.ApplyManualAdjustmentAsync(
+                    request.AccountId, request.Amount, request.Type, request.Description, adminId, ip);
+
+                return Ok(new { success = true, message = "Adjustment applied.", data = tx });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // FEATURE FLAGS (admin-only)
+        // ─────────────────────────────────────────────
+
+        /// <summary>GET /api/admin/flags — List all feature flags with current state.</summary>
+        [HttpGet("flags")]
+        public async Task<IActionResult> GetFeatureFlags()
+        {
+            var flags = await _context.FeatureFlags.OrderBy(f => f.FeatureKey).ToListAsync();
+            return Ok(new { success = true, data = flags });
+        }
+
+        /// <summary>PUT /api/admin/flags/{key} — Toggle a feature flag on or off.</summary>
+        [HttpPut("flags/{key}")]
+        public async Task<IActionResult> SetFeatureFlag(string key, [FromBody] SetFlagRequest request)
+        {
+            try
+            {
+                var adminId = GetCurrentAdminId();
+                var flag = await _featureFlagService.SetFlagAsync(key, request.IsEnabled, adminId);
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Feature '{key}' is now {(request.IsEnabled ? "enabled" : "disabled")}.",
+                    data = flag
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+        }
+
+        private Guid GetCurrentAdminId()
+        {
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "uid")?.Value;
+            return claim != null ? Guid.Parse(claim) : Guid.Empty;
+        }
     }
 }
 
-
+public class AdminConfirmRequest { public string? GatewayReference { get; set; } }
+public class AdminRejectRequest { public string Reason { get; set; } = string.Empty; }
+public class ManualAdjustmentRequest
+{
+    public Guid AccountId { get; set; }
+    public decimal Amount { get; set; }
+    public InstapropAPI.Models.Financial.TransactionType Type { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+public class SetFlagRequest { public bool IsEnabled { get; set; } }
