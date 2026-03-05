@@ -352,6 +352,9 @@ namespace InstapropAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.PropertyId)
                     .OnDelete(DeleteBehavior.SetNull);
+                entity.HasIndex(e => e.ChatId);
+                entity.HasIndex(e => e.SenderId);
+                entity.HasIndex(e => e.CreatedAt);
             });
 
             // Configure DeveloperProfile
@@ -533,6 +536,8 @@ namespace InstapropAPI.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.SetNull);
+                entity.HasIndex(e => e.PropertyId);
+                entity.HasIndex(e => e.ViewedAt);
             });
 
             // Configure ParentProperty

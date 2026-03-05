@@ -69,10 +69,15 @@ else
     throw new Exception("CRITICAL: No database connection configured. Set DATABASE_URL environment variable or configure PostgreSQL connection string in appsettings.json");
 }
 
+// Configure connection pool: max 100 connections for main DB (supports ~100k DAU)
+var mainConnStringWithPool = finalConnectionString.Contains("MaxPoolSize")
+    ? finalConnectionString
+    : finalConnectionString.TrimEnd(';') + ";MaxPoolSize=100;MinPoolSize=5;ConnectionIdleLifetime=300;";
+
 // Configure DbContext with PostgreSQL only
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseNpgsql(finalConnectionString);
+    options.UseNpgsql(mainConnStringWithPool);
     // Suppress pending model changes warning
     options.ConfigureWarnings(warnings =>
         warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
@@ -108,9 +113,13 @@ else
         ?? throw new Exception("CRITICAL: No financial database connection configured. Set FINANCIAL_DATABASE_URL environment variable.");
 }
 
+var financialConnStringWithPool = financialConnectionString.Contains("MaxPoolSize")
+    ? financialConnectionString
+    : financialConnectionString.TrimEnd(';') + ";MaxPoolSize=20;MinPoolSize=2;ConnectionIdleLifetime=300;";
+
 builder.Services.AddDbContext<InstapropAPI.Data.FinancialDbContext>(options =>
 {
-    options.UseNpgsql(financialConnectionString);
+    options.UseNpgsql(financialConnStringWithPool);
     options.ConfigureWarnings(warnings =>
         warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
