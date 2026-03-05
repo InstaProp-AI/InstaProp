@@ -77,6 +77,43 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.ConfigureWarnings(warnings =>
         warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
+
+// Financial DB — separate isolated database, internal use only
+var financialDatabaseUrl = Environment.GetEnvironmentVariable("FINANCIAL_DATABASE_URL");
+string financialConnectionString;
+
+if (!string.IsNullOrEmpty(financialDatabaseUrl))
+{
+    try
+    {
+        var uri = new Uri(financialDatabaseUrl);
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.LocalPath.TrimStart('/');
+        var username = !string.IsNullOrEmpty(uri.UserInfo) ? uri.UserInfo.Split(':')[0] : "";
+        var password = !string.IsNullOrEmpty(uri.UserInfo) && uri.UserInfo.Split(':').Length > 1
+            ? uri.UserInfo.Split(':')[1] : "";
+        financialConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require";
+        Console.WriteLine($"💰 Financial DB connecting to: {host}:{port}/{database}");
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"CRITICAL: Failed to parse FINANCIAL_DATABASE_URL. Error: {ex.Message}");
+    }
+}
+else
+{
+    // Fallback to appsettings for local dev only
+    financialConnectionString = builder.Configuration.GetConnectionString("FinancialConnection")
+        ?? throw new Exception("CRITICAL: No financial database connection configured. Set FINANCIAL_DATABASE_URL environment variable.");
+}
+
+builder.Services.AddDbContext<InstapropAPI.Data.FinancialDbContext>(options =>
+{
+    options.UseNpgsql(financialConnectionString);
+    options.ConfigureWarnings(warnings =>
+        warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+});
 // Add Services
 builder.Services.AddScoped<RoleSeederService>();
 builder.Services.AddScoped<GlobalSeedingService>();
@@ -98,6 +135,8 @@ builder.Services.AddScoped<OpenAIService>(); // OpenAI Vision API for payment sc
 builder.Services.AddScoped<InstallmentSummaryService>();
 builder.Services.AddScoped<ImageFixService>();
 builder.Services.AddScoped<DeveloperPermissionService>();
+builder.Services.AddScoped<InstapropAPI.Services.IFinancialService, InstapropAPI.Services.FinancialService>();
+builder.Services.AddScoped<InstapropAPI.Services.FeatureFlagService>();
 
 // Add HttpClient for FCM and ImgBB
 builder.Services.AddHttpClient();

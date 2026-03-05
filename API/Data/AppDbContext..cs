@@ -76,6 +76,9 @@ namespace InstapropAPI.Data
         public DbSet<StreamViewer> StreamViewers { get; set; }
         public DbSet<StreamChatMessage> StreamChatMessages { get; set; }
 
+        // Feature Flags (global, database-driven)
+        public DbSet<FeatureFlag> FeatureFlags { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -198,7 +201,10 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.AuctionId).ValueGeneratedOnAdd();
                 entity.Property(e => e.StartPrice).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.CurrentPrice).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.WinPreservingPrice).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Status).HasMaxLength(20);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.PropertyId);
                 entity.HasOne(e => e.Property)
                     .WithMany(p => p.Auctions)
                     .HasForeignKey(e => e.PropertyId)
@@ -211,6 +217,8 @@ namespace InstapropAPI.Data
                 entity.HasKey(e => e.BidId);
                 entity.Property(e => e.BidId).ValueGeneratedOnAdd();
                 entity.Property(e => e.BidAmount).HasColumnType("decimal(18,2)");
+                entity.HasIndex(e => e.AuctionId);
+                entity.HasIndex(e => e.BidderId);
                 entity.HasOne(e => e.Auction)
                     .WithMany(a => a.Bids)
                     .HasForeignKey(e => e.AuctionId)
@@ -295,12 +303,14 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.Message).HasMaxLength(500).IsRequired();
                 entity.Property(e => e.Type).HasConversion<int>();
                 entity.Property(e => e.Recipients).HasMaxLength(500);
-                entity.Property(e => e.ReadByUsers).HasMaxLength(5000); // Can store many user IDs
+                entity.Property(e => e.ReadByUsers).HasMaxLength(5000);
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.CreatedAt);
                 entity.HasOne(e => e.User)
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade)
-                    .IsRequired(false); // UserId is now optional for bulk notifications
+                    .IsRequired(false);
             });
 
             // Configure Chat
@@ -688,6 +698,30 @@ namespace InstapropAPI.Data
                     .OnDelete(DeleteBehavior.Restrict);
                 entity.HasIndex(e => e.StreamId);
                 entity.HasIndex(e => e.CreatedAt);
+            });
+
+            // Configure FeatureFlag
+            modelBuilder.Entity<FeatureFlag>(entity =>
+            {
+                entity.HasKey(e => e.FeatureFlagId);
+                entity.Property(e => e.FeatureFlagId).ValueGeneratedOnAdd();
+                entity.Property(e => e.FeatureKey).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(300);
+                entity.HasIndex(e => e.FeatureKey).IsUnique();
+
+                // Seed the 10 feature flags with fixed GUIDs
+                entity.HasData(
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000001"), FeatureKey = "FeedExplore",            IsEnabled = true,  Description = "Explore/Feed tab in bottom navigation",              LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000002"), FeatureKey = "PaymentScheduleScanner", IsEnabled = true,  Description = "AI-powered payment schedule image scanner",            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000003"), FeatureKey = "Redemptions",            IsEnabled = true,  Description = "Points redemption for promo codes and rewards",        LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000004"), FeatureKey = "Valuation",              IsEnabled = true,  Description = "Property valuation tool",                             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000005"), FeatureKey = "News",                   IsEnabled = false, Description = "News articles section (Phase 2)",                     LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000006"), FeatureKey = "LiveStreaming",           IsEnabled = false, Description = "Developer live streaming (Phase 2)",                  LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000007"), FeatureKey = "AIBroker",               IsEnabled = false, Description = "Floating AI Broker chat button (Phase 2)",            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000008"), FeatureKey = "Leaderboard",            IsEnabled = false, Description = "Weekly leaderboard and cashback prizes (Phase 2)",    LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000009"), FeatureKey = "GoldPriceComparison",    IsEnabled = false, Description = "Gold price vs property value comparison (Phase 2)",  LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000010"), FeatureKey = "SalesTeams",             IsEnabled = false, Description = "Sales team management for developers (Phase 2)",     LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+                );
             });
         }
     }

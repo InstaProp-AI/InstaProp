@@ -34,6 +34,14 @@ namespace InstapropAPI.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>
+        /// Deposit amount the winner must pay to confirm their win.
+        /// Null means no deposit required. Set by admin when approving/creating the auction.
+        /// This amount is tracked in the financial database as a pending transaction.
+        /// </summary>
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? WinPreservingPrice { get; set; }
+
         // 🔗 Relations
         public ICollection<Bid> Bids { get; set; } = new List<Bid>();
     }

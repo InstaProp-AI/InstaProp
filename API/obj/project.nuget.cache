@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "3aSwZuggqGE=",
+  "dgSpecHash": "eLCy5qvDQsI=",
   "success": true,
   "projectFilePath": "/home/abraam/Desktop/Business/Proerty Flipper/API/InstapropAPI.csproj",
   "expectedPackageFiles": [
@@ -86,10 +86,7 @@
     "/home/abraam/.nuget/packages/system.security.cryptography.pkcs/8.0.1/system.security.cryptography.pkcs.8.0.1.nupkg.sha512",
     "/home/abraam/.nuget/packages/system.text.encodings.web/9.0.9/system.text.encodings.web.9.0.9.nupkg.sha512",
     "/home/abraam/.nuget/packages/system.text.json/9.0.9/system.text.json.9.0.9.nupkg.sha512",
-    "/home/abraam/.nuget/packages/system.threading.channels/7.0.0/system.threading.channels.7.0.0.nupkg.sha512",
-    "/home/abraam/.nuget/packages/microsoft.netcore.app.ref/8.0.22/microsoft.netcore.app.ref.8.0.22.nupkg.sha512",
-    "/home/abraam/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.22/microsoft.aspnetcore.app.ref.8.0.22.nupkg.sha512",
-    "/home/abraam/.nuget/packages/microsoft.netcore.app.host.linux-x64/8.0.22/microsoft.netcore.app.host.linux-x64.8.0.22.nupkg.sha512"
+    "/home/abraam/.nuget/packages/system.threading.channels/7.0.0/system.threading.channels.7.0.0.nupkg.sha512"
   ],
   "logs": []
 }
