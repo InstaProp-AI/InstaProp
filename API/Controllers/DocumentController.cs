@@ -33,9 +33,11 @@ namespace InstapropAPI.Controllers
         // ==================== USER DOCUMENTS (KYC) ====================
 
         /// <summary>
-        /// Upload a KYC document during registration (NO AUTH REQUIRED)
-        /// Accepts: ID_Front, ID_Back, Passport (single document)
-        /// Status flow: NotVerified -> Pending (when any doc uploaded)
+        /// Upload a KYC document during registration (NO AUTH REQUIRED).
+        /// Accepts: ID_Front, ID_Back, Passport (single document).
+        /// Only allowed for accounts in NotVerified or Pending status — Verified accounts must use the authenticated endpoint.
+        /// Status flow: NotVerified -> Pending (when any doc uploaded).
+        /// Security: Error responses are intentionally vague to prevent email enumeration.
         /// </summary>
         [HttpPost("public/upload")]
         [AllowAnonymous]
@@ -47,20 +49,24 @@ namespace InstapropAPI.Controllers
             try
             {
                 if (string.IsNullOrEmpty(email))
-                    return BadRequest(new { message = "Email is required for registration uploads" });
+                    return BadRequest(new { message = "Invalid request." });
 
                 if (string.IsNullOrEmpty(docType))
-                    return BadRequest(new { message = "Document type is required" });
+                    return BadRequest(new { message = "Document type is required." });
 
                 // Validate document type
                 var validDocTypes = new[] { "ID_Front", "ID_Back", "Passport" };
                 if (!validDocTypes.Contains(docType))
                     return BadRequest(new { message = $"Invalid document type. Allowed: {string.Join(", ", validDocTypes)}" });
 
-                // Find user by email
+                // Find user by email — use generic error to prevent email enumeration
                 var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Email == email);
                 if (account == null)
-                    return NotFound(new { message = "Account not found. Please create an account first." });
+                    return BadRequest(new { message = "Invalid request. Please ensure your account is registered first." });
+
+                // Block uploads for already-verified accounts — they must use authenticated endpoint
+                if (account.Status == VerificationStatus.Verified)
+                    return BadRequest(new { message = "Invalid request." });
 
                 // Validate file
                 var validationResult = await _fileValidationService.ValidateFileAsync(file);

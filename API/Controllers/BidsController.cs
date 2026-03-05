@@ -88,8 +88,10 @@ namespace InstapropAPI.Controllers
             return Ok(bidDtos);
         }
 
-        // GET: api/bids/bidders/{auctionId} (Public - Get unique bidders for an auction)
+        // GET: api/bids/bidders/{auctionId}
+        // Requires auth — returns anonymized bidder list (first name + last initial only, no AccountId)
         [HttpGet("bidders/{auctionId}")]
+        [Authorize]
         public async Task<IActionResult> GetBiddersForAuction(Guid auctionId)
         {
             // Get all bids for the auction - load into memory first
@@ -98,22 +100,20 @@ namespace InstapropAPI.Controllers
                 .Include(b => b.Bidder)
                 .ToListAsync();
 
-            // Filter out bids with null bidders and group by bidder
+            // Anonymize: show only first name and last initial to protect bidder privacy
             var bidders = bidsForAuction
-                .Where(b => b.Bidder != null) // Filter out null bidders
-                .GroupBy(b => new
+                .Where(b => b.Bidder != null)
+                .GroupBy(b => b.Bidder!.AccountId)
+                .Select(g =>
                 {
-                    b.Bidder.AccountId,
-                    b.Bidder.FirstName,
-                    b.Bidder.LastName
-                })
-                .Select(g => new
-                {
-                    g.Key.AccountId,
-                    g.Key.FirstName,
-                    g.Key.LastName,
-                    BidCount = g.Count(),
-                    LatestBidAmount = (double)g.Select(x => x.BidAmount).Max() // In-memory aggregation
+                    var bidder = g.First().Bidder!;
+                    var lastInitial = !string.IsNullOrEmpty(bidder.LastName) ? bidder.LastName[..1] + "." : "";
+                    return new
+                    {
+                        DisplayName = $"{bidder.FirstName} {lastInitial}".Trim(),
+                        BidCount = g.Count(),
+                        LatestBidAmount = (double)g.Select(x => x.BidAmount).Max()
+                    };
                 })
                 .OrderByDescending(b => b.LatestBidAmount)
                 .ToList();
