@@ -8,6 +8,7 @@ import '../services/notification_service.dart';
 import '../services/dashboard_service.dart';
 import '../services/firestore_service.dart';
 import '../services/api_client.dart';
+import '../services/feature_flag_service.dart';
 import '../models/user.dart';
 import '../models/auction.dart';
 import '../models/property.dart';
@@ -55,6 +56,9 @@ class AppState extends ChangeNotifier {
   // Active AI Broker chat ID
   String? _activeAIChatId;
 
+  // Feature flags — loaded once on init, defaults to empty (all features enabled)
+  Map<String, bool> _featureFlags = {};
+
   // Getters
   List<Auction> get auctions => _auctions;
   List<Property> get properties => _properties;
@@ -68,6 +72,10 @@ class AppState extends ChangeNotifier {
   bool get isRefreshing => _isRefreshing;
   bool get isFloatingButtonHidden => _isFloatingButtonHidden;
   String? get activeAIChatId => _activeAIChatId;
+
+  /// Returns true if the feature is enabled, or true by default if not in the map.
+  /// Safe: a missing or failed flags fetch never disables any feature.
+  bool isFeatureEnabled(String featureKey) => _featureFlags[featureKey] ?? true;
 
   // Featured auctions (top 2 by bid count)
   List<Auction> get featuredAuctions {
@@ -116,6 +124,17 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() async {
     try {
+      // Load feature flags first — non-blocking, safe fallback to empty map
+      Future.microtask(() async {
+        try {
+          final flags = await FeatureFlagService.fetchFlags();
+          _featureFlags = flags;
+          notifyListeners();
+        } catch (_) {
+          // On any failure, _featureFlags stays empty — all features default to enabled
+        }
+      });
+
       // Initialize auth service with error handling
       try {
         await _authService.init();

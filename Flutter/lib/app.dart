@@ -209,11 +209,13 @@ class InstapropApp extends StatelessWidget {
                 home: const InitialRouteWidget(),
                 // Add error boundary and floating button
                 builder: (context, child) {
+                  final appState = Provider.of<AppState>(context);
                   return ErrorBoundary(
                     child: Stack(
                       children: [
                         child ?? const SizedBox.shrink(),
-                        const FloatingAIBrokerButton(),
+                        if (appState.isFeatureEnabled('AIBroker'))
+                          const FloatingAIBrokerButton(),
                       ],
                     ),
                   );
