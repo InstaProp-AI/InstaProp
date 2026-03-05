@@ -25,7 +25,8 @@ import {
   TrendingDown,
   Gift,
   Calculator,
-  Briefcase
+  Briefcase,
+  ToggleLeft,
 } from 'lucide-react';
 import { Account } from '../types';
 import { usePermissions } from '../contexts/PermissionContext';
@@ -60,6 +61,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children }) => {
     { name: 'Valuation', href: '/valuation', icon: Calculator, color: 'bg-indigo-600', permission: 'Valuation', adminOnly: false },
     { name: 'Documents', href: '/documents', icon: FileText, color: 'bg-yellow-500', permission: null, adminOnly: false },
     { name: 'Notifications', href: '/notifications', icon: Bell, color: 'bg-pink-500', permission: 'Notifications', adminOnly: true },
+    { name: 'Feature Flags', href: '/feature-flags', icon: ToggleLeft, color: 'bg-violet-500', permission: null, adminOnly: true },
     { name: 'Settings', href: '/settings', icon: Settings, color: 'bg-gray-500', permission: null, adminOnly: false },
   ];
 

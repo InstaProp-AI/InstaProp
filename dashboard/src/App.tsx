@@ -13,6 +13,7 @@ import PropertiesPage from './pages/PropertiesPage';
 import AuctionsPage from './pages/AuctionsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import FeatureFlagsPage from './pages/FeatureFlagsPage';
 import NotificationDashboardPage from './pages/NotificationDashboardPage';
 import DocumentsPage from './pages/DocumentsPage';
 // CommunitiesPage removed (community feature)
@@ -139,6 +140,7 @@ function App() {
               <Route path="/notifications" element={<AdminRoute user={user}><NotificationDashboardPage /></AdminRoute>} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/feature-flags" element={<AdminRoute user={user}><FeatureFlagsPage /></AdminRoute>} />
           </Routes>
         </Layout>
       </Router>
