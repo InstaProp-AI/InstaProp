@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using InstapropAPI.Services;
 
 namespace InstapropAPI.Services
 {
@@ -59,6 +60,7 @@ namespace InstapropAPI.Services
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var firestoreService = scope.ServiceProvider.GetRequiredService<FirestoreService>();
+            var financialService = scope.ServiceProvider.GetRequiredService<IFinancialService>();
 
             var now = DateTime.UtcNow;
 
@@ -97,12 +99,40 @@ namespace InstapropAPI.Services
 
                     if (winningBid != null && winningBid.Bidder != null)
                     {
+                        // If a preserving deposit is required, create a pending financial transaction
+                        if (auction.WinPreservingPrice.HasValue && auction.WinPreservingPrice.Value > 0)
+                        {
+                            try
+                            {
+                                await financialService.CreatePendingDepositAsync(
+                                    accountId: winningBid.BidderId,
+                                    amount: auction.WinPreservingPrice.Value,
+                                    currency: "EGP",
+                                    referenceId: auction.AuctionId,
+                                    referenceType: "Auction",
+                                    description: $"Win-preserving deposit for auction #{auction.AuctionId} — property '{auction.Property?.Name}'");
+
+                                _logger.LogInformation(
+                                    "Created pending deposit EGP {Amount} for winner {WinnerId} on auction {AuctionId}",
+                                    auction.WinPreservingPrice.Value, winningBid.BidderId, auction.AuctionId);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to create financial deposit record for auction {AuctionId}", auction.AuctionId);
+                                // Non-fatal: continue processing — admin can create manually
+                            }
+                        }
+
                         // Notify the winner (highest bidder)
+                        var depositNote = auction.WinPreservingPrice.HasValue && auction.WinPreservingPrice.Value > 0
+                            ? $" A deposit of EGP {auction.WinPreservingPrice.Value:N2} is required to confirm your win. Our team will contact you with payment details."
+                            : " We will call you soon to schedule a meeting to finalize the purchase and arrange payment.";
+
                         var winnerNotification = new Notification
                         {
                             UserId = winningBid.BidderId,
-                            Title = "🎉 Congratulations - You Won!",
-                            Message = $"Congratulations! You won the auction for '{auction.Property?.Name}' with your bid of ${winningBid.BidAmount:N2}. We will call you soon to schedule a meeting to finalize the purchase and arrange payment.",
+                            Title = "Congratulations - You Won!",
+                            Message = $"Congratulations! You won the auction for '{auction.Property?.Name}' with your bid of EGP {winningBid.BidAmount:N2}.{depositNote}",
                             Type = NotificationType.AuctionWon,
                             AuctionId = auction.AuctionId,
                             PropertyId = auction.PropertyId,
