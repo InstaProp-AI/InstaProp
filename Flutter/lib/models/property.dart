@@ -160,12 +160,19 @@ class Property {
     }
 
     PropertyType parsePropertyType() {
-      final rawType = (json['type'] ??
-              json['Type'] ??
-              json['propertyType'] ??
-              json['category'])
-          ?.toString();
-      return PropertyTypeX.fromString(rawType);
+      final rawType = json['type'] ??
+          json['Type'] ??
+          json['propertyType'] ??
+          json['category'];
+
+      if (rawType is int) {
+        if (rawType >= 0 && rawType < PropertyType.values.length) {
+          return PropertyType.values[rawType];
+        }
+        if (rawType == 99) return PropertyType.other;
+      }
+
+      return PropertyTypeX.fromString(rawType?.toString());
     }
 
     PropertyStatus parsePropertyStatus() {

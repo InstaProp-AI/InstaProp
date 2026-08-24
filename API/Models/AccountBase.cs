@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace InstapropAPI.Models
 {
@@ -32,6 +33,7 @@ namespace InstapropAPI.Models
 
         public Role? Role { get; set; }
 
+        [JsonIgnore]
         public string? HashedPassword { get; set; }
 
         [Required]
