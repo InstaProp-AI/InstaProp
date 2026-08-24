@@ -35,7 +35,7 @@ namespace InstapropAPI.Models
         public bool IsActive { get; set; } = true;
 
         // 🔗 Relations
-        // Properties navigation removed - using ChildProperty system now
+        // Properties are linked via Properties/Properties table through Property.ProjectId
     }
 }
 

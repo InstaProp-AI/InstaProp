@@ -310,7 +310,7 @@ namespace InstapropAPI.Controllers
             try
             {
                 // Get top 10 locations by property count
-                var locations = await _context.ChildProperties
+                var locations = await _context.Properties
                     .Where(p => !string.IsNullOrEmpty(p.Location))
                     .GroupBy(p => p.Location)
                     .OrderByDescending(g => g.Count())
@@ -590,7 +590,7 @@ namespace InstapropAPI.Controllers
             {
                 _logger.LogInformation($"Searching properties with: Location={prefs.Location}, Bedrooms={prefs.Bedrooms}, Bathrooms={prefs.Bathrooms}, Type={prefs.PropertyType}");
 
-                var query = _context.ChildProperties
+                var query = _context.Properties
                     .Include(p => p.Auctions)
                     .AsQueryable();
 
@@ -667,7 +667,7 @@ namespace InstapropAPI.Controllers
 
         private async Task<List<DeveloperSuggestionDto>> GetRelevantDevelopers(List<PropertySuggestionDto> properties)
         {
-            var developerIds = await _context.ChildProperties
+            var developerIds = await _context.Properties
                 .Where(p => properties.Select(pr => pr.PropertyId).Contains(p.PropertyId))
                 .Select(p => p.OwnerId)
                 .Distinct()

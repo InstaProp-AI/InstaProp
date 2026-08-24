@@ -192,7 +192,7 @@ namespace InstapropAPI.Controllers
         // GET: api/project/{id}/properties
         [HttpGet("{id}/properties")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetProjectProperties(Guid id)
+        public async Task<ActionResult<IEnumerable<Property>>> GetProjectProperties(Guid id)
         {
             var accountIdClaim = User.FindFirst("uid");
             if (accountIdClaim == null || !Guid.TryParse(accountIdClaim.Value, out var accountId))
@@ -217,7 +217,7 @@ namespace InstapropAPI.Controllers
                 return NotFound("Project not found");
             }
 
-            var properties = await _context.ChildProperties
+            var properties = await _context.Properties
                 .Where(p => p.ProjectId == id)
                 .Include(p => p.Owner)
                 .ToListAsync();
@@ -243,11 +243,11 @@ namespace InstapropAPI.Controllers
             foreach (var p in projects)
             {
                 var profile = developerProfiles.FirstOrDefault(dp => dp.AccountId == p.DeveloperId);
-                var featuredProperty = await _context.ChildProperties
+                var featuredProperty = await _context.Properties
                     .Where(cp => cp.ProjectId == p.ProjectId)
                     .FirstOrDefaultAsync();
                 
-                var propertiesCount = await _context.ChildProperties
+                var propertiesCount = await _context.Properties
                     .Where(cp => cp.ProjectId == p.ProjectId)
                     .CountAsync();
 
@@ -300,7 +300,7 @@ namespace InstapropAPI.Controllers
                 DeveloperRating = profile?.Rating ?? 0,
                 DeveloperProfileImage = profile?.ProfileImageUrl,
                 DeveloperBio = profile?.Bio,
-                Properties = _context.ChildProperties.Where(cp => cp.ProjectId == project.ProjectId).Select(p => new PublicPropertyDto
+                Properties = _context.Properties.Where(cp => cp.ProjectId == project.ProjectId).Select(p => new PublicPropertyDto
                 {
                     PropertyId = p.PropertyId,
                     Name = p.Name,
@@ -311,7 +311,7 @@ namespace InstapropAPI.Controllers
                     SquareFeet = p.SquareFeet,
                     Type = PropertyTypeHelper.ToDisplayName(p.Type),
                     ImageUrl = p.ImageUrl,
-                    Images = new List<string>(), // TODO: Get images from ChildProperty
+                    Images = new List<string>(), // TODO: Get images from Property
                     HasActiveAuction = p.Auctions.Any(a => a.Status == "Active"),
                     AuctionPrice = p.Auctions.FirstOrDefault(a => a.Status == "Active") != null ? p.Auctions.FirstOrDefault(a => a.Status == "Active").CurrentPrice : 0
                 }).ToList()
@@ -335,11 +335,11 @@ namespace InstapropAPI.Controllers
             var publicProjects = new List<PublicProjectDto>();
             foreach (var p in projects)
             {
-                var featuredProperty = await _context.ChildProperties
+                var featuredProperty = await _context.Properties
                     .Where(cp => cp.ProjectId == p.ProjectId)
                     .FirstOrDefaultAsync();
                 
-                var propertiesCount = await _context.ChildProperties
+                var propertiesCount = await _context.Properties
                     .Where(cp => cp.ProjectId == p.ProjectId)
                     .CountAsync();
 

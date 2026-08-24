@@ -57,9 +57,8 @@ namespace InstapropAPI.Controllers
             var projectIds = projects.Select(p => p.ProjectId).ToList();
             var projectIdSet = new HashSet<Guid>(projectIds);
 
-            var propertyQueryable = _context.ChildProperties
-                .Include(cp => cp.ParentProperty) // Include parent property for parent-child relationship
-                .Include(cp => cp.Project) // Include project
+            var propertyQueryable = _context.Properties
+                .Include(cp => cp.Project)
                 .Where(cp =>
                     (cp.ProjectId.HasValue && projectIdSet.Contains(cp.ProjectId.Value)) ||
                     cp.OwnerId == developerId);
@@ -80,8 +79,10 @@ namespace InstapropAPI.Controllers
                 .Select(cp => new PropertySummaryDto
                 {
                     PropertyId = cp.PropertyId,
-                    ParentPropertyId = cp.ParentPropertyId, // Include ParentPropertyId
                     ProjectId = cp.ProjectId,
+                    ProjectName = !string.IsNullOrWhiteSpace(cp.ProjectName)
+                        ? cp.ProjectName
+                        : (cp.Project != null ? cp.Project.Name : "N/A"),
                     Name = cp.Name,
                     Location = cp.Location,
                     ImageUrl = cp.ImageUrl ?? string.Empty,
@@ -90,18 +91,7 @@ namespace InstapropAPI.Controllers
                     Bedrooms = cp.Bedrooms,
                     Bathrooms = cp.Bathrooms,
                     SquareFeet = cp.SquareFeet,
-                    ParentProperty = cp.ParentProperty != null ? new
-                    {
-                        ParentPropertyId = cp.ParentProperty.ParentPropertyId,
-                        ProjectName = !string.IsNullOrWhiteSpace(cp.ParentProperty.ProjectName)
-                            ? cp.ParentProperty.ProjectName
-                            : (cp.Project != null ? cp.Project.Name : "N/A"),
-                        Type = cp.ParentProperty.Type,
-                        Bedrooms = cp.ParentProperty.Bedrooms,
-                        Bathrooms = cp.ParentProperty.Bathrooms,
-                        AreaSqm = cp.ParentProperty.AreaSqm,
-                        FinishingType = cp.ParentProperty.FinishingType.ToString()
-                    } : null
+                    FinishingType = cp.FinishingType
                 })
                 .Take(100)
                 .ToListAsync();
@@ -111,13 +101,13 @@ namespace InstapropAPI.Controllers
                 .Take(20)
                 .ToList();
 
-            var projectPropertyCounts = await _context.ChildProperties
+            var projectPropertyCounts = await _context.Properties
                 .Where(cp => cp.ProjectId.HasValue && projectIdSet.Contains(cp.ProjectId.Value))
                 .GroupBy(cp => cp.ProjectId!.Value)
                 .Select(g => new { ProjectId = g.Key, Count = g.Count() })
                 .ToListAsync();
 
-            var projectCoverImages = await _context.ChildProperties
+            var projectCoverImages = await _context.Properties
                 .Where(cp => cp.ProjectId.HasValue && projectIdSet.Contains(cp.ProjectId.Value) && !string.IsNullOrEmpty(cp.ImageUrl))
                 .GroupBy(cp => cp.ProjectId!.Value)
                 .Select(g => new
@@ -256,11 +246,11 @@ namespace InstapropAPI.Controllers
 
                 var projectIds = projects.Select(p => p.ProjectId).ToList();
                 var properties = projectIds.Any()
-                    ? await _context.ChildProperties
+                    ? await _context.Properties
                         .Where(cp => cp.ProjectId.HasValue && projectIds.Contains(cp.ProjectId.Value))
                         .Include(cp => cp.Auctions)
                         .ToListAsync()
-                    : new List<ChildProperty>();
+                    : new List<Property>();
 
                 var auctions = properties.SelectMany(p => p.Auctions ?? new List<Auction>()).ToList();
                 
@@ -341,16 +331,17 @@ namespace InstapropAPI.Controllers
                 var projectDtos = new List<ProjectWithPropertiesDto>();
                 foreach (var p in projects)
                 {
-                    var propertiesCount = await _context.ChildProperties.Where(cp => cp.ProjectId == p.ProjectId).CountAsync();
-                    var properties = await _context.ChildProperties
+                    var propertiesCount = await _context.Properties.Where(cp => cp.ProjectId == p.ProjectId).CountAsync();
+                    var properties = await _context.Properties
                         .Where(cp => cp.ProjectId == p.ProjectId)
-                        .Include(cp => cp.ParentProperty) // Include parent property
-                        .Include(cp => cp.Project) // Include project
+                        .Include(cp => cp.Project)
                         .Select(prop => new PropertySummaryDto
                         {
                             PropertyId = prop.PropertyId,
-                            ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
                             ProjectId = prop.ProjectId,
+                            ProjectName = !string.IsNullOrWhiteSpace(prop.ProjectName)
+                                ? prop.ProjectName
+                                : (prop.Project != null ? prop.Project.Name : "N/A"),
                             Name = prop.Name ?? "Unnamed Property",
                             Location = prop.Location,
                             ImageUrl = prop.ImageUrl ?? string.Empty,
@@ -359,18 +350,7 @@ namespace InstapropAPI.Controllers
                             Bedrooms = prop.Bedrooms,
                             Bathrooms = prop.Bathrooms,
                             SquareFeet = prop.SquareFeet,
-                            ParentProperty = prop.ParentProperty != null ? new
-                            {
-                                ParentPropertyId = prop.ParentProperty.ParentPropertyId,
-                                ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
-                                    ? prop.ParentProperty.ProjectName
-                                    : (prop.Project != null ? prop.Project.Name : "N/A"),
-                                Type = prop.ParentProperty.Type,
-                                Bedrooms = prop.ParentProperty.Bedrooms,
-                                Bathrooms = prop.ParentProperty.Bathrooms,
-                                AreaSqm = prop.ParentProperty.AreaSqm,
-                                FinishingType = prop.ParentProperty.FinishingType.ToString()
-                            } : null
+                            FinishingType = prop.FinishingType
                         }).ToListAsync();
 
                     projectDtos.Add(new ProjectWithPropertiesDto
@@ -410,18 +390,19 @@ namespace InstapropAPI.Controllers
                 if (account == null || account.RoleId != Role.DEVELOPER_ROLE_ID) // SECURITY: Check non-guessable RoleId
                     return Forbid();
 
-                var properties = await _context.ChildProperties
+                var properties = await _context.Properties
                     .Where(p => p.OwnerId == accountId.Value)
                     .Include(p => p.PropertyImages)
-                    .Include(p => p.ParentProperty) // Include parent property
-                    .Include(p => p.Project) // Include project
+                    .Include(p => p.Project)
                     .ToListAsync();
 
                 var result = properties.Select(prop => new PropertySummaryDto
                 {
                     PropertyId = prop.PropertyId,
-                    ParentPropertyId = prop.ParentPropertyId, // Include ParentPropertyId
                     ProjectId = prop.ProjectId,
+                    ProjectName = !string.IsNullOrWhiteSpace(prop.ProjectName)
+                        ? prop.ProjectName
+                        : (prop.Project != null ? prop.Project.Name : "N/A"),
                     Name = prop.Name ?? "Unnamed Property",
                     Location = prop.Location,
                     ImageUrl = prop.ImageUrl ?? string.Empty,
@@ -430,18 +411,7 @@ namespace InstapropAPI.Controllers
                     Bedrooms = prop.Bedrooms,
                     Bathrooms = prop.Bathrooms,
                     SquareFeet = prop.SquareFeet,
-                    ParentProperty = prop.ParentProperty != null ? new
-                    {
-                        ParentPropertyId = prop.ParentProperty.ParentPropertyId,
-                        ProjectName = !string.IsNullOrWhiteSpace(prop.ParentProperty.ProjectName)
-                            ? prop.ParentProperty.ProjectName
-                            : (prop.Project != null ? prop.Project.Name : "N/A"),
-                        Type = prop.ParentProperty.Type,
-                        Bedrooms = prop.ParentProperty.Bedrooms,
-                        Bathrooms = prop.ParentProperty.Bathrooms,
-                        AreaSqm = prop.ParentProperty.AreaSqm,
-                        FinishingType = prop.ParentProperty.FinishingType.ToString()
-                    } : null
+                    FinishingType = prop.FinishingType
                 }).ToList();
 
                 return Ok(result);
@@ -663,17 +633,17 @@ namespace InstapropAPI.Controllers
     public class PropertySummaryDto
     {
         public Guid PropertyId { get; set; }
-        public Guid? ParentPropertyId { get; set; }
         public Guid? ProjectId { get; set; }
+        public string ProjectName { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? Location { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty; // Primary or Resale
+        public string Type { get; set; } = string.Empty;
         public int Bedrooms { get; set; }
         public int Bathrooms { get; set; }
         public int SquareFeet { get; set; }
-        public object? ParentProperty { get; set; }
+        public string FinishingType { get; set; } = string.Empty;
     }
 
     public class CreateRatingDto

@@ -6,51 +6,58 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace InstapropAPI.Models
 {
     /// <summary>
-    /// Child Property - Individual property unit that inherits from Parent Property
-    /// Contains unique attributes specific to this unit (floor, view, phase, delivery date, etc.)
+    /// Property - Individual ownable property unit with all attributes on one record.
     /// </summary>
-    public class ChildProperty
+    public class Property
     {
         [Key]
-        public Guid PropertyId { get; set; } // Keep same name for compatibility
-
-        [ForeignKey("ParentProperty")]
-        public Guid? ParentPropertyId { get; set; }
+        public Guid PropertyId { get; set; }
 
         [ForeignKey("Owner")]
         public Guid? OwnerId { get; set; }
 
-        // Phase information (moved from parent to child)
-        [MaxLength(50)]
-        public string? Phase { get; set; } // "Phase 1", "Phase 2", "Phase 3", "Phase 4"
+        [MaxLength(200)]
+        public string? ProjectName { get; set; }
 
-        // Unit-specific details
+        public Guid? ProjectId { get; set; }
+
+        [MaxLength(50)]
+        public string? Phase { get; set; }
+
         public int? FloorNumber { get; set; }
 
         [MaxLength(50)]
         public string? UnitNumber { get; set; }
 
         [MaxLength(100)]
-        public string? ViewType { get; set; } // Sea, Nile, Pyramid, Garden, Street
+        public string? ViewType { get; set; }
 
         [MaxLength(100)]
-        public string? Orientation { get; set; } // North, South, East, West, etc.
+        public string? Orientation { get; set; }
 
         public DateTime? DeliveryDate { get; set; }
 
         public int? ParkingSlots { get; set; }
         public bool? HasStorageRoom { get; set; }
 
-        // Purchase information (for owner)
         [Column(TypeName = "decimal(18,2)")]
-        public decimal? BuyingPrice { get; set; } // Price owner paid when purchasing
+        public decimal? BuyingPrice { get; set; }
 
-        public DateTime? BuyingDate { get; set; } // When owner purchased this property
+        public DateTime? BuyingDate { get; set; }
 
-        // For developers adding multiple units
-        public int Quantity { get; set; } = 1; // Default 1 for regular users
+        public int Quantity { get; set; } = 1;
 
-        // Unit-specific Amenities
+        [MaxLength(100)]
+        public string FinishingType { get; set; } = "Finished";
+
+        // Compound / project amenities
+        public bool HasPool { get; set; }
+        public bool HasGym { get; set; }
+        public bool HasSecurity { get; set; }
+        public bool HasParking { get; set; }
+        public bool HasPlayground { get; set; }
+
+        // Unit amenities
         public bool? HasNannyRoom { get; set; }
         public bool? HasDriverRoom { get; set; }
         public bool? HasMaidRoom { get; set; }
@@ -72,47 +79,40 @@ namespace InstapropAPI.Models
         public bool? NaturalGas { get; set; }
         public bool? HasGenerator { get; set; }
 
-        // View-specific flags
         public bool? SeaView { get; set; }
         public bool? NileView { get; set; }
         public bool? PyramidView { get; set; }
         public bool? GardenView { get; set; }
         public bool? StreetView { get; set; }
 
-        // Legacy fields for compatibility (will be populated from parent)
         [MaxLength(500)]
-        public string Name { get; set; } = string.Empty; // Auto-generated from parent + unit
+        public string Name { get; set; } = string.Empty;
 
         [MaxLength(2000)]
         public string Description { get; set; } = string.Empty;
 
         [MaxLength(500)]
-        public string Location { get; set; } = string.Empty; // From parent's project
+        public string Location { get; set; } = string.Empty;
 
         public string ImageUrl { get; set; } = string.Empty;
-        public int SquareFeet { get; set; } // Calculated from parent's AreaSqm
+        public int SquareFeet { get; set; }
 
-        public int YearBuilt { get; set; } // Project's year
+        public int YearBuilt { get; set; }
 
         public bool IsApproved { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Properties inherited from ParentProperty for compatibility
-        public int Bedrooms { get; set; } // From parent
-        public int Bathrooms { get; set; } // From parent
+        public int Bedrooms { get; set; }
+        public int Bathrooms { get; set; }
         public PropertyType Type { get; set; } = PropertyType.Apartment;
-        public PropertyStatus Status { get; set; } = PropertyStatus.NotApproved; // Individual property status
-        public Guid? ProjectId { get; set; } // Optional direct link to project
+        public PropertyStatus Status { get; set; } = PropertyStatus.NotApproved;
 
-        // Navigation properties
-        public virtual ParentProperty? ParentProperty { get; set; }
         public virtual AccountBase? Owner { get; set; }
+        public virtual Project? Project { get; set; }
         public virtual ICollection<PropertyImage> PropertyImages { get; set; } = new List<PropertyImage>();
         public virtual ICollection<PropertyDoc> PropertyDocs { get; set; } = new List<PropertyDoc>();
         public virtual ICollection<Auction> Auctions { get; set; } = new List<Auction>();
-        public virtual Project? Project { get; set; } // Optional link to Project table
         public virtual InstallmentSummary? InstallmentSummary { get; set; }
     }
 }
-

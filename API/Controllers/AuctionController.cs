@@ -193,7 +193,7 @@ namespace InstapropAPI.Controllers
         public async Task<ActionResult<Auction>> CreateAuction([FromBody] CreateAuctionDto auctionDto)
         {
             // Check if property exists
-            var property = await _context.ChildProperties.FindAsync(auctionDto.PropertyId);
+            var property = await _context.Properties.FindAsync(auctionDto.PropertyId);
             if (property == null)
                 return NotFound("Property not found");
 
@@ -249,7 +249,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             // Check if property exists and belongs to user
-            var property = await _context.ChildProperties.FindAsync(requestDto.PropertyId);
+            var property = await _context.Properties.FindAsync(requestDto.PropertyId);
             if (property == null)
                 return NotFound("Property not found");
 

@@ -151,7 +151,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           pinned: true,
           backgroundColor: Colors.white,
           elevation: 0,
-          actions: _buildHeaderActions(context),
+          actions: _buildHeaderActions(context, appState),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
               color: Colors.white,
@@ -215,7 +215,8 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
               ],
 
               // Financial Dashboard
-              if (appState.isLoggedIn &&
+              if (appState.isFeatureEnabled('PortfolioAnalytics') &&
+                  appState.isLoggedIn &&
                   !_loadingFinancials &&
                   _portfolioSummary != null)
                 _buildFinancialDashboard()
@@ -265,42 +266,49 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Row 2: Calendar + Valuate Property
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildCompactActionButton(
-                            context,
-                            icon: Icons.calendar_today_rounded,
-                            title: 'My Calendar',
-                            onTap: () {
-                              Navigator.push(
+                    // Row 2: Calendar + Valuate Property (feature-flagged)
+                    if (appState.isFeatureEnabled('CalendarEvents') ||
+                        appState.isFeatureEnabled('Valuation'))
+                      Row(
+                        children: [
+                          if (appState.isFeatureEnabled('CalendarEvents'))
+                            Expanded(
+                              child: _buildCompactActionButton(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const CalendarPage(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildCompactActionButton(
-                            context,
-                            icon: Icons.assessment,
-                            title: 'Valuate Property',
-                            onTap: () {
-                              Navigator.push(
+                                icon: Icons.calendar_today_rounded,
+                                title: 'My Calendar',
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const CalendarPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          if (appState.isFeatureEnabled('CalendarEvents') &&
+                              appState.isFeatureEnabled('Valuation'))
+                            const SizedBox(width: 12),
+                          if (appState.isFeatureEnabled('Valuation'))
+                            Expanded(
+                              child: _buildCompactActionButton(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ValuatePage(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+                                icon: Icons.assessment,
+                                title: 'Valuate Property',
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ValuatePage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -424,7 +432,7 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
     );
   }
 
-  List<Widget> _buildHeaderActions(BuildContext context) {
+  List<Widget> _buildHeaderActions(BuildContext context, AppState appState) {
     return [
       IconButton(
         icon: const Icon(Icons.settings_outlined),
@@ -448,17 +456,18 @@ class _PropertiesManagementPageState extends State<PropertiesManagementPage> {
           );
         },
       ),
-      IconButton(
-        icon: const Icon(Icons.card_giftcard_outlined),
-        color: const Color(0xFF1A1A1A),
-        tooltip: 'Rewards',
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const RewardsPage()),
-          );
-        },
-      ),
+      if (appState.isFeatureEnabled('Redemptions'))
+        IconButton(
+          icon: const Icon(Icons.card_giftcard_outlined),
+          color: const Color(0xFF1A1A1A),
+          tooltip: 'Rewards',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RewardsPage()),
+            );
+          },
+        ),
       const SizedBox(width: 8),
     ];
   }

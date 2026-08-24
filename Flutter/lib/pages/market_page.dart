@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
+import '../providers/app_state.dart';
 import 'property_search_page.dart';
 import 'auctions_page.dart';
 
@@ -76,24 +78,28 @@ class _MarketPageState extends State<MarketPage> {
   }
 
   Widget _buildFloatingButtons() {
+    final showPropertySearch =
+        context.watch<AppState>().isFeatureEnabled('PropertySearch');
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildFloatingButton(
-            icon: Icons.home,
-            label: 'Properties',
-            color: AppColors.primary,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PropertySearchPage(),
-                ),
-              );
-            },
-          ),
+          if (showPropertySearch)
+            _buildFloatingButton(
+              icon: Icons.home,
+              label: 'Properties',
+              color: AppColors.primary,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PropertySearchPage(),
+                  ),
+                );
+              },
+            ),
           _buildFloatingButton(
             icon: Icons.gavel,
             label: 'Auctions',

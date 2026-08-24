@@ -56,7 +56,7 @@ namespace InstapropAPI.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        public virtual ChildProperty? Property { get; set; }
+        public virtual Property? Property { get; set; }
     }
 }
 

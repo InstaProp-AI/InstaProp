@@ -3,6 +3,7 @@ using System;
 using InstapropAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace InstapropAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824195441_FlattenPropertyModel")]
+    partial class FlattenPropertyModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -746,7 +749,7 @@ namespace InstapropAPI.Migrations
                             FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000002"),
                             Description = "AI-powered payment schedule image scanner",
                             FeatureKey = "PaymentScheduleScanner",
-                            IsEnabled = false,
+                            IsEnabled = true,
                             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
@@ -754,7 +757,7 @@ namespace InstapropAPI.Migrations
                             FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000003"),
                             Description = "Points redemption for promo codes and rewards",
                             FeatureKey = "Redemptions",
-                            IsEnabled = false,
+                            IsEnabled = true,
                             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
@@ -762,7 +765,7 @@ namespace InstapropAPI.Migrations
                             FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000004"),
                             Description = "Property valuation tool",
                             FeatureKey = "Valuation",
-                            IsEnabled = false,
+                            IsEnabled = true,
                             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
@@ -810,70 +813,6 @@ namespace InstapropAPI.Migrations
                             FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000010"),
                             Description = "Sales team management for developers (Phase 2)",
                             FeatureKey = "SalesTeams",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000011"),
-                            Description = "Market tab in bottom navigation (MVP off)",
-                            FeatureKey = "MarketTab",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000012"),
-                            Description = "Portfolio analytics dashboard (MVP off)",
-                            FeatureKey = "PortfolioAnalytics",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000013"),
-                            Description = "Side-by-side property comparison (MVP off)",
-                            FeatureKey = "PropertyComparison",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000014"),
-                            Description = "Advanced property search (MVP off)",
-                            FeatureKey = "PropertySearch",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000015"),
-                            Description = "Developer profile pages (MVP off)",
-                            FeatureKey = "DeveloperProfiles",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000016"),
-                            Description = "User-developer chat (MVP off)",
-                            FeatureKey = "Chat",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000017"),
-                            Description = "Personal calendar and events (MVP off)",
-                            FeatureKey = "CalendarEvents",
-                            IsEnabled = false,
-                            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            FeatureFlagId = new Guid("aa000001-0000-0000-0000-000000000018"),
-                            Description = "VIP-only auction access (MVP off)",
-                            FeatureKey = "VIPAuctions",
                             IsEnabled = false,
                             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });

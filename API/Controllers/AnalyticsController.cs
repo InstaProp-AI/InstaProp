@@ -34,8 +34,8 @@ namespace InstapropAPI.Controllers
             public const string DeveloperRankings = "analytics:developer-rankings";
             public static string BestInvestments(int limit) => $"analytics:best-investments:{limit}";
             public static string GoldComparison(int months) => $"analytics:gold-comparison:{months}";
-            public static string PriceTrends(Guid? parentPropertyId, string? propertyType, string? location, int months) =>
-                $"analytics:price-trends:{parentPropertyId?.ToString() ?? "any"}:{propertyType ?? "any"}:{location ?? "any"}:{months}";
+            public static string PriceTrends(Guid? propertyId, string? propertyType, string? location, int months) =>
+                $"analytics:price-trends:{propertyId?.ToString() ?? "any"}:{propertyType ?? "any"}:{location ?? "any"}:{months}";
         }
 
         private Task<T> GetOrCreateAsync<T>(string cacheKey, Func<Task<T>> factory, TimeSpan? duration = null)
@@ -73,11 +73,11 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var totalProperties = await _context.ChildProperties.CountAsync();
+                var totalProperties = await _context.Properties.CountAsync();
                 var activeAuctions = await _context.Auctions.CountAsync(a => a.Status == "Active");
                 var totalDevelopers = await _context.Accounts.CountAsync(a => a.RoleId == Role.DEVELOPER_ROLE_ID);
 
-                var areaPrices = await _context.ChildProperties
+                var areaPrices = await _context.Properties
                     .Where(p => p.Auctions.Any() && !string.IsNullOrWhiteSpace(p.Location))
                     .GroupBy(p => p.Location!)
                     .Select(g => new AreaPriceData
@@ -93,7 +93,7 @@ namespace InstapropAPI.Controllers
 
                 var safeTotalProperties = Math.Max(totalProperties, 1);
 
-                var typeDistribution = await _context.ChildProperties
+                var typeDistribution = await _context.Properties
                     .Where(p => p.Auctions.Any())
                     .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
                     .Select(g => new PropertyTypeDistribution
@@ -165,17 +165,17 @@ namespace InstapropAPI.Controllers
         [HttpGet("price-trends")]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<PriceTrendResponse>>> GetPriceTrends(
-            [FromQuery] Guid? parentPropertyId,
+            [FromQuery] Guid? propertyId,
             [FromQuery] string? propertyType,
             [FromQuery] string? location,
             [FromQuery] int months = 12)
         {
             try
             {
-                var cacheKey = CacheKeys.PriceTrends(parentPropertyId, propertyType, location, months);
+                var cacheKey = CacheKeys.PriceTrends(propertyId, propertyType, location, months);
                 var priceHistory = await GetOrCreateAsync(
                     cacheKey,
-                    () => BuildPriceTrendsAsync(parentPropertyId, propertyType, location, months),
+                    () => BuildPriceTrendsAsync(propertyId, propertyType, location, months),
                     ShortCacheDuration);
 
                 return Ok(priceHistory);
@@ -187,7 +187,7 @@ namespace InstapropAPI.Controllers
         }
 
         private async Task<List<PriceTrendResponse>> BuildPriceTrendsAsync(
-            Guid? parentPropertyId,
+            Guid? propertyId,
             string? propertyType,
             string? location,
             int months)
@@ -196,28 +196,27 @@ namespace InstapropAPI.Controllers
             {
                 var startDate = DateTime.UtcNow.AddMonths(-months);
                 var query = _context.PropertyPriceHistories
-                    .Include(ph => ph.ParentProperty)
+                    .Include(ph => ph.Property)
                     .Where(ph => ph.PriceDate >= startDate);
 
-                if (parentPropertyId.HasValue)
+                if (propertyId.HasValue)
                 {
-                    query = query.Where(ph => ph.ParentPropertyId == parentPropertyId);
+                    query = query.Where(ph => ph.PropertyId == propertyId);
                 }
 
                 if (!string.IsNullOrWhiteSpace(propertyType))
                 {
                     query = query.Where(ph =>
-                        ph.ParentProperty != null &&
-                        ph.ParentProperty.Type != null &&
-                        ph.ParentProperty.Type.Equals(propertyType, StringComparison.OrdinalIgnoreCase));
+                        ph.Property != null &&
+                        PropertyTypeHelper.ToDisplayName(ph.Property.Type).Equals(propertyType, StringComparison.OrdinalIgnoreCase));
                 }
 
                 if (!string.IsNullOrWhiteSpace(location))
                 {
                     query = query.Where(ph =>
-                        ph.ParentProperty != null &&
-                        ph.ParentProperty.ProjectName != null &&
-                        ph.ParentProperty.ProjectName.Contains(location));
+                        ph.Property != null &&
+                        ph.Property.ProjectName != null &&
+                        ph.Property.ProjectName.Contains(location));
                 }
 
                 var priceHistory = await query
@@ -227,12 +226,12 @@ namespace InstapropAPI.Controllers
                         Date = ph.PriceDate,
                         Price = ph.Price,
                         Source = ph.Source ?? "Unknown",
-                        ParentPropertyId = ph.ParentPropertyId.ToString(),
-                        ProjectName = ph.ParentProperty != null && !string.IsNullOrWhiteSpace(ph.ParentProperty.ProjectName)
-                            ? ph.ParentProperty.ProjectName
+                        PropertyId = ph.PropertyId.ToString(),
+                        ProjectName = ph.Property != null && !string.IsNullOrWhiteSpace(ph.Property.ProjectName)
+                            ? ph.Property.ProjectName
                             : "N/A",
-                        PropertyType = ph.ParentProperty != null && !string.IsNullOrWhiteSpace(ph.ParentProperty.Type)
-                            ? ph.ParentProperty.Type
+                        PropertyType = ph.Property != null
+                            ? PropertyTypeHelper.ToDisplayName(ph.Property.Type)
                             : PropertyTypeHelper.ToDisplayName(PropertyType.Other)
                     })
                     .ToListAsync();
@@ -369,9 +368,8 @@ namespace InstapropAPI.Controllers
                     return Forbid("You can only access your own portfolio analytics");
                 }
 
-                var userProperties = await _context.ChildProperties
+                var userProperties = await _context.Properties
                     .Where(p => p.OwnerId == userId)
-                    .Include(p => p.ParentProperty)
                     .Include(p => p.Auctions)
                     .ToListAsync();
 
@@ -397,7 +395,7 @@ namespace InstapropAPI.Controllers
                     {
                         // Get latest price from price history
                         var latestPrice = await _context.PropertyPriceHistories
-                            .Where(ph => ph.ParentPropertyId == property.ParentPropertyId)
+                            .Where(ph => ph.PropertyId == property.PropertyId)
                             .OrderByDescending(ph => ph.PriceDate)
                             .FirstOrDefaultAsync();
                         
@@ -591,8 +589,8 @@ namespace InstapropAPI.Controllers
                 var cutoff = DateTime.UtcNow.AddMonths(-months);
 
                 var grouped = await _context.PropertyPriceHistories
-                    .Where(ph => ph.PriceDate >= cutoff && ph.ParentPropertyId != null && ph.Price > 0)
-                    .GroupBy(ph => ph.ParentPropertyId)
+                    .Where(ph => ph.PriceDate >= cutoff && ph.Price > 0)
+                    .GroupBy(ph => ph.PropertyId)
                     .Select(g => new
                     {
                         FirstPrice = g.OrderBy(ph => ph.PriceDate).Select(ph => ph.Price).FirstOrDefault(),
@@ -648,7 +646,7 @@ namespace InstapropAPI.Controllers
                 .ToDictionaryAsync(r => r.DeveloperId);
 
             // Load property counts separately
-            var propertyCounts = await _context.ChildProperties
+            var propertyCounts = await _context.Properties
                 .Where(p => p.Project != null && developerIds.Contains(p.Project.DeveloperId))
                 .GroupBy(p => p.Project!.DeveloperId)
                 .Select(g => new
@@ -719,22 +717,20 @@ namespace InstapropAPI.Controllers
             try
             {
                 // Load properties with auctions first
-                var properties = await _context.ChildProperties
+                var properties = await _context.Properties
                     .Where(p => p.Auctions.Any() && p.Auctions.First().CurrentPrice > 0)
-                    .Include(p => p.ParentProperty)
                     .Include(p => p.Auctions)
                     .ToListAsync();
 
-                var parentPropertyIds = properties
-                    .Where(p => p.ParentPropertyId.HasValue)
-                    .Select(p => p.ParentPropertyId!.Value)
+                var propertyIds = properties
+                    .Select(p => p.PropertyId)
                     .Distinct()
                     .ToList();
 
                 // Load price histories separately
                 var priceHistories = await _context.PropertyPriceHistories
-                    .Where(ph => parentPropertyIds.Contains(ph.ParentPropertyId))
-                    .GroupBy(ph => ph.ParentPropertyId)
+                    .Where(ph => propertyIds.Contains(ph.PropertyId))
+                    .GroupBy(ph => ph.PropertyId)
                     .ToDictionaryAsync(
                         g => g.Key,
                         g => new
@@ -749,8 +745,8 @@ namespace InstapropAPI.Controllers
                     .Select(property =>
                     {
                         var auction = property.Auctions.First();
-                        var priceHistory = property.ParentPropertyId.HasValue && priceHistories.ContainsKey(property.ParentPropertyId.Value)
-                            ? priceHistories[property.ParentPropertyId.Value]
+                        var priceHistory = priceHistories.ContainsKey(property.PropertyId)
+                            ? priceHistories[property.PropertyId]
                             : null;
 
                         return new BestInvestmentResponse
@@ -763,8 +759,8 @@ namespace InstapropAPI.Controllers
                             PricePerSqm = property.SquareFeet > 0
                                 ? auction.CurrentPrice / property.SquareFeet
                                 : 0,
-                            ProjectName = property.ParentProperty != null && !string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName)
-                                ? property.ParentProperty.ProjectName
+                            ProjectName = !string.IsNullOrWhiteSpace(property.ProjectName)
+                                ? property.ProjectName
                                 : "N/A",
                             Bedrooms = property.Bedrooms,
                             Bathrooms = property.Bathrooms,
@@ -960,7 +956,7 @@ namespace InstapropAPI.Controllers
         public DateTime Date { get; set; }
         public decimal Price { get; set; }
         public string Source { get; set; } = string.Empty;
-        public string ParentPropertyId { get; set; } = string.Empty;
+        public string PropertyId { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
         public string PropertyType { get; set; } = string.Empty;
     }

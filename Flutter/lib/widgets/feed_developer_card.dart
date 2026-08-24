@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/developer_profile.dart';
+import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../pages/developer_profile_page.dart';
 
@@ -9,6 +11,10 @@ class FeedDeveloperCard extends StatelessWidget {
   const FeedDeveloperCard({super.key, required this.developer});
 
   void _navigateToProfile(BuildContext context) {
+    if (!context.read<AppState>().isFeatureEnabled('DeveloperProfiles')) {
+      return;
+    }
+
     print('Developer card tapped - ID: ${developer.developerId}');
     print('Developer card tapped - ID type: ${developer.developerId.runtimeType}');
     print('Developer card tapped - ID length: ${developer.developerId.length}');

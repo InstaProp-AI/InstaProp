@@ -381,7 +381,7 @@ namespace InstapropAPI.Controllers
 
             var projectIds = projects.Select(p => p.ProjectId).ToList();
 
-            var propertyStats = await _context.ChildProperties
+            var propertyStats = await _context.Properties
                 .AsNoTracking()
                 .Where(cp => cp.ProjectId != null && projectIds.Contains(cp.ProjectId.Value))
                 .GroupBy(cp => cp.ProjectId!.Value)
@@ -395,7 +395,7 @@ namespace InstapropAPI.Controllers
             var auctionStats = await _context.Auctions
                 .AsNoTracking()
                 .Join(
-                    _context.ChildProperties.AsNoTracking(),
+                    _context.Properties.AsNoTracking(),
                     auction => auction.PropertyId,
                     property => property.PropertyId,
                     (auction, property) => new { auction, property })
@@ -480,7 +480,7 @@ namespace InstapropAPI.Controllers
 
             var accountIds = achievements.Select(a => a.AccountId).Distinct().ToList();
 
-            var portfolioStats = await _context.ChildProperties
+            var portfolioStats = await _context.Properties
                 .AsNoTracking()
                 .Where(cp => cp.OwnerId != null && accountIds.Contains(cp.OwnerId.Value))
                 .GroupBy(cp => cp.OwnerId!.Value)
@@ -617,7 +617,7 @@ namespace InstapropAPI.Controllers
                 .Select(v => v.PropertyId)
                 .ToListAsync();
 
-            var properties = await _context.ChildProperties
+            var properties = await _context.Properties
                 .Include(p => p.PropertyImages)
                 .Where(p => p.OwnerId == userId.Value && p.IsApproved)
                 .Where(p => !propertiesWithRecentValuations.Contains(p.PropertyId))
@@ -657,7 +657,7 @@ namespace InstapropAPI.Controllers
                 string? propertyName = null;
                 if (e.PropertyId.HasValue)
                 {
-                    var property = await _context.ChildProperties
+                    var property = await _context.Properties
                         .Where(p => p.PropertyId == e.PropertyId.Value)
                         .Select(p => p.Name)
                         .FirstOrDefaultAsync();

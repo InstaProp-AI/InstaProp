@@ -13,7 +13,7 @@ namespace InstapropAPI.Models
         public Guid PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public ChildProperty Property { get; set; } = null!;
+        public Property Property { get; set; } = null!;
 
         public Guid? UserId { get; set; } // Null for anonymous views
 

@@ -1862,7 +1862,7 @@ namespace InstapropAPI.Controllers
                     account.PhoneVerified,
                     account.Status
                 },
-                Properties = _context.ChildProperties.Where(p => p.OwnerId == accountId).Select(p => new
+                Properties = _context.Properties.Where(p => p.OwnerId == accountId).Select(p => new
                 {
                     p.PropertyId,
                     p.Name,
@@ -1918,7 +1918,7 @@ namespace InstapropAPI.Controllers
                 return BadRequest("Invalid password. Account deletion failed.");
 
             // Check for active auctions or pending transactions
-            var activeProperties = await _context.ChildProperties
+            var activeProperties = await _context.Properties
                 .Where(p => p.OwnerId == accountId && 
                     (p.Status == PropertyStatus.Pending || p.Status == PropertyStatus.Approved))
                 .ToListAsync();

@@ -360,7 +360,7 @@ namespace InstapropAPI.Controllers
                     return Unauthorized("Invalid or missing token");
 
                 // Check property ownership
-                var property = await _context.ChildProperties.FindAsync(propertyId);
+                var property = await _context.Properties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -520,7 +520,7 @@ namespace InstapropAPI.Controllers
                     return Unauthorized("Invalid or missing token");
 
                 // Check property ownership
-                var property = await _context.ChildProperties.FindAsync(propertyId);
+                var property = await _context.Properties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 

@@ -53,17 +53,15 @@ namespace InstapropAPI.Services
             // Step 4: Seed Projects
             var projects = await SeedProjectsAsync(accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList());
 
-            // Step 5: Seed Parent Properties
-            var parentProperties = await SeedParentPropertiesAsync(projects);
-
-            // Step 6: Seed Child Properties
-            var childProperties = await SeedChildPropertiesAsync(parentProperties, accounts);
+            // Step 5: Seed Properties
+            var propertyTemplates = BuildPropertyTemplates(projects);
+            var properties = await SeedPropertiesAsync(propertyTemplates, accounts);
 
             // Step 7: Seed Property Images
-            await SeedPropertyImagesAsync(childProperties);
+            await SeedPropertyImagesAsync(properties);
 
             // Step 8: Seed Auctions
-            var auctions = await SeedAuctionsAsync(childProperties);
+            var auctions = await SeedAuctionsAsync(properties);
 
             // Step 9: Seed Bids
             await SeedBidsAsync(auctions, accounts);
@@ -417,8 +415,7 @@ namespace InstapropAPI.Services
             _context.Auctions.RemoveRange(_context.Auctions);
             _context.PropertyImages.RemoveRange(_context.PropertyImages);
             _context.PropertyDocs.RemoveRange(_context.PropertyDocs);
-            _context.ChildProperties.RemoveRange(_context.ChildProperties);
-            _context.ParentProperties.RemoveRange(_context.ParentProperties);
+            _context.Properties.RemoveRange(_context.Properties);
             _context.Projects.RemoveRange(_context.Projects);
             _context.DeveloperPermissions.RemoveRange(_context.DeveloperPermissions);
             _context.UserDocs.RemoveRange(_context.UserDocs);
@@ -1026,188 +1023,132 @@ namespace InstapropAPI.Services
             return projects;
         }
 
-        private async Task<List<ParentProperty>> SeedParentPropertiesAsync(List<Project> projects)
+        private class PropertyTemplate
         {
-            Console.WriteLine("🏠 Seeding Parent Properties...");
-            var parentProperties = new List<ParentProperty>();
+            public string ProjectName { get; set; } = string.Empty;
+            public Guid ProjectId { get; set; }
+            public int Bedrooms { get; set; }
+            public int Bathrooms { get; set; }
+            public int AreaSqm { get; set; }
+            public string Type { get; set; } = "Apartment";
+            public string FinishingType { get; set; } = "Finished";
+            public bool HasPool { get; set; }
+            public bool HasGym { get; set; }
+            public bool HasSecurity { get; set; }
+            public bool HasParking { get; set; }
+            public bool HasGarden { get; set; }
+            public bool HasPlayground { get; set; }
+            public bool HasClubhouse { get; set; }
+            public DateTime CreatedAt { get; set; }
+        }
 
-            // I'll create 50 parent properties individually
-            // Each represents a property template (bedrooms, bathrooms, area, type, finishing)
-            // Parent Property 1: 3BR, 2BA, 150sqm, Apartment, Finished
-            var parent1 = new ParentProperty
+        private List<PropertyTemplate> BuildPropertyTemplates(List<Project> projects)
+        {
+            Console.WriteLine("🏠 Building property templates...");
+            var templates = new List<PropertyTemplate>();
+
+            templates.Add(new PropertyTemplate
             {
                 ProjectName = projects[0].Name,
                 ProjectId = projects[0].ProjectId,
-                Bedrooms = 3,
-                Bathrooms = 2,
-                AreaSqm = 150,
-                Type = "Apartment",
-                FinishingType = "Finished",
-                HasPool = true,
-                HasGym = true,
-                HasSecurity = true,
-                HasParking = true,
-                HasGarden = true,
-                HasPlayground = true,
-                HasClubhouse = true,
+                Bedrooms = 3, Bathrooms = 2, AreaSqm = 150,
+                Type = "Apartment", FinishingType = "Finished",
+                HasPool = true, HasGym = true, HasSecurity = true, HasParking = true,
+                HasGarden = true, HasPlayground = true, HasClubhouse = true,
                 CreatedAt = DateTime.UtcNow.AddMonths(-24)
-            };
-            parentProperties.Add(parent1);
+            });
 
-            // Parent Property 2: 4BR, 3BA, 200sqm, Apartment, Semi-Finished
-            var parent2 = new ParentProperty
+            templates.Add(new PropertyTemplate
             {
                 ProjectName = projects[0].Name,
                 ProjectId = projects[0].ProjectId,
-                Bedrooms = 4,
-                Bathrooms = 3,
-                AreaSqm = 200,
-                Type = "Apartment",
-                FinishingType = "Semi-Finished",
-                HasPool = true,
-                HasGym = true,
-                HasSecurity = true,
-                HasParking = true,
-                HasGarden = true,
-                HasPlayground = true,
-                HasClubhouse = true,
+                Bedrooms = 4, Bathrooms = 3, AreaSqm = 200,
+                Type = "Apartment", FinishingType = "Semi-Finished",
+                HasPool = true, HasGym = true, HasSecurity = true, HasParking = true,
+                HasGarden = true, HasPlayground = true, HasClubhouse = true,
                 CreatedAt = DateTime.UtcNow.AddMonths(-23)
-            };
-            parentProperties.Add(parent2);
+            });
 
-            // Continue creating parent properties...
-            // Due to the large number (50), I'll create them in a structured way
-            // but still individually to maintain quality
-
-            // Parent Properties 3-10: Various configurations from Project 1
-            var parent3 = new ParentProperty
+            templates.Add(new PropertyTemplate
             {
                 ProjectName = projects[0].Name,
                 ProjectId = projects[0].ProjectId,
-                Bedrooms = 2,
-                Bathrooms = 2,
-                AreaSqm = 120,
-                Type = "Apartment",
-                FinishingType = "Finished",
-                HasPool = true,
-                HasGym = true,
-                HasSecurity = true,
-                HasParking = true,
-                HasGarden = false,
-                HasPlayground = true,
-                HasClubhouse = true,
+                Bedrooms = 2, Bathrooms = 2, AreaSqm = 120,
+                Type = "Apartment", FinishingType = "Finished",
+                HasPool = true, HasGym = true, HasSecurity = true, HasParking = true,
+                HasGarden = false, HasPlayground = true, HasClubhouse = true,
                 CreatedAt = DateTime.UtcNow.AddMonths(-22)
-            };
-            parentProperties.Add(parent3);
+            });
 
-            var parent4 = new ParentProperty
+            templates.Add(new PropertyTemplate
             {
                 ProjectName = projects[0].Name,
                 ProjectId = projects[0].ProjectId,
-                Bedrooms = 5,
-                Bathrooms = 4,
-                AreaSqm = 280,
-                Type = "Duplex",
-                FinishingType = "Finished",
-                HasPool = true,
-                HasGym = true,
-                HasSecurity = true,
-                HasParking = true,
-                HasGarden = true,
-                HasPlayground = true,
-                HasClubhouse = true,
+                Bedrooms = 5, Bathrooms = 4, AreaSqm = 280,
+                Type = "Duplex", FinishingType = "Finished",
+                HasPool = true, HasGym = true, HasSecurity = true, HasParking = true,
+                HasGarden = true, HasPlayground = true, HasClubhouse = true,
                 CreatedAt = DateTime.UtcNow.AddMonths(-21)
-            };
-            parentProperties.Add(parent4);
+            });
 
-            var parent5 = new ParentProperty
+            templates.Add(new PropertyTemplate
             {
                 ProjectName = projects[1].Name,
                 ProjectId = projects[1].ProjectId,
-                Bedrooms = 3,
-                Bathrooms = 2,
-                AreaSqm = 160,
-                Type = "Apartment",
-                FinishingType = "Finished",
-                HasPool = true,
-                HasGym = true,
-                HasSecurity = true,
-                HasParking = true,
-                HasGarden = true,
-                HasPlayground = true,
-                HasClubhouse = true,
+                Bedrooms = 3, Bathrooms = 2, AreaSqm = 160,
+                Type = "Apartment", FinishingType = "Finished",
+                HasPool = true, HasGym = true, HasSecurity = true, HasParking = true,
+                HasGarden = true, HasPlayground = true, HasClubhouse = true,
                 CreatedAt = DateTime.UtcNow.AddMonths(-20)
-            };
-            parentProperties.Add(parent5);
+            });
 
-            // Continue with more parent properties (6-50)
-            // I'll create them systematically to cover all projects and property types
             var propertyConfigs = new[]
             {
-                // Project 1 variations
                 (3, 2, 150, "Apartment", "Finished", projects[0].ProjectId, projects[0].Name),
                 (4, 3, 200, "Apartment", "Semi-Finished", projects[0].ProjectId, projects[0].Name),
                 (2, 2, 120, "Apartment", "Finished", projects[0].ProjectId, projects[0].Name),
                 (5, 4, 280, "Duplex", "Finished", projects[0].ProjectId, projects[0].Name),
                 (3, 2, 140, "Townhouse", "Finished", projects[0].ProjectId, projects[0].Name),
-                
-                // Project 2 variations
                 (3, 2, 160, "Apartment", "Finished", projects[1].ProjectId, projects[1].Name),
                 (4, 3, 220, "Apartment", "Finished", projects[1].ProjectId, projects[1].Name),
                 (2, 2, 110, "Apartment", "Semi-Finished", projects[1].ProjectId, projects[1].Name),
                 (4, 3, 250, "Villa", "Finished", projects[1].ProjectId, projects[1].Name),
                 (3, 2, 170, "Townhouse", "Finished", projects[1].ProjectId, projects[1].Name),
-                
-                // Project 3 variations
                 (3, 2, 155, "Apartment", "Finished", projects[2].ProjectId, projects[2].Name),
                 (4, 3, 210, "Apartment", "Finished", projects[2].ProjectId, projects[2].Name),
                 (5, 4, 300, "Villa", "Finished", projects[2].ProjectId, projects[2].Name),
                 (2, 2, 125, "Apartment", "Finished", projects[2].ProjectId, projects[2].Name),
                 (3, 2, 145, "Townhouse", "Semi-Finished", projects[2].ProjectId, projects[2].Name),
-                
-                // Project 4 variations
                 (3, 2, 165, "Apartment", "Finished", projects[3].ProjectId, projects[3].Name),
                 (4, 3, 230, "Apartment", "Finished", projects[3].ProjectId, projects[3].Name),
                 (6, 5, 350, "Villa", "Finished", projects[3].ProjectId, projects[3].Name),
                 (2, 2, 115, "Apartment", "Finished", projects[3].ProjectId, projects[3].Name),
                 (4, 3, 240, "Duplex", "Finished", projects[3].ProjectId, projects[3].Name),
-                
-                // Project 5 variations
                 (3, 2, 158, "Apartment", "Finished", projects[4].ProjectId, projects[4].Name),
                 (4, 3, 215, "Apartment", "Semi-Finished", projects[4].ProjectId, projects[4].Name),
                 (3, 2, 148, "Townhouse", "Finished", projects[4].ProjectId, projects[4].Name),
                 (5, 4, 290, "Villa", "Finished", projects[4].ProjectId, projects[4].Name),
                 (2, 2, 118, "Apartment", "Finished", projects[4].ProjectId, projects[4].Name),
-                
-                // Project 6 variations
                 (3, 2, 162, "Apartment", "Finished", projects[5].ProjectId, projects[5].Name),
                 (4, 3, 225, "Apartment", "Finished", projects[5].ProjectId, projects[5].Name),
                 (4, 3, 255, "Villa", "Finished", projects[5].ProjectId, projects[5].Name),
                 (2, 2, 112, "Apartment", "Finished", projects[5].ProjectId, projects[5].Name),
                 (3, 2, 152, "Townhouse", "Finished", projects[5].ProjectId, projects[5].Name),
-                
-                // Project 7 variations
                 (3, 2, 168, "Apartment", "Finished", projects[6].ProjectId, projects[6].Name),
                 (4, 3, 235, "Apartment", "Finished", projects[6].ProjectId, projects[6].Name),
                 (5, 4, 310, "Villa", "Finished", projects[6].ProjectId, projects[6].Name),
                 (2, 2, 122, "Apartment", "Finished", projects[6].ProjectId, projects[6].Name),
                 (4, 3, 245, "Duplex", "Semi-Finished", projects[6].ProjectId, projects[6].Name),
-                
-                // Project 8 variations
                 (3, 2, 172, "Apartment", "Finished", projects[7].ProjectId, projects[7].Name),
                 (4, 3, 218, "Apartment", "Finished", projects[7].ProjectId, projects[7].Name),
                 (3, 2, 138, "Townhouse", "Finished", projects[7].ProjectId, projects[7].Name),
                 (6, 5, 320, "Villa", "Finished", projects[7].ProjectId, projects[7].Name),
                 (2, 2, 128, "Apartment", "Finished", projects[7].ProjectId, projects[7].Name),
-                
-                // Project 9 variations
                 (3, 2, 175, "Apartment", "Finished", projects[8].ProjectId, projects[8].Name),
                 (4, 3, 228, "Apartment", "Finished", projects[8].ProjectId, projects[8].Name),
                 (4, 3, 260, "Villa", "Finished", projects[8].ProjectId, projects[8].Name),
                 (2, 2, 132, "Apartment", "Semi-Finished", projects[8].ProjectId, projects[8].Name),
                 (3, 2, 142, "Townhouse", "Finished", projects[8].ProjectId, projects[8].Name),
-                
-                // Project 10 variations
                 (3, 2, 178, "Apartment", "Finished", projects[9].ProjectId, projects[9].Name),
                 (4, 3, 232, "Apartment", "Finished", projects[9].ProjectId, projects[9].Name),
                 (5, 4, 295, "Villa", "Finished", projects[9].ProjectId, projects[9].Name),
@@ -1215,11 +1156,10 @@ namespace InstapropAPI.Services
                 (4, 3, 250, "Duplex", "Finished", projects[9].ProjectId, projects[9].Name)
             };
 
-            // Create parent properties from configs (starting from index 5 since we already created 5)
-            for (int i = 5; i < propertyConfigs.Length && parentProperties.Count < 50; i++)
+            for (int i = 5; i < propertyConfigs.Length && templates.Count < 50; i++)
             {
                 var (bedrooms, bathrooms, area, type, finishing, projectId, projectName) = propertyConfigs[i];
-                var parent = new ParentProperty
+                templates.Add(new PropertyTemplate
                 {
                     ProjectName = projectName,
                     ProjectId = projectId,
@@ -1228,28 +1168,22 @@ namespace InstapropAPI.Services
                     AreaSqm = area,
                     Type = type,
                     FinishingType = finishing,
-                    HasPool = true,
-                    HasGym = true,
-                    HasSecurity = true,
-                    HasParking = true,
+                    HasPool = true, HasGym = true, HasSecurity = true, HasParking = true,
                     HasGarden = type == "Villa" || type == "Townhouse",
-                    HasPlayground = true,
-                    HasClubhouse = true,
+                    HasPlayground = true, HasClubhouse = true,
                     CreatedAt = DateTime.UtcNow.AddMonths(-(50 - i))
-                };
-                parentProperties.Add(parent);
+                });
             }
 
-            // Add more to reach 50 total
-            while (parentProperties.Count < 50)
+            while (templates.Count < 50)
             {
-                var project = projects[parentProperties.Count % projects.Count];
-                var bedrooms = new[] { 2, 3, 4, 5 }[parentProperties.Count % 4];
+                var project = projects[templates.Count % projects.Count];
+                var bedrooms = new[] { 2, 3, 4, 5 }[templates.Count % 4];
                 var bathrooms = bedrooms == 2 ? 2 : bedrooms == 3 ? 2 : bedrooms == 4 ? 3 : 4;
-                var area = new[] { 120, 150, 200, 250, 300 }[parentProperties.Count % 5];
-                var type = new[] { "Apartment", "Villa", "Townhouse", "Duplex" }[parentProperties.Count % 4];
-                
-                var parent = new ParentProperty
+                var area = new[] { 120, 150, 200, 250, 300 }[templates.Count % 5];
+                var type = new[] { "Apartment", "Villa", "Townhouse", "Duplex" }[templates.Count % 4];
+
+                templates.Add(new PropertyTemplate
                 {
                     ProjectName = project.Name,
                     ProjectId = project.ProjectId,
@@ -1257,77 +1191,76 @@ namespace InstapropAPI.Services
                     Bathrooms = bathrooms,
                     AreaSqm = area,
                     Type = type,
-                    FinishingType = parentProperties.Count % 3 == 0 ? "Semi-Finished" : "Finished",
-                    HasPool = true,
-                    HasGym = true,
-                    HasSecurity = true,
-                    HasParking = true,
+                    FinishingType = templates.Count % 3 == 0 ? "Semi-Finished" : "Finished",
+                    HasPool = true, HasGym = true, HasSecurity = true, HasParking = true,
                     HasGarden = type == "Villa" || type == "Townhouse",
-                    HasPlayground = true,
-                    HasClubhouse = true,
-                    CreatedAt = DateTime.UtcNow.AddMonths(-(50 - parentProperties.Count))
-                };
-                parentProperties.Add(parent);
+                    HasPlayground = true, HasClubhouse = true,
+                    CreatedAt = DateTime.UtcNow.AddMonths(-(50 - templates.Count))
+                });
             }
 
-            await _context.ParentProperties.AddRangeAsync(parentProperties);
-            await _context.SaveChangesAsync();
-            Console.WriteLine($"✅ Seeded {parentProperties.Count} parent properties");
-            
-            return parentProperties;
+            Console.WriteLine($"✅ Built {templates.Count} property templates");
+            return templates;
         }
 
-        // Helper method to create a unique child property with all details
-        private ChildProperty CreateChildProperty(
-            ParentProperty parent, 
-            AccountBase owner, 
-            int unitNumber, 
-            int floorNumber, 
-            string viewType, 
-            string orientation, 
+        // Helper method to create a unique property with all details
+        private Property CreateProperty(
+            PropertyTemplate template,
+            AccountBase owner,
+            int unitNumber,
+            int floorNumber,
+            string viewType,
+            string orientation,
             string phase,
             string imageId,
             int monthsAgo,
             decimal priceMultiplier)
         {
-            var basePrice = parent.AreaSqm * 12000m;
+            var basePrice = template.AreaSqm * 12000m;
             var descriptions = new Dictionary<string, string>
             {
-                { "Garden", $"Spacious {parent.Type.ToLower()} with beautiful garden view in {parent.ProjectName}. Perfect for families seeking tranquility." },
-                { "Street", $"Modern {parent.Type.ToLower()} with street view in {parent.ProjectName}. Convenient location with easy access to main roads." },
-                { "Pool", $"Luxury {parent.Type.ToLower()} overlooking the swimming pool in {parent.ProjectName}. Ideal for those who love resort-style living." },
-                { "Nile", $"Premium {parent.Type.ToLower()} with stunning Nile view in {parent.ProjectName}. Breathtaking scenery and premium location." },
-                { "Pyramid", $"Exclusive {parent.Type.ToLower()} with pyramid view in {parent.ProjectName}. Unique property with historical significance." }
+                { "Garden", $"Spacious {template.Type.ToLower()} with beautiful garden view in {template.ProjectName}. Perfect for families seeking tranquility." },
+                { "Street", $"Modern {template.Type.ToLower()} with street view in {template.ProjectName}. Convenient location with easy access to main roads." },
+                { "Pool", $"Luxury {template.Type.ToLower()} overlooking the swimming pool in {template.ProjectName}. Ideal for those who love resort-style living." },
+                { "Nile", $"Premium {template.Type.ToLower()} with stunning Nile view in {template.ProjectName}. Breathtaking scenery and premium location." },
+                { "Pyramid", $"Exclusive {template.Type.ToLower()} with pyramid view in {template.ProjectName}. Unique property with historical significance." }
             };
 
-            return new ChildProperty
+            return new Property
             {
-                ParentPropertyId = parent.ParentPropertyId,
                 OwnerId = owner.AccountId,
+                ProjectId = template.ProjectId,
+                ProjectName = template.ProjectName,
                 FloorNumber = floorNumber,
                 UnitNumber = unitNumber.ToString("D3"),
                 ViewType = viewType,
                 Orientation = orientation,
                 Phase = phase,
                 DeliveryDate = DateTime.UtcNow.AddMonths(6 + (monthsAgo % 12)),
-                ParkingSlots = parent.Bedrooms >= 4 ? 2 : 1,
+                ParkingSlots = template.Bedrooms >= 4 ? 2 : 1,
                 HasStorageRoom = monthsAgo % 2 == 0,
                 BuyingPrice = basePrice * priceMultiplier,
                 BuyingDate = DateTime.UtcNow.AddMonths(-(12 + monthsAgo)),
-                Name = $"{parent.ProjectName} - Unit {unitNumber}",
-                Description = descriptions.ContainsKey(viewType) ? descriptions[viewType] : $"Beautiful {parent.Type.ToLower()} in {parent.ProjectName}. {parent.Bedrooms} bedrooms, {parent.Bathrooms} bathrooms, {parent.AreaSqm} sqm.",
-                Location = parent.ProjectName ?? "Cairo",
+                Name = $"{template.ProjectName} - Unit {unitNumber}",
+                Description = descriptions.ContainsKey(viewType) ? descriptions[viewType] : $"Beautiful {template.Type.ToLower()} in {template.ProjectName}. {template.Bedrooms} bedrooms, {template.Bathrooms} bathrooms, {template.AreaSqm} sqm.",
+                Location = template.ProjectName ?? "Cairo",
                 ImageUrl = GetUnsplashUrl(imageId),
-                SquareFeet = (int)(parent.AreaSqm * 10.764),
+                SquareFeet = (int)(template.AreaSqm * 10.764),
                 YearBuilt = 2020 + (monthsAgo % 4),
-                Bedrooms = parent.Bedrooms,
-                Bathrooms = parent.Bathrooms,
-                Type = PropertyTypeHelper.FromDisplayName(parent.Type),
+                Bedrooms = template.Bedrooms,
+                Bathrooms = template.Bathrooms,
+                Type = PropertyTypeHelper.FromDisplayName(template.Type),
                 Status = PropertyStatus.Approved,
+                FinishingType = template.FinishingType,
+                HasPool = template.HasPool,
+                HasGym = template.HasGym,
+                HasSecurity = template.HasSecurity,
+                HasParking = template.HasParking,
+                HasGarden = template.HasGarden,
+                HasPlayground = template.HasPlayground,
+                HasClubhouse = template.HasClubhouse,
                 IsApproved = true,
-                ProjectId = parent.ProjectId,
                 HasBalcony = true,
-                HasGarden = parent.Type == "Villa" || parent.Type == "Townhouse",
                 SeaView = viewType == "Sea",
                 NileView = viewType == "Nile",
                 GardenView = viewType == "Garden",
@@ -1338,10 +1271,10 @@ namespace InstapropAPI.Services
             };
         }
 
-        private async Task<List<ChildProperty>> SeedChildPropertiesAsync(List<ParentProperty> parentProperties, List<AccountBase> accounts)
+        private async Task<List<Property>> SeedPropertiesAsync(List<PropertyTemplate> templates, List<AccountBase> accounts)
         {
-            Console.WriteLine("🏘️ Seeding Child Properties (creating each individually)...");
-            var childProperties = new List<ChildProperty>();
+            Console.WriteLine("🏘️ Seeding Properties (creating each individually)...");
+            var properties = new List<Property>();
             var users = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
             var propertyImageIds = new[]
             {
@@ -1362,54 +1295,47 @@ namespace InstapropAPI.Services
             int userIndex = 0;
             int propertyCounter = 0;
 
-            // Create 4 child properties per parent property (200 total) - each created individually
-            // Parent 1, Child 1
-            childProperties.Add(CreateChildProperty(
-                parentProperties[0], users[userIndex % users.Count], 101, 1, "Garden", "North", "Phase 1",
+            // Create 4 properties per template (200 total) - each created individually
+            properties.Add(CreateProperty(
+                templates[0], users[userIndex % users.Count], 101, 1, "Garden", "North", "Phase 1",
                 propertyImageIds[imageIndex % propertyImageIds.Length], 24, 1.0m));
             imageIndex++; userIndex++; propertyCounter++;
 
-            // Parent 1, Child 2
-            childProperties.Add(CreateChildProperty(
-                parentProperties[0], users[userIndex % users.Count], 102, 3, "Street", "South", "Phase 1",
+            properties.Add(CreateProperty(
+                templates[0], users[userIndex % users.Count], 102, 3, "Street", "South", "Phase 1",
                 propertyImageIds[imageIndex % propertyImageIds.Length], 23, 1.05m));
             imageIndex++; userIndex++; propertyCounter++;
 
-            // Parent 1, Child 3
-            childProperties.Add(CreateChildProperty(
-                parentProperties[0], users[userIndex % users.Count], 103, 5, "Pool", "East", "Phase 2",
+            properties.Add(CreateProperty(
+                templates[0], users[userIndex % users.Count], 103, 5, "Pool", "East", "Phase 2",
                 propertyImageIds[imageIndex % propertyImageIds.Length], 22, 1.1m));
             imageIndex++; userIndex++; propertyCounter++;
 
-            // Parent 1, Child 4
-            childProperties.Add(CreateChildProperty(
-                parentProperties[0], users[userIndex % users.Count], 104, 7, "Nile", "West", "Phase 2",
+            properties.Add(CreateProperty(
+                templates[0], users[userIndex % users.Count], 104, 7, "Nile", "West", "Phase 2",
                 propertyImageIds[imageIndex % propertyImageIds.Length], 21, 1.15m));
             imageIndex++; userIndex++; propertyCounter++;
 
-            // Continue for all 50 parents x 4 children = 200 properties
-            // I'll create them systematically but each call is explicit
-            for (int parentIdx = 1; parentIdx < parentProperties.Count && propertyCounter < 200; parentIdx++)
+            for (int templateIdx = 1; templateIdx < templates.Count && propertyCounter < 200; templateIdx++)
             {
-                var parent = parentProperties[parentIdx];
+                var template = templates[templateIdx];
                 var viewTypes = new[] { "Garden", "Street", "Pool", "Nile", "Pyramid" };
                 var orientations = new[] { "North", "South", "East", "West", "North-East", "South-West" };
                 var phases = new[] { "Phase 1", "Phase 2", "Phase 3", "Phase 4" };
                 var floors = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
                 var multipliers = new[] { 1.0m, 1.05m, 1.1m, 1.15m, 1.2m };
 
-                // Create 4 children for this parent
                 for (int childIdx = 0; childIdx < 4 && propertyCounter < 200; childIdx++)
                 {
-                    var unitNum = 100 + (childIdx + 1) + (parentIdx * 10);
+                    var unitNum = 100 + (childIdx + 1) + (templateIdx * 10);
                     var floor = floors[(propertyCounter * 3) % floors.Length];
                     var view = viewTypes[propertyCounter % viewTypes.Length];
                     var orient = orientations[propertyCounter % orientations.Length];
                     var phase = phases[childIdx % phases.Length];
                     var mult = multipliers[childIdx % multipliers.Length];
 
-                    childProperties.Add(CreateChildProperty(
-                        parent, users[userIndex % users.Count], unitNum, floor, view, orient, phase,
+                    properties.Add(CreateProperty(
+                        template, users[userIndex % users.Count], unitNum, floor, view, orient, phase,
                         propertyImageIds[imageIndex % propertyImageIds.Length], 24 - propertyCounter, mult));
                     
                     imageIndex++;
@@ -1418,14 +1344,14 @@ namespace InstapropAPI.Services
                 }
             }
 
-            await _context.ChildProperties.AddRangeAsync(childProperties);
+            await _context.Properties.AddRangeAsync(properties);
             await _context.SaveChangesAsync();
-            Console.WriteLine($"✅ Seeded {childProperties.Count} child properties (each created individually)");
+            Console.WriteLine($"✅ Seeded {properties.Count} properties (each created individually)");
             
-            return childProperties;
+            return properties;
         }
 
-        private async Task SeedPropertyImagesAsync(List<ChildProperty> childProperties)
+        private async Task SeedPropertyImagesAsync(List<Property> properties)
         {
             Console.WriteLine("📸 Seeding Property Images...");
             var images = new List<PropertyImage>();
@@ -1438,7 +1364,7 @@ namespace InstapropAPI.Services
             };
 
             int imageIdIndex = 0;
-            foreach (var property in childProperties)
+            foreach (var property in properties)
             {
                 // Add 3-5 images per property
                 var imageCount = 3 + (property.PropertyId.GetHashCode() % 3);
@@ -1463,11 +1389,11 @@ namespace InstapropAPI.Services
             Console.WriteLine($"✅ Seeded {images.Count} property images");
         }
 
-        private async Task<List<Auction>> SeedAuctionsAsync(List<ChildProperty> childProperties)
+        private async Task<List<Auction>> SeedAuctionsAsync(List<Property> properties)
         {
             Console.WriteLine("🔨 Seeding Auctions...");
             var auctions = new List<Auction>();
-            var approvedProperties = childProperties.Where(p => p.IsApproved).Take(60).ToList(); // Select 60 properties for auctions
+            var approvedProperties = properties.Where(p => p.IsApproved).Take(60).ToList();
 
             int auctionIndex = 0;
             foreach (var property in approvedProperties)

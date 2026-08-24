@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import '../../theme/app_colors.dart';
-import '../models/child_property.dart';
+import '../models/property.dart';
 import '../models/property_image.dart';
-import '../models/parent_property.dart';
 import '../models/price_history.dart';
 import '../models/installment_summary.dart';
 import '../services/property_service.dart';
+import '../services/price_history_service.dart';
 import '../services/api_client.dart';
 import '../services/analytics_service.dart';
 import '../widgets/property_image_carousel.dart';
@@ -23,7 +23,8 @@ class PropertyDetailsPage extends StatefulWidget {
 }
 
 class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
-  PropertyMarketBundle? _bundle;
+  Property? _property;
+  PropertyPriceHistoryResponse? _priceHistory;
   Map<String, dynamic>? _financials;
   MarketOverviewResponse? _marketOverview;
   List<PriceTrendResponse>? _priceTrends;
@@ -34,31 +35,29 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _loadPropertyBundle();
+    _loadProperty();
   }
 
-  Future<void> _loadPropertyBundle() async {
+  Future<void> _loadProperty() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // Load property bundle, financials, and market data in parallel
-      final property = await PropertyService.getPropertyMarketBundle(
+      final propertyResponse = await PropertyService.getProperty(
         widget.propertyId,
       );
-      if (!property.success || property.data == null) {
+      if (!propertyResponse.success || propertyResponse.data == null) {
         setState(() {
-          _error = property.error ?? 'Failed to load property details.';
+          _error = propertyResponse.error ?? 'Failed to load property details.';
           _isLoading = false;
         });
         return;
       }
 
-      final bundle = property.data!;
+      final property = propertyResponse.data!;
 
-      // Load financials and market data in parallel
       final results = await Future.wait([
         PropertyService.getPropertyFinancials(widget.propertyId).catchError((
           e,
@@ -67,12 +66,14 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
         }),
         AnalyticsService.getMarketOverview().catchError((e) => null),
         AnalyticsService.getPriceTrends(
-          parentPropertyId: bundle.property.parentPropertyId,
-          propertyType: bundle.property.typeLabel,
-          location: bundle.property.location,
+          propertyId: property.propertyId,
+          propertyType: property.typeLabel,
+          location: property.location,
           months: 12,
         ).catchError((e) => null),
         AnalyticsService.getBestInvestments(limit: 10).catchError((e) => null),
+        PriceHistoryService.getPropertyPriceHistory(property.propertyId)
+            .catchError((e) => null),
       ]);
 
       if (!mounted) return;
@@ -82,9 +83,11 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       final marketOverview = results[1] as MarketOverviewResponse?;
       final priceTrends = results[2] as List<PriceTrendResponse>?;
       final bestInvestments = results[3] as List<BestInvestmentResponse>?;
+      final priceHistory = results[4] as PropertyPriceHistoryResponse?;
 
       setState(() {
-        _bundle = bundle;
+        _property = property;
+        _priceHistory = priceHistory;
         if (financialsResponse.success && financialsResponse.data != null) {
           _financials = financialsResponse.data;
         }
@@ -104,7 +107,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _bundle?.property.name ?? 'Property Details';
+    final title = _property?.name ?? 'Property Details';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -152,7 +155,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _loadPropertyBundle,
+                onPressed: _loadProperty,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
@@ -170,47 +173,34 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
       );
     }
 
-    final bundle = _bundle!;
+    final property = _property!;
     final children = <Widget>[
-      _buildHeroSection(bundle.property),
+      _buildHeroSection(property),
       const SizedBox(height: 16),
-      _buildPropertyOverview(bundle.property),
+      _buildPropertyOverview(property),
       const SizedBox(height: 16),
-      _buildHighlightStats(bundle.property, bundle.marketAnalytics),
-      if (bundle.hasParent) ...[
+      _buildHighlightStats(property, _priceHistory),
+      if (_priceHistory != null) ...[
         const SizedBox(height: 16),
-        _buildParentOverview(bundle.parent!),
+        _buildMarketIndicators(_priceHistory!),
       ],
-      if (bundle.hasSiblings) ...[
-        const SizedBox(height: 16),
-        _buildSiblingSection(bundle.siblings),
-      ],
-      if (bundle.hasAnalytics) ...[
-        const SizedBox(height: 16),
-        _buildMarketIndicators(bundle.marketAnalytics!),
-      ],
-      // Investment Analysis Section
       const SizedBox(height: 16),
-      _buildInvestmentAnalysis(bundle.property, bundle.marketAnalytics),
-      // Payment Plan Section
-      if (bundle.property.installmentSummary != null) ...[
+      _buildInvestmentAnalysis(property, _priceHistory),
+      if (property.installmentSummary != null) ...[
         const SizedBox(height: 16),
-        _buildPaymentPlan(bundle.property.installmentSummary!),
+        _buildPaymentPlan(property.installmentSummary!),
       ],
-      // Enhanced Market Analysis (even with limited data)
       const SizedBox(height: 16),
       _buildEnhancedMarketAnalysis(
-        bundle.property,
-        bundle.marketAnalytics,
-        bundle.siblings,
+        property,
+        _priceHistory,
         _marketOverview,
         _priceTrends,
       ),
-      // Market Strategies & Investment Insights
       const SizedBox(height: 16),
       _buildMarketStrategiesAndInsights(
-        bundle.property,
-        bundle.marketAnalytics,
+        property,
+        _priceHistory,
         _marketOverview,
         _bestInvestments,
       ),
@@ -218,7 +208,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     ];
 
     return RefreshIndicator(
-      onRefresh: _loadPropertyBundle,
+      onRefresh: _loadProperty,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 32),
@@ -230,7 +220,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     );
   }
 
-  Widget _buildHeroSection(ChildProperty property) {
+  Widget _buildHeroSection(Property property) {
     final images = property.propertyImages ?? <PropertyImage>[];
 
     return SizedBox(
@@ -250,7 +240,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     );
   }
 
-  Widget _buildPropertyOverview(ChildProperty property) {
+  Widget _buildPropertyOverview(Property property) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -300,8 +290,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
               _buildChip(Icons.apartment, property.typeLabel),
               if (property.phase != null && property.phase!.isNotEmpty)
                 _buildChip(Icons.timeline, property.phase!),
-              if (property.status != null && property.status!.isNotEmpty)
-                _buildChip(Icons.verified, property.status!),
+              _buildChip(Icons.verified, property.status.name),
             ],
           ),
           const SizedBox(height: 16),
@@ -319,8 +308,8 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   }
 
   Widget _buildHighlightStats(
-    ChildProperty property,
-    PropertyMarketAnalytics? analytics,
+    Property property,
+    PropertyPriceHistoryResponse? analytics,
   ) {
     final cards = <Widget>[
       _buildStatCard(
@@ -363,14 +352,14 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
           highlight: true,
         ),
       );
-    } else if (analytics?.priceStats != null) {
+    } else if (analytics != null) {
       cards.insert(
         0,
         _buildStatCard(
           icon: Icons.price_change_outlined,
           label: 'Avg Market',
           value: _formatCurrency(
-            analytics!.priceStats!.statistics.averagePrice,
+            analytics!.statistics.averagePrice,
           ),
           highlight: true,
         ),
@@ -389,148 +378,9 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     );
   }
 
-  Widget _buildParentOverview(ParentProperty parent) {
-    final amenities = <_Amenity>[
-      _Amenity('Pool', parent.hasPool, Icons.pool),
-      _Amenity('Gym', parent.hasGym, Icons.fitness_center),
-      _Amenity('Security', parent.hasSecurity, Icons.security),
-      _Amenity('Parking', parent.hasParking, Icons.local_parking),
-      _Amenity('Garden', parent.hasGarden, Icons.park),
-      _Amenity('Playground', parent.hasPlayground, Icons.attractions),
-      _Amenity('Clubhouse', parent.hasClubhouse, Icons.houseboat),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.domain, color: AppColors.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Parent Project',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          parent.displayProjectName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _buildInfoPill(
-                    icon: Icons.bed,
-                    text: '${parent.bedrooms} Bedrooms mix',
-                  ),
-                  _buildInfoPill(
-                    icon: Icons.bathtub,
-                    text: '${parent.bathrooms} Bathrooms mix',
-                  ),
-                  _buildInfoPill(
-                    icon: Icons.straighten,
-                    text: '${parent.areaSqm} sqm avg',
-                  ),
-                  _buildInfoPill(
-                    icon: Icons.checkroom,
-                    text: parent.finishingType,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Compound Amenities',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: amenities
-                    .where((amenity) => amenity.isAvailable)
-                    .map(
-                      (amenity) =>
-                          _buildAmenityChip(amenity.icon, amenity.label),
-                    )
-                    .toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSiblingSection(List<ChildProperty> siblings) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Sibling Units',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              Text(
-                '${siblings.length} available',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 180,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: siblings.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final sibling = siblings[index];
-                return _buildSiblingCard(sibling);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMarketIndicators(PropertyMarketAnalytics analytics) {
-    final stats = analytics.priceStats?.statistics;
-    final history = analytics.priceHistory?.priceHistory ?? [];
+  Widget _buildMarketIndicators(PropertyPriceHistoryResponse analytics) {
+    final stats = analytics.statistics;
+    final history = analytics.priceHistory;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -546,7 +396,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (stats != null)
+          if (true)
             Row(
               children: [
                 Expanded(
@@ -822,98 +672,6 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     );
   }
 
-  Widget _buildSiblingCard(ChildProperty sibling) {
-    final images = sibling.propertyImages ?? <PropertyImage>[];
-    final price = sibling.buyingPrice ?? 0;
-
-    return SizedBox(
-      width: 220,
-      height: 180,
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    PropertyDetailsPage(propertyId: sibling.propertyId),
-              ),
-            );
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-                child: PropertyImageCarousel(
-                  images: images,
-                  fallbackImageUrl: sibling.imageUrl,
-                  height: 100,
-                  showIndicators: false,
-                  showNavigationButtons: false,
-                  showImageCounter: false,
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        sibling.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${sibling.bedrooms} BR • ${sibling.bathrooms} Bath',
-                        style: const TextStyle(
-                          color: Colors.black54,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${sibling.squareFeet} sqft',
-                        style: const TextStyle(
-                          color: Colors.black54,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        price > 0 ? _formatCurrency(price) : 'Price on request',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildMarketStatTile({
     required String label,
     required String value,
@@ -995,8 +753,8 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   }
 
   Widget _buildInvestmentAnalysis(
-    ChildProperty property,
-    PropertyMarketAnalytics? analytics,
+    Property property,
+    PropertyPriceHistoryResponse? analytics,
   ) {
     // Use real financials data from backend
     dynamic buyingPriceNum = _financials?['buyingPrice'];
@@ -1007,7 +765,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
 
     dynamic marketValueNum = _financials?['marketValue'];
     if (marketValueNum == null) {
-      final avgPrice = analytics?.priceStats?.statistics.averagePrice ?? 0;
+      final avgPrice = analytics?.statistics.averagePrice ?? 0;
       marketValueNum = avgPrice;
     }
     final marketValue = marketValueNum is num ? marketValueNum.toDouble() : 0.0;
@@ -1311,25 +1069,21 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   }
 
   Widget _buildEnhancedMarketAnalysis(
-    ChildProperty property,
-    PropertyMarketAnalytics? analytics,
-    List<ChildProperty> siblings,
+    Property property,
+    PropertyPriceHistoryResponse? analytics,
     MarketOverviewResponse? marketOverview,
     List<PriceTrendResponse>? priceTrends,
   ) {
-    // Use real data from multiple sources
-    final hasAnalyticsData = analytics?.hasData ?? false;
+    final hasAnalyticsData = analytics != null;
     final hasMarketOverview = marketOverview?.hasData ?? false;
     final hasPriceTrends = priceTrends?.isNotEmpty ?? false;
 
-    // Get average price from real data
     double avgPrice = 0;
     double priceChange = 0;
 
-    if (hasAnalyticsData && analytics != null && analytics.priceStats != null) {
-      avgPrice = analytics.priceStats!.statistics.averagePrice.toDouble();
-      priceChange = analytics.priceStats!.statistics.priceChangePercent
-          .toDouble();
+    if (hasAnalyticsData && analytics != null) {
+      avgPrice = analytics.statistics.averagePrice.toDouble();
+      priceChange = analytics.statistics.priceChangePercent.toDouble();
     } else if (hasMarketOverview) {
       final overview = marketOverview!;
       if (overview.areaPrices.isNotEmpty) {
@@ -1359,7 +1113,6 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     }
 
     final hasData = hasAnalyticsData || hasMarketOverview || hasPriceTrends;
-    final siblingCount = siblings.length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1456,27 +1209,8 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
                           color: Colors.amber.shade800,
                         ),
                       ),
-                      if (siblingCount > 0) ...[
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.apartment,
-                              size: 16,
-                              color: Colors.amber.shade700,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '$siblingCount similar units available',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.amber.shade800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -1637,8 +1371,8 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
   }
 
   Widget _buildMarketStrategiesAndInsights(
-    ChildProperty property,
-    PropertyMarketAnalytics? analytics,
+    Property property,
+    PropertyPriceHistoryResponse? analytics,
     MarketOverviewResponse? marketOverview,
     List<BestInvestmentResponse>? bestInvestments,
   ) {
@@ -1684,8 +1418,8 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
 
     // Calculate ROI and metrics
     dynamic marketValueNum = _financials?['marketValue'];
-    if (marketValueNum == null && analytics?.priceStats != null) {
-      marketValueNum = analytics!.priceStats!.statistics.averagePrice;
+    if (marketValueNum == null && analytics != null) {
+      marketValueNum = analytics!.statistics.averagePrice;
     }
     final marketValue = marketValueNum is num
         ? marketValueNum.toDouble()
@@ -2129,7 +1863,7 @@ class _PropertyDetailsPageState extends State<PropertyDetailsPage> {
     double? roi,
     double? marketAvgPrice,
     double? marketAvgPricePerSqft,
-    ChildProperty property,
+    Property property,
   ) {
     if (marketAvgPricePerSqft != null && marketAvgPricePerSqft > 0) {
       final sqftDiff =

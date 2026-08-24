@@ -21,6 +21,8 @@ import 'market_page.dart';
 import 'explore_page.dart';
 import 'sales_chats_page.dart';
 
+enum _HomeTab { market, explore, profile }
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -30,10 +32,29 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  int _selectedIndex = 1; // Start on Explore tab
+  int _selectedIndex = 0;
   final ExplorePageController _exploreController = ExplorePageController();
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
+  int _effectiveSelectedIndex(AppState appState) {
+    final tabs = _visibleTabs(appState);
+    if (tabs.isEmpty) return 0;
+
+    if (_selectedIndex >= tabs.length) {
+      final exploreIndex = tabs.indexOf(_HomeTab.explore);
+      return exploreIndex >= 0 ? exploreIndex : 0;
+    }
+
+    return _selectedIndex;
+  }
+
+  int _defaultTabIndex(AppState appState) {
+    final tabs = _visibleTabs(appState);
+    if (tabs.isEmpty) return 0;
+    final exploreIndex = tabs.indexOf(_HomeTab.explore);
+    return exploreIndex >= 0 ? exploreIndex : 0;
+  }
 
   @override
   void initState() {
@@ -59,6 +80,13 @@ class _HomePageState extends State<HomePage>
       });
 
       WidgetsBinding.instance.addObserver(this);
+
+      // Default to Explore tab once AppState is available
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final appState = Provider.of<AppState>(context, listen: false);
+        setState(() => _selectedIndex = _defaultTabIndex(appState));
+      });
 
       // Check if user is sales and redirect
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -111,41 +139,86 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: _buildSelectedPage(),
-      ),
-      bottomNavigationBar: _buildBottomNavigation(),
-    );
+  List<_HomeTab> _visibleTabs(AppState appState) {
+    final tabs = <_HomeTab>[];
+    if (appState.isFeatureEnabled('MarketTab')) {
+      tabs.add(_HomeTab.market);
+    }
+    if (appState.isFeatureEnabled('FeedExplore')) {
+      tabs.add(_HomeTab.explore);
+    }
+    tabs.add(_HomeTab.profile);
+    return tabs;
   }
 
-  Widget _buildSelectedPage() {
+  List<CapsuleNavItem> _navItems(AppState appState) {
+    return _visibleTabs(appState).map((tab) {
+      switch (tab) {
+        case _HomeTab.market:
+          return const CapsuleNavItem(
+            icon: Icons.store_outlined,
+            selectedIcon: Icons.store_rounded,
+            label: 'Market',
+          );
+        case _HomeTab.explore:
+          return const CapsuleNavItem(
+            icon: Icons.explore_outlined,
+            selectedIcon: Icons.explore_rounded,
+            label: 'Explore',
+          );
+        case _HomeTab.profile:
+          return const CapsuleNavItem(
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person_rounded,
+            label: 'Profile',
+          );
+      }
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Consumer<AppState>(
-      builder: (context, appState, child) {
-        switch (_selectedIndex) {
-          case 0:
-            return const MarketPage();
-          case 1:
-            return ExplorePage(controller: _exploreController);
-          case 2:
-            return _buildProfilePage(context, appState);
-          default:
-            return ExplorePage(controller: _exploreController);
-        }
+      builder: (context, appState, _) {
+        final selectedIndex = _effectiveSelectedIndex(appState);
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: FadeTransition(
+            opacity: _fadeAnimation,
+            child: _buildSelectedPage(appState, selectedIndex),
+          ),
+          bottomNavigationBar: _buildBottomNavigation(appState, selectedIndex),
+        );
       },
     );
   }
 
-  Widget _buildBottomNavigation() {
+  Widget _buildSelectedPage(AppState appState, int selectedIndex) {
+    final tabs = _visibleTabs(appState);
+    if (tabs.isEmpty || selectedIndex >= tabs.length) {
+      return ExplorePage(controller: _exploreController);
+    }
+
+    switch (tabs[selectedIndex]) {
+      case _HomeTab.market:
+        return const MarketPage();
+      case _HomeTab.explore:
+        return ExplorePage(controller: _exploreController);
+      case _HomeTab.profile:
+        return _buildProfilePage(context, appState);
+    }
+  }
+
+  Widget _buildBottomNavigation(AppState appState, int selectedIndex) {
+    final items = _navItems(appState);
+    final exploreIndex = _exploreNavIndex(appState);
+
     return CapsuleBottomNavBar(
-      currentIndex: _selectedIndex,
+      currentIndex: selectedIndex,
       onTap: (index) {
-        if (index == _selectedIndex) {
-          if (index == 1) {
+        if (index == selectedIndex) {
+          if (exploreIndex >= 0 && index == exploreIndex) {
             _exploreController.scrollToTopAndReload();
           }
           return;
@@ -155,32 +228,18 @@ class _HomePageState extends State<HomePage>
           _selectedIndex = index;
         });
 
-        if (index == 1) {
+        if (exploreIndex >= 0 && index == exploreIndex) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _exploreController.scrollToTopAndReload();
           });
         }
       },
-      items: const [
-        CapsuleNavItem(
-          icon: Icons.store_outlined,
-          selectedIcon: Icons.store_rounded,
-          label: 'Market',
-        ),
-        CapsuleNavItem(
-          icon: Icons.explore_outlined,
-          selectedIcon: Icons.explore_rounded,
-          label: 'Explore',
-        ),
-        CapsuleNavItem(
-          icon: Icons.person_outline,
-          selectedIcon: Icons.person_rounded,
-          label: 'Profile',
-        ),
-      ],
-      // Optional: Add badge counts if needed
-      // badgeCounts: {0: 3, 2: 1}, // Example: 3 notifications on Market, 1 on Profile
+      items: items,
     );
+  }
+
+  int _exploreNavIndex(AppState appState) {
+    return _visibleTabs(appState).indexOf(_HomeTab.explore);
   }
 
   Future<void> _refreshData(AppState appState) async {

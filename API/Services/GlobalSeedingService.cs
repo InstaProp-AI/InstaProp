@@ -293,19 +293,15 @@ namespace InstapropAPI.Services
             var projects = await SeedTestProjectsAsync(developers);
             Console.WriteLine($"   ✅ Created {projects.Count} projects");
 
-            Console.WriteLine("\n🏢 Step 4: Seeding Parent Properties...");
-            var parentProperties = await SeedTestParentPropertiesAsync(projects);
-            Console.WriteLine($"   ✅ Created {parentProperties.Count} parent properties");
-
-            Console.WriteLine("\n🏠 Step 5: Seeding Child Properties...");
-            var childProperties = await SeedTestChildPropertiesAsync(parentProperties);
-            Console.WriteLine($"   ✅ Created {childProperties.Count} child properties");
+            Console.WriteLine("\n🏠 Step 4: Seeding Properties...");
+            var properties = await SeedTestPropertiesAsync(projects);
+            Console.WriteLine($"   ✅ Created {properties.Count} properties");
 
             Console.WriteLine("\n📸 Step 6: Seeding Property Images...");
-            await SeedTestPropertyImagesAsync(childProperties);
+            await SeedTestPropertyImagesAsync(properties);
 
             Console.WriteLine("\n🔨 Step 7: Seeding Auctions...");
-            var auctions = await SeedTestAuctionsAsync(childProperties);
+            var auctions = await SeedTestAuctionsAsync(properties);
             Console.WriteLine($"   ✅ Created {auctions.Count} auctions");
 
             Console.WriteLine("\n💰 Step 8: Seeding Bids...");
@@ -339,7 +335,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"   ✅ Created profiles for {developers.Count} developers");
 
             Console.WriteLine("\n📈 Step 16: Seeding Property Price History...");
-            var priceHistoryCount = await SeedPropertyPriceHistoryAsync(parentProperties, auctions);
+            var priceHistoryCount = await SeedPropertyPriceHistoryAsync(properties, auctions);
             Console.WriteLine($"   ✅ Created {priceHistoryCount} price history records");
 
             Console.WriteLine("\n🥇 Step 17: Seeding Gold Prices...");
@@ -360,7 +356,7 @@ namespace InstapropAPI.Services
             Console.WriteLine($"   - Sales Teams: {salesTeams.Count}");
             Console.WriteLine($"   - Sales Accounts: {salesAccounts.Count}");
             Console.WriteLine($"   - Projects: {projects.Count}");
-            Console.WriteLine($"   - Properties: {childProperties.Count}");
+            Console.WriteLine($"   - Properties: {properties.Count}");
             Console.WriteLine($"   - Auctions: {auctions.Count}");
             Console.WriteLine($"   - Bids: {bidCount}");
             Console.WriteLine($"   - Developer Ratings: {ratingsCount}");
@@ -525,125 +521,88 @@ namespace InstapropAPI.Services
             return await _context.Projects.ToListAsync();
         }
 
-        private async Task<List<ParentProperty>> SeedTestParentPropertiesAsync(List<Project> projects)
+        private async Task<List<Property>> SeedTestPropertiesAsync(List<Project> projects)
         {
             if (projects.Count == 0)
             {
-                Console.WriteLine("   ⚠️ No projects available, skipping parent properties...");
-                return await _context.ParentProperties.ToListAsync();
+                Console.WriteLine("   ⚠️ No projects available, skipping properties...");
+                return await _context.Properties.ToListAsync();
             }
 
-            var existingParentProps = await _context.ParentProperties
-                .Where(p => projects.Select(pr => pr.ProjectId).Contains(p.ProjectId.Value))
-                .ToListAsync();
-            var existingProjectIds = existingParentProps.Select(p => p.ProjectId).Distinct().ToList();
+            var projectIds = projects.Select(p => p.ProjectId).ToList();
+            var existingCount = await _context.Properties
+                .Where(p => p.ProjectId.HasValue && projectIds.Contains(p.ProjectId.Value))
+                .CountAsync();
+            var targetCount = _random.Next(20, 31);
+            var remainingCount = Math.Max(0, targetCount - existingCount);
 
-            var parentProperties = new List<ParentProperty>();
+            var properties = new List<Property>();
+            var propsPerProject = Math.Max(1, remainingCount / projects.Count);
 
             foreach (var project in projects)
             {
-                // Skip if this project already has a parent property
-                if (existingProjectIds.Contains(project.ProjectId))
-                    continue;
-
-                var parent = new ParentProperty
-                {
-                    ProjectId = project.ProjectId,
-                    ProjectName = project.Name,
-                    Bedrooms = _random.Next(1, 5),
-                    Bathrooms = _random.Next(1, 4),
-                    AreaSqm = _random.Next(80, 300),
-                    Type = "Apartment",
-                    FinishingType = "Finished",
-                    HasPool = _random.Next(2) == 1,
-                    HasGym = _random.Next(2) == 1,
-                    HasSecurity = true,
-                    HasParking = true,
-                    HasGarden = _random.Next(2) == 1,
-                    HasPlayground = _random.Next(2) == 1,
-                    CreatedAt = project.CreatedAt
-                };
-                parentProperties.Add(parent);
-            }
-
-            if (parentProperties.Any())
-            {
-                await _context.ParentProperties.AddRangeAsync(parentProperties);
-                await _context.SaveChangesAsync();
-            }
-
-            return await _context.ParentProperties.ToListAsync();
-        }
-
-        private async Task<List<ChildProperty>> SeedTestChildPropertiesAsync(List<ParentProperty> parentProperties)
-        {
-            if (parentProperties.Count == 0)
-            {
-                Console.WriteLine("   ⚠️ No parent properties available, skipping child properties...");
-                return await _context.ChildProperties.ToListAsync();
-            }
-
-            var existingChildProps = await _context.ChildProperties
-                .Where(cp => parentProperties.Select(p => p.ParentPropertyId).Contains(cp.ParentPropertyId.Value))
-                .CountAsync();
-            var targetCount = _random.Next(20, 31);
-            var remainingCount = Math.Max(0, targetCount - existingChildProps);
-
-            var childProperties = new List<ChildProperty>();
-            var propsPerParent = Math.Max(1, remainingCount / parentProperties.Count);
-
-            foreach (var parent in parentProperties)
-            {
                 if (remainingCount <= 0) break;
-                for (int i = 0; i < propsPerParent && childProperties.Count < remainingCount; i++)
+
+                var bedrooms = _random.Next(1, 5);
+                var bathrooms = _random.Next(1, 4);
+                var areaSqm = _random.Next(80, 300);
+
+                for (int i = 0; i < propsPerProject && properties.Count < remainingCount; i++)
                 {
-                    var child = new ChildProperty
+                    var property = new Property
                     {
-                        ParentPropertyId = parent.ParentPropertyId,
-                        ProjectId = parent.ProjectId,
-                        Name = $"{parent.ProjectName} - Unit {i + 1}",
-                        Description = $"Beautiful {parent.AreaSqm}sqm apartment with {parent.Bedrooms} bedrooms",
-                        Location = parent.Project?.Location ?? "Unknown",
+                        ProjectId = project.ProjectId,
+                        ProjectName = project.Name,
+                        Name = $"{project.Name} - Unit {i + 1}",
+                        Description = $"Beautiful {areaSqm}sqm apartment with {bedrooms} bedrooms",
+                        Location = project.Location ?? "Unknown",
                         ImageUrl = GetRandomImageUrl(1200, 800),
-                        SquareFeet = (int)(parent.AreaSqm * 10.764),
+                        SquareFeet = (int)(areaSqm * 10.764),
                         YearBuilt = DateTime.UtcNow.Year,
-                        Bedrooms = parent.Bedrooms,
-                        Bathrooms = parent.Bathrooms,
+                        Bedrooms = bedrooms,
+                        Bathrooms = bathrooms,
                         Type = PropertyType.Apartment,
                         Status = PropertyStatus.Approved,
+                        FinishingType = "Finished",
+                        HasPool = _random.Next(2) == 1,
+                        HasGym = _random.Next(2) == 1,
+                        HasSecurity = true,
+                        HasParking = true,
+                        HasGarden = _random.Next(2) == 1,
+                        HasPlayground = _random.Next(2) == 1,
                         FloorNumber = _random.Next(1, 20),
                         UnitNumber = $"{i + 1}0{_random.Next(1, 10)}",
                         Phase = $"Phase {_random.Next(1, 4)}",
                         IsApproved = true,
-                        CreatedAt = parent.CreatedAt.AddDays(_random.Next(1, 30))
+                        CreatedAt = project.CreatedAt.AddDays(_random.Next(1, 30))
                     };
-                    childProperties.Add(child);
+                    properties.Add(property);
                 }
             }
 
-            if (childProperties.Any())
+            if (properties.Any())
             {
-                await _context.ChildProperties.AddRangeAsync(childProperties);
+                await _context.Properties.AddRangeAsync(properties);
                 await _context.SaveChangesAsync();
             }
 
-            return await _context.ChildProperties.ToListAsync();
+            return await _context.Properties.ToListAsync();
         }
 
-        private async Task SeedTestPropertyImagesAsync(List<ChildProperty> childProperties)
+        private async Task SeedTestPropertyImagesAsync(List<Property> properties)
         {
-            if (childProperties.Count == 0)
+            if (properties.Count == 0)
             {
                 Console.WriteLine("   ⚠️ No properties available, skipping images...");
                 return;
             }
 
             var existingImages = await _context.PropertyImages
-                .Where(pi => childProperties.Select(cp => cp.PropertyId).Contains(pi.PropertyId))
+                .Where(pi => properties.Select(cp => cp.PropertyId).Contains(pi.PropertyId))
                 .CountAsync();
             
             // Only add images if properties don't have enough (at least 3 per property)
-            var targetImageCount = childProperties.Count * 5; // Average 5 images per property
+            var targetImageCount = properties.Count * 5; // Average 5 images per property
             if (existingImages >= targetImageCount)
             {
                 Console.WriteLine($"   ℹ️ Properties already have {existingImages} images, skipping...");
@@ -652,7 +611,7 @@ namespace InstapropAPI.Services
 
             var images = new List<PropertyImage>();
 
-            foreach (var property in childProperties)
+            foreach (var property in properties)
             {
                 // Check if property already has images
                 var propertyImageCount = await _context.PropertyImages
@@ -688,9 +647,9 @@ namespace InstapropAPI.Services
             }
         }
 
-        private async Task<List<Auction>> SeedTestAuctionsAsync(List<ChildProperty> childProperties)
+        private async Task<List<Auction>> SeedTestAuctionsAsync(List<Property> properties)
         {
-            if (childProperties.Count == 0)
+            if (properties.Count == 0)
             {
                 Console.WriteLine("   ⚠️ No properties available, skipping auctions...");
                 return await _context.Auctions.ToListAsync();
@@ -704,7 +663,7 @@ namespace InstapropAPI.Services
                 return await _context.Auctions.ToListAsync();
             }
 
-            var availableProps = childProperties
+            var availableProps = properties
                 .Where(p => p.Status == PropertyStatus.Approved && 
                            !_context.Auctions.Any(a => a.PropertyId == p.PropertyId))
                 .Take(targetAuctionCount - existingAuctions)
@@ -715,7 +674,8 @@ namespace InstapropAPI.Services
             foreach (var property in availableProps)
             {
                 var country = Countries.FirstOrDefault(c => property.Location.Contains(c.Name)) ?? GetRandomCountry();
-                var basePrice = GetRealisticPrice(country.Code, property.Type, property.ParentProperty?.AreaSqm ?? 100);
+                var areaSqm = property.SquareFeet > 0 ? (int)(property.SquareFeet / 10.764) : 100;
+                var basePrice = GetRealisticPrice(country.Code, property.Type, areaSqm);
                 var startPrice = basePrice * 0.7m;
 
                 var auction = new Auction
@@ -1166,31 +1126,29 @@ namespace InstapropAPI.Services
             }
         }
 
-        private async Task<int> SeedPropertyPriceHistoryAsync(List<ParentProperty> parentProperties, List<Auction> auctions)
+        private async Task<int> SeedPropertyPriceHistoryAsync(List<Property> properties, List<Auction> auctions)
         {
-            if (parentProperties.Count == 0)
+            if (properties.Count == 0)
             {
-                Console.WriteLine("   ⚠️ No parent properties available, skipping price history...");
+                Console.WriteLine("   ⚠️ No properties available, skipping price history...");
                 return 0;
             }
 
             var existingHistory = await _context.PropertyPriceHistories
-                .Select(ph => ph.ParentPropertyId)
+                .Select(ph => ph.PropertyId)
                 .Distinct()
                 .ToListAsync();
 
             var priceHistories = new List<PropertyPriceHistory>();
             var now = DateTime.UtcNow;
 
-            foreach (var parentProperty in parentProperties)
+            foreach (var property in properties)
             {
-                // Skip if already has history
-                if (existingHistory.Contains(parentProperty.ParentPropertyId))
+                if (existingHistory.Contains(property.PropertyId))
                     continue;
 
-                // Generate price history for the last 18 months
                 var monthsToGenerate = 18;
-                var basePrice = parentProperties.IndexOf(parentProperty) % 2 == 0
+                var basePrice = properties.IndexOf(property) % 2 == 0
                     ? 500000m + (_random.Next(0, 500000))
                     : 800000m + (_random.Next(0, 700000));
 
@@ -1198,12 +1156,10 @@ namespace InstapropAPI.Services
                 {
                     var priceDate = now.AddMonths(-i);
                     
-                    // Create price trend (slight variations with overall growth)
-                    var monthVariation = (decimal)(_random.Next(-5, 15)) / 100m; // -5% to +15% variation
-                    var trendFactor = 1.0m + (decimal)(monthsToGenerate - i) * 0.01m; // Slight upward trend
+                    var monthVariation = (decimal)(_random.Next(-5, 15)) / 100m;
+                    var trendFactor = 1.0m + (decimal)(monthsToGenerate - i) * 0.01m;
                     var price = basePrice * (1.0m + monthVariation) * trendFactor;
                     
-                    // Ensure price is positive and reasonable
                     price = Math.Max(price, basePrice * 0.7m);
                     price = Math.Min(price, basePrice * 1.5m);
 
@@ -1214,19 +1170,17 @@ namespace InstapropAPI.Services
                     var priceHistory = new PropertyPriceHistory
                     {
                         PriceHistoryId = Guid.NewGuid(),
-                        ParentPropertyId = parentProperty.ParentPropertyId,
+                        PropertyId = property.PropertyId,
                         Price = Math.Round(price, 2),
                         PriceDate = priceDate,
                         Source = source,
                         CreatedAt = now.AddMonths(-i)
                     };
 
-                    // Link to auction if available and source is AuctionWin
                     if (source == PriceSource.AuctionWin && auctions.Any())
                     {
                         var relatedAuction = auctions
-                            .Where(a => a.Property != null && a.Property.ParentPropertyId == parentProperty.ParentPropertyId)
-                            .FirstOrDefault();
+                            .FirstOrDefault(a => a.PropertyId == property.PropertyId);
                         if (relatedAuction != null)
                         {
                             priceHistory.AuctionId = relatedAuction.AuctionId;
@@ -1400,8 +1354,7 @@ namespace InstapropAPI.Services
             _context.Bids.RemoveRange(_context.Bids);
             _context.Auctions.RemoveRange(_context.Auctions);
             _context.PropertyImages.RemoveRange(_context.PropertyImages);
-            _context.ChildProperties.RemoveRange(_context.ChildProperties);
-            _context.ParentProperties.RemoveRange(_context.ParentProperties);
+            _context.Properties.RemoveRange(_context.Properties);
             _context.Projects.RemoveRange(_context.Projects);
             _context.Faqs.RemoveRange(_context.Faqs);
             _context.Accounts.RemoveRange(_context.Accounts);

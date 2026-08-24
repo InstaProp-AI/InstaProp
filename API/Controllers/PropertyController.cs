@@ -38,9 +38,9 @@ namespace InstapropAPI.Controllers
 
         // GET: api/Property (Public - only properties with auctions)
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetProperties()
+        public async Task<ActionResult<IEnumerable<Property>>> GetProperties()
         {
-            return await _context.ChildProperties
+            return await _context.Properties
                 .Where(p => p.Auctions.Any()) // Only properties that have auctions
                 .Include(p => p.Owner)
                 .Include(p => p.InstallmentSummary)
@@ -53,9 +53,9 @@ namespace InstapropAPI.Controllers
         [HttpGet("all")]
         [Authorize]
         [AdminAuthorize]
-        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetAllProperties()
+        public async Task<ActionResult<IEnumerable<Property>>> GetAllProperties()
         {
-            return await _context.ChildProperties
+            return await _context.Properties
                 .Include(p => p.Owner)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
@@ -67,7 +67,7 @@ namespace InstapropAPI.Controllers
         // GET: api/Property/my-properties (User's own properties)
         [HttpGet("my-properties")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<ChildProperty>>> GetMyProperties()
+        public async Task<ActionResult<IEnumerable<Property>>> GetMyProperties()
         {
             var userIdClaim = User.FindFirst("uid");
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
@@ -75,7 +75,7 @@ namespace InstapropAPI.Controllers
                 return BadRequest("Invalid user ID");
             }
 
-            return await _context.ChildProperties
+            return await _context.Properties
                 .Where(p => p.OwnerId == userId)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.Auctions)
@@ -88,10 +88,9 @@ namespace InstapropAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<object>> GetProperty(Guid id)
         {
-            var property = await _context.ChildProperties
+            var property = await _context.Properties
                 .Include(p => p.Owner)
                 .Include(p => p.Auctions)
-                .Include(p => p.ParentProperty)
                 .Include(p => p.Project)
                 .Include(p => p.PropertyDocs)
                 .Include(p => p.PropertyImages)
@@ -107,7 +106,6 @@ namespace InstapropAPI.Controllers
             return Ok(new
             {
                 property.PropertyId,
-                property.ParentPropertyId,
                 property.OwnerId,
                 property.ProjectId,
                 property.Name,
@@ -120,6 +118,23 @@ namespace InstapropAPI.Controllers
                 property.SquareFeet,
                 property.YearBuilt,
                 property.ImageUrl,
+                property.FinishingType,
+                property.Phase,
+                property.FloorNumber,
+                property.UnitNumber,
+                property.ViewType,
+                property.Orientation,
+                property.DeliveryDate,
+                property.ParkingSlots,
+                property.HasStorageRoom,
+                property.BuyingPrice,
+                property.BuyingDate,
+                property.Quantity,
+                property.HasPool,
+                property.HasGym,
+                property.HasSecurity,
+                property.HasParking,
+                property.HasPlayground,
                 property.HasGarden,
                 property.HasClubhouse,
                 property.HasInfrastructure,
@@ -130,24 +145,24 @@ namespace InstapropAPI.Controllers
                 property.HasOutdoorPools,
                 property.HasBicycleLanes,
                 property.HasJoggingTrail,
-                ProjectName = property.Project?.Name 
-                    ?? (property.ParentProperty != null && !string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName)
-                        ? property.ParentProperty.ProjectName
-                        : "N/A"),
+                property.HasNannyRoom,
+                property.HasDriverRoom,
+                property.HasMaidRoom,
+                property.HasPrivatePool,
+                property.HasRoofAccess,
+                property.HasBalcony,
+                property.SmartHome,
+                property.CentralAC,
+                property.NaturalGas,
+                property.HasGenerator,
+                property.SeaView,
+                property.NileView,
+                property.PyramidView,
+                property.GardenView,
+                property.StreetView,
+                ProjectName = property.Project?.Name ?? property.ProjectName ?? "N/A",
                 property.CreatedAt,
                 property.UpdatedAt,
-                ParentProperty = property.ParentProperty != null ? new
-                {
-                    property.ParentProperty.ParentPropertyId,
-                    ProjectName = string.IsNullOrWhiteSpace(property.ParentProperty.ProjectName)
-                        ? "N/A"
-                        : property.ParentProperty.ProjectName,
-                    property.ParentProperty.Type,
-                    property.ParentProperty.Bedrooms,
-                    property.ParentProperty.Bathrooms,
-                    property.ParentProperty.AreaSqm,
-                    property.ParentProperty.FinishingType
-                } : null,
                 Owner = property.Owner != null ? new
                 {
                     property.Owner.AccountId,
@@ -228,7 +243,7 @@ namespace InstapropAPI.Controllers
             if (accountId == null)
                 return Unauthorized();
 
-            var property = await _context.ChildProperties.FirstOrDefaultAsync(p => p.PropertyId == id);
+            var property = await _context.Properties.FirstOrDefaultAsync(p => p.PropertyId == id);
             if (property == null)
                 return NotFound();
 
@@ -305,7 +320,7 @@ namespace InstapropAPI.Controllers
         [Authorize]
         public async Task<ActionResult<object>> GetInstallmentSummary(Guid id)
         {
-            var property = await _context.ChildProperties
+            var property = await _context.Properties
                 .Include(p => p.InstallmentSummary)
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
 
@@ -335,7 +350,7 @@ namespace InstapropAPI.Controllers
         [Authorize]
         public async Task<ActionResult<object>> UpsertInstallmentSummary(Guid id, [FromBody] InstallmentSummaryInputDto summaryDto)
         {
-            var property = await _context.ChildProperties
+            var property = await _context.Properties
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
 
             if (property == null)
@@ -376,9 +391,8 @@ namespace InstapropAPI.Controllers
         // POST: api/Property 
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<ChildProperty>> PostProperty(PropertyDto propertyDto)
+        public async Task<ActionResult<Property>> PostProperty(PropertyDto propertyDto)
         {
-            // Get the current user ID from the JWT token
             var userIdClaim = User.FindFirst("uid");
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
@@ -391,69 +405,11 @@ namespace InstapropAPI.Controllers
                 return BadRequest("Account not found");
             }
 
-            ParentProperty? parentTemplate = null;
-            if (propertyDto.ParentPropertyId.HasValue)
-            {
-                parentTemplate = await _context.ParentProperties
-                    .Include(pp => pp.Project)
-                    .FirstOrDefaultAsync(pp => pp.ParentPropertyId == propertyDto.ParentPropertyId.Value);
-            }
-
-            var propertyType = parentTemplate != null
-                ? PropertyTypeHelper.FromDisplayName(parentTemplate.Type)
-                : PropertyTypeHelper.FromDisplayName(propertyDto.Type);
-
-            // Create Property entity from DTO
-            var property = new ChildProperty
-            {
-                OwnerId = userId,
-                ProjectId = propertyDto.ProjectId ?? parentTemplate?.ProjectId, // Optional for developers
-                ParentPropertyId = propertyDto.ParentPropertyId,
-                Description = propertyDto.Description ?? string.Empty,
-                Location = propertyDto.Location ?? string.Empty,
-                Type = propertyType,
-                UnitNumber = propertyDto.UnitNumber,
-                DeliveryDate = propertyDto.DeliveryDate,
-                Bedrooms = parentTemplate?.Bedrooms ?? propertyDto.Bedrooms,
-                Bathrooms = parentTemplate?.Bathrooms ?? propertyDto.Bathrooms,
-                SquareFeet = propertyDto.SquareFeet,
-                YearBuilt = propertyDto.YearBuilt,
-                HasGarden = propertyDto.HasGarden ?? (parentTemplate != null ? parentTemplate.HasGarden : (bool?)null),
-                HasClubhouse = propertyDto.HasClubhouse ?? (parentTemplate != null ? parentTemplate.HasClubhouse : (bool?)null),
-                HasInfrastructure = propertyDto.HasInfrastructure,
-                HasUndergroundParking = propertyDto.HasUndergroundParking,
-                HasMedicalCenter = propertyDto.HasMedicalCenter,
-                HasCommercialStrip = propertyDto.HasCommercialStrip,
-                HasBusinessHub = propertyDto.HasBusinessHub,
-                HasOutdoorPools = propertyDto.HasOutdoorPools,
-                HasBicycleLanes = propertyDto.HasBicycleLanes,
-                HasJoggingTrail = propertyDto.HasJoggingTrail,
-                ImageUrl = propertyDto.ImageUrl ?? "",
-                Status = PropertyStatus.NotApproved, // Default status
-                CreatedAt = DateTime.UtcNow
-            };
-
-            if (string.IsNullOrWhiteSpace(property.Location) && parentTemplate != null)
-            {
-                property.Location = parentTemplate.Project?.Location
-                    ?? parentTemplate.ProjectName
-                    ?? property.Location;
-            }
-
-            // Auto-generate name from project + type + unit
-            var projectName = parentTemplate?.ProjectName ?? parentTemplate?.Project?.Name ?? "Property";
-            var propertyTypeName = PropertyTypeHelper.ToDisplayName(propertyType);
-            var unitInfo = !string.IsNullOrWhiteSpace(propertyDto.UnitNumber) 
-                ? $" - Unit {propertyDto.UnitNumber}" 
-                : "";
-            property.Name = $"{projectName} - {propertyTypeName}{unitInfo}";
-
-            _context.ChildProperties.Add(property);
+            var property = MapDtoToProperty(propertyDto, userId);
+            _context.Properties.Add(property);
             await _context.SaveChangesAsync();
 
             await HandleInstallmentSummaryAsync(property.PropertyId, propertyDto.InstallmentSummary);
-
-            // Award rewards to property owner for creating a property
             await _rewardService.AwardPointsAsync(userId, "PropertyCreate", RewardPoints.AddProperty, $"Created property '{property.Name}'", property.PropertyId);
 
             return CreatedAtAction("GetProperty", new { id = property.PropertyId }, property);
@@ -462,9 +418,8 @@ namespace InstapropAPI.Controllers
         // POST: api/Property/skip-documents
         [HttpPost("skip-documents")]
         [Authorize]
-        public async Task<ActionResult<ChildProperty>> PostPropertySkipDocuments(PropertyDto propertyDto)
+        public async Task<ActionResult<Property>> PostPropertySkipDocuments(PropertyDto propertyDto)
         {
-            // Get the current user ID from the JWT token
             var userIdClaim = User.FindFirst("uid");
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
@@ -477,64 +432,8 @@ namespace InstapropAPI.Controllers
                 return BadRequest("Account not found");
             }
 
-            ParentProperty? parentTemplate = null;
-            if (propertyDto.ParentPropertyId.HasValue)
-            {
-                parentTemplate = await _context.ParentProperties
-                    .Include(pp => pp.Project)
-                    .FirstOrDefaultAsync(pp => pp.ParentPropertyId == propertyDto.ParentPropertyId.Value);
-            }
-
-            var propertyType = parentTemplate != null
-                ? PropertyTypeHelper.FromDisplayName(parentTemplate.Type)
-                : PropertyTypeHelper.FromDisplayName(propertyDto.Type);
-
-            // Create Property entity from DTO
-            var property = new ChildProperty
-            {
-                OwnerId = userId,
-                ProjectId = propertyDto.ProjectId ?? parentTemplate?.ProjectId, // Optional for developers
-                ParentPropertyId = propertyDto.ParentPropertyId,
-                Description = propertyDto.Description ?? string.Empty,
-                Location = propertyDto.Location ?? string.Empty,
-                Type = propertyType,
-                UnitNumber = propertyDto.UnitNumber,
-                DeliveryDate = propertyDto.DeliveryDate,
-                Bedrooms = parentTemplate?.Bedrooms ?? propertyDto.Bedrooms,
-                Bathrooms = parentTemplate?.Bathrooms ?? propertyDto.Bathrooms,
-                SquareFeet = propertyDto.SquareFeet,
-                YearBuilt = propertyDto.YearBuilt,
-                HasGarden = propertyDto.HasGarden ?? (parentTemplate != null ? parentTemplate.HasGarden : (bool?)null),
-                HasClubhouse = propertyDto.HasClubhouse ?? (parentTemplate != null ? parentTemplate.HasClubhouse : (bool?)null),
-                HasInfrastructure = propertyDto.HasInfrastructure,
-                HasUndergroundParking = propertyDto.HasUndergroundParking,
-                HasMedicalCenter = propertyDto.HasMedicalCenter,
-                HasCommercialStrip = propertyDto.HasCommercialStrip,
-                HasBusinessHub = propertyDto.HasBusinessHub,
-                HasOutdoorPools = propertyDto.HasOutdoorPools,
-                HasBicycleLanes = propertyDto.HasBicycleLanes,
-                HasJoggingTrail = propertyDto.HasJoggingTrail,
-                ImageUrl = propertyDto.ImageUrl ?? "",
-                Status = PropertyStatus.NotApproved, // Default status
-                CreatedAt = DateTime.UtcNow
-            };
-
-            if (string.IsNullOrWhiteSpace(property.Location) && parentTemplate != null)
-            {
-                property.Location = parentTemplate.Project?.Location
-                    ?? parentTemplate.ProjectName
-                    ?? property.Location;
-            }
-
-            // Auto-generate name from project + type + unit
-            var projectName = parentTemplate?.ProjectName ?? parentTemplate?.Project?.Name ?? "Property";
-            var propertyTypeName = PropertyTypeHelper.ToDisplayName(propertyType);
-            var unitInfo = !string.IsNullOrWhiteSpace(propertyDto.UnitNumber) 
-                ? $" - Unit {propertyDto.UnitNumber}" 
-                : "";
-            property.Name = $"{projectName} - {propertyTypeName}{unitInfo}";
-
-            _context.ChildProperties.Add(property);
+            var property = MapDtoToProperty(propertyDto, userId);
+            _context.Properties.Add(property);
             await _context.SaveChangesAsync();
 
             await HandleInstallmentSummaryAsync(property.PropertyId, propertyDto.InstallmentSummary);
@@ -548,7 +447,7 @@ namespace InstapropAPI.Controllers
         public async Task<IActionResult> PutProperty(Guid id, [FromBody] PropertyUpdateDto updateDto)
         {
             // Check if property is editable (only before approval)
-            var existingProperty = await _context.ChildProperties.FindAsync(id);
+            var existingProperty = await _context.Properties.FindAsync(id);
             if (existingProperty == null)
                 return NotFound();
 
@@ -600,7 +499,7 @@ namespace InstapropAPI.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteProperty(Guid id)
         {
-            var property = await _context.ChildProperties
+            var property = await _context.Properties
                 .Include(p => p.Auctions)
                 .FirstOrDefaultAsync(p => p.PropertyId == id);
                 
@@ -632,7 +531,7 @@ namespace InstapropAPI.Controllers
                 return BadRequest(new { message = "Cannot delete property. It is currently in auction or has a pending auction request." });
             }
 
-            _context.ChildProperties.Remove(property);
+            _context.Properties.Remove(property);
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -645,7 +544,7 @@ namespace InstapropAPI.Controllers
         [AdminAuthorize]
         public async Task<IActionResult> ApproveProperty(Guid id)
         {
-            var property = await _context.ChildProperties.FindAsync(id);
+            var property = await _context.Properties.FindAsync(id);
             if (property == null)
             {
                 return NotFound();
@@ -675,7 +574,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(id);
+                var property = await _context.Properties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -757,7 +656,7 @@ namespace InstapropAPI.Controllers
         [Authorize]
         public async Task<ActionResult<IEnumerable<PropertyDoc>>> GetPropertyDocuments(Guid id)
         {
-            var property = await _context.ChildProperties.FindAsync(id);
+            var property = await _context.Properties.FindAsync(id);
             if (property == null)
                 return NotFound();
 
@@ -775,8 +674,8 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                // ChildProperty primary key is Guid
-                var property = await _context.ChildProperties.FindAsync(id);
+                // Property primary key is Guid
+                var property = await _context.Properties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -871,7 +770,7 @@ namespace InstapropAPI.Controllers
         [HttpGet("{id}/images")]
         public async Task<ActionResult<IEnumerable<PropertyImage>>> GetPropertyImages(Guid id)
         {
-            var property = await _context.ChildProperties.FindAsync(id);
+            var property = await _context.Properties.FindAsync(id);
             if (property == null)
                 return NotFound();
 
@@ -890,7 +789,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(propertyId);
+                var property = await _context.Properties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -954,7 +853,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(propertyId);
+                var property = await _context.Properties.FindAsync(propertyId);
                 if (property == null)
                     return NotFound(new { message = "Property not found" });
 
@@ -1006,6 +905,76 @@ namespace InstapropAPI.Controllers
         {
             // Redirect to ApproveProperty method
             return await ApproveProperty(id);
+        }
+
+        private Property MapDtoToProperty(PropertyDto dto, Guid ownerId)
+        {
+            var propertyType = PropertyTypeHelper.FromDisplayName(dto.Type);
+            var projectName = dto.ProjectName ?? "Property";
+            var propertyTypeName = PropertyTypeHelper.ToDisplayName(propertyType);
+            var unitInfo = !string.IsNullOrWhiteSpace(dto.UnitNumber)
+                ? $" - Unit {dto.UnitNumber}"
+                : "";
+
+            return new Property
+            {
+                OwnerId = ownerId,
+                ProjectId = dto.ProjectId,
+                ProjectName = dto.ProjectName,
+                Description = dto.Description ?? string.Empty,
+                Location = dto.Location ?? string.Empty,
+                Type = propertyType,
+                Bedrooms = dto.Bedrooms,
+                Bathrooms = dto.Bathrooms,
+                SquareFeet = dto.SquareFeet,
+                YearBuilt = dto.YearBuilt,
+                FinishingType = dto.FinishingType ?? "Finished",
+                HasPool = dto.HasPool,
+                HasGym = dto.HasGym,
+                HasSecurity = dto.HasSecurity,
+                HasParking = dto.HasParking,
+                HasPlayground = dto.HasPlayground,
+                Phase = dto.Phase,
+                FloorNumber = dto.FloorNumber,
+                UnitNumber = dto.UnitNumber,
+                ViewType = dto.ViewType,
+                Orientation = dto.Orientation,
+                DeliveryDate = dto.DeliveryDate,
+                ParkingSlots = dto.ParkingSlots,
+                HasStorageRoom = dto.HasStorageRoom,
+                BuyingPrice = dto.BuyingPrice,
+                BuyingDate = dto.BuyingDate,
+                Quantity = dto.Quantity,
+                HasGarden = dto.HasGarden,
+                HasClubhouse = dto.HasClubhouse,
+                HasInfrastructure = dto.HasInfrastructure,
+                HasUndergroundParking = dto.HasUndergroundParking,
+                HasMedicalCenter = dto.HasMedicalCenter,
+                HasCommercialStrip = dto.HasCommercialStrip,
+                HasBusinessHub = dto.HasBusinessHub,
+                HasOutdoorPools = dto.HasOutdoorPools,
+                HasBicycleLanes = dto.HasBicycleLanes,
+                HasJoggingTrail = dto.HasJoggingTrail,
+                HasNannyRoom = dto.HasNannyRoom,
+                HasDriverRoom = dto.HasDriverRoom,
+                HasMaidRoom = dto.HasMaidRoom,
+                HasPrivatePool = dto.HasPrivatePool,
+                HasRoofAccess = dto.HasRoofAccess,
+                HasBalcony = dto.HasBalcony,
+                SmartHome = dto.SmartHome,
+                CentralAC = dto.CentralAC,
+                NaturalGas = dto.NaturalGas,
+                HasGenerator = dto.HasGenerator,
+                SeaView = dto.SeaView,
+                NileView = dto.NileView,
+                PyramidView = dto.PyramidView,
+                GardenView = dto.GardenView,
+                StreetView = dto.StreetView,
+                ImageUrl = dto.ImageUrl ?? string.Empty,
+                Status = PropertyStatus.NotApproved,
+                Name = $"{projectName} - {propertyTypeName}{unitInfo}",
+                CreatedAt = DateTime.UtcNow
+            };
         }
 
         private async Task HandleInstallmentSummaryAsync(Guid propertyId, InstallmentSummaryInputDto? summaryDto)
@@ -1063,7 +1032,7 @@ namespace InstapropAPI.Controllers
 
         private bool PropertyExists(Guid id)
         {
-            return _context.ChildProperties.Any(e => e.PropertyId == id);
+            return _context.Properties.Any(e => e.PropertyId == id);
         }
 
         private Guid? GetCurrentAccountId()

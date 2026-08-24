@@ -13,7 +13,7 @@ namespace InstapropAPI.Models
     public Guid PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public ChildProperty Property { get; set; }
+        public Property Property { get; set; }
 
         [Required]
         public string DocType { get; set; } // Enum: Ownership, Legal, FloorPlan, etc.

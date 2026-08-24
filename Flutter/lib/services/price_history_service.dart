@@ -2,25 +2,40 @@ import '../models/price_history.dart';
 import 'api_client.dart';
 
 class PriceHistoryService {
-  /// Get price history for a parent property
-  static Future<PropertyPriceHistoryResponse> getParentPropertyPriceHistory(
-    String parentPropertyId,
+  static Future<PropertyPriceHistoryResponse> getPropertyPriceHistory(
+    String propertyId,
   ) async {
     final response = await ApiClient.get(
-      '/api/pricehistory/parent/$parentPropertyId',
-      (json) => PropertyPriceHistoryResponse.fromJson(json),
+      '/api/pricehistory/$propertyId/bundle',
+      PropertyPriceHistoryResponse.fromJson,
     );
 
-    if (response.success) {
+    if (response.success && response.data != null) {
       return response.data!;
-    } else {
-      throw Exception(
-        'Failed to get parent property price history: ${response.error}',
-      );
     }
+
+    throw Exception(
+      'Failed to get property price history: ${response.error}',
+    );
   }
 
-  /// Get price trends
+  static Future<PropertyPriceStats> getPropertyPriceStats(
+    String propertyId,
+  ) async {
+    final response = await ApiClient.get(
+      '/api/pricehistory/$propertyId/stats',
+      PropertyPriceStats.fromJson,
+    );
+
+    if (response.success && response.data != null) {
+      return response.data!;
+    }
+
+    throw Exception(
+      'Failed to get property price stats: ${response.error}',
+    );
+  }
+
   static Future<PriceTrendsResponse> getPriceTrends({
     String? propertyType,
     String? governorate,
@@ -30,76 +45,62 @@ class PriceHistoryService {
     final queryParams = <String, dynamic>{};
     if (propertyType != null) queryParams['propertyType'] = propertyType;
     if (governorate != null) queryParams['governorate'] = governorate;
-    if (startDate != null)
+    if (startDate != null) {
       queryParams['startDate'] = startDate.toIso8601String();
-    if (endDate != null) queryParams['endDate'] = endDate.toIso8601String();
+    }
+    if (endDate != null) {
+      queryParams['endDate'] = endDate.toIso8601String();
+    }
 
     final response = await ApiClient.getWithQuery(
       '/api/pricehistory/trends',
       queryParams,
-      (json) => PriceTrendsResponse.fromJson(json),
+      PriceTrendsResponse.fromJson,
     );
 
-    if (response.success) {
+    if (response.success && response.data != null) {
       return response.data!;
-    } else {
-      throw Exception('Failed to get price trends: ${response.error}');
     }
+
+    throw Exception('Failed to get price trends: ${response.error}');
   }
 
-  /// Get price statistics for a parent property
-  static Future<PropertyPriceStats> getParentPropertyPriceStats(
-    String parentPropertyId,
-  ) async {
-    final response = await ApiClient.get(
-      '/api/pricehistory/parent/$parentPropertyId/stats',
-      (json) => PropertyPriceStats.fromJson(json),
-    );
-
-    if (response.success) {
-      return response.data!;
-    } else {
-      throw Exception(
-        'Failed to get parent property price stats: ${response.error}',
-      );
-    }
-  }
-
-  /// Add price history for a parent property
   static Future<PropertyPriceHistory> addPriceHistory(
-    int parentPropertyId,
+    String propertyId,
     AddPriceHistoryRequest request,
   ) async {
     final response = await ApiClient.post(
-      '/api/pricehistory/parent/$parentPropertyId',
-      request.toJson(),
-      (json) => PropertyPriceHistory.fromJson(json),
+      '/api/pricehistory',
+      {
+        'propertyId': propertyId,
+        ...request.toJson(),
+      },
+      PropertyPriceHistory.fromJson,
     );
 
-    if (response.success) {
+    if (response.success && response.data != null) {
       return response.data!;
-    } else {
-      throw Exception('Failed to add price history: ${response.error}');
     }
+
+    throw Exception('Failed to add price history: ${response.error}');
   }
 }
 
 class PropertyPriceHistoryResponse {
-  final int parentPropertyId;
+  final String propertyId;
   final List<PropertyPriceHistory> priceHistory;
   final PriceStatistics statistics;
 
   PropertyPriceHistoryResponse({
-    required this.parentPropertyId,
+    required this.propertyId,
     required this.priceHistory,
     required this.statistics,
   });
 
   factory PropertyPriceHistoryResponse.fromJson(Map<String, dynamic> json) {
     return PropertyPriceHistoryResponse(
-      parentPropertyId: json['parentPropertyId'] ?? 0,
-      priceHistory:
-          (json['priceHistory'] as List<dynamic>?)
+      propertyId: (json['propertyId'] ?? json['PropertyId'] ?? '').toString(),
+      priceHistory: (json['priceHistory'] as List<dynamic>?)
               ?.map((item) => PropertyPriceHistory.fromJson(item))
               .toList() ??
           [],
@@ -152,18 +153,15 @@ class PriceTrendsResponse {
 
   factory PriceTrendsResponse.fromJson(Map<String, dynamic> json) {
     return PriceTrendsResponse(
-      trends:
-          (json['trends'] as List<dynamic>?)
+      trends: (json['trends'] as List<dynamic>?)
               ?.map((item) => PriceTrend.fromJson(item))
               .toList() ??
           [],
-      byPropertyType:
-          (json['byPropertyType'] as List<dynamic>?)
+      byPropertyType: (json['byPropertyType'] as List<dynamic>?)
               ?.map((item) => PropertyTypeTrend.fromJson(item))
               .toList() ??
           [],
-      byLocation:
-          (json['byLocation'] as List<dynamic>?)
+      byLocation: (json['byLocation'] as List<dynamic>?)
               ?.map((item) => LocationTrend.fromJson(item))
               .toList() ??
           [],
@@ -273,14 +271,14 @@ class MarketIndicators {
 }
 
 class PropertyPriceStats {
-  final int parentPropertyId;
+  final String propertyId;
   final String? message;
   final PriceStatistics statistics;
   final List<PriceRangeDistribution> priceDistribution;
   final TimeRange timeRange;
 
   PropertyPriceStats({
-    required this.parentPropertyId,
+    required this.propertyId,
     this.message,
     required this.statistics,
     required this.priceDistribution,
@@ -289,11 +287,10 @@ class PropertyPriceStats {
 
   factory PropertyPriceStats.fromJson(Map<String, dynamic> json) {
     return PropertyPriceStats(
-      parentPropertyId: json['parentPropertyId'] ?? 0,
+      propertyId: (json['propertyId'] ?? json['PropertyId'] ?? '').toString(),
       message: json['message'],
       statistics: PriceStatistics.fromJson(json['statistics'] ?? {}),
-      priceDistribution:
-          (json['priceDistribution'] as List<dynamic>?)
+      priceDistribution: (json['priceDistribution'] as List<dynamic>?)
               ?.map((item) => PriceRangeDistribution.fromJson(item))
               .toList() ??
           [],
@@ -356,7 +353,7 @@ class AddPriceHistoryRequest {
   Map<String, dynamic> toJson() {
     return {
       'price': price,
-      'date': date.toIso8601String(),
+      'priceDate': date.toIso8601String(),
       'source': source,
       'notes': notes,
     };

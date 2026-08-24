@@ -14,7 +14,7 @@ namespace InstapropAPI.Models
         public Guid ValuationId { get; set; }
 
         [Required]
-        [ForeignKey("ChildProperty")]
+        [ForeignKey("Property")]
         public Guid PropertyId { get; set; }
 
         [Required]
@@ -46,7 +46,7 @@ namespace InstapropAPI.Models
         public string? MarketTrends { get; set; } // AI's market trend analysis
 
         // Navigation properties
-        public virtual ChildProperty Property { get; set; } = null!;
+        public virtual Property Property { get; set; } = null!;
     }
 
     /// <summary>

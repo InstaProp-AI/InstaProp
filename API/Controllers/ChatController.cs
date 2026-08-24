@@ -290,10 +290,10 @@ namespace InstapropAPI.Controllers
             var isFirstMessage = existingMessageCount == 0;
 
             // Verify property exists if provided
-            ChildProperty? property = null;
+            Property? property = null;
             if (dto.PropertyId.HasValue)
             {
-                property = await _context.ChildProperties.FindAsync(dto.PropertyId.Value);
+                property = await _context.Properties.FindAsync(dto.PropertyId.Value);
                 if (property == null)
                     return NotFound("Property not found");
             }

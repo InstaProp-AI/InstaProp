@@ -34,10 +34,10 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             // Get property details if PropertyId is provided
-            ChildProperty? property = null;
+            Property? property = null;
             if (request.PropertyId.HasValue)
             {
-                property = await _context.ChildProperties
+                property = await _context.Properties
                     .FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
                 
                 if (property == null)
@@ -66,7 +66,7 @@ namespace InstapropAPI.Controllers
                 return Unauthorized();
 
             // Get user's properties and their valuations
-            var properties = await _context.ChildProperties
+            var properties = await _context.Properties
                 .Where(p => p.OwnerId == accountId)
                 .Select(p => new ValuationHistory
                 {
@@ -81,7 +81,7 @@ namespace InstapropAPI.Controllers
             return Ok(properties);
         }
 
-        private ValuationResult CalculatePropertyValuation(ChildProperty? property, ValuationRequest request)
+        private ValuationResult CalculatePropertyValuation(Property? property, ValuationRequest request)
         {
             // Simple valuation algorithm (in real app, this would be more sophisticated)
             decimal basePrice = 0;
@@ -208,7 +208,7 @@ namespace InstapropAPI.Controllers
             var location = request.Location ?? "";
             
             // Query similar properties with their auction data
-            var properties = await _context.ChildProperties
+            var properties = await _context.Properties
                 .Include(p => p.Auctions)
                 .Where(p => 
                     // Same general location

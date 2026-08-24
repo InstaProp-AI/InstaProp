@@ -34,7 +34,7 @@ class AnalyticsService {
 
   // Price Trends
   static Future<List<PriceTrendResponse>?> getPriceTrends({
-    String? parentPropertyId,
+    String? propertyId,
     String? propertyType,
     String? location,
     int months = 12,
@@ -47,8 +47,7 @@ class AnalyticsService {
       };
 
       final queryParams = <String, String>{};
-      if (parentPropertyId != null)
-        queryParams['parentPropertyId'] = parentPropertyId.toString();
+      if (propertyId != null) queryParams['propertyId'] = propertyId;
       if (propertyType != null) queryParams['propertyType'] = propertyType;
       if (location != null) queryParams['location'] = location;
       queryParams['months'] = months.toString();
@@ -305,7 +304,7 @@ class PriceTrendResponse {
   final DateTime date;
   final double price;
   final String source;
-  final String parentPropertyId;
+  final String propertyId;
   final String projectName;
   final String propertyType;
 
@@ -313,14 +312,13 @@ class PriceTrendResponse {
     required this.date,
     required this.price,
     required this.source,
-    required this.parentPropertyId,
+    required this.propertyId,
     required this.projectName,
     required this.propertyType,
   });
 
   factory PriceTrendResponse.fromJson(Map<String, dynamic> json) {
-    // Handle both String GUID and int legacy formats
-    String parseParentPropertyId(dynamic id) {
+    String parsePropertyId(dynamic id) {
       if (id == null) return '';
       if (id is String) return id;
       if (id is int) return id.toString();
@@ -331,7 +329,7 @@ class PriceTrendResponse {
       date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
       price: (json['price'] ?? 0).toDouble(),
       source: json['source'] ?? '',
-      parentPropertyId: parseParentPropertyId(json['parentPropertyId']),
+      propertyId: parsePropertyId(json['propertyId'] ?? json['parentPropertyId']),
       projectName: json['projectName'] ?? '',
       propertyType: json['propertyType'] ?? '',
     );

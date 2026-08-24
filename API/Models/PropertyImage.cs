@@ -14,7 +14,7 @@ namespace InstapropAPI.Models
 
         [ForeignKey(nameof(PropertyId))]
         [JsonIgnore]
-        public ChildProperty? Property { get; set; }
+        public Property? Property { get; set; }
 
         [Required]
         public string ImageUrl { get; set; } = string.Empty;

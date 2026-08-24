@@ -26,7 +26,7 @@ public class BidValidationTests
         var auctionId = Guid.NewGuid();
         var propertyId = Guid.NewGuid();
 
-        db.ChildProperties.Add(new ChildProperty
+        db.Properties.Add(new Property
         {
             PropertyId = propertyId,
             Name = "Test Property",

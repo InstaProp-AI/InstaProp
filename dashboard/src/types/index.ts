@@ -56,21 +56,53 @@ export interface Project {
   properties?: Property[];
 }
 
-export interface ParentProperty {
-  parentPropertyId: string;
-  projectName?: string;
-  type?: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  areaSqm?: number;
-  finishingType?: string;
-}
-
 export interface Property {
   propertyId: string;
-  parentPropertyId?: string; // Link to parent property
   ownerId: string;
   projectId?: string;
+  projectName?: string;
+  phase?: string;
+  floorNumber?: number;
+  unitNumber?: string;
+  viewType?: string;
+  orientation?: string;
+  deliveryDate?: string;
+  parkingSlots?: number;
+  hasStorageRoom?: boolean;
+  buyingPrice?: number;
+  buyingDate?: string;
+  quantity?: number;
+  finishingType?: string;
+  hasPool?: boolean;
+  hasGym?: boolean;
+  hasSecurity?: boolean;
+  hasParking?: boolean;
+  hasPlayground?: boolean;
+  hasNannyRoom?: boolean;
+  hasDriverRoom?: boolean;
+  hasMaidRoom?: boolean;
+  hasPrivatePool?: boolean;
+  hasRoofAccess?: boolean;
+  hasBalcony?: boolean;
+  hasGarden?: boolean;
+  hasClubhouse?: boolean;
+  hasInfrastructure?: boolean;
+  hasUndergroundParking?: boolean;
+  hasMedicalCenter?: boolean;
+  hasCommercialStrip?: boolean;
+  hasBusinessHub?: boolean;
+  hasOutdoorPools?: boolean;
+  hasBicycleLanes?: boolean;
+  hasJoggingTrail?: boolean;
+  smartHome?: boolean;
+  centralAC?: boolean;
+  naturalGas?: boolean;
+  hasGenerator?: boolean;
+  seaView?: boolean;
+  nileView?: boolean;
+  pyramidView?: boolean;
+  gardenView?: boolean;
+  streetView?: boolean;
   name: string;
   description?: string;
   location?: string;
@@ -87,7 +119,6 @@ export interface Property {
   updatedAt?: string;
   owner?: Account;
   project?: Project;
-  parentProperty?: ParentProperty; // Parent property information
   auctions?: Auction[];
 }
 

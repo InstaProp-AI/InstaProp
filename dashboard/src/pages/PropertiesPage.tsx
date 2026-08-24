@@ -778,7 +778,7 @@ const PropertiesPage: React.FC = () => {
                     {projects.find(p => p.projectId === property.projectId)?.name || 'Project'}
                   </div>
                 )}
-                {property.parentPropertyId && (
+                {property.unitNumber && (
                   <div style={{
                     padding: '0.25rem 0.75rem',
                     borderRadius: '0.5rem',
@@ -792,7 +792,7 @@ const PropertiesPage: React.FC = () => {
                     boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                   }}>
                     <Home style={{ height: '0.875rem', width: '0.875rem' }} />
-                    Parent Property
+                    Unit {property.unitNumber}
                   </div>
                 )}
               </div>
@@ -836,8 +836,8 @@ const PropertiesPage: React.FC = () => {
                     {property.location}
                   </div>
                 )}
-                {/* Parent Property Information */}
-                {property.parentProperty && (
+                {/* Flat Property Details */}
+                {(property.projectName || property.finishingType || property.unitNumber || property.phase || property.floorNumber != null) && (
                   <div style={{
                     marginTop: '0.75rem',
                     padding: '0.75rem',
@@ -854,7 +854,7 @@ const PropertiesPage: React.FC = () => {
                       marginBottom: '0.5rem'
                     }}>
                       <Home style={{ height: '1rem', width: '1rem', marginRight: '0.5rem' }} />
-                      Parent Property Information
+                      Property Details
                     </div>
                     <div style={{
                       fontSize: '0.75rem',
@@ -863,37 +863,40 @@ const PropertiesPage: React.FC = () => {
                       gridTemplateColumns: 'repeat(2, 1fr)',
                       gap: '0.5rem'
                     }}>
-                      {property.parentProperty.projectName && (
-                        <div>
-                          <strong>Project:</strong> {property.parentProperty.projectName}
-                        </div>
+                      {property.projectName && (
+                        <div><strong>Project:</strong> {property.projectName}</div>
                       )}
-                      {property.parentProperty.type && (
-                        <div>
-                          <strong>Type:</strong> {property.parentProperty.type}
-                        </div>
+                      {property.unitNumber && (
+                        <div><strong>Unit:</strong> {property.unitNumber}</div>
                       )}
-                      {property.parentProperty.bedrooms !== undefined && (
-                        <div>
-                          <strong>Bedrooms:</strong> {property.parentProperty.bedrooms}
-                        </div>
+                      {property.phase && (
+                        <div><strong>Phase:</strong> {property.phase}</div>
                       )}
-                      {property.parentProperty.bathrooms !== undefined && (
-                        <div>
-                          <strong>Bathrooms:</strong> {property.parentProperty.bathrooms}
-                        </div>
+                      {property.floorNumber != null && (
+                        <div><strong>Floor:</strong> {property.floorNumber}</div>
                       )}
-                      {property.parentProperty.areaSqm !== undefined && (
-                        <div>
-                          <strong>Area:</strong> {property.parentProperty.areaSqm} sqm
-                        </div>
+                      {property.finishingType && (
+                        <div><strong>Finishing:</strong> {property.finishingType}</div>
                       )}
-                      {property.parentProperty.finishingType && (
-                        <div>
-                          <strong>Finishing:</strong> {property.parentProperty.finishingType}
-                        </div>
+                      {property.buyingPrice != null && (
+                        <div><strong>Price:</strong> ${property.buyingPrice.toLocaleString()}</div>
                       )}
                     </div>
+                    {(property.hasPool || property.hasGym || property.hasSecurity || property.hasParking || property.seaView || property.nileView) && (
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '0.25rem',
+                        marginTop: '0.5rem'
+                      }}>
+                        {property.hasPool && <span style={{ fontSize: '0.65rem', padding: '0.125rem 0.375rem', backgroundColor: '#c7d2fe', borderRadius: '0.25rem' }}>Pool</span>}
+                        {property.hasGym && <span style={{ fontSize: '0.65rem', padding: '0.125rem 0.375rem', backgroundColor: '#c7d2fe', borderRadius: '0.25rem' }}>Gym</span>}
+                        {property.hasSecurity && <span style={{ fontSize: '0.65rem', padding: '0.125rem 0.375rem', backgroundColor: '#c7d2fe', borderRadius: '0.25rem' }}>Security</span>}
+                        {property.hasParking && <span style={{ fontSize: '0.65rem', padding: '0.125rem 0.375rem', backgroundColor: '#c7d2fe', borderRadius: '0.25rem' }}>Parking</span>}
+                        {property.seaView && <span style={{ fontSize: '0.65rem', padding: '0.125rem 0.375rem', backgroundColor: '#c7d2fe', borderRadius: '0.25rem' }}>Sea View</span>}
+                        {property.nileView && <span style={{ fontSize: '0.65rem', padding: '0.125rem 0.375rem', backgroundColor: '#c7d2fe', borderRadius: '0.25rem' }}>Nile View</span>}
+                      </div>
+                    )}
                   </div>
                 )}
                 {/* Owner Information */}
@@ -2222,15 +2225,15 @@ const PropertiesPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Parent Property Information */}
-                  {selectedProperty.parentPropertyId && selectedProperty.parentProperty && (
+                  {/* Flat Property Details */}
+                  {(selectedProperty.projectName || selectedProperty.finishingType || selectedProperty.unitNumber || selectedProperty.phase || selectedProperty.floorNumber != null || selectedProperty.buyingPrice != null) && (
                     <div style={{
                       padding: '1.5rem',
                       backgroundColor: '#e0e7ff',
                       borderRadius: '0.75rem',
                       border: '2px solid #6366f1',
                       boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.2)',
-                      gridColumn: 'span 2' // Span full width
+                      gridColumn: 'span 2'
                     }}>
                       <h3 style={{
                         fontSize: '1.25rem',
@@ -2242,7 +2245,7 @@ const PropertiesPage: React.FC = () => {
                         gap: '0.5rem'
                       }}>
                         <Home style={{ height: '1.25rem', width: '1.25rem', color: '#4338ca' }} />
-                        Parent Property Information
+                        Property Details
                       </h3>
                       <div style={{
                         display: 'grid',
@@ -2250,80 +2253,75 @@ const PropertiesPage: React.FC = () => {
                         gap: '1rem',
                         marginBottom: '1rem'
                       }}>
-                        {selectedProperty.parentProperty.projectName && (
+                        {selectedProperty.projectName && (
                           <div>
-                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
-                              Project Name
-                            </div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                              {selectedProperty.parentProperty.projectName}
-                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>Project Name</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{selectedProperty.projectName}</div>
                           </div>
                         )}
-                        {selectedProperty.parentProperty.type && (
+                        {selectedProperty.unitNumber && (
                           <div>
-                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
-                              Property Type
-                            </div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                              {selectedProperty.parentProperty.type}
-                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>Unit Number</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{selectedProperty.unitNumber}</div>
                           </div>
                         )}
-                        {selectedProperty.parentProperty.bedrooms !== undefined && (
+                        {selectedProperty.phase && (
                           <div>
-                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
-                              Bedrooms
-                            </div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                              {selectedProperty.parentProperty.bedrooms}
-                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>Phase</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{selectedProperty.phase}</div>
                           </div>
                         )}
-                        {selectedProperty.parentProperty.bathrooms !== undefined && (
+                        {selectedProperty.floorNumber != null && (
                           <div>
-                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
-                              Bathrooms
-                            </div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                              {selectedProperty.parentProperty.bathrooms}
-                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>Floor</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{selectedProperty.floorNumber}</div>
                           </div>
                         )}
-                        {selectedProperty.parentProperty.areaSqm !== undefined && (
+                        {selectedProperty.finishingType && (
                           <div>
-                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
-                              Area
-                            </div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                              {selectedProperty.parentProperty.areaSqm} sqm
-                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>Finishing Type</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{selectedProperty.finishingType}</div>
                           </div>
                         )}
-                        {selectedProperty.parentProperty.finishingType && (
+                        {selectedProperty.buyingPrice != null && (
                           <div>
-                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
-                              Finishing Type
-                            </div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                              {selectedProperty.parentProperty.finishingType}
-                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>Buying Price</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>${selectedProperty.buyingPrice.toLocaleString()}</div>
+                          </div>
+                        )}
+                        {selectedProperty.viewType && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>View</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{selectedProperty.viewType}</div>
+                          </div>
+                        )}
+                        {selectedProperty.parkingSlots != null && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>Parking Slots</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{selectedProperty.parkingSlots}</div>
                           </div>
                         )}
                       </div>
-                      <div style={{
-                        padding: '0.75rem',
-                        backgroundColor: 'white',
-                        borderRadius: '0.5rem',
-                        border: '1px solid #c7d2fe'
-                      }}>
-                        <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.25rem' }}>
-                          Parent Property ID
+                      {(selectedProperty.hasPool || selectedProperty.hasGym || selectedProperty.hasSecurity || selectedProperty.hasParking || selectedProperty.hasPlayground || selectedProperty.seaView || selectedProperty.nileView || selectedProperty.pyramidView) && (
+                        <div style={{
+                          padding: '0.75rem',
+                          backgroundColor: 'white',
+                          borderRadius: '0.5rem',
+                          border: '1px solid #c7d2fe'
+                        }}>
+                          <div style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: '600', marginBottom: '0.5rem' }}>Amenities & Views</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                            {selectedProperty.hasPool && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Pool</span>}
+                            {selectedProperty.hasGym && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Gym</span>}
+                            {selectedProperty.hasSecurity && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Security</span>}
+                            {selectedProperty.hasParking && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Parking</span>}
+                            {selectedProperty.hasPlayground && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Playground</span>}
+                            {selectedProperty.seaView && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Sea View</span>}
+                            {selectedProperty.nileView && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Nile View</span>}
+                            {selectedProperty.pyramidView && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#e0e7ff', borderRadius: '0.25rem' }}>Pyramid View</span>}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                          #{selectedProperty.parentPropertyId}
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>

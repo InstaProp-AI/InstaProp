@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { valuationApi, propertiesApi, authApi, propertyFinancialsApi, parentPropertyApi, goldApi, priceHistoryApi, salesApi, projectsApi } from '../services/api';
+import { valuationApi, propertiesApi, authApi, propertyFinancialsApi, goldApi, priceHistoryApi, salesApi, projectsApi } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
-import { Calculator, TrendingUp, DollarSign, Calendar, Home, BarChart3, PieChart, Target, Award, AlertCircle, Sparkles, Coins, Building2, Users, ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
+import { Calculator, TrendingUp, DollarSign, Calendar, Home, BarChart3, PieChart, Target, Award, AlertCircle, Sparkles, Coins, ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
 import { ROLE_IDS, Account } from '../types';
 
 const ValuationPage: React.FC = () => {
@@ -163,18 +163,13 @@ const ValuationPage: React.FC = () => {
 
       setSelectedProperty(property);
 
-      // Get parentPropertyId (handle both camelCase and PascalCase)
-      const parentPropertyId = property.parentPropertyId || property.ParentPropertyId;
       const buyingPrice = property.buyingPrice || property.BuyingPrice;
 
-      // Fetch all analysis data in parallel
       const [
         basicValuation,
         aiValuation,
         financials,
         priceHistory,
-        parentProperty,
-        siblingProperties,
         goldComparison
       ] = await Promise.allSettled([
         valuationApi.calculate({
@@ -196,10 +191,8 @@ const ValuationPage: React.FC = () => {
           propertyType: property.type || property.Type
         }),
         propertyFinancialsApi.getPropertyFinancials(propertyId).catch(() => null),
-        parentPropertyId ? priceHistoryApi.getPriceHistoryForParentProperty(parentPropertyId).catch(() => null) : Promise.resolve(null),
-        parentPropertyId ? parentPropertyApi.getParentProperty(parentPropertyId).catch(() => null) : Promise.resolve(null),
-        parentPropertyId ? parentPropertyApi.getParentChildren(parentPropertyId).catch(() => null) : Promise.resolve(null),
-        parentPropertyId ? goldApi.compareWithProperty(parentPropertyId, buyingPrice).catch(() => null) : Promise.resolve(null)
+        priceHistoryApi.getPriceHistoryForProperty(propertyId).catch(() => null),
+        goldApi.compareWithProperty(propertyId, buyingPrice).catch(() => null)
       ]);
 
       setAnalysisData({
@@ -207,8 +200,6 @@ const ValuationPage: React.FC = () => {
         aiValuation: aiValuation.status === 'fulfilled' ? aiValuation.value : null,
         financials: financials.status === 'fulfilled' ? financials.value : null,
         priceHistory: priceHistory.status === 'fulfilled' ? priceHistory.value : null,
-        parentProperty: parentProperty.status === 'fulfilled' ? parentProperty.value : null,
-        siblingProperties: siblingProperties.status === 'fulfilled' ? siblingProperties.value : null,
         goldComparison: goldComparison.status === 'fulfilled' ? goldComparison.value : null
       });
     } catch (error: any) {
@@ -373,6 +364,30 @@ const ValuationPage: React.FC = () => {
                 <p className="text-sm text-gray-500">Bedrooms / Bathrooms</p>
                 <p className="font-semibold">{selectedProperty.bedrooms || selectedProperty.Bedrooms} / {selectedProperty.bathrooms || selectedProperty.Bathrooms}</p>
               </div>
+              {(selectedProperty.projectName || selectedProperty.ProjectName) && (
+                <div>
+                  <p className="text-sm text-gray-500">Project</p>
+                  <p className="font-semibold">{selectedProperty.projectName || selectedProperty.ProjectName}</p>
+                </div>
+              )}
+              {(selectedProperty.unitNumber || selectedProperty.UnitNumber) && (
+                <div>
+                  <p className="text-sm text-gray-500">Unit</p>
+                  <p className="font-semibold">{selectedProperty.unitNumber || selectedProperty.UnitNumber}</p>
+                </div>
+              )}
+              {(selectedProperty.finishingType || selectedProperty.FinishingType) && (
+                <div>
+                  <p className="text-sm text-gray-500">Finishing</p>
+                  <p className="font-semibold">{selectedProperty.finishingType || selectedProperty.FinishingType}</p>
+                </div>
+              )}
+              {(selectedProperty.buyingPrice || selectedProperty.BuyingPrice) && (
+                <div>
+                  <p className="text-sm text-gray-500">Buying Price</p>
+                  <p className="font-semibold">${(selectedProperty.buyingPrice || selectedProperty.BuyingPrice)?.toLocaleString()}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -549,75 +564,6 @@ const ValuationPage: React.FC = () => {
                       <p className="text-sm text-gray-700">{analysisData.goldComparison.Comparison?.Recommendation || 'N/A'}</p>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Sibling Properties Analysis */}
-          {analysisData.siblingProperties && Array.isArray(analysisData.siblingProperties) && analysisData.siblingProperties.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-indigo-600" />
-                Sibling Properties Analysis ({analysisData.siblingProperties.length} units)
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {analysisData.siblingProperties.slice(0, 10).map((sibling: any, idx: number) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">{sibling.unitNumber || `Unit ${idx + 1}`}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold">
-                          ${sibling.buyingPrice?.toLocaleString() || 'N/A'}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">{sibling.squareFeet?.toLocaleString() || 'N/A'} sq ft</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-1 rounded text-xs ${sibling.ownerId ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                            {sibling.ownerId ? 'Sold' : 'Available'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {analysisData.siblingProperties.length > 10 && (
-                <p className="text-sm text-gray-500 mt-2">Showing 10 of {analysisData.siblingProperties.length} units</p>
-              )}
-            </div>
-          )}
-
-          {/* Parent Property Details */}
-          {analysisData.parentProperty && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
-                Parent Property Details
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Project</p>
-                  <p className="font-semibold">{analysisData.parentProperty.projectName || analysisData.parentProperty.Project?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Type</p>
-                  <p className="font-semibold">{analysisData.parentProperty.type || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Area</p>
-                  <p className="font-semibold">{analysisData.parentProperty.areaSqm || 'N/A'} sqm</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Finishing</p>
-                  <p className="font-semibold">{analysisData.parentProperty.finishingType || 'N/A'}</p>
                 </div>
               </div>
             </div>

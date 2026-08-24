@@ -228,7 +228,8 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage> {
           : _profile == null
           ? _buildErrorState()
           : _buildContent(),
-      floatingActionButton: _profile != null
+      floatingActionButton: _profile != null &&
+              context.watch<AppState>().isFeatureEnabled('Chat')
           ? FloatingActionButton.extended(
               onPressed: _startChat,
               backgroundColor: AppColors.primary,

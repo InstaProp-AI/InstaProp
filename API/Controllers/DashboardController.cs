@@ -57,7 +57,7 @@ namespace InstapropAPI.Controllers
                     });
 
                 // Total properties
-                var totalProperties = await _context.ChildProperties.CountAsync();
+                var totalProperties = await _context.Properties.CountAsync();
 
                 var stats = new
                 {
@@ -100,7 +100,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var totalProperties = await _context.ChildProperties.CountAsync();
+                var totalProperties = await _context.Properties.CountAsync();
                 var totalAuctions = await _context.Auctions.CountAsync();
                 var activeAuctions = await _context.Auctions.Where(a => a.Status == "Active").CountAsync();
                 var endedAuctions = await _context.Auctions.Where(a => a.Status == "Closed" || a.Status == "Completed" || a.Status == "Ended").CountAsync();
@@ -173,7 +173,7 @@ namespace InstapropAPI.Controllers
         {
             var analytics = new
             {
-                PropertyTypes = await _context.ChildProperties
+                PropertyTypes = await _context.Properties
                     .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))
                     .Select(g => new { Type = g.Key, Count = g.Count() })
                     .ToListAsync(),

@@ -1061,31 +1061,26 @@ export const leaderboardApi = {
 
 // Price History API
 export const priceHistoryApi = {
-  getPriceHistoryForParentProperty: async (parentPropertyId: string) => {
-    const response = await api.get(`/pricehistory/${parentPropertyId}`);
+  getPriceHistoryForProperty: async (propertyId: string) => {
+    const response = await api.get(`/pricehistory/${propertyId}`);
     return response.data;
   },
-  
-  getParentPriceHistoryBundle: async (parentPropertyId: string) => {
-    const response = await api.get(`/pricehistory/parent/${parentPropertyId}`);
+
+  getPropertyPriceHistoryBundle: async (propertyId: string) => {
+    const response = await api.get(`/pricehistory/${propertyId}/bundle`);
     return response.data;
   },
-  
-  getParentPriceStatistics: async (parentPropertyId: string) => {
-    const response = await api.get(`/pricehistory/parent/${parentPropertyId}/stats`);
+
+  getPropertyPriceStatistics: async (propertyId: string) => {
+    const response = await api.get(`/pricehistory/${propertyId}/stats`);
     return response.data;
   },
-  
-  getPriceHistoryForChildProperty: async (childPropertyId: string) => {
-    const response = await api.get(`/pricehistory/child/${childPropertyId}`);
-    return response.data;
-  },
-  
+
   createPriceHistory: async (data: any) => {
     const response = await api.post('/pricehistory', data);
     return response.data;
   },
-  
+
   updatePriceHistory: async (priceHistoryId: string, data: any) => {
     await api.put(`/pricehistory/${priceHistoryId}`, data);
   },
@@ -1131,23 +1126,10 @@ export const propertyFinancialsApi = {
   },
 };
 
-// Parent Property API
-export const parentPropertyApi = {
-  getParentProperty: async (parentPropertyId: string) => {
-    const response = await api.get(`/parentproperty/${parentPropertyId}`);
-    return response.data;
-  },
-  
-  getParentChildren: async (parentPropertyId: string) => {
-    const response = await api.get(`/parentproperty/${parentPropertyId}/children`);
-    return response.data;
-  },
-};
-
 // Gold Comparison API
 export const goldApi = {
-  compareWithProperty: async (parentPropertyId: string, propertyPrice?: number) => {
-    let url = `/goldprice/compare-property?parentPropertyId=${parentPropertyId}`;
+  compareWithProperty: async (propertyId: string, propertyPrice?: number) => {
+    let url = `/goldprice/compare-property?propertyId=${propertyId}`;
     if (propertyPrice) {
       url += `&propertyPrice=${propertyPrice}`;
     }

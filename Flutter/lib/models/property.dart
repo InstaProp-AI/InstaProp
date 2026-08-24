@@ -1,7 +1,5 @@
 import 'user.dart';
 import 'property_image.dart';
-import 'parent_property.dart';
-import 'child_property.dart';
 import 'property_type.dart';
 import 'installment_summary.dart';
 import 'property_doc.dart';
@@ -16,6 +14,7 @@ class Property {
   final Account? owner;
   final String? projectId;
   final String? project;
+  final String? projectName;
   final String name;
   final String description;
   final String location;
@@ -27,6 +26,48 @@ class Property {
   final int squareFeet;
   final int yearBuilt;
   final String imageUrl;
+  final String? finishingType;
+  final String? phase;
+  final int? floorNumber;
+  final String? unitNumber;
+  final String? viewType;
+  final String? orientation;
+  final DateTime? deliveryDate;
+  final int? parkingSlots;
+  final bool? hasStorageRoom;
+  final double? buyingPrice;
+  final DateTime? buyingDate;
+  final int quantity;
+  final bool hasPool;
+  final bool hasGym;
+  final bool hasSecurity;
+  final bool hasParking;
+  final bool hasPlayground;
+  final bool? hasGarden;
+  final bool? hasClubhouse;
+  final bool? hasInfrastructure;
+  final bool? hasUndergroundParking;
+  final bool? hasMedicalCenter;
+  final bool? hasCommercialStrip;
+  final bool? hasBusinessHub;
+  final bool? hasOutdoorPools;
+  final bool? hasBicycleLanes;
+  final bool? hasJoggingTrail;
+  final bool? hasNannyRoom;
+  final bool? hasDriverRoom;
+  final bool? hasMaidRoom;
+  final bool? hasPrivatePool;
+  final bool? hasRoofAccess;
+  final bool? hasBalcony;
+  final bool? smartHome;
+  final bool? centralAC;
+  final bool? naturalGas;
+  final bool? hasGenerator;
+  final bool? seaView;
+  final bool? nileView;
+  final bool? pyramidView;
+  final bool? gardenView;
+  final bool? streetView;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final bool hasActiveAuction;
@@ -40,6 +81,7 @@ class Property {
     this.owner,
     this.projectId,
     this.project,
+    this.projectName,
     required this.name,
     required this.description,
     required this.location,
@@ -51,6 +93,48 @@ class Property {
     required this.squareFeet,
     required this.yearBuilt,
     required this.imageUrl,
+    this.finishingType,
+    this.phase,
+    this.floorNumber,
+    this.unitNumber,
+    this.viewType,
+    this.orientation,
+    this.deliveryDate,
+    this.parkingSlots,
+    this.hasStorageRoom,
+    this.buyingPrice,
+    this.buyingDate,
+    this.quantity = 1,
+    this.hasPool = false,
+    this.hasGym = false,
+    this.hasSecurity = false,
+    this.hasParking = false,
+    this.hasPlayground = false,
+    this.hasGarden,
+    this.hasClubhouse,
+    this.hasInfrastructure,
+    this.hasUndergroundParking,
+    this.hasMedicalCenter,
+    this.hasCommercialStrip,
+    this.hasBusinessHub,
+    this.hasOutdoorPools,
+    this.hasBicycleLanes,
+    this.hasJoggingTrail,
+    this.hasNannyRoom,
+    this.hasDriverRoom,
+    this.hasMaidRoom,
+    this.hasPrivatePool,
+    this.hasRoofAccess,
+    this.hasBalcony,
+    this.smartHome,
+    this.centralAC,
+    this.naturalGas,
+    this.hasGenerator,
+    this.seaView,
+    this.nileView,
+    this.pyramidView,
+    this.gardenView,
+    this.streetView,
     required this.createdAt,
     this.updatedAt,
     this.hasActiveAuction = false,
@@ -60,7 +144,6 @@ class Property {
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
-    // Handle PropertyType parsing
     ListingType parseListingType() {
       final typeValue =
           json['listingType'] ?? json['ListingType'] ?? json['saleType'];
@@ -77,32 +160,26 @@ class Property {
     }
 
     PropertyType parsePropertyType() {
-      final rawType =
-          (json['type'] ?? json['Type'] ?? json['propertyType'] ?? json['category'])
-              ?.toString();
+      final rawType = (json['type'] ??
+              json['Type'] ??
+              json['propertyType'] ??
+              json['category'])
+          ?.toString();
       return PropertyTypeX.fromString(rawType);
     }
 
-    // Handle PropertyStatus parsing
     PropertyStatus parsePropertyStatus() {
       final statusValue = json['status'] ?? json['Status'];
 
-      // BACKWARD COMPATIBILITY: If status field doesn't exist (old API format),
-      // try to infer from old isVerified/isApproved fields
       if (statusValue == null) {
         final isVerified = json['isVerified'] ?? json['IsVerified'] ?? false;
         final isApproved = json['isApproved'] ?? json['IsApproved'] ?? false;
-
-        // If both true, it's approved
         if (isVerified && isApproved) {
           return PropertyStatus.approved;
         }
-
-        // Default to notApproved for old data
         return PropertyStatus.notApproved;
       }
 
-      // Handle both string and integer status values
       if (statusValue is int) {
         switch (statusValue) {
           case 0:
@@ -132,20 +209,67 @@ class Property {
       return PropertyStatus.notApproved;
     }
 
-    // Helper to parse ID fields (handle both string GUID and int legacy formats)
     String parseId(dynamic id, {String defaultValue = ''}) {
       if (id == null) return defaultValue;
       if (id is String) return id;
-      if (id is int) return id.toString(); // Legacy format
+      if (id is int) return id.toString();
       return id.toString();
     }
 
     String? parseOptionalId(dynamic id) {
       if (id == null) return null;
       if (id is String) return id.isEmpty ? null : id;
-      if (id is int) return id.toString(); // Legacy format
+      if (id is int) return id.toString();
       return id.toString();
     }
+
+    bool parseBool(dynamic value, {bool defaultValue = false}) {
+      if (value == null) return defaultValue;
+      if (value is bool) return value;
+      if (value is int) return value != 0;
+      if (value is String) {
+        return value.toLowerCase() == 'true' || value == '1';
+      }
+      return defaultValue;
+    }
+
+    bool? parseOptionalBool(dynamic value) {
+      if (value == null) return null;
+      return parseBool(value);
+    }
+
+    double? parseOptionalDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
+    }
+
+    int? parseOptionalInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value);
+      if (value is num) return value.toInt();
+      return null;
+    }
+
+    DateTime? parseOptionalDate(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value;
+      if (value is String && value.isNotEmpty) {
+        return DateTime.tryParse(value);
+      }
+      return null;
+    }
+
+    final auctions = json['auctions'] ?? json['Auctions'];
+    final hasActiveAuctionFromAuctions = auctions is List &&
+        auctions.any((auction) {
+          final status = (auction['status'] ?? auction['Status'] ?? '')
+              .toString()
+              .toLowerCase();
+          return status == 'active';
+        });
 
     return Property(
       propertyId: parseId(json['propertyId'] ?? json['PropertyId']),
@@ -190,6 +314,7 @@ class Property {
             })
           : null,
       projectId: parseOptionalId(json['projectId'] ?? json['ProjectId']),
+      projectName: json['projectName'] ?? json['ProjectName'],
       project: () {
         final projectValue = json['project'] ?? json['Project'];
         if (projectValue is Map) {
@@ -205,26 +330,85 @@ class Property {
       listingType: parseListingType(),
       type: parsePropertyType(),
       status: parsePropertyStatus(),
-      bedrooms: _parseInt(json['bedrooms'] ?? json['Bedrooms'], defaultValue: 0),
-      bathrooms: _parseInt(json['bathrooms'] ?? json['Bathrooms'], defaultValue: 0),
-      squareFeet: _parseInt(json['squareFeet'] ?? json['SquareFeet'], defaultValue: 0),
-      yearBuilt: _parseInt(json['yearBuilt'] ?? json['YearBuilt'], defaultValue: 0),
+      bedrooms: _parseInt(json['bedrooms'] ?? json['Bedrooms']),
+      bathrooms: _parseInt(json['bathrooms'] ?? json['Bathrooms']),
+      squareFeet: _parseInt(json['squareFeet'] ?? json['SquareFeet']),
+      yearBuilt: _parseInt(json['yearBuilt'] ?? json['YearBuilt']),
       imageUrl: json['imageUrl'] ?? json['ImageUrl'] ?? '',
+      finishingType: json['finishingType'] ?? json['FinishingType'],
+      phase: json['phase'] ?? json['Phase'],
+      floorNumber: parseOptionalInt(json['floorNumber'] ?? json['FloorNumber']),
+      unitNumber: json['unitNumber'] ?? json['UnitNumber'],
+      viewType: json['viewType'] ?? json['ViewType'],
+      orientation: json['orientation'] ?? json['Orientation'],
+      deliveryDate: parseOptionalDate(json['deliveryDate'] ?? json['DeliveryDate']),
+      parkingSlots: parseOptionalInt(json['parkingSlots'] ?? json['ParkingSlots']),
+      hasStorageRoom:
+          parseOptionalBool(json['hasStorageRoom'] ?? json['HasStorageRoom']),
+      buyingPrice: parseOptionalDouble(json['buyingPrice'] ?? json['BuyingPrice']),
+      buyingDate: parseOptionalDate(json['buyingDate'] ?? json['BuyingDate']),
+      quantity: _parseInt(json['quantity'] ?? json['Quantity'], defaultValue: 1),
+      hasPool: parseBool(json['hasPool'] ?? json['HasPool']),
+      hasGym: parseBool(json['hasGym'] ?? json['HasGym']),
+      hasSecurity: parseBool(json['hasSecurity'] ?? json['HasSecurity']),
+      hasParking: parseBool(json['hasParking'] ?? json['HasParking']),
+      hasPlayground: parseBool(json['hasPlayground'] ?? json['HasPlayground']),
+      hasGarden: parseOptionalBool(json['hasGarden'] ?? json['HasGarden']),
+      hasClubhouse: parseOptionalBool(json['hasClubhouse'] ?? json['HasClubhouse']),
+      hasInfrastructure:
+          parseOptionalBool(json['hasInfrastructure'] ?? json['HasInfrastructure']),
+      hasUndergroundParking: parseOptionalBool(
+        json['hasUndergroundParking'] ?? json['HasUndergroundParking'],
+      ),
+      hasMedicalCenter:
+          parseOptionalBool(json['hasMedicalCenter'] ?? json['HasMedicalCenter']),
+      hasCommercialStrip: parseOptionalBool(
+        json['hasCommercialStrip'] ?? json['HasCommercialStrip'],
+      ),
+      hasBusinessHub:
+          parseOptionalBool(json['hasBusinessHub'] ?? json['HasBusinessHub']),
+      hasOutdoorPools:
+          parseOptionalBool(json['hasOutdoorPools'] ?? json['HasOutdoorPools']),
+      hasBicycleLanes:
+          parseOptionalBool(json['hasBicycleLanes'] ?? json['HasBicycleLanes']),
+      hasJoggingTrail:
+          parseOptionalBool(json['hasJoggingTrail'] ?? json['HasJoggingTrail']),
+      hasNannyRoom: parseOptionalBool(json['hasNannyRoom'] ?? json['HasNannyRoom']),
+      hasDriverRoom:
+          parseOptionalBool(json['hasDriverRoom'] ?? json['HasDriverRoom']),
+      hasMaidRoom: parseOptionalBool(json['hasMaidRoom'] ?? json['HasMaidRoom']),
+      hasPrivatePool:
+          parseOptionalBool(json['hasPrivatePool'] ?? json['HasPrivatePool']),
+      hasRoofAccess:
+          parseOptionalBool(json['hasRoofAccess'] ?? json['HasRoofAccess']),
+      hasBalcony: parseOptionalBool(json['hasBalcony'] ?? json['HasBalcony']),
+      smartHome: parseOptionalBool(json['smartHome'] ?? json['SmartHome']),
+      centralAC: parseOptionalBool(json['centralAC'] ?? json['CentralAC']),
+      naturalGas: parseOptionalBool(json['naturalGas'] ?? json['NaturalGas']),
+      hasGenerator:
+          parseOptionalBool(json['hasGenerator'] ?? json['HasGenerator']),
+      seaView: parseOptionalBool(json['seaView'] ?? json['SeaView']),
+      nileView: parseOptionalBool(json['nileView'] ?? json['NileView']),
+      pyramidView: parseOptionalBool(json['pyramidView'] ?? json['PyramidView']),
+      gardenView: parseOptionalBool(json['gardenView'] ?? json['GardenView']),
+      streetView: parseOptionalBool(json['streetView'] ?? json['StreetView']),
       createdAt: DateTime.parse(
         json['createdAt'] ??
             json['CreatedAt'] ??
             DateTime.now().toIso8601String(),
       ),
-      updatedAt: json['updatedAt'] != null || json['UpdatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] ?? json['UpdatedAt'])
-          : null,
-      hasActiveAuction:
-          json['hasActiveAuction'] ?? json['HasActiveAuction'] ?? false,
+      updatedAt: parseOptionalDate(json['updatedAt'] ?? json['UpdatedAt']),
+      hasActiveAuction: json['hasActiveAuction'] ??
+          json['HasActiveAuction'] ??
+          hasActiveAuctionFromAuctions,
       propertyImages: (json['propertyImages'] ?? json['PropertyImages'] ?? [])
           .map<PropertyImage>((img) => PropertyImage.fromJson(img))
           .toList(),
-      installmentSummary: json['installmentSummary'] != null
-          ? InstallmentSummary.fromJson(json['installmentSummary'])
+      installmentSummary: json['installmentSummary'] != null ||
+              json['InstallmentSummary'] != null
+          ? InstallmentSummary.fromJson(
+              json['installmentSummary'] ?? json['InstallmentSummary'],
+            )
           : null,
       propertyDocs: (json['propertyDocs'] ?? json['PropertyDocs'] ?? [])
           .map<PropertyDoc>((doc) => PropertyDoc.fromJson(doc))
@@ -239,6 +423,7 @@ class Property {
       'owner': owner?.toJson(),
       'projectId': projectId,
       'project': project,
+      'projectName': projectName ?? project,
       'name': name,
       'description': description,
       'location': location,
@@ -250,6 +435,25 @@ class Property {
       'squareFeet': squareFeet,
       'yearBuilt': yearBuilt,
       'imageUrl': imageUrl,
+      'finishingType': finishingType,
+      'phase': phase,
+      'floorNumber': floorNumber,
+      'unitNumber': unitNumber,
+      'viewType': viewType,
+      'orientation': orientation,
+      'deliveryDate': deliveryDate?.toIso8601String(),
+      'parkingSlots': parkingSlots,
+      'hasStorageRoom': hasStorageRoom,
+      'buyingPrice': buyingPrice,
+      'buyingDate': buyingDate?.toIso8601String(),
+      'quantity': quantity,
+      'hasPool': hasPool,
+      'hasGym': hasGym,
+      'hasSecurity': hasSecurity,
+      'hasParking': hasParking,
+      'hasPlayground': hasPlayground,
+      'hasGarden': hasGarden,
+      'hasClubhouse': hasClubhouse,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'propertyImages': propertyImages.map((img) => img.toJson()).toList(),
@@ -259,96 +463,21 @@ class Property {
     };
   }
 
-  // Helper getters for backward compatibility and convenience
   bool get isEditable => status != PropertyStatus.approved;
   bool get canRequestAuction => status == PropertyStatus.approved;
   bool get isApproved => status == PropertyStatus.approved;
   bool get isPending => status == PropertyStatus.pending;
   bool get isNotApproved => status == PropertyStatus.notApproved;
   String get typeLabel => type.displayName;
+  String get displayProjectName => projectName ?? project ?? 'Unknown Project';
 
-  // Factory method to create Property from ChildProperty for backward compatibility
-  factory Property.fromChildProperty(ChildProperty childProperty) {
-    return Property(
-      propertyId: childProperty.propertyId,
-      ownerId: childProperty.ownerId ?? '',
-      owner: null, // Will be populated if needed
-      projectId: null, // ChildProperty doesn't have projectId directly
-      project: childProperty.project,
-      name: childProperty.name,
-      description: childProperty.description,
-      location: childProperty.location,
-      listingType: ListingType.resale,
-      type: childProperty.type,
-      status: _convertPropertyStatus(childProperty.status),
-      bedrooms: childProperty.bedrooms,
-      bathrooms: childProperty.bathrooms,
-      squareFeet: childProperty.squareFeet,
-      yearBuilt: childProperty.yearBuilt,
-      imageUrl: childProperty.imageUrl,
-      createdAt: childProperty.createdAt,
-      updatedAt: childProperty.updatedAt,
-      hasActiveAuction: childProperty.hasActiveAuction,
-      propertyImages: childProperty.propertyImages ?? [],
-      installmentSummary: childProperty.installmentSummary,
-    );
-  }
-
-  // Factory method to create Property from ParentProperty for backward compatibility
-  factory Property.fromParentProperty(ParentProperty parentProperty) {
-    return Property(
-      propertyId: parentProperty.parentPropertyId,
-      ownerId: '', // ParentProperty doesn't have owner
-      owner: null,
-      projectId: null, // ParentProperty doesn't have projectId directly
-      project: parentProperty.displayProjectName,
-      name: '${parentProperty.typeLabel} - ${parentProperty.bedrooms}BR',
-      description:
-          '${parentProperty.typeLabel} with ${parentProperty.bedrooms} bedrooms and ${parentProperty.bathrooms} bathrooms',
-      location: parentProperty.displayProjectName,
-      listingType: ListingType.resale,
-      type: parentProperty.type,
-      status: PropertyStatus.approved, // Assume approved for parent properties
-      bedrooms: parentProperty.bedrooms,
-      bathrooms: parentProperty.bathrooms,
-      squareFeet: parentProperty.areaSqm,
-      yearBuilt: 0,
-      imageUrl: '', // ParentProperty doesn't have image
-      createdAt: parentProperty.createdAt,
-      updatedAt: parentProperty.updatedAt,
-      hasActiveAuction: false, // ParentProperty doesn't have auctions directly
-      propertyImages: [],
-      installmentSummary: null,
-    );
-  }
-
-  // Helper methods to convert between old and new property types
-  static PropertyStatus _convertPropertyStatus(String? statusString) {
-    if (statusString == null) return PropertyStatus.notApproved;
-
-    switch (statusString.toLowerCase()) {
-      case 'approved':
-        return PropertyStatus.approved;
-      case 'pending':
-        return PropertyStatus.pending;
-      default:
-        return PropertyStatus.notApproved;
-    }
-  }
-
-  // Helper to safely parse int from int or string
   static int _parseInt(dynamic value, {int defaultValue = 0}) {
     if (value == null) return defaultValue;
     if (value is int) return value;
     if (value is String) {
-      try {
-        return int.parse(value);
-      } catch (e) {
-        print('⚠️ Failed to parse int from string: $value');
-        return defaultValue;
-      }
+      return int.tryParse(value) ?? defaultValue;
     }
+    if (value is num) return value.toInt();
     return defaultValue;
   }
 }
-

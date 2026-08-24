@@ -33,11 +33,11 @@ namespace InstapropAPI.Services
 
             try
             {
-                // Fix ChildProperty images
-                await FixChildPropertyImagesAsync(result);
+                // Fix Property images
+                await FixPropertyImagesAsync(result);
 
                 // Fix PropertyImage records
-                await FixPropertyImagesAsync(result);
+                await FixPropertyImageRecordsAsync(result);
 
                 // Fix PropertyDoc images
                 await FixPropertyDocsAsync(result);
@@ -71,9 +71,9 @@ namespace InstapropAPI.Services
             return result;
         }
 
-        private async Task FixChildPropertyImagesAsync(ImageFixResult result)
+        private async Task FixPropertyImagesAsync(ImageFixResult result)
         {
-            var properties = await _context.ChildProperties
+            var properties = await _context.Properties
                 .Where(p => !string.IsNullOrEmpty(p.ImageUrl))
                 .ToListAsync();
 
@@ -90,7 +90,7 @@ namespace InstapropAPI.Services
             }
         }
 
-        private async Task FixPropertyImagesAsync(ImageFixResult result)
+        private async Task FixPropertyImageRecordsAsync(ImageFixResult result)
         {
             var images = await _context.PropertyImages
                 .Where(img => !string.IsNullOrEmpty(img.ImageUrl))

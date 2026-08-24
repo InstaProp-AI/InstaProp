@@ -27,7 +27,7 @@ namespace InstapropAPI.Models
         public Guid? PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public ChildProperty? Property { get; set; }
+        public Property? Property { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -365,7 +365,7 @@ namespace InstapropAPI.Services
         /// <summary>
         /// Syncs property to Firestore
         /// </summary>
-        public async Task SyncPropertyAsync(long propertyId, ChildProperty property)
+        public async Task SyncPropertyAsync(long propertyId, Property property)
         {
             if (!_isEnabled || _db == null)
             {

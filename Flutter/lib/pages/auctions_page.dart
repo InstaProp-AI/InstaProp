@@ -493,44 +493,44 @@ class _AuctionsPageState extends State<AuctionsPage>
                     ],
                   ),
                   actions: [
-                    // VIP Button
-                    IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    if (appState.isFeatureEnabled('VIPAuctions'))
+                      IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFFD700).withOpacity(0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
                             ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.diamond, color: Colors.white, size: 16),
-                            SizedBox(width: 4),
-                            Text(
-                              'VIP',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFFD700).withOpacity(0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.diamond, color: Colors.white, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'VIP',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        onPressed: () => _handleVipButtonPress(context, appState),
                       ),
-                      onPressed: () => _handleVipButtonPress(context, appState),
-                    ),
                     PopupMenuButton<String>(
                       onSelected: _setSort,
                       icon: const Icon(Icons.sort, color: Color(0xFF1A1A1A)),

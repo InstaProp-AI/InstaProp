@@ -137,47 +137,77 @@ export const convertAccount = (account: any): any => {
   return converted;
 };
 
-// Convert Property object (ChildProperty with parent-child relationship support)
+const pickField = (obj: any, camel: string, pascal: string) =>
+  obj[camel] ?? obj[pascal];
+
+// Convert Property object (flat model with all attributes on one record)
 export const convertProperty = (property: any): any => {
   const status = typeof property.status === 'string' ? property.status : convertPropertyStatus(property.status);
-  
-  // Convert parent property if present
-  const parentProperty = property.parentProperty || property.ParentProperty 
-    ? {
-        parentPropertyId: property.parentProperty?.parentPropertyId || property.parentProperty?.ParentPropertyId || property.ParentProperty?.ParentPropertyId,
-        projectName: property.parentProperty?.projectName || property.parentProperty?.ProjectName || property.ParentProperty?.ProjectName,
-        type: property.parentProperty?.type || property.parentProperty?.Type || property.ParentProperty?.Type,
-        bedrooms: property.parentProperty?.bedrooms || property.parentProperty?.Bedrooms || property.ParentProperty?.Bedrooms,
-        bathrooms: property.parentProperty?.bathrooms || property.parentProperty?.Bathrooms || property.ParentProperty?.Bathrooms,
-        areaSqm: property.parentProperty?.areaSqm || property.parentProperty?.AreaSqm || property.ParentProperty?.AreaSqm,
-        finishingType: property.parentProperty?.finishingType || property.parentProperty?.FinishingType || property.ParentProperty?.FinishingType
-      }
-    : null;
-  
+
   return {
     ...property,
-    // Normalize field names to camelCase
-    propertyId: property.propertyId || property.PropertyId,
-    parentPropertyId: property.parentPropertyId || property.ParentPropertyId || null, // Include ParentPropertyId
-    ownerId: property.ownerId || property.OwnerId,
-    projectId: property.projectId || property.ProjectId,
-    name: property.name || property.Name,
-    description: property.description || property.Description,
-    location: property.location || property.Location,
-    type: property.type || property.Type,
-    bedrooms: property.bedrooms || property.Bedrooms,
-    bathrooms: property.bathrooms || property.Bathrooms,
-    squareFeet: property.squareFeet || property.SquareFeet,
-    yearBuilt: property.yearBuilt || property.YearBuilt,
-    category: property.category || property.Category,
-    imageUrl: property.imageUrl || property.ImageUrl,
-    createdAt: property.createdAt || property.CreatedAt,
-    updatedAt: property.updatedAt || property.UpdatedAt,
-    status: status,
-    isApproved: status === 'Approved', // Add computed isApproved field
+    propertyId: pickField(property, 'propertyId', 'PropertyId'),
+    ownerId: pickField(property, 'ownerId', 'OwnerId'),
+    projectId: pickField(property, 'projectId', 'ProjectId'),
+    projectName: pickField(property, 'projectName', 'ProjectName'),
+    phase: pickField(property, 'phase', 'Phase'),
+    floorNumber: pickField(property, 'floorNumber', 'FloorNumber'),
+    unitNumber: pickField(property, 'unitNumber', 'UnitNumber'),
+    viewType: pickField(property, 'viewType', 'ViewType'),
+    orientation: pickField(property, 'orientation', 'Orientation'),
+    deliveryDate: pickField(property, 'deliveryDate', 'DeliveryDate'),
+    parkingSlots: pickField(property, 'parkingSlots', 'ParkingSlots'),
+    hasStorageRoom: pickField(property, 'hasStorageRoom', 'HasStorageRoom'),
+    buyingPrice: pickField(property, 'buyingPrice', 'BuyingPrice'),
+    buyingDate: pickField(property, 'buyingDate', 'BuyingDate'),
+    quantity: pickField(property, 'quantity', 'Quantity'),
+    finishingType: pickField(property, 'finishingType', 'FinishingType'),
+    hasPool: pickField(property, 'hasPool', 'HasPool'),
+    hasGym: pickField(property, 'hasGym', 'HasGym'),
+    hasSecurity: pickField(property, 'hasSecurity', 'HasSecurity'),
+    hasParking: pickField(property, 'hasParking', 'HasParking'),
+    hasPlayground: pickField(property, 'hasPlayground', 'HasPlayground'),
+    hasNannyRoom: pickField(property, 'hasNannyRoom', 'HasNannyRoom'),
+    hasDriverRoom: pickField(property, 'hasDriverRoom', 'HasDriverRoom'),
+    hasMaidRoom: pickField(property, 'hasMaidRoom', 'HasMaidRoom'),
+    hasPrivatePool: pickField(property, 'hasPrivatePool', 'HasPrivatePool'),
+    hasRoofAccess: pickField(property, 'hasRoofAccess', 'HasRoofAccess'),
+    hasBalcony: pickField(property, 'hasBalcony', 'HasBalcony'),
+    hasGarden: pickField(property, 'hasGarden', 'HasGarden'),
+    hasClubhouse: pickField(property, 'hasClubhouse', 'HasClubhouse'),
+    hasInfrastructure: pickField(property, 'hasInfrastructure', 'HasInfrastructure'),
+    hasUndergroundParking: pickField(property, 'hasUndergroundParking', 'HasUndergroundParking'),
+    hasMedicalCenter: pickField(property, 'hasMedicalCenter', 'HasMedicalCenter'),
+    hasCommercialStrip: pickField(property, 'hasCommercialStrip', 'HasCommercialStrip'),
+    hasBusinessHub: pickField(property, 'hasBusinessHub', 'HasBusinessHub'),
+    hasOutdoorPools: pickField(property, 'hasOutdoorPools', 'HasOutdoorPools'),
+    hasBicycleLanes: pickField(property, 'hasBicycleLanes', 'HasBicycleLanes'),
+    hasJoggingTrail: pickField(property, 'hasJoggingTrail', 'HasJoggingTrail'),
+    smartHome: pickField(property, 'smartHome', 'SmartHome'),
+    centralAC: pickField(property, 'centralAC', 'CentralAC'),
+    naturalGas: pickField(property, 'naturalGas', 'NaturalGas'),
+    hasGenerator: pickField(property, 'hasGenerator', 'HasGenerator'),
+    seaView: pickField(property, 'seaView', 'SeaView'),
+    nileView: pickField(property, 'nileView', 'NileView'),
+    pyramidView: pickField(property, 'pyramidView', 'PyramidView'),
+    gardenView: pickField(property, 'gardenView', 'GardenView'),
+    streetView: pickField(property, 'streetView', 'StreetView'),
+    name: pickField(property, 'name', 'Name'),
+    description: pickField(property, 'description', 'Description'),
+    location: pickField(property, 'location', 'Location'),
+    type: pickField(property, 'type', 'Type'),
+    bedrooms: pickField(property, 'bedrooms', 'Bedrooms'),
+    bathrooms: pickField(property, 'bathrooms', 'Bathrooms'),
+    squareFeet: pickField(property, 'squareFeet', 'SquareFeet'),
+    yearBuilt: pickField(property, 'yearBuilt', 'YearBuilt'),
+    category: pickField(property, 'category', 'Category'),
+    imageUrl: pickField(property, 'imageUrl', 'ImageUrl'),
+    createdAt: pickField(property, 'createdAt', 'CreatedAt'),
+    updatedAt: pickField(property, 'updatedAt', 'UpdatedAt'),
+    status,
+    isApproved: status === 'Approved',
     owner: property.owner || property.Owner ? convertAccount(property.owner || property.Owner) : null,
     project: property.project || property.Project || null,
-    parentProperty: parentProperty // Include parent property information
   };
 };
 

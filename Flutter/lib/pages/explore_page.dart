@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_state.dart';
 import '../models/feed_item.dart';
 import '../models/feed_notification.dart';
 // Community models removed
@@ -563,6 +565,8 @@ class _ExplorePageState extends State<ExplorePage> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -570,26 +574,28 @@ class _ExplorePageState extends State<ExplorePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.article_outlined),
-            tooltip: 'News',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AllNewsPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline),
-            tooltip: 'Chats',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ChatListPage()),
-              );
-            },
-          ),
+          if (appState.isFeatureEnabled('News'))
+            IconButton(
+              icon: const Icon(Icons.article_outlined),
+              tooltip: 'News',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AllNewsPage()),
+                );
+              },
+            ),
+          if (appState.isFeatureEnabled('Chat'))
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline),
+              tooltip: 'Chats',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ChatListPage()),
+                );
+              },
+            ),
           const SizedBox(width: 4),
         ],
       ),

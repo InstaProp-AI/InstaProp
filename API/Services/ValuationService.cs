@@ -34,7 +34,7 @@ namespace InstapropAPI.Services
             }
 
             // No recent valuation found, calculate new one
-            var property = await _context.ChildProperties
+            var property = await _context.Properties
                 .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
             if (property == null)
@@ -111,7 +111,7 @@ namespace InstapropAPI.Services
             var location = request.Location ?? "";
             
             // Query similar properties with their auction data
-            var properties = await _context.ChildProperties
+            var properties = await _context.Properties
                 .Include(p => p.Auctions)
                 .Where(p => 
                     // Same general location

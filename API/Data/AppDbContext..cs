@@ -23,8 +23,7 @@ namespace InstapropAPI.Data
         public DbSet<AdminAccount> AdminAccounts { get; set; }
         public DbSet<SalesAccount> SalesAccounts { get; set; }
         public DbSet<SalesTeam> SalesTeams { get; set; }
-        // Removed: public DbSet<Property> Properties { get; set; } - Now using ChildProperty
-        public DbSet<PropertyDoc> PropertyDocs { get; set; }
+        public DbSet<Property> Properties { get; set; }
         public DbSet<PropertyImage> PropertyImages { get; set; }
         public DbSet<UserDoc> UserDocs { get; set; }
         public DbSet<Auction> Auctions { get; set; }
@@ -54,10 +53,7 @@ namespace InstapropAPI.Data
         // AI Broker Chat System
         public DbSet<AIChat> AIChats { get; set; }
         public DbSet<AIChatMessage> AIChatMessages { get; set; }
-
-        // Parent-Child Property System
-        public DbSet<ParentProperty> ParentProperties { get; set; }
-        public DbSet<ChildProperty> ChildProperties { get; set; }
+        public DbSet<PropertyDoc> PropertyDocs { get; set; }
         public DbSet<GoldPrice> GoldPrices { get; set; }
         public DbSet<PropertyPriceHistory> PropertyPriceHistories { get; set; }
         public DbSet<PropertyValuation> PropertyValuations { get; set; }
@@ -151,13 +147,16 @@ namespace InstapropAPI.Data
                 type => PropertyTypeHelper.ToDisplayName(type),
                 value => PropertyTypeHelper.FromDisplayName(value));
 
-            // Configure Property (now ChildProperty)
-            modelBuilder.Entity<ChildProperty>(entity =>
+            // Configure Property
+            modelBuilder.Entity<Property>(entity =>
             {
+                entity.ToTable("Properties");
                 entity.HasKey(e => e.PropertyId);
                 entity.Property(e => e.PropertyId).ValueGeneratedOnAdd();
                 entity.Property(e => e.Name).HasMaxLength(500).IsRequired();
                 entity.Property(e => e.Location).HasMaxLength(500);
+                entity.Property(e => e.ProjectName).HasMaxLength(200);
+                entity.Property(e => e.FinishingType).HasMaxLength(100).IsRequired();
                 entity.Property(e => e.Type)
                     .HasConversion(propertyTypeConverter)
                     .HasMaxLength(100);
@@ -169,10 +168,6 @@ namespace InstapropAPI.Data
                 entity.HasOne(e => e.Project)
                     .WithMany()
                     .HasForeignKey(e => e.ProjectId)
-                    .OnDelete(DeleteBehavior.SetNull);
-                entity.HasOne(e => e.ParentProperty)
-                    .WithMany(p => p.ChildProperties)
-                    .HasForeignKey(e => e.ParentPropertyId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
@@ -540,21 +535,6 @@ namespace InstapropAPI.Data
                 entity.HasIndex(e => e.ViewedAt);
             });
 
-            // Configure ParentProperty
-            modelBuilder.Entity<ParentProperty>(entity =>
-            {
-                entity.HasKey(e => e.ParentPropertyId);
-                entity.Property(e => e.ParentPropertyId).ValueGeneratedOnAdd();
-                entity.Property(e => e.ProjectName).HasMaxLength(200);
-                entity.Property(e => e.Type).HasMaxLength(100).IsRequired();
-                entity.Property(e => e.FinishingType).HasMaxLength(100).IsRequired();
-                entity.HasOne(e => e.Project)
-                    .WithMany()
-                    .HasForeignKey(e => e.ProjectId)
-                    .OnDelete(DeleteBehavior.SetNull);
-            });
-
-
             // Configure GoldPrice
             modelBuilder.Entity<GoldPrice>(entity =>
             {
@@ -572,17 +552,13 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.Price).HasColumnType("decimal(18,2)").IsRequired();
                 entity.Property(e => e.Source).HasMaxLength(50).IsRequired();
                 entity.Property(e => e.Notes).HasMaxLength(500);
-                entity.HasOne(e => e.ParentProperty)
-                    .WithMany(p => p.PriceHistories)
-                    .HasForeignKey(e => e.ParentPropertyId)
+                entity.HasOne(e => e.Property)
+                    .WithMany()
+                    .HasForeignKey(e => e.PropertyId)
                     .OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne(e => e.Auction)
                     .WithMany()
                     .HasForeignKey(e => e.AuctionId)
-                    .OnDelete(DeleteBehavior.SetNull);
-                entity.HasOne(e => e.ChildProperty)
-                    .WithMany()
-                    .HasForeignKey(e => e.ChildPropertyId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
@@ -714,18 +690,26 @@ namespace InstapropAPI.Data
                 entity.Property(e => e.Description).HasMaxLength(300);
                 entity.HasIndex(e => e.FeatureKey).IsUnique();
 
-                // Seed the 10 feature flags with fixed GUIDs
+                // Seed feature flags with fixed GUIDs (MVP defaults: core tabs on, Phase 2 off)
                 entity.HasData(
                     new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000001"), FeatureKey = "FeedExplore",            IsEnabled = true,  Description = "Explore/Feed tab in bottom navigation",              LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000002"), FeatureKey = "PaymentScheduleScanner", IsEnabled = true,  Description = "AI-powered payment schedule image scanner",            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000003"), FeatureKey = "Redemptions",            IsEnabled = true,  Description = "Points redemption for promo codes and rewards",        LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000004"), FeatureKey = "Valuation",              IsEnabled = true,  Description = "Property valuation tool",                             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000002"), FeatureKey = "PaymentScheduleScanner", IsEnabled = false, Description = "AI-powered payment schedule image scanner",            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000003"), FeatureKey = "Redemptions",            IsEnabled = false, Description = "Points redemption for promo codes and rewards",        LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000004"), FeatureKey = "Valuation",              IsEnabled = false, Description = "Property valuation tool",                             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000005"), FeatureKey = "News",                   IsEnabled = false, Description = "News articles section (Phase 2)",                     LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000006"), FeatureKey = "LiveStreaming",           IsEnabled = false, Description = "Developer live streaming (Phase 2)",                  LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000007"), FeatureKey = "AIBroker",               IsEnabled = false, Description = "Floating AI Broker chat button (Phase 2)",            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000008"), FeatureKey = "Leaderboard",            IsEnabled = false, Description = "Weekly leaderboard and cashback prizes (Phase 2)",    LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
                     new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000009"), FeatureKey = "GoldPriceComparison",    IsEnabled = false, Description = "Gold price vs property value comparison (Phase 2)",  LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000010"), FeatureKey = "SalesTeams",             IsEnabled = false, Description = "Sales team management for developers (Phase 2)",     LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000010"), FeatureKey = "SalesTeams",             IsEnabled = false, Description = "Sales team management for developers (Phase 2)",     LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000011"), FeatureKey = "MarketTab",              IsEnabled = false, Description = "Market tab in bottom navigation (MVP off)",          LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000012"), FeatureKey = "PortfolioAnalytics",     IsEnabled = false, Description = "Portfolio analytics dashboard (MVP off)",            LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000013"), FeatureKey = "PropertyComparison",     IsEnabled = false, Description = "Side-by-side property comparison (MVP off)",           LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000014"), FeatureKey = "PropertySearch",         IsEnabled = false, Description = "Advanced property search (MVP off)",                 LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000015"), FeatureKey = "DeveloperProfiles",      IsEnabled = false, Description = "Developer profile pages (MVP off)",                  LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000016"), FeatureKey = "Chat",                   IsEnabled = false, Description = "User-developer chat (MVP off)",                      LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000017"), FeatureKey = "CalendarEvents",         IsEnabled = false, Description = "Personal calendar and events (MVP off)",             LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                    new FeatureFlag { FeatureFlagId = Guid.Parse("aa000001-0000-0000-0000-000000000018"), FeatureKey = "VIPAuctions",            IsEnabled = false, Description = "VIP-only auction access (MVP off)",                  LastUpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
                 );
             });
         }

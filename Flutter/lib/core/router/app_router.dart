@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_state.dart';
 // Use existing working pages to keep the app functional
 import '../../pages/home_page.dart';
 import '../../pages/auth_page.dart';
@@ -83,8 +85,15 @@ class AppRouter {
           }
         }
         return MaterialPageRoute(
-          builder: (_) => LeaderboardPage(
-            initialTabIndex: initialTabIndex,
+          builder: (ctx) => Consumer<AppState>(
+            builder: (context, appState, _) {
+              if (!appState.isFeatureEnabled('Leaderboard')) {
+                return const Scaffold(
+                  body: Center(child: Text('Leaderboard is not available')),
+                );
+              }
+              return LeaderboardPage(initialTabIndex: initialTabIndex);
+            },
           ),
         );
 

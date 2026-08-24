@@ -216,7 +216,7 @@ namespace InstapropAPI.Controllers
                     user.SuspensionReason,
                     user.CreatedAt,
                     user.UpdatedAt,
-                    Properties = _context.ChildProperties.Where(cp => cp.OwnerId == user.AccountId).Select(p => new
+                    Properties = _context.Properties.Where(cp => cp.OwnerId == user.AccountId).Select(p => new
                     {
                         p.PropertyId,
                         p.OwnerId,
@@ -257,7 +257,7 @@ namespace InstapropAPI.Controllers
                             } : null
                         } : null
                     }).ToList(),
-                    PropertiesCount = await _context.ChildProperties.Where(cp => cp.OwnerId == user.AccountId).CountAsync(),
+                    PropertiesCount = await _context.Properties.Where(cp => cp.OwnerId == user.AccountId).CountAsync(),
                     BidsCount = user.Bids.Count,
                     ProjectsCount = user.Projects.Count
                 };
@@ -583,31 +583,33 @@ namespace InstapropAPI.Controllers
                 if (pageSize > 100) pageSize = 100; // Limit max page size to prevent abuse
 
                 // Get total count
-                var totalCount = await _context.ChildProperties.CountAsync();
+                var totalCount = await _context.Properties.CountAsync();
 
                 // Get paginated properties
-                var properties = await _context.ChildProperties
+                var properties = await _context.Properties
                     .Include(p => p.Owner)
-                        .ThenInclude(o => o.Role) // Include Role for role name
+                        .ThenInclude(o => o.Role)
                     .Include(p => p.Project)
-                    .Include(p => p.ParentProperty) // Include parent property
                     .OrderByDescending(p => p.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .Select(p => new
                     {
                         p.PropertyId,
-                        p.ParentPropertyId, // Include ParentPropertyId
                         p.OwnerId,
                         p.ProjectId,
+                        ProjectName = !string.IsNullOrWhiteSpace(p.ProjectName)
+                            ? p.ProjectName
+                            : (p.Project != null ? p.Project.Name : "N/A"),
                         p.Name,
                         p.Description,
                         p.Location,
                         Type = PropertyTypeHelper.ToDisplayName(p.Type),
-                        Status = p.Status.ToString(), // Convert enum to string
+                        Status = p.Status.ToString(),
                         p.Bedrooms,
                         p.Bathrooms,
                         p.SquareFeet,
+                        p.FinishingType,
                         p.YearBuilt,
                         p.ImageUrl,
                         p.CreatedAt,
@@ -618,25 +620,13 @@ namespace InstapropAPI.Controllers
                             p.Owner.FirstName,
                             p.Owner.LastName,
                             p.Owner.Email,
-                            RoleId = p.Owner.RoleId, // SECURITY: Non-guessable RoleId
+                            RoleId = p.Owner.RoleId,
                             RoleName = p.Owner.Role != null ? p.Owner.Role.RoleName : "Unknown"
                         } : null,
                         Project = p.Project != null ? new
                         {
                             p.Project.ProjectId,
                             p.Project.Name
-                        } : null,
-                        ParentProperty = p.ParentProperty != null ? new
-                        {
-                            p.ParentProperty.ParentPropertyId,
-                            ProjectName = !string.IsNullOrWhiteSpace(p.ParentProperty.ProjectName) 
-                                ? p.ParentProperty.ProjectName 
-                                : (p.Project != null ? p.Project.Name : "N/A"),
-                            Type = p.ParentProperty.Type,
-                            Bedrooms = p.ParentProperty.Bedrooms,
-                            Bathrooms = p.ParentProperty.Bathrooms,
-                            AreaSqm = p.ParentProperty.AreaSqm,
-                            FinishingType = p.ParentProperty.FinishingType.ToString()
                         } : null
                     })
                     .ToListAsync();
@@ -668,7 +658,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(id);
+                var property = await _context.Properties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { error = "Property not found" });
 
@@ -691,7 +681,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(id);
+                var property = await _context.Properties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { error = "Property not found" });
 
@@ -714,7 +704,7 @@ namespace InstapropAPI.Controllers
         {
             try
             {
-                var property = await _context.ChildProperties.FindAsync(id);
+                var property = await _context.Properties.FindAsync(id);
                 if (property == null)
                     return NotFound(new { error = "Property not found" });
 
@@ -945,10 +935,10 @@ namespace InstapropAPI.Controllers
                 var totalAdmins = await _context.Accounts.Where(a => a.RoleId == Role.ADMIN_ROLE_ID).CountAsync();
                 
                 // Property statistics
-                var totalProperties = await _context.ChildProperties.CountAsync();
-                var approvedProperties = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.Approved).CountAsync();
-                var pendingProperties = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
-                var notApprovedProperties = await _context.ChildProperties.Where(p => p.Status == PropertyStatus.NotApproved).CountAsync();
+                var totalProperties = await _context.Properties.CountAsync();
+                var approvedProperties = await _context.Properties.Where(p => p.Status == PropertyStatus.Approved).CountAsync();
+                var pendingProperties = await _context.Properties.Where(p => p.Status == PropertyStatus.Pending).CountAsync();
+                var notApprovedProperties = await _context.Properties.Where(p => p.Status == PropertyStatus.NotApproved).CountAsync();
                 
                 // Auction statistics
                 var totalAuctions = await _context.Auctions.CountAsync();
@@ -1048,7 +1038,7 @@ namespace InstapropAPI.Controllers
                     .ToListAsync();
 
                 // Get properties array (limited to 100 for performance)
-                var properties = await _context.ChildProperties
+                var properties = await _context.Properties
                     .Include(p => p.Owner)
                     .Include(p => p.Project)
                     .OrderByDescending(p => p.CreatedAt)
@@ -1191,7 +1181,7 @@ namespace InstapropAPI.Controllers
                         dailyRevenue
                     },
                     topProperties,
-                    categoryDistribution = (await _context.ChildProperties
+                    categoryDistribution = (await _context.Properties
                         .Select(p => new { p.Type, p.Status })
                         .ToListAsync())
                         .GroupBy(p => PropertyTypeHelper.ToDisplayName(p.Type))

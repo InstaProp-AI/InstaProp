@@ -173,7 +173,7 @@ namespace InstapropAPI.Controllers
         }
 
         [HttpGet("compare-property")]
-        public async Task<IActionResult> CompareGoldWithProperty([FromQuery] Guid parentPropertyId, [FromQuery] decimal? propertyPrice = null)
+        public async Task<IActionResult> CompareGoldWithProperty([FromQuery] Guid propertyId, [FromQuery] decimal? propertyPrice = null)
         {
             var latestGoldPrice = await _context.GoldPrices
                 .OrderByDescending(gp => gp.Date)
@@ -184,21 +184,16 @@ namespace InstapropAPI.Controllers
                 return NotFound(new { message = "No gold price data available" });
             }
 
-            var parentProperty = await _context.ParentProperties
+            var property = await _context.Properties
                 .Include(p => p.Project)
-                .FirstOrDefaultAsync(p => p.ParentPropertyId == parentPropertyId);
+                .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
-            if (parentProperty == null)
+            if (property == null)
             {
-                return NotFound(new { message = "Parent property not found" });
+                return NotFound(new { message = "Property not found" });
             }
 
-            // Get average property price from child properties
-            var avgPropertyPrice = await _context.ChildProperties
-                .Where(cp => cp.ParentPropertyId == parentPropertyId && cp.BuyingPrice.HasValue)
-                .AverageAsync(cp => cp.BuyingPrice.Value);
-
-            var comparisonPrice = propertyPrice ?? avgPropertyPrice;
+            var comparisonPrice = propertyPrice ?? property.BuyingPrice ?? 0m;
 
             if (comparisonPrice <= 0)
             {
@@ -239,15 +234,16 @@ namespace InstapropAPI.Controllers
                 },
                 Property = new
                 {
-                    parentProperty.ParentPropertyId,
-                    parentProperty.Type,
-                    parentProperty.Bedrooms,
-                    parentProperty.Bathrooms,
-                    parentProperty.AreaSqm,
-                    Project = parentProperty.Project != null ? new
+                    property.PropertyId,
+                    Type = PropertyTypeHelper.ToDisplayName(property.Type),
+                    property.Bedrooms,
+                    property.Bathrooms,
+                    SquareFeet = property.SquareFeet,
+                    property.FinishingType,
+                    Project = property.Project != null ? new
                     {
-                        parentProperty.Project.Name,
-                        parentProperty.Project.Location
+                        property.Project.Name,
+                        property.Project.Location
                     } : null
                 },
                 Comparison = new

@@ -19,68 +19,28 @@ namespace InstapropAPI.Controllers
             _context = context;
         }
 
-        // GET: api/pricehistory/{parentPropertyId}
-        [HttpGet("{parentPropertyId}")]
-        public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForParentProperty(Guid parentPropertyId)
+        [HttpGet("{propertyId}")]
+        public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForProperty(Guid propertyId)
         {
-            try
-            {
-                var priceHistory = await _context.PropertyPriceHistories
-                    .Where(ph => ph.ParentPropertyId == parentPropertyId)
-                    .Include(ph => ph.ParentProperty)
-                    .Include(ph => ph.Auction)
-                    .Include(ph => ph.ChildProperty)
-                    .OrderBy(ph => ph.PriceDate)
-                    .ToListAsync();
-
-                if (!priceHistory.Any())
-                {
-                    return NotFound($"No price history found for parent property ID {parentPropertyId}.");
-                }
-
-                return Ok(priceHistory);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-
-        [HttpGet("parent/{parentPropertyId}")]
-        public async Task<IActionResult> GetParentPriceHistoryBundle(Guid parentPropertyId)
-        {
-            var history = await _context.PropertyPriceHistories
-                .Where(ph => ph.ParentPropertyId == parentPropertyId)
+            var priceHistory = await _context.PropertyPriceHistories
+                .Where(ph => ph.PropertyId == propertyId)
+                .Include(ph => ph.Auction)
                 .OrderBy(ph => ph.PriceDate)
                 .ToListAsync();
 
-            var statistics = BuildPriceStatistics(history);
-
-            var payload = new
+            if (!priceHistory.Any())
             {
-                ParentPropertyId = parentPropertyId,
-                PriceHistory = history.Select(ph => new
-                {
-                    ph.PriceHistoryId,
-                    ph.ParentPropertyId,
-                    ph.Price,
-                    PriceDate = ph.PriceDate.ToString("o"),
-                    ph.Source,
-                    ph.AuctionId,
-                    ph.ChildPropertyId,
-                    CreatedAt = ph.CreatedAt.ToString("o")
-                }),
-                Statistics = statistics
-            };
+                return NotFound($"No price history found for property ID {propertyId}.");
+            }
 
-            return Ok(payload);
+            return Ok(priceHistory);
         }
 
-        [HttpGet("parent/{parentPropertyId}/stats")]
-        public async Task<IActionResult> GetParentPriceStatistics(Guid parentPropertyId)
+        [HttpGet("{propertyId}/stats")]
+        public async Task<IActionResult> GetPropertyPriceStatistics(Guid propertyId)
         {
             var history = await _context.PropertyPriceHistories
-                .Where(ph => ph.ParentPropertyId == parentPropertyId)
+                .Where(ph => ph.PropertyId == propertyId)
                 .OrderBy(ph => ph.PriceDate)
                 .ToListAsync();
 
@@ -88,234 +48,178 @@ namespace InstapropAPI.Controllers
             var distribution = BuildPriceDistribution(history);
             var timeRange = BuildTimeRange(history);
 
-            var payload = new
+            return Ok(new
             {
-                ParentPropertyId = parentPropertyId,
+                PropertyId = propertyId,
                 Message = history.Any() ? null : "No price history available",
                 Statistics = statistics,
                 PriceDistribution = distribution,
                 TimeRange = timeRange
-            };
-
-            return Ok(payload);
+            });
         }
 
-        // GET: api/pricehistory/child/{childPropertyId}
-        [HttpGet("child/{childPropertyId}")]
-        public async Task<ActionResult<IEnumerable<PropertyPriceHistory>>> GetPriceHistoryForChildProperty(Guid childPropertyId)
+        [HttpGet("{propertyId}/bundle")]
+        public async Task<IActionResult> GetPropertyPriceHistoryBundle(Guid propertyId)
         {
-            try
-            {
-                var priceHistory = await _context.PropertyPriceHistories
-                    .Where(ph => ph.ChildPropertyId == childPropertyId)
-                    .Include(ph => ph.ParentProperty)
-                    .Include(ph => ph.Auction)
-                    .Include(ph => ph.ChildProperty)
-                    .OrderBy(ph => ph.PriceDate)
-                    .ToListAsync();
+            var history = await _context.PropertyPriceHistories
+                .Where(ph => ph.PropertyId == propertyId)
+                .OrderBy(ph => ph.PriceDate)
+                .ToListAsync();
 
-                if (!priceHistory.Any())
+            return Ok(new
+            {
+                PropertyId = propertyId,
+                PriceHistory = history.Select(ph => new
                 {
-                    return NotFound($"No price history found for child property ID {childPropertyId}.");
-                }
-
-                return Ok(priceHistory);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+                    ph.PriceHistoryId,
+                    ph.PropertyId,
+                    ph.Price,
+                    PriceDate = ph.PriceDate.ToString("o"),
+                    ph.Source,
+                    ph.AuctionId,
+                    CreatedAt = ph.CreatedAt.ToString("o")
+                }),
+                Statistics = BuildPriceStatistics(history)
+            });
         }
 
-        // POST: api/pricehistory
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<PropertyPriceHistory>> RecordPriceHistory([FromBody] CreatePriceHistoryRequest request)
         {
-            try
+            var property = await _context.Properties
+                .FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
+
+            if (property == null)
             {
-                // Validate parent property exists
-                var parentProperty = await _context.ParentProperties
-                    .FirstOrDefaultAsync(pp => pp.ParentPropertyId == request.ParentPropertyId);
-
-                if (parentProperty == null)
-                {
-                    return NotFound("Parent property not found.");
-                }
-
-                // Validate child property exists if provided
-                if (request.ChildPropertyId.HasValue)
-                {
-                    var childProperty = await _context.ChildProperties
-                        .FirstOrDefaultAsync(cp => cp.PropertyId == request.ChildPropertyId.Value);
-
-                    if (childProperty == null)
-                    {
-                        return NotFound("Child property not found.");
-                    }
-                }
-
-                // Validate auction exists if provided
-                if (request.AuctionId.HasValue)
-                {
-                    var auction = await _context.Auctions
-                        .FirstOrDefaultAsync(a => a.AuctionId == request.AuctionId.Value);
-
-                    if (auction == null)
-                    {
-                        return NotFound("Auction not found.");
-                    }
-                }
-
-                var priceHistory = new PropertyPriceHistory
-                {
-                    ParentPropertyId = request.ParentPropertyId,
-                    Price = request.Price,
-                    PriceDate = request.PriceDate,
-                    Source = request.Source,
-                    AuctionId = request.AuctionId,
-                    ChildPropertyId = request.ChildPropertyId,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.PropertyPriceHistories.Add(priceHistory);
-                await _context.SaveChangesAsync();
-
-                return CreatedAtAction(nameof(GetPriceHistoryForParentProperty), 
-                    new { parentPropertyId = request.ParentPropertyId }, priceHistory);
+                return NotFound("Property not found.");
             }
-            catch (Exception ex)
+
+            if (request.AuctionId.HasValue)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                var auctionExists = await _context.Auctions
+                    .AnyAsync(a => a.AuctionId == request.AuctionId.Value);
+
+                if (!auctionExists)
+                {
+                    return NotFound("Auction not found.");
+                }
             }
+
+            var priceHistory = new PropertyPriceHistory
+            {
+                PropertyId = request.PropertyId,
+                Price = request.Price,
+                PriceDate = request.PriceDate,
+                Source = request.Source,
+                AuctionId = request.AuctionId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.PropertyPriceHistories.Add(priceHistory);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetPriceHistoryForProperty),
+                new { propertyId = request.PropertyId }, priceHistory);
         }
 
-        // PUT: api/pricehistory/{priceHistoryId}
         [HttpPut("{priceHistoryId}")]
         [Authorize]
         public async Task<IActionResult> UpdatePriceHistory(Guid priceHistoryId, [FromBody] UpdatePriceHistoryRequest request)
         {
-            try
+            var priceHistory = await _context.PropertyPriceHistories
+                .FirstOrDefaultAsync(ph => ph.PriceHistoryId == priceHistoryId);
+
+            if (priceHistory == null)
             {
-                var priceHistory = await _context.PropertyPriceHistories
-                    .FirstOrDefaultAsync(ph => ph.PriceHistoryId == priceHistoryId);
-
-                if (priceHistory == null)
-                {
-                    return NotFound("Price history record not found.");
-                }
-
-                priceHistory.Price = request.Price;
-                priceHistory.PriceDate = request.PriceDate;
-                priceHistory.Source = request.Source;
-                priceHistory.AuctionId = request.AuctionId;
-                priceHistory.ChildPropertyId = request.ChildPropertyId;
-
-                await _context.SaveChangesAsync();
-
-                return NoContent();
+                return NotFound("Price history record not found.");
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+
+            priceHistory.Price = request.Price;
+            priceHistory.PriceDate = request.PriceDate;
+            priceHistory.Source = request.Source;
+            priceHistory.AuctionId = request.AuctionId;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
-        // DELETE: api/pricehistory/{priceHistoryId}
         [HttpDelete("{priceHistoryId}")]
         [Authorize]
         public async Task<IActionResult> DeletePriceHistory(Guid priceHistoryId)
         {
-            try
+            var priceHistory = await _context.PropertyPriceHistories
+                .FirstOrDefaultAsync(ph => ph.PriceHistoryId == priceHistoryId);
+
+            if (priceHistory == null)
             {
-                var priceHistory = await _context.PropertyPriceHistories
-                    .FirstOrDefaultAsync(ph => ph.PriceHistoryId == priceHistoryId);
-
-                if (priceHistory == null)
-                {
-                    return NotFound("Price history record not found.");
-                }
-
-                _context.PropertyPriceHistories.Remove(priceHistory);
-                await _context.SaveChangesAsync();
-
-                return NoContent();
+                return NotFound("Price history record not found.");
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+
+            _context.PropertyPriceHistories.Remove(priceHistory);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
-        // GET: api/pricehistory/analytics/{parentPropertyId}
-        [HttpGet("analytics/{parentPropertyId}")]
-        public async Task<ActionResult<PriceAnalyticsResponse>> GetPriceAnalytics(Guid parentPropertyId)
+        [HttpGet("analytics/{propertyId}")]
+        public async Task<ActionResult<PriceAnalyticsResponse>> GetPriceAnalytics(Guid propertyId)
         {
-            try
+            var priceHistory = await _context.PropertyPriceHistories
+                .Where(ph => ph.PropertyId == propertyId)
+                .OrderBy(ph => ph.PriceDate)
+                .ToListAsync();
+
+            if (!priceHistory.Any())
             {
-                var priceHistory = await _context.PropertyPriceHistories
-                    .Where(ph => ph.ParentPropertyId == parentPropertyId)
-                    .OrderBy(ph => ph.PriceDate)
-                    .ToListAsync();
-
-                if (!priceHistory.Any())
-                {
-                    return NotFound("No price history found for this parent property.");
-                }
-
-                var prices = priceHistory.Select(ph => ph.Price).ToList();
-                var minPrice = prices.Min();
-                var maxPrice = prices.Max();
-                var avgPrice = prices.Average();
-                var latestPrice = prices.Last();
-                var firstPrice = prices.First();
-
-                var priceChange = firstPrice > 0 ? (latestPrice - firstPrice) / firstPrice * 100 : 0;
-                var priceChangeAmount = latestPrice - firstPrice;
-
-                // Calculate price volatility (standard deviation)
-                var variance = prices.Select(p => Math.Pow((double)(p - avgPrice), 2)).Average();
-                var volatility = Math.Sqrt(variance);
-
-                // Group by source
-                var sourceBreakdown = priceHistory
-                    .GroupBy(ph => ph.Source)
-                    .Select(g => new SourceBreakdown
-                    {
-                        Source = g.Key,
-                        Count = g.Count(),
-                        AveragePrice = g.Average(ph => ph.Price),
-                        Percentage = (double)g.Count() / priceHistory.Count * 100
-                    })
-                    .ToList();
-
-                return Ok(new PriceAnalyticsResponse
-                {
-                    ParentPropertyId = parentPropertyId,
-                    TotalDataPoints = priceHistory.Count,
-                    MinPrice = minPrice,
-                    MaxPrice = maxPrice,
-                    AveragePrice = avgPrice,
-                    LatestPrice = latestPrice,
-                    FirstPrice = firstPrice,
-                    PriceChangePercentage = priceChange,
-                    PriceChangeAmount = priceChangeAmount,
-                    Volatility = volatility,
-                    SourceBreakdown = sourceBreakdown,
-                    PriceHistory = priceHistory.Select(ph => new PriceHistoryDataPoint
-                    {
-                        Date = ph.PriceDate,
-                        Price = ph.Price,
-                        Source = ph.Source,
-                        AuctionId = ph.AuctionId,
-                        ChildPropertyId = ph.ChildPropertyId
-                    }).ToList()
-                });
+                return NotFound("No price history found for this property.");
             }
-            catch (Exception ex)
+
+            var prices = priceHistory.Select(ph => ph.Price).ToList();
+            var minPrice = prices.Min();
+            var maxPrice = prices.Max();
+            var avgPrice = prices.Average();
+            var latestPrice = prices.Last();
+            var firstPrice = prices.First();
+            var priceChange = firstPrice > 0 ? (latestPrice - firstPrice) / firstPrice * 100 : 0;
+            var priceChangeAmount = latestPrice - firstPrice;
+            var variance = prices.Select(p => Math.Pow((double)(p - avgPrice), 2)).Average();
+            var volatility = Math.Sqrt(variance);
+
+            var sourceBreakdown = priceHistory
+                .GroupBy(ph => ph.Source)
+                .Select(g => new SourceBreakdown
+                {
+                    Source = g.Key,
+                    Count = g.Count(),
+                    AveragePrice = g.Average(ph => ph.Price),
+                    Percentage = (double)g.Count() / priceHistory.Count * 100
+                })
+                .ToList();
+
+            return Ok(new PriceAnalyticsResponse
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+                PropertyId = propertyId,
+                TotalDataPoints = priceHistory.Count,
+                MinPrice = minPrice,
+                MaxPrice = maxPrice,
+                AveragePrice = avgPrice,
+                LatestPrice = latestPrice,
+                FirstPrice = firstPrice,
+                PriceChangePercentage = priceChange,
+                PriceChangeAmount = priceChangeAmount,
+                Volatility = volatility,
+                SourceBreakdown = sourceBreakdown,
+                PriceHistory = priceHistory.Select(ph => new PriceHistoryDataPoint
+                {
+                    Date = ph.PriceDate,
+                    Price = ph.Price,
+                    Source = ph.Source,
+                    AuctionId = ph.AuctionId,
+                    PropertyId = ph.PropertyId
+                }).ToList()
+            });
         }
 
         private static object BuildPriceStatistics(List<PropertyPriceHistory> history)
@@ -365,10 +269,7 @@ namespace InstapropAPI.Controllers
 
             if (min == max)
             {
-                return new[]
-                {
-                    new { Range = $"{min:0} EGP", Count = history.Count }
-                };
+                return new[] { new { Range = $"{min:0} EGP", Count = history.Count } };
             }
 
             var bucketCount = 3;
@@ -416,15 +317,13 @@ namespace InstapropAPI.Controllers
         }
     }
 
-    // Request/Response Models
     public class CreatePriceHistoryRequest
     {
-        public Guid ParentPropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public decimal Price { get; set; }
         public DateTime PriceDate { get; set; }
         public string Source { get; set; } = string.Empty;
         public Guid? AuctionId { get; set; }
-        public Guid? ChildPropertyId { get; set; }
     }
 
     public class UpdatePriceHistoryRequest
@@ -433,12 +332,11 @@ namespace InstapropAPI.Controllers
         public DateTime PriceDate { get; set; }
         public string Source { get; set; } = string.Empty;
         public Guid? AuctionId { get; set; }
-        public Guid? ChildPropertyId { get; set; }
     }
 
     public class PriceAnalyticsResponse
     {
-        public Guid ParentPropertyId { get; set; }
+        public Guid PropertyId { get; set; }
         public int TotalDataPoints { get; set; }
         public decimal MinPrice { get; set; }
         public decimal MaxPrice { get; set; }
@@ -466,6 +364,6 @@ namespace InstapropAPI.Controllers
         public decimal Price { get; set; }
         public string Source { get; set; } = string.Empty;
         public Guid? AuctionId { get; set; }
-        public Guid? ChildPropertyId { get; set; }
+        public Guid PropertyId { get; set; }
     }
 }

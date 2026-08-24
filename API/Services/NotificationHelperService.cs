@@ -35,7 +35,7 @@ namespace InstapropAPI.Services
 
                 case "property_owners":
                     if (!userId.HasValue) return false;
-                    return await _context.ChildProperties
+                    return await _context.Properties
                         .AnyAsync(p => p.OwnerId == userId.Value);
 
                 case "auction_owners":
@@ -44,7 +44,7 @@ namespace InstapropAPI.Services
                         .Where(a => a.Status == "Active" || a.Status == "Requested")
                         .Select(a => a.PropertyId)
                         .ToListAsync();
-                    return await _context.ChildProperties
+                    return await _context.Properties
                         .AnyAsync(p => auctionPropertyIds.Contains(p.PropertyId) && p.OwnerId == userId.Value);
 
                 case "bidders":
@@ -96,14 +96,14 @@ namespace InstapropAPI.Services
                     return await _context.Accounts.CountAsync(a => a.RoleId == Role.USER_ROLE_ID);
 
                 case "property_owners":
-                    return await _context.ChildProperties.Select(p => p.OwnerId).Distinct().CountAsync();
+                    return await _context.Properties.Select(p => p.OwnerId).Distinct().CountAsync();
 
                 case "auction_owners":
                     var auctionPropertyIds = await _context.Auctions
                         .Where(a => a.Status == "Active" || a.Status == "Requested")
                         .Select(a => a.PropertyId)
                         .ToListAsync();
-                    return await _context.ChildProperties
+                    return await _context.Properties
                         .Where(p => auctionPropertyIds.Contains(p.PropertyId))
                         .Select(p => p.OwnerId)
                         .Distinct()

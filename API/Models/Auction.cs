@@ -14,7 +14,7 @@ namespace InstapropAPI.Models
     public Guid PropertyId { get; set; }
 
         [ForeignKey(nameof(PropertyId))]
-        public ChildProperty Property { get; set; }
+        public Property Property { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal StartPrice { get; set; }
