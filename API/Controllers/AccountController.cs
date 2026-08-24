@@ -32,6 +32,7 @@ namespace InstapropAPI.Controllers
         private readonly FirestoreService _firestoreService;
         private readonly FileValidationService _fileValidationService;
         private readonly RewardService _rewardService;
+        private readonly RoleSeederService _roleSeederService;
 
         public AccountController(
             AppDbContext context, 
@@ -40,7 +41,8 @@ namespace InstapropAPI.Controllers
             PhoneVerificationService phoneVerificationService,
             FirestoreService firestoreService,
             FileValidationService fileValidationService,
-            RewardService rewardService)
+            RewardService rewardService,
+            RoleSeederService roleSeederService)
         {
             _context = context;
             _config = config;
@@ -49,6 +51,7 @@ namespace InstapropAPI.Controllers
             _firestoreService = firestoreService;
             _fileValidationService = fileValidationService;
             _rewardService = rewardService;
+            _roleSeederService = roleSeederService;
         }
 
 
@@ -107,63 +110,10 @@ namespace InstapropAPI.Controllers
             if (passwordError != null)
                 return BadRequest(passwordError);
 
-            // Ensure User Role exists (required for foreign key constraint)
+            // Ensure roles exist (never insert inline — avoids PK_Roles duplicate errors)
+            await _roleSeederService.SeedRolesAsync();
+
             var userRole = await _context.Roles.FindAsync(Role.USER_ROLE_ID);
-            if (userRole == null)
-            {
-                // Role doesn't exist - create it
-                try
-                {
-                    userRole = new Role
-                    {
-                        RoleId = Role.USER_ROLE_ID,
-                        RoleName = "User",
-                        Description = "Regular user account",
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.Roles.Add(userRole);
-                    
-                    // Also ensure other roles exist
-                    var adminRole = await _context.Roles.FindAsync(Role.ADMIN_ROLE_ID);
-                    if (adminRole == null)
-                    {
-                        _context.Roles.Add(new Role
-                        {
-                            RoleId = Role.ADMIN_ROLE_ID,
-                            RoleName = "Admin",
-                            Description = "Administrator account with full system access",
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                    
-                    var developerRole = await _context.Roles.FindAsync(Role.DEVELOPER_ROLE_ID);
-                    if (developerRole == null)
-                    {
-                        _context.Roles.Add(new Role
-                        {
-                            RoleId = Role.DEVELOPER_ROLE_ID,
-                            RoleName = "Developer",
-                            Description = "Developer account with project management permissions",
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                    
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception roleEx)
-                {
-                    var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
-                    logger.LogError(roleEx, "Failed to create roles: {Message}", roleEx.Message);
-                    return StatusCode(500, new { 
-                        error = "Database configuration error",
-                        message = "Failed to initialize required system roles. Please contact support.",
-                        details = roleEx.InnerException?.Message ?? roleEx.Message
-                    });
-                }
-            }
-            
-            // Double-check role exists before proceeding
-            userRole = await _context.Roles.FindAsync(Role.USER_ROLE_ID);
             if (userRole == null)
             {
                 return StatusCode(500, new { 
@@ -245,17 +195,8 @@ namespace InstapropAPI.Controllers
                 });
             }
 
-            // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
-            var role = await _context.Roles
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.RoleId == account.RoleId);
-            
-            if (role != null)
-            {
-                // Set navigation property - EF Core will handle the relationship through RoleId
-                // Don't manually track it to avoid conflicts
-                account.Role = role;
-            }
+            // Load role name for response without attaching navigation (prevents duplicate Role inserts)
+            var roleName = await GetRoleNameAsync(account.RoleId);
 
             // Sync new user to Firestore for real-time dashboard updates (don't fail signup if this fails)
             try
@@ -264,7 +205,6 @@ namespace InstapropAPI.Controllers
             }
             catch (Exception ex)
             {
-                // Log but don't fail signup if Firestore sync fails
                 var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
                 logger.LogWarning(ex, "Firestore sync failed for account {AccountId}, but signup succeeded", account.AccountId);
             }
@@ -280,7 +220,7 @@ namespace InstapropAPI.Controllers
                 account.PhoneNumber,
                 account.Email,
                 RoleId = account.RoleId,
-                RoleName = account.Role?.RoleName ?? "User",
+                RoleName = roleName,
                 account.Status,
                 account.EmailVerified,
                 account.PhoneVerified,
@@ -319,63 +259,9 @@ namespace InstapropAPI.Controllers
             if (passwordError != null)
                 return BadRequest(passwordError);
 
-            // Ensure Developer Role exists (required for foreign key constraint)
+            await _roleSeederService.SeedRolesAsync();
+
             var developerRole = await _context.Roles.FindAsync(Role.DEVELOPER_ROLE_ID);
-            if (developerRole == null)
-            {
-                // Role doesn't exist - create it
-                try
-                {
-                    developerRole = new Role
-                    {
-                        RoleId = Role.DEVELOPER_ROLE_ID,
-                        RoleName = "Developer",
-                        Description = "Developer account with project management permissions",
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.Roles.Add(developerRole);
-                    
-                    // Also ensure other roles exist
-                    var userRole = await _context.Roles.FindAsync(Role.USER_ROLE_ID);
-                    if (userRole == null)
-                    {
-                        _context.Roles.Add(new Role
-                        {
-                            RoleId = Role.USER_ROLE_ID,
-                            RoleName = "User",
-                            Description = "Regular user account",
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                    
-                    var adminRole = await _context.Roles.FindAsync(Role.ADMIN_ROLE_ID);
-                    if (adminRole == null)
-                    {
-                        _context.Roles.Add(new Role
-                        {
-                            RoleId = Role.ADMIN_ROLE_ID,
-                            RoleName = "Admin",
-                            Description = "Administrator account with full system access",
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                    
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception roleEx)
-                {
-                    var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
-                    logger.LogError(roleEx, "Failed to create roles: {Message}", roleEx.Message);
-                    return StatusCode(500, new { 
-                        error = "Database configuration error",
-                        message = "Failed to initialize required system roles. Please contact support.",
-                        details = roleEx.InnerException?.Message ?? roleEx.Message
-                    });
-                }
-            }
-            
-            // Double-check role exists before proceeding
-            developerRole = await _context.Roles.FindAsync(Role.DEVELOPER_ROLE_ID);
             if (developerRole == null)
             {
                 return StatusCode(500, new { 
@@ -565,36 +451,9 @@ namespace InstapropAPI.Controllers
             if (passwordError != null)
                 return BadRequest(passwordError);
 
-            // Ensure Sales Role exists
+            await _roleSeederService.SeedRolesAsync();
+
             var salesRole = await _context.Roles.FindAsync(Role.SALES_ROLE_ID);
-            if (salesRole == null)
-            {
-                try
-                {
-                    salesRole = new Role
-                    {
-                        RoleId = Role.SALES_ROLE_ID,
-                        RoleName = "Sales",
-                        Description = "Sales team member assigned to a developer",
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.Roles.Add(salesRole);
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception roleEx)
-                {
-                    var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
-                    logger.LogError(roleEx, "Failed to create Sales role: {Message}", roleEx.Message);
-                    return StatusCode(500, new { 
-                        error = "Database configuration error",
-                        message = "Failed to initialize Sales role. Please contact support.",
-                        details = roleEx.InnerException?.Message ?? roleEx.Message
-                    });
-                }
-            }
-            
-            // Double-check role exists
-            salesRole = await _context.Roles.FindAsync(Role.SALES_ROLE_ID);
             if (salesRole == null)
             {
                 return StatusCode(500, new { 
@@ -740,29 +599,19 @@ namespace InstapropAPI.Controllers
         [HttpPost("google-auth")]
         public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthRequest request)
         {
-            // Check if account exists with this Google ID (only UserAccount has GoogleId)
+            if (string.IsNullOrWhiteSpace(request.Email) && string.IsNullOrWhiteSpace(request.GoogleId))
+                return BadRequest("Email or Google ID is required.");
+
+            var normalizedEmail = request.Email?.Trim().ToLowerInvariant() ?? string.Empty;
+
+            // Existing user: match by Google ID or email (case-insensitive)
             var existingAccount = await _context.UserAccounts
-                .FirstOrDefaultAsync(a => a.GoogleId == request.GoogleId || a.Email == request.Email);
-            
-            // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
-            if (existingAccount != null)
-            {
-                var existingRole = await _context.Roles
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(r => r.RoleId == existingAccount.RoleId);
-                
-                if (existingRole != null)
-                {
-                    // Set navigation property - EF Core will handle the relationship through RoleId
-                    existingAccount.Role = existingRole;
-                }
-            }
+                .FirstOrDefaultAsync(a =>
+                    (!string.IsNullOrEmpty(request.GoogleId) && a.GoogleId == request.GoogleId) ||
+                    (normalizedEmail != "" && a.Email.ToLower() == normalizedEmail));
 
             if (existingAccount != null)
             {
-                // User exists - login
-                
-                // Check if account is locked due to failed login attempts
                 if (existingAccount.LockedUntil.HasValue && existingAccount.LockedUntil.Value > DateTime.UtcNow)
                 {
                     var remainingMinutes = Math.Ceiling((existingAccount.LockedUntil.Value - DateTime.UtcNow).TotalMinutes);
@@ -772,8 +621,7 @@ namespace InstapropAPI.Controllers
                         remainingMinutes = remainingMinutes
                     });
                 }
-                
-                // Check if account is suspended
+
                 if (existingAccount.IsSuspended && existingAccount.SuspendedUntil > DateTime.UtcNow)
                 {
                     return StatusCode(403, new {
@@ -783,23 +631,20 @@ namespace InstapropAPI.Controllers
                     });
                 }
 
-                // Successful OAuth login - reset failed attempts and lockout
                 existingAccount.FailedLoginAttempts = 0;
                 existingAccount.LockedUntil = null;
 
-                // Update GoogleId if not set
                 if (string.IsNullOrEmpty(existingAccount.GoogleId))
                 {
                     existingAccount.GoogleId = request.GoogleId;
                     existingAccount.AuthProvider = "google";
                 }
-                
+
                 await _context.SaveChangesAsync();
 
-                // Role is already loaded via Include above, no need to load again
+                var roleName = await GetRoleNameAsync(existingAccount.RoleId);
                 var token = GenerateJwtToken(existingAccount);
-                
-                // Return account with roleId and roleName explicitly for Flutter compatibility
+
                 var accountResponse = new
                 {
                     existingAccount.AccountId,
@@ -808,52 +653,58 @@ namespace InstapropAPI.Controllers
                     existingAccount.PhoneNumber,
                     existingAccount.Email,
                     RoleId = existingAccount.RoleId,
-                    RoleName = existingAccount.Role?.RoleName ?? "User",
+                    RoleName = roleName,
                     existingAccount.Status,
                     existingAccount.EmailVerified,
                     existingAccount.PhoneVerified,
                     existingAccount.CreatedAt,
                     existingAccount.UpdatedAt
                 };
-                
+
                 return Ok(new { Token = token, Account = accountResponse });
             }
 
-            // Create new account - minimal info from Google
+            // Email already registered under another account type — don't create duplicates
+            if (normalizedEmail != "" &&
+                await _context.Accounts.AnyAsync(a => a.Email.ToLower() == normalizedEmail))
+            {
+                return Conflict(new {
+                    message = "An account with this email already exists. Please sign in with your email and password."
+                });
+            }
+
+            await _roleSeederService.SeedRolesAsync();
+
             var newAccount = new UserAccount
             {
                 FirstName = request.FirstName,
                 LastName = request.LastName,
-                Email = request.Email,
-                PhoneNumber = "", // Will be filled later
-                RoleId = Role.USER_ROLE_ID, // Always User role
+                Email = normalizedEmail != "" ? normalizedEmail : request.Email.Trim(),
+                PhoneNumber = "",
+                RoleId = Role.USER_ROLE_ID,
                 GoogleId = request.GoogleId,
                 AuthProvider = "google",
-                EmailVerified = true, // Google emails are verified
-                Status = VerificationStatus.NotVerified, // Still needs KYC
+                EmailVerified = true,
+                Status = VerificationStatus.NotVerified,
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.UserAccounts.Add(newAccount);
             await _context.SaveChangesAsync();
 
-            // Load Role separately using AsNoTracking to avoid Type column reference and tracking conflicts
-            var googleRole = await _context.Roles
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.RoleId == newAccount.RoleId);
-            
-            if (googleRole != null)
+            try
             {
-                // Set navigation property - EF Core will handle the relationship through RoleId
-                newAccount.Role = googleRole;
+                await _firestoreService.SyncUserAsync(newAccount.AccountId, newAccount);
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AccountController>>();
+                logger.LogWarning(ex, "Firestore sync failed for Google account {AccountId}", newAccount.AccountId);
             }
 
-            // Sync new user to Firestore
-            await _firestoreService.SyncUserAsync(newAccount.AccountId, newAccount);
-
+            var newRoleName = await GetRoleNameAsync(newAccount.RoleId);
             var newToken = GenerateJwtToken(newAccount);
-            
-            // Return account with roleId and roleName explicitly for Flutter compatibility
+
             var newAccountResponse = new
             {
                 newAccount.AccountId,
@@ -862,18 +713,18 @@ namespace InstapropAPI.Controllers
                 newAccount.PhoneNumber,
                 newAccount.Email,
                 RoleId = newAccount.RoleId,
-                RoleName = newAccount.Role?.RoleName ?? "User",
+                RoleName = newRoleName,
                 newAccount.Status,
                 newAccount.EmailVerified,
                 newAccount.PhoneVerified,
                 newAccount.CreatedAt,
                 newAccount.UpdatedAt
             };
-            
-            return Ok(new { 
-                Token = newToken, 
+
+            return Ok(new {
+                Token = newToken,
                 Account = newAccountResponse,
-                RequiresProfileCompletion = true // Indicate that profile needs completion
+                RequiresProfileCompletion = true
             });
         }
 
@@ -1250,6 +1101,15 @@ namespace InstapropAPI.Controllers
             
             // Shuffle the password
             return new string(password.OrderBy(x => random.Next()).ToArray());
+        }
+
+        private async Task<string> GetRoleNameAsync(Guid roleId)
+        {
+            return await _context.Roles
+                .AsNoTracking()
+                .Where(r => r.RoleId == roleId)
+                .Select(r => r.RoleName)
+                .FirstOrDefaultAsync() ?? "User";
         }
 
         private string GenerateJwtToken(AccountBase account)

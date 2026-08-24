@@ -63,6 +63,12 @@ class GoogleSignInService {
       } else if (response.statusCode == 403) {
         final data = jsonDecode(response.body);
         return GoogleSignInResult.error(data['message'] ?? 'Account suspended');
+      } else if (response.statusCode == 409) {
+        final data = jsonDecode(response.body);
+        return GoogleSignInResult.error(
+          data['message'] ??
+              'An account with this email already exists. Please sign in with your password.',
+        );
       } else {
         return GoogleSignInResult.error(
           'Failed to authenticate: ${response.body}',
