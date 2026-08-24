@@ -54,14 +54,14 @@ const ProjectsPage: React.FC = () => {
     name: '',
     description: '',
     location: '',
-    country: '',
+    country: 'EG',
   });
 
   const [editProject, setEditProject] = useState({
     name: '',
     description: '',
     location: '',
-    country: '',
+    country: 'EG',
   });
 
   useEffect(() => {
@@ -187,7 +187,7 @@ const ProjectsPage: React.FC = () => {
     try {
       await projectsApi.createProject(newProject);
       toast.success('Project created successfully!');
-      setNewProject({ name: '', description: '', location: '', country: '' });
+      setNewProject({ name: '', description: '', location: '', country: 'EG' });
       setShowCreateModal(false);
       fetchData();
     } catch (error: any) {
@@ -245,7 +245,7 @@ const ProjectsPage: React.FC = () => {
       name: project.name,
       description: project.description || '',
       location: project.location || '',
-      country: project.country || '',
+      country: project.country || 'EG',
     });
     setShowEditModal(true);
   };
@@ -1260,25 +1260,7 @@ const ProjectsPage: React.FC = () => {
                           onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
                           onBlur={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
                       >
-                        <option value="">Select country...</option>
                         <option value="EG">🇪🇬 Egypt</option>
-                        <option value="AE">🇦🇪 United Arab Emirates</option>
-                        <option value="SA">🇸🇦 Saudi Arabia</option>
-                        <option value="KW">🇰🇼 Kuwait</option>
-                        <option value="QA">🇶🇦 Qatar</option>
-                        <option value="BH">🇧🇭 Bahrain</option>
-                        <option value="OM">🇴🇲 Oman</option>
-                        <option value="JO">🇯🇴 Jordan</option>
-                        <option value="LB">🇱🇧 Lebanon</option>
-                        <option value="US">🇺🇸 United States</option>
-                        <option value="GB">🇬🇧 United Kingdom</option>
-                        <option value="CA">🇨🇦 Canada</option>
-                        <option value="AU">🇦🇺 Australia</option>
-                        <option value="DE">🇩🇪 Germany</option>
-                        <option value="FR">🇫🇷 France</option>
-                        <option value="ES">🇪🇸 Spain</option>
-                        <option value="IT">🇮🇹 Italy</option>
-                        <option value="TR">🇹🇷 Turkey</option>
                       </select>
                     </div>
                   </div>
@@ -1297,7 +1279,7 @@ const ProjectsPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setShowCreateModal(false);
-                      setNewProject({ name: '', description: '', location: '', country: '' });
+                      setNewProject({ name: '', description: '', location: '', country: 'EG' });
                     }}
                     style={{
                       padding: '0.75rem 1.5rem',
@@ -1533,25 +1515,7 @@ const ProjectsPage: React.FC = () => {
                           onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
                           onBlur={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
                         >
-                          <option value="">Select country...</option>
                           <option value="EG">🇪🇬 Egypt</option>
-                          <option value="AE">🇦🇪 United Arab Emirates</option>
-                          <option value="SA">🇸🇦 Saudi Arabia</option>
-                          <option value="KW">🇰🇼 Kuwait</option>
-                          <option value="QA">🇶🇦 Qatar</option>
-                          <option value="BH">🇧🇭 Bahrain</option>
-                          <option value="OM">🇴🇲 Oman</option>
-                          <option value="JO">🇯🇴 Jordan</option>
-                          <option value="LB">🇱🇧 Lebanon</option>
-                          <option value="US">🇺🇸 United States</option>
-                          <option value="GB">🇬🇧 United Kingdom</option>
-                          <option value="CA">🇨🇦 Canada</option>
-                          <option value="AU">🇦🇺 Australia</option>
-                          <option value="DE">🇩🇪 Germany</option>
-                          <option value="FR">🇫🇷 France</option>
-                          <option value="ES">🇪🇸 Spain</option>
-                          <option value="IT">🇮🇹 Italy</option>
-                          <option value="TR">🇹🇷 Turkey</option>
                         </select>
                       </div>
                     </div>

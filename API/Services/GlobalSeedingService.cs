@@ -10,8 +10,7 @@ using BCrypt.Net;
 namespace InstapropAPI.Services
 {
     /// <summary>
-    /// Global Real Estate Seeding Service - Investor-Ready Data
-    /// Covers USA, Middle East, and Europe markets with realistic, comprehensive data
+    /// Egypt-only seeding helpers. InstaProp targets the Egyptian real estate market exclusively.
     /// </summary>
     public class GlobalSeedingService
     {
@@ -271,95 +270,24 @@ namespace InstapropAPI.Services
 
         public async Task PreSeedTestDataAsync(bool skipClear = false)
         {
-            Console.WriteLine("🌍 Starting GLOBAL Pre-Seed Test (1/10 Scale)...");
+            Console.WriteLine("🇪🇬 Starting Egypt-only market seed...");
             Console.WriteLine("================================================");
 
-            if (!skipClear)
-            {
-                Console.WriteLine("🗑️ Clearing existing data...");
-                await ClearAllDataAsync();
-            }
+            // Egypt-only MVP: always reset property market and seed curated Egyptian data.
+            // skipClear is kept for API compatibility but non-Egyptian demo data is never seeded.
+            _ = skipClear;
 
-            Console.WriteLine("\n📋 Step 1: Seeding Roles...");
-            await SeedRolesAsync();
-
-            Console.WriteLine("\n👥 Step 2: Seeding Accounts...");
-            var accounts = await SeedTestAccountsAsync();
-            var developers = accounts.Where(a => a.RoleId == Role.DEVELOPER_ROLE_ID).ToList();
-            var users = accounts.Where(a => a.RoleId == Role.USER_ROLE_ID).ToList();
-            Console.WriteLine($"   ✅ Created {developers.Count} developers, {users.Count} users");
-
-            Console.WriteLine("\n🏗️ Step 3: Seeding Projects...");
-            var projects = await SeedTestProjectsAsync(developers);
-            Console.WriteLine($"   ✅ Created {projects.Count} projects");
-
-            Console.WriteLine("\n🏠 Step 4: Seeding Properties...");
-            var properties = await SeedTestPropertiesAsync(projects);
-            Console.WriteLine($"   ✅ Created {properties.Count} properties");
-
-            Console.WriteLine("\n📸 Step 6: Seeding Property Images...");
-            await SeedTestPropertyImagesAsync(properties);
-
-            Console.WriteLine("\n🔨 Step 7: Seeding Auctions...");
-            var auctions = await SeedTestAuctionsAsync(properties);
-            Console.WriteLine($"   ✅ Created {auctions.Count} auctions");
-
-            Console.WriteLine("\n💰 Step 8: Seeding Bids...");
-            var bidCount = await SeedTestBidsAsync(auctions, users);
-            Console.WriteLine($"   ✅ Created {bidCount} bids");
-
-            Console.WriteLine("\n❓ Step 9: Seeding FAQs...");
-            await SeedTestFaqsAsync();
-
-            Console.WriteLine("\n📰 Step 10: Seeding News Articles...");
-            await SeedTestNewsAsync(developers);
-
-            Console.WriteLine("\n👔 Step 11: Seeding Sales Teams...");
-            var salesTeams = await SeedTestSalesTeamsAsync(developers);
-            Console.WriteLine($"   ✅ Created {salesTeams.Count} sales teams");
-
-            Console.WriteLine("\n💼 Step 12: Seeding Sales Accounts...");
-            var salesAccounts = await SeedTestSalesAccountsAsync(developers, salesTeams);
-            Console.WriteLine($"   ✅ Created {salesAccounts.Count} sales accounts");
-
-            Console.WriteLine("\n🔐 Step 13: Seeding Developer Permissions...");
-            await SeedTestDeveloperPermissionsAsync(developers);
-            Console.WriteLine($"   ✅ Created permissions for {developers.Count} developers");
-
-            Console.WriteLine("\n⭐ Step 14: Seeding Developer Ratings...");
-            var ratingsCount = await SeedTestDeveloperRatingsAsync(developers, users);
-            Console.WriteLine($"   ✅ Created {ratingsCount} developer ratings");
-
-            Console.WriteLine("\n👤 Step 15: Seeding Developer Profiles...");
-            await SeedTestDeveloperProfilesAsync(developers);
-            Console.WriteLine($"   ✅ Created profiles for {developers.Count} developers");
-
-            Console.WriteLine("\n📈 Step 16: Seeding Property Price History...");
-            var priceHistoryCount = await SeedPropertyPriceHistoryAsync(properties, auctions);
-            Console.WriteLine($"   ✅ Created {priceHistoryCount} price history records");
-
-            Console.WriteLine("\n🥇 Step 17: Seeding Gold Prices...");
-            var goldPriceCount = await SeedGoldPriceAsync();
-            Console.WriteLine($"   ✅ Created {goldPriceCount} gold price records");
-
-            Console.WriteLine("\n📹 Step 18: Seeding Live Streams...");
-            var liveStreamCount = await SeedTestLiveStreamsAsync(developers);
-            Console.WriteLine($"   ✅ Created {liveStreamCount} live streams");
-
-            await _context.SaveChangesAsync();
+            var demoSeeder = new DemoPropertySeedingService(_context);
+            var result = await demoSeeder.ResetAndSeedEgyptianMarketAsync();
 
             Console.WriteLine("\n================================================");
-            Console.WriteLine("✅ GLOBAL Pre-Seed Test Completed Successfully!");
+            Console.WriteLine("✅ Egypt-only market seed completed!");
             Console.WriteLine($"   📊 Summary:");
-            Console.WriteLine($"   - Developers: {developers.Count}");
-            Console.WriteLine($"   - Users: {users.Count}");
-            Console.WriteLine($"   - Sales Teams: {salesTeams.Count}");
-            Console.WriteLine($"   - Sales Accounts: {salesAccounts.Count}");
-            Console.WriteLine($"   - Projects: {projects.Count}");
-            Console.WriteLine($"   - Properties: {properties.Count}");
-            Console.WriteLine($"   - Auctions: {auctions.Count}");
-            Console.WriteLine($"   - Bids: {bidCount}");
-            Console.WriteLine($"   - Developer Ratings: {ratingsCount}");
+            Console.WriteLine($"   - Developers: {result.Developers}");
+            Console.WriteLine($"   - Projects: {result.Projects}");
+            Console.WriteLine($"   - Properties: {result.Properties}");
+            Console.WriteLine($"   - Images: {result.Images}");
+            Console.WriteLine($"   - Auctions: {result.Auctions}");
             Console.WriteLine("================================================\n");
         }
 

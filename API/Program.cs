@@ -126,6 +126,7 @@ builder.Services.AddDbContext<InstapropAPI.Data.FinancialDbContext>(options =>
 // Add Services
 builder.Services.AddScoped<RoleSeederService>();
 builder.Services.AddScoped<GlobalSeedingService>();
+builder.Services.AddScoped<DemoPropertySeedingService>();
 builder.Services.AddSingleton<FirestoreService>();
 builder.Services.AddScoped<SmtpEmailService>(); // SMTP email sending
 builder.Services.AddScoped<EmailTemplateService>(); // HTML email templates
