@@ -172,6 +172,7 @@ namespace InstapropAPI.Services
         public async Task<(int Developers, int Projects, int Properties, int Images, int Auctions)> ResetAndSeedEgyptianMarketAsync()
         {
             await EnsureRolesAsync();
+            await EnableAllFeatureFlagsAsync();
             await ClearPropertyMarketDataAsync();
             await NormalizeExistingProjectsToEgyptAsync();
 
@@ -182,6 +183,12 @@ namespace InstapropAPI.Services
             var auctionCount = await SeedAuctionsAsync(properties);
 
             return (developers.Count, projects.Count, properties.Count, imageCount, auctionCount);
+        }
+
+        public async Task<int> EnableAllFeatureFlagsAsync()
+        {
+            return await _context.FeatureFlags.ExecuteUpdateAsync(s =>
+                s.SetProperty(f => f.IsEnabled, true));
         }
 
         private async Task ClearPropertyMarketDataAsync()

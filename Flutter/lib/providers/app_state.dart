@@ -56,13 +56,8 @@ class AppState extends ChangeNotifier {
   // Active AI Broker chat ID
   String? _activeAIChatId;
 
-  // Feature flags — loaded once on init; unknown keys default false (MVP safe)
+  // Feature flags — loaded once on init; missing keys default to enabled (full UX)
   Map<String, bool> _featureFlags = {};
-
-  /// Core MVP features enabled when the flag map is empty or a key is missing.
-  static const Set<String> _mvpDefaultEnabledFlags = {
-    'FeedExplore',
-  };
 
   // Getters
   List<Auction> get auctions => _auctions;
@@ -78,14 +73,8 @@ class AppState extends ChangeNotifier {
   bool get isFloatingButtonHidden => _isFloatingButtonHidden;
   String? get activeAIChatId => _activeAIChatId;
 
-  /// Returns true if the feature is enabled. Unknown keys default false unless
-  /// listed in [_mvpDefaultEnabledFlags] (safe MVP fallback when fetch fails).
-  bool isFeatureEnabled(String featureKey) {
-    if (_featureFlags.containsKey(featureKey)) {
-      return _featureFlags[featureKey]!;
-    }
-    return _mvpDefaultEnabledFlags.contains(featureKey);
-  }
+  /// Returns true if the feature is enabled, or true by default if not in the map.
+  bool isFeatureEnabled(String featureKey) => _featureFlags[featureKey] ?? true;
 
   // Featured auctions (top 2 by bid count)
   List<Auction> get featuredAuctions {

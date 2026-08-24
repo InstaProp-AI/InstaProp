@@ -20,6 +20,26 @@ namespace InstapropAPI.Controllers
             _demoPropertySeedingService = demoPropertySeedingService;
         }
 
+        // POST: api/Seed/restore-ux — re-enable full app navigation and features
+        [HttpPost("restore-ux")]
+        public async Task<ActionResult<object>> RestoreFullUx()
+        {
+            try
+            {
+                var updated = await _demoPropertySeedingService.EnableAllFeatureFlagsAsync();
+                return Ok(new
+                {
+                    success = true,
+                    message = "Full user experience restored — all feature flags enabled",
+                    flagsUpdated = updated
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
         // POST: api/Seed/properties — wipe non-Egyptian market data and seed Egypt-only demo
         [HttpPost("properties")]
         public async Task<ActionResult<object>> SeedDemoProperties()
