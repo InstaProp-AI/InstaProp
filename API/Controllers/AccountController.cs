@@ -856,14 +856,18 @@ namespace InstapropAPI.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
+            var normalizedEmail = req.Email?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+                return BadRequest("Email is required.");
+
+            // Case-insensitive lookup; no Role Include (prevents duplicate Role inserts on SaveChanges)
             var account = await _context.Accounts
-                .Include(a => a.Role) // Load role with the account
-                .FirstOrDefaultAsync(a => a.Email == req.Email);
+                .FirstOrDefaultAsync(a => a.Email.ToLower() == normalizedEmail);
             
             // Check if account exists
             if (account == null)
             {
-                return Unauthorized("Invalid credentials.");
+                return Unauthorized(new { message = "Invalid credentials." });
             }
 
             // Check if account is locked due to failed login attempts
@@ -970,7 +974,7 @@ namespace InstapropAPI.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Role is already loaded via Include above, no need to load again
+            var roleName = await GetRoleNameAsync(account.RoleId);
             var token = GenerateJwtToken(account);
             
             // Return account with roleId and roleName explicitly for Flutter compatibility
@@ -982,10 +986,14 @@ namespace InstapropAPI.Controllers
                 account.PhoneNumber,
                 account.Email,
                 RoleId = account.RoleId,
-                RoleName = account.Role?.RoleName ?? "User",
+                RoleName = roleName,
                 account.Status,
                 account.EmailVerified,
                 account.PhoneVerified,
+                account.RequiresPasswordChange,
+                account.IsSuspended,
+                account.SuspendedUntil,
+                account.SuspensionReason,
                 account.CreatedAt,
                 account.UpdatedAt
             };
@@ -1186,6 +1194,7 @@ namespace InstapropAPI.Controllers
             var totalEarnedPoints = account.TotalEarnedPoints;
             var currentPoints = account.CurrentPoints;
             var topBadge = await _context.UserBadges.Where(b => b.AccountId == account.AccountId).OrderByDescending(b => b.AwardedAt).FirstOrDefaultAsync();
+            var roleName = await GetRoleNameAsync(account.RoleId);
 
             var accountResponse = new
             {
@@ -1194,9 +1203,15 @@ namespace InstapropAPI.Controllers
                 account.LastName,
                 account.PhoneNumber,
                 account.Email,
-                RoleId = account.RoleId, // Only role ID - no role name to prevent architecture disclosure
+                RoleId = account.RoleId,
+                RoleName = roleName,
+                account.Status,
                 account.EmailVerified,
                 account.PhoneVerified,
+                account.RequiresPasswordChange,
+                account.IsSuspended,
+                account.SuspendedUntil,
+                account.SuspensionReason,
                 account.CreatedAt,
                 account.UpdatedAt,
                 TotalEarnedPoints = totalEarnedPoints,

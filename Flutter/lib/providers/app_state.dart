@@ -471,7 +471,7 @@ class AppState extends ChangeNotifier {
     return response;
   }
 
-  Future<bool> signup({
+  Future<ApiResponse<Account>> signup({
     required String firstName,
     required String lastName,
     required String phoneNumber,
@@ -487,7 +487,14 @@ class AppState extends ChangeNotifier {
       password: password,
       timeZone: timeZone,
     );
-    return response.success;
+    return response;
+  }
+
+  Future<void> completeOAuthSignIn({
+    required String token,
+    required Account account,
+  }) async {
+    await _authService.setSession(token: token, user: account);
   }
 
   // KYC document upload is now handled by KycService

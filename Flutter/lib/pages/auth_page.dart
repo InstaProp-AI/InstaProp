@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../services/auth_service.dart';
 import '../services/google_sign_in_service.dart';
 import '../widgets/modern_button.dart';
 import '../widgets/modern_text_field.dart';
@@ -117,7 +116,7 @@ class _AuthPageState extends State<AuthPage>
     setState(() => _checkingEmail = true);
 
     try {
-      final authService = AuthService();
+      final authService = context.read<AppState>().authService;
       final response = await authService.checkEmailExists(email);
 
       if (mounted) {
@@ -148,7 +147,7 @@ class _AuthPageState extends State<AuthPage>
     setState(() => _checkingPhone = true);
 
     try {
-      final authService = AuthService();
+      final authService = context.read<AppState>().authService;
       final response = await authService.checkPhoneExists(phone);
 
       if (mounted) {
@@ -274,7 +273,7 @@ class _AuthPageState extends State<AuthPage>
     try {
       // Create account immediately
       final appState = context.read<AppState>();
-      final success = await appState.signup(
+      final response = await appState.signup(
         firstName: _signupFirstNameController.text.trim(),
         lastName: _signupLastNameController.text.trim(),
         phoneNumber: _signupPhoneController.text.trim(),
@@ -283,7 +282,7 @@ class _AuthPageState extends State<AuthPage>
         timeZone: _selectedTimeZone,
       );
 
-      if (success && mounted) {
+      if (response.success && mounted) {
         // Account created! Now navigate to email verification first
         Navigator.push(
           context,
@@ -322,7 +321,7 @@ class _AuthPageState extends State<AuthPage>
         );
       } else {
         setState(() {
-          _errorMessage = 'Signup failed. Please try again.';
+          _errorMessage = response.error ?? 'Signup failed. Please try again.';
         });
       }
     } catch (e) {
@@ -353,16 +352,26 @@ class _AuthPageState extends State<AuthPage>
         return;
       }
 
-      // Set user in app state - manually update authService since this is OAuth
-      final appState = Provider.of<AppState>(context, listen: false);
-      // Force refresh user data to update app state
-      await appState.authService.getCurrentUser();
+      if (!mounted) return;
+
+      final appState = context.read<AppState>();
+      if (result.token == null || result.account == null) {
+        setState(() {
+          _errorMessage = 'Google Sign-In failed: missing session data';
+          _isGoogleLoading = false;
+        });
+        return;
+      }
+
+      await appState.completeOAuthSignIn(
+        token: result.token!,
+        account: result.account!,
+      );
 
       setState(() {
         _isGoogleLoading = false;
       });
 
-      // Navigate based on profile completion needs
       if (!mounted) return;
 
       final phoneNumber = result.account?.phoneNumber;

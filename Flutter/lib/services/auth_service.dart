@@ -205,6 +205,15 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Persist an authenticated session (email login, Google OAuth, etc.)
+  Future<void> setSession({required String token, required Account user}) async {
+    _token = token;
+    _user = user;
+    await ApiClient.setToken(token);
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     _token = null;
     _user = null;
